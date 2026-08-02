@@ -12,6 +12,7 @@ use App\Models\Courses;
 use App\Models\Examresults;
 use App\Models\Students;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -60,6 +61,27 @@ class ExamController extends Controller
             'stage' => $request->stage ?? 'entrance',
             'type' => $request->type ?? 'general',
         ]);
+    }
+
+    /**
+     * Return students enrolled in a course/term for exam recording.
+     */
+    public function students(Request $request): JsonResponse
+    {
+        $this->authorize('record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+
+        $request->validate([
+            'courseId' => 'required|exists:courses,courseId',
+            'termId' => 'required|exists:academicterms,termId',
+        ]);
+
+        $students = Students::whereHas('enrollments', fn ($q) => $q
+            ->where('courseId', $request->courseId)
+            ->where('termId', $request->termId)
+            ->where('enrollmentStatus', 'enrolled')
+        )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+
+        return response()->json(['students' => $students]);
     }
 
     /**

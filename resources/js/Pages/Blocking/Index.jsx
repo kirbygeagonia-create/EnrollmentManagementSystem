@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState } from '@/Components/ui';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection } from '@/Components/ui';
+import PrimaryButton from '@/Components/PrimaryButton';
 import { useState, useMemo } from 'react';
 
 const yearLevelOptions = [
@@ -23,6 +23,25 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
     const [courseId, setCourseId] = useState(filters.courseId || '');
     const [termId, setTermId] = useState(filters.termId || '');
     const [yearLevel, setYearLevel] = useState(filters.yearLevel || '');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+
+    const createForm = useForm({
+        blockName: '',
+        courseId: '',
+        termId: '',
+        yearLevel: '1',
+        maxStudents: '',
+    });
+
+    const handleCreate = (e) => {
+        e.preventDefault();
+        createForm.post(route('blocking.store'), {
+            onSuccess: () => {
+                setShowCreateModal(false);
+                createForm.reset();
+            },
+        });
+    };
 
     const columns = useMemo(() => [
         { key: 'blockName', label: 'Block Name / Section' },
@@ -94,12 +113,12 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
                     title="Blocking"
                     subtitle="Manage block sections and schedules"
                     actions={
-                        <Link href={route('blocking.create')} className="btn btn-primary">
+                        <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                             Create Block
-                        </Link>
+                        </button>
                     }
                 />
             }
@@ -165,10 +184,70 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
                         title="No blocks found"
                         message={search || courseId || termId || yearLevel ? 'Try adjusting your filters to find matching records.' : 'No blocks have been created yet.'}
                         actionLabel={!search && !courseId && !termId && !yearLevel ? 'Create First Block' : undefined}
-                        onAction={!search && !courseId && !termId && !yearLevel ? () => window.location.href = route('blocking.create') : undefined}
+                        onAction={!search && !courseId && !termId && !yearLevel ? () => { createForm.reset(); setShowCreateModal(true); } : undefined}
                     />
                 )}
             </Card>
+
+            {/* Create Block Modal */}
+            <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Block">
+                <form onSubmit={handleCreate}>
+                    <div className="space-y-4">
+                        <FormSection label="Block Name / Section">
+                            <input
+                                type="text"
+                                value={createForm.data.blockName}
+                                onChange={(e) => createForm.setData('blockName', e.target.value)}
+                                className="form-input"
+                                placeholder="e.g. BSIT-1A"
+                                required
+                            />
+                        </FormSection>
+                        <FormSection label="Course">
+                            <Select
+                                value={createForm.data.courseId}
+                                onChange={(v) => createForm.setData('courseId', v)}
+                                options={courses.map(c => ({ value: c.courseId, label: `${c.courseCode} - ${c.courseName}` }))}
+                                placeholder="Select course"
+                            />
+                        </FormSection>
+                        <FormSection label="Term">
+                            <Select
+                                value={createForm.data.termId}
+                                onChange={(v) => createForm.setData('termId', v)}
+                                options={terms.map(t => ({ value: t.termId, label: `${t.semester?.value || t.semester} ${t.academicYear?.yearLabel || ''}`.trim() }))}
+                                placeholder="Select term"
+                            />
+                        </FormSection>
+                        <FormSection label="Year Level">
+                            <Select
+                                value={createForm.data.yearLevel}
+                                onChange={(v) => createForm.setData('yearLevel', v)}
+                                options={yearLevelOptions.filter(o => o.value !== '')}
+                            />
+                        </FormSection>
+                        <FormSection label="Max Students">
+                            <input
+                                type="number"
+                                value={createForm.data.maxStudents}
+                                onChange={(e) => createForm.setData('maxStudents', e.target.value)}
+                                className="form-input"
+                                placeholder="e.g. 40"
+                                min="1"
+                                required
+                            />
+                        </FormSection>
+                    </div>
+                    <div className="mt-6 flex justify-end gap-3">
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary">
+                            Cancel
+                        </button>
+                        <PrimaryButton type="submit" disabled={createForm.processing}>
+                            Create Block
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

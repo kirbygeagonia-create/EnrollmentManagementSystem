@@ -1,18 +1,18 @@
 <?php
 
-use App\Http\Controllers\Admission\AdmissionController;
-use App\Http\Controllers\Exam\ExamController;
-use App\Http\Controllers\Evaluation\EvaluationController;
-use App\Http\Controllers\Assessment\AssessmentController;
 use App\Http\Controllers\Accounting\AccountingController;
-use App\Http\Controllers\Clearance\ClearanceController;
-use App\Http\Controllers\Blocking\BlockingController;
-use App\Http\Controllers\Registrar\RegistrarController;
-use App\Http\Controllers\Clinic\ClinicController;
-use App\Http\Controllers\ID\IDController;
 use App\Http\Controllers\Admin\ReferenceDataController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admission\AdmissionController;
+use App\Http\Controllers\Assessment\AssessmentController;
+use App\Http\Controllers\Blocking\BlockingController;
+use App\Http\Controllers\Clearance\ClearanceController;
+use App\Http\Controllers\Clinic\ClinicController;
+use App\Http\Controllers\Evaluation\EvaluationController;
+use App\Http\Controllers\Exam\ExamController;
+use App\Http\Controllers\ID\IDController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Registrar\RegistrarController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
     /* ==================== Exam ==================== */
     Route::get('/exam', [ExamController::class, 'index'])->name('exam.index');
     Route::get('/exam/create', [ExamController::class, 'create'])->name('exam.create');
+    Route::get('/exam/students', [ExamController::class, 'students'])->name('exam.students');
     Route::post('/exam/general', [ExamController::class, 'recordGeneral'])->name('exam.general.record');
     Route::post('/exam/course-specific', [ExamController::class, 'recordCourseSpecific'])->name('exam.course-specific.record');
     Route::post('/exam/retention', [ExamController::class, 'recordRetention'])->name('exam.retention.record');
