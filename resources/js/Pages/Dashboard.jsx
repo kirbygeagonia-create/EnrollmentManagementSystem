@@ -6,7 +6,7 @@ import { Card, StatCard } from '@/Components/ui';
 
 const quickLinks = [
     { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Entrance Exam', route: 'entrance-exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
     { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
     { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
     { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
@@ -14,9 +14,9 @@ const quickLinks = [
     { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
     { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
     { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'ID Office', route: 'id-office.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Reference Data', route: 'admin.reference-data', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
-    { name: 'User Management', route: 'admin.users', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
+    { name: 'ID Office', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+    { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
+    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
 ];
 
 function AdmissionIcon({ className }) {
