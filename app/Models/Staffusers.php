@@ -2,15 +2,30 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Permission\Traits\HasRoles;
 
-class Staffusers extends Model
+class Staffusers extends Authenticatable
 {
+    use Notifiable, HasRoles;
+
     protected $table = 'staffusers';
+    protected $primaryKey = 'userId';
     public $timestamps = false;
-    protected $fillable = ['officeId', 'unitId', 'employeeNo', 'firstName', 'middleName', 'lastName', 'username', 'passwordHash', 'role', 'email', 'contactNo', 'status'];
+
+    protected $fillable = [
+        'officeId', 'unitId', 'employeeNo', 'firstName', 'middleName',
+        'lastName', 'username', 'passwordHash', 'role', 'email',
+        'contactNo', 'status',
+    ];
+
+    protected $hidden = [
+        'passwordHash',
+        'remember_token',
+    ];
 
     protected function casts(): array
     {
@@ -18,6 +33,22 @@ class Staffusers extends Model
             'role' => \App\Enums\StaffRole::class,
             'status' => \App\Enums\StaffStatus::class,
         ];
+    }
+
+    /**
+     * Get the password for the authentication guard.
+     */
+    public function getAuthPassword(): string
+    {
+        return $this->passwordHash;
+    }
+
+    /**
+     * Get the name of the unique identifier for the user.
+     */
+    public function getAuthIdentifierName(): string
+    {
+        return 'username';
     }
 
     public function office(): BelongsTo
