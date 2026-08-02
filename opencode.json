@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "model": "anthropic/claude-sonnet-4-6",
+  "small_model": "anthropic/claude-3-5-sonnet-20241022",
+  "permission": {
+    "bash": {
+      "git *": "allow",
+      "*": "ask"
+    }
+  }
+}
