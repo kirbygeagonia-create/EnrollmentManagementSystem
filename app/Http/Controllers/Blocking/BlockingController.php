@@ -14,15 +14,21 @@ use App\Models\Schedulemeetings;
 use App\Models\Schedules;
 use App\Models\Staffusers;
 use App\Models\Subjects;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BlockingController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(
+        private WorkflowService $workflowService
+    ) {}
 
     /**
      * Display block manager.
@@ -203,7 +209,7 @@ class BlockingController extends Controller
 
     /**
      * Assign students to block.
-     * BR13/BR14: Workflow step 6 must be completed in order
+     * BR13/BR14: Workflow step for Academic Department (office 5) must be completed in order
      */
     public function assignStudents(Request $request, Blocks $block): RedirectResponse
     {
@@ -220,13 +226,13 @@ class BlockingController extends Controller
         foreach ($validated['enrollmentIds'] as $enrollmentId) {
             $enrollment = Enrollments::findOrFail($enrollmentId);
 
-            // Verify enrollment is enrolled and workflow at step 6
+            // Verify enrollment is enrolled and workflow at Academic Department step (office 5)
             if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
                 continue;
             }
 
             $workflow = $enrollment->enrollmentworkflow;
-            if (! $workflow || $workflow->currentStep !== 6) {
+            if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 5) {
                 continue;
             }
 
@@ -237,6 +243,9 @@ class BlockingController extends Controller
                     'blockId' => $block->blockId,
                     'scheduleId' => $schedule->scheduleId,
                 ]);
+
+            // Sign the Blocking step (office 5) now that the student is assigned
+            $this->workflowService->signStepByOffice($workflow, 5, Auth::user());
         }
 
         return back()->with('success', 'Students assigned to block.');

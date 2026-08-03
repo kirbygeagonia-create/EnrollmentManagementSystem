@@ -104,7 +104,7 @@ class AccountingController extends Controller
             // Sign workflow step 4 (Accounting Payment)
             $workflow = $enrollment->enrollmentworkflow;
             if ($workflow) {
-                $this->workflowService->signStep($workflow, 4, Auth::user());
+                $this->workflowService->signStepByOffice($workflow, 2, Auth::user());
             }
         }
 

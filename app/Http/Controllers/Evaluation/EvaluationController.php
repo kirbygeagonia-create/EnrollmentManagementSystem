@@ -276,6 +276,10 @@ class EvaluationController extends Controller
             $this->workflowService->createWorkflow($enrollment);
         }
 
+        // Sign the Department Evaluation step (office 4) — the evaluator signs here
+        $enrollment->load('enrollmentworkflow');
+        $this->workflowService->signStepByOffice($enrollment->enrollmentworkflow, 4, Auth::user());
+
         return back()->with('success', 'Evaluation signed. Workflow created.');
     }
 }

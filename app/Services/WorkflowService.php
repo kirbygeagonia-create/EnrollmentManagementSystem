@@ -135,6 +135,32 @@ class WorkflowService
     }
 
     /**
+     * Sign the workflow step belonging to a specific office.
+     * Layout-independent: resolves the office's step by officeId rather than stepOrder.
+     * Returns null when the office has no step in this workflow (e.g. Assessment
+     * is skipped for continuing/shifter students).
+     *
+     * @throws InvalidStateTransitionException
+     */
+    public function signStepByOffice(
+        Enrollmentworkflow $workflow,
+        int $officeId,
+        Staffusers $signedBy,
+        string $status = 'completed'
+    ): ?Workflowsteps {
+        $step = $workflow->workflowsteps()
+            ->where('officeId', $officeId)
+            ->orderBy('stepOrder')
+            ->first();
+
+        if (! $step) {
+            return null;
+        }
+
+        return $this->signStep($workflow, $step->stepOrder, $signedBy, $status);
+    }
+
+    /**
      * Get the current pending step for a workflow.
      */
     public function getCurrentStep(Enrollmentworkflow $workflow): ?Workflowsteps

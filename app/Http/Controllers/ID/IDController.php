@@ -34,7 +34,7 @@ class IDController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow', fn ($q) => $q->where('currentStep', 8))
+            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q->where('stepStatus', 'pending')->where('officeId', 22))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
@@ -140,7 +140,7 @@ class IDController extends Controller
         // Sign workflow step 8 (ID Office)
         $workflow = $studentId->enrollment->enrollmentworkflow;
         if ($workflow) {
-            $this->workflowService->signStep($workflow, 8, Auth::user());
+            $this->workflowService->signStepByOffice($workflow, 22, Auth::user());
         }
 
         return back()->with('success', 'ID validated successfully.');

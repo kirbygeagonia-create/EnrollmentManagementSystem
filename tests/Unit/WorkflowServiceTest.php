@@ -366,4 +366,85 @@ class WorkflowServiceTest extends TestCase
         $steps = $this->workflowService->getSteps($workflow);
         $this->assertCount(7, $steps);
     }
+
+    #[Test]
+    public function it_signs_step_by_office_id(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+
+        // Sign step 1 (Department Evaluation - officeId 4) via signStepByOffice
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $step = $this->workflowService->signStepByOffice($workflow, 4, $deptStaff);
+        $this->assertNotNull($step);
+        $this->assertEquals(WorkflowStepStatus::Completed, $step->stepStatus);
+        $this->assertEquals(1, $step->stepOrder);
+
+        // Sign step 2 (Assessment - officeId 3) via signStepByOffice
+        $assessmentStaff = Staffusers::factory()->create(['officeId' => 3]);
+        $step = $this->workflowService->signStepByOffice($workflow, 3, $assessmentStaff);
+        $this->assertNotNull($step);
+        $this->assertEquals(WorkflowStepStatus::Completed, $step->stepStatus);
+        $this->assertEquals(2, $step->stepOrder);
+    }
+
+    #[Test]
+    public function it_returns_null_when_signing_office_not_in_workflow(): void
+    {
+        // Create a continuing student enrollment (no Assessment step)
+        $student = Students::create([
+            'schoolIdNumber' => '2026-0005',
+            'lastName' => 'Continuing',
+            'firstName' => 'Student',
+            'middleName' => 'C',
+            'suffix' => '',
+            'gender' => 'female',
+            'birthdate' => '2001-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'religionId' => 1,
+            'civilStatus' => 'single',
+            'contactNumber' => '09123456780',
+            'email' => 'continuing2@example.com',
+            'username' => 'continuingstudent2',
+            'passwordHash' => bcrypt('password'),
+            'status' => 'active',
+            'semestersCompleted' => 2,
+            'yearsInInstitution' => 1,
+        ]);
+
+        $continuingEnrollment = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => 1,
+            'termId' => 1,
+            'admissionId' => null,
+            'yearLevel' => 2,
+            'studentType' => 'continuing',
+            'enrollmentType' => 'old',
+            'academicStanding' => 'regular',
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $this->registrarStaff->userId,
+        ]);
+
+        $workflow = $this->workflowService->createWorkflow($continuingEnrollment);
+
+        // Try to sign Assessment step (officeId 3) - should return null since it's skipped
+        $assessmentStaff = Staffusers::factory()->create(['officeId' => 3]);
+        $result = $this->workflowService->signStepByOffice($workflow, 3, $assessmentStaff);
+        $this->assertNull($result);
+
+        // Workflow should still have 6 steps (no Assessment)
+        $steps = $workflow->workflowsteps()->orderBy('stepOrder')->get();
+        $this->assertCount(6, $steps);
+    }
+
+    #[Test]
+    public function it_throws_when_wrong_office_uses_sign_step_by_office(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+
+        $this->expectException(InvalidStateTransitionException::class);
+
+        // Try to sign step 1 (Department Evaluation - officeId 4) with Registrar staff (officeId 1)
+        $this->workflowService->signStepByOffice($workflow, 4, $this->registrarStaff);
+    }
 }

@@ -32,7 +32,7 @@ class ClinicController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'clinicrecords'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow', fn ($q) => $q->where('currentStep', 7))
+            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q->where('stepStatus', 'pending')->where('officeId', 11))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
@@ -91,7 +91,7 @@ class ClinicController extends Controller
         // Sign workflow step 7 (Clinic)
         $workflow = $enrollment->enrollmentworkflow;
         if ($workflow) {
-            $this->workflowService->signStep($workflow, 7, Auth::user());
+            $this->workflowService->signStepByOffice($workflow, 11, Auth::user());
         }
 
         return redirect()->route('clinic.index')->with('success', 'Clinic assessment recorded.');

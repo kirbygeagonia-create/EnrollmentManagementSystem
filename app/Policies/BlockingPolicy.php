@@ -36,7 +36,7 @@ class BlockingPolicy
 
     /**
      * Determine whether the user can assign students to blocks.
-     * BR13/BR14: Workflow step 6 must be completed in order
+     * BR13/BR14: Workflow step for Academic Department (office 5) must be completed in order
      */
     public function assignStudents(Staffusers $user, Enrollments $enrollment): bool
     {
@@ -54,9 +54,9 @@ class BlockingPolicy
             return false;
         }
 
-        // Check workflow step 6 (Blocking) is current
+        // Check workflow step for Academic Department (office 5) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->currentStep !== 6) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 5) {
             return false;
         }
 

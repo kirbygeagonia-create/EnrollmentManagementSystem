@@ -83,7 +83,7 @@ class RegistrarController extends Controller
             'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
             'clearance_verified' => $this->checkClearance($enrollment),
-            'workflow_step_5_pending' => $enrollment->enrollmentworkflow?->currentStep === 5,
+            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === 1),
         ];
 
         $allValid = collect($checklist)->every(fn ($v) => $v);
@@ -170,7 +170,7 @@ class RegistrarController extends Controller
         // Sign workflow step 5 (Registrar Approval)
         $workflow = $enrollment->enrollmentworkflow;
         if ($workflow) {
-            $this->workflowService->signStep($workflow, 5, Auth::user());
+            $this->workflowService->signStepByOffice($workflow, 1, Auth::user());
         }
 
         return redirect()->route('registrar.index')->with('success', 'Enrollment approved successfully.');

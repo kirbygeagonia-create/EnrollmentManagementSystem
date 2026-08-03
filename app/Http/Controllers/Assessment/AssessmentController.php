@@ -13,6 +13,7 @@ use App\Models\Feetypes;
 use App\Models\Scholarshiptypes;
 use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,10 @@ use Inertia\Response;
 class AssessmentController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(
+        private WorkflowService $workflowService
+    ) {}
 
     /**
      * Display assessment queue.
@@ -229,6 +234,12 @@ class AssessmentController extends Controller
 
         // Transition enrollment to assessed
         // $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment finalized');
+
+        // Sign the Assessment step (office 3) — null-safe: skipped for continuing/shifter students
+        $workflow = $assessment->enrollment->enrollmentworkflow;
+        if ($workflow) {
+            $this->workflowService->signStepByOffice($workflow, 3, Auth::user());
+        }
 
         return back()->with('success', 'Assessment finalized. Ready for payment.');
     }

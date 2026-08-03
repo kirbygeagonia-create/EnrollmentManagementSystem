@@ -32,7 +32,7 @@ class IDPolicy
     /**
      * Determine whether the user can create ID request.
      * Phase 8: ID request, photo, emergency contact, blood type
-     * BR13/BR14: Workflow step 8 must be completed in order
+     * BR13/BR14: Workflow step for ID Office (office 22) must be completed in order
      */
     public function create(Staffusers $user, Enrollments $enrollment): bool
     {
@@ -50,9 +50,9 @@ class IDPolicy
             return false;
         }
 
-        // Check workflow step 8 (ID Office) is current
+        // Check workflow step for ID Office (office 22) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->currentStep !== 8) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 22) {
             return false;
         }
 

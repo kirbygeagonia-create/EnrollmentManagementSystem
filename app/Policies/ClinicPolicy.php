@@ -30,7 +30,7 @@ class ClinicPolicy
     /**
      * Determine whether the user can record clinic assessment.
      * Phase 7: Physical exam, PhilHealth, hard-copy assessments
-     * BR13/BR14: Workflow step 7 must be completed in order
+     * BR13/BR14: Workflow step for Clinic (office 11) must be completed in order
      */
     public function record(Staffusers $user, Enrollments $enrollment): bool
     {
@@ -48,9 +48,9 @@ class ClinicPolicy
             return false;
         }
 
-        // Check workflow step 7 (Clinic) is current
+        // Check workflow step for Clinic (office 11) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->currentStep !== 7) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 11) {
             return false;
         }
 
