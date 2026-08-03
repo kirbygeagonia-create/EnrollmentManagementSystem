@@ -4,16 +4,16 @@ import { Link } from '@inertiajs/react';
 import { PageHeader, Card, StatCard, Badge } from '@/Components/ui';
 
 const referenceDataItems = [
-    { name: 'Courses', route: 'admin.courses.index', icon: CourseIcon, count: 'courses', description: 'Academic programs offered', color: 'brand' },
-    { name: 'Majors', route: 'admin.majors.index', icon: MajorIcon, count: 'majors', description: 'Specializations within courses', color: 'success' },
-    { name: 'Curriculums', route: 'admin.curriculums.index', icon: CurriculumIcon, count: 'curriculums', description: 'Course curriculum structures', color: 'info' },
-    { name: 'Subjects', route: 'admin.subjects.index', icon: SubjectIcon, count: 'subjects', description: 'Individual course subjects', color: 'warning' },
-    { name: 'Academic Terms', route: 'admin.terms.index', icon: TermIcon, count: 'terms', description: 'Semesters and school years', color: 'accent' },
-    { name: 'Fee Types', route: 'admin.fee-types.index', icon: FeeIcon, count: 'feeTypes', description: 'Tuition and miscellaneous fees', color: 'danger' },
-    { name: 'Scholarship Types', route: 'admin.scholarship-types.index', icon: ScholarshipIcon, count: 'scholarshipTypes', description: 'Available scholarship programs', color: 'info' },
-    { name: 'Offices', route: 'admin.offices.index', icon: OfficeIcon, count: 'offices', description: 'Administrative offices', color: 'brand' },
-    { name: 'Rooms', route: 'admin.rooms.index', icon: RoomIcon, count: 'rooms', description: 'Classrooms and facilities', color: 'success' },
-    { name: 'Blocks', route: 'admin.blocks.index', icon: BlockIcon, count: 'blocks', description: 'Student block sections', color: 'warning' },
+    { name: 'Courses', route: 'admin.reference-data.courses', icon: CourseIcon, count: 'courses', description: 'Academic programs offered', color: 'brand' },
+    { name: 'Majors', route: 'admin.reference-data.majors', icon: MajorIcon, count: 'majors', description: 'Specializations within courses', color: 'success' },
+    { name: 'Curriculums', route: 'admin.reference-data.curriculums', icon: CurriculumIcon, count: 'curriculums', description: 'Course curriculum structures', color: 'info' },
+    { name: 'Subjects', route: 'admin.reference-data.subjects', icon: SubjectIcon, count: 'subjects', description: 'Individual course subjects', color: 'warning' },
+    { name: 'Academic Terms', route: 'admin.reference-data.terms', icon: TermIcon, count: 'terms', description: 'Semesters and school years', color: 'accent' },
+    { name: 'Fee Types', route: 'admin.reference-data.fee-types', icon: FeeIcon, count: 'feeTypes', description: 'Tuition and miscellaneous fees', color: 'danger' },
+    { name: 'Scholarship Types', route: 'admin.reference-data.scholarship-types', icon: ScholarshipIcon, count: 'scholarshipTypes', description: 'Available scholarship programs', color: 'info' },
+    { name: 'Offices', route: 'admin.reference-data.offices', icon: OfficeIcon, count: 'offices', description: 'Administrative offices', color: 'brand' },
+    { name: 'Rooms', route: 'admin.reference-data.rooms', icon: RoomIcon, count: 'rooms', description: 'Classrooms and facilities', color: 'success' },
+    { name: 'Blocks', route: 'admin.reference-data.blocks', icon: BlockIcon, count: 'blocks', description: 'Student block sections', color: 'warning' },
 ];
 
 function CourseIcon({ className }) {
