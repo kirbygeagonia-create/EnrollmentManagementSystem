@@ -89,7 +89,7 @@ class EvaluationController extends Controller
             'enrollment' => $enrollment,
             'curriculumSubjects' => $curriculumSubjects,
             'religions' => Religions::all(['religionId', 'religionName']),
-            'academicStandings' => AcademicStanding::cases(),
+            'academicStandings' => collect(AcademicStanding::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 

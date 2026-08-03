@@ -216,7 +216,7 @@ class ReferenceDataController extends Controller
             ->get();
 
         $allSubjects = Subjects::all(['subjectId', 'subjectCode', 'subjectName']);
-        $semesters = SemesterOffered::cases();
+        $semesters = collect(SemesterOffered::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values();
 
         return Inertia::render('Admin/ReferenceData/CurriculumSubjects', [
             'curriculum' => $curriculum->load(['course', 'major']),
@@ -270,7 +270,7 @@ class ReferenceDataController extends Controller
 
         return Inertia::render('Admin/ReferenceData/Subjects', [
             'subjects' => $subjects,
-            'subjectTypes' => SubjectType::cases(),
+            'subjectTypes' => collect(SubjectType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 
@@ -322,7 +322,7 @@ class ReferenceDataController extends Controller
         return Inertia::render('Admin/ReferenceData/Terms', [
             'terms' => $terms,
             'years' => $years,
-            'semesters' => Semester::cases(),
+            'semesters' => collect(Semester::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 
@@ -370,7 +370,7 @@ class ReferenceDataController extends Controller
 
         return Inertia::render('Admin/ReferenceData/FeeTypes', [
             'feeTypes' => $feeTypes,
-            'unitBases' => FeeUnitBasis::cases(),
+            'unitBases' => collect(FeeUnitBasis::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 
@@ -416,7 +416,7 @@ class ReferenceDataController extends Controller
 
         return Inertia::render('Admin/ReferenceData/ScholarshipTypes', [
             'types' => $types,
-            'coverageTypes' => CoverageType::cases(),
+            'coverageTypes' => collect(CoverageType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 
@@ -591,7 +591,7 @@ class ReferenceDataController extends Controller
 
         return Inertia::render('Admin/ReferenceData/AdmissionRequirements', [
             'requirements' => $requirements,
-            'appliesTo' => AppliesTo::cases(),
+            'appliesTo' => collect(AppliesTo::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 

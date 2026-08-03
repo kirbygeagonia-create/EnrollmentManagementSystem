@@ -63,7 +63,7 @@ class IDController extends Controller
             'enrollment' => $enrollment,
             'idRequest' => $idRequest,
             'studentId' => $studentId,
-            'requestReasons' => IdRequestStatus::cases(),
+            'requestReasons' => collect(IdRequestStatus::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 

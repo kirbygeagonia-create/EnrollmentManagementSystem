@@ -48,8 +48,8 @@ class UserManagementController extends Controller
             'units' => $units,
             'roles' => $roles,
             'filters' => $request->only(['officeId', 'status', 'search']),
-            'staffRoles' => StaffRole::cases(),
-            'staffStatuses' => StaffStatus::cases(),
+            'staffRoles' => collect(StaffRole::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'staffStatuses' => collect(StaffStatus::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 

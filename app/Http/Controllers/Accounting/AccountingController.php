@@ -58,7 +58,7 @@ class AccountingController extends Controller
 
         return Inertia::render('Accounting/Show', [
             'assessment' => $assessment,
-            'paymentModes' => PaymentMode::cases(),
+            'paymentModes' => collect(PaymentMode::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);
     }
 
