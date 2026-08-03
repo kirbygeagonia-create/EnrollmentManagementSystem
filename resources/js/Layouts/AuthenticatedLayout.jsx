@@ -1,176 +1,306 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const navSections = [
+    {
+        label: 'Dashboard',
+        items: [
+            { name: 'Dashboard', route: 'dashboard', icon: DashboardIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Admission',
+        items: [
+            { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Entrance Exam', route: 'entrance-exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Assessment & Accounting',
+        items: [
+            { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Daily Report', route: 'accounting.daily-report', icon: ReportIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Clearance',
+        items: [
+            { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Periods', route: 'clearance.periods', icon: CalendarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Blocking',
+        items: [
+            { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Registrar',
+        items: [
+            { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Print Certificate', route: 'registrar.print-certificate', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Print Class Cards', route: 'registrar.print-class-cards', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Print Subject Load', route: 'registrar.print-subject-load', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Clinic',
+        items: [
+            { name: 'Clinic Records', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'ID Office',
+        items: [
+            { name: 'ID Requests', route: 'id-office.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+        ],
+    },
+    {
+        label: 'Administration',
+        items: [
+            { name: 'Reference Data', route: 'admin.reference-data', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
+            { name: 'User Management', route: 'admin.users', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
+        ],
+        adminOnly: true,
+    },
+];
+
+function DashboardIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>;
+}
+function AdmissionIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+}
+function ExamIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+}
+function EvaluationIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function AssessmentIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function AccountingIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function ReportIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+}
+function ClearanceIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
+}
+function CalendarIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+}
+function BlockingIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function RegistrarIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>;
+}
+function PrintIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>;
+}
+function ClinicIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+}
+function IdIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
+}
+function DatabaseIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>;
+}
+function UsersIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+}
 
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const { user, url } = usePage().props.auth;
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showingUserMenu, setShowingUserMenu] = useState(false);
 
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
+    const filteredSections = navSections.filter(section => {
+        if (section.adminOnly) {
+            return ['admin', 'dean', 'officeHead'].includes(user?.role);
+        }
+        return true;
+    });
+
+    const roleBadgeClasses = {
+        admin: 'role-badge role-badge-admin',
+        dean: 'role-badge role-badge-dean',
+        officeHead: 'role-badge role-badge-officehead',
+        programHead: 'role-badge role-badge-programhead',
+        staff: 'role-badge role-badge-staff',
+    };
+
+    const getInitials = (name) => {
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 1024) {
+                setSidebarOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
+        <div className="min-h-screen bg-brand-50">
+            {/* Sidebar Overlay */}
+            <div
+                className={`sidebar-overlay ${sidebarOpen ? 'sidebar-overlay-open' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+                aria-hidden="true"
+            />
+
+            {/* Sidebar */}
+            <aside
+                className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}
+                role="navigation"
+                aria-label="Main navigation"
+            >
+                <div className="flex flex-col h-full">
+                    {/* Logo */}
+                    <div className="flex items-center gap-3 p-4 border-b border-brand-200">
+                        <Link href={route('dashboard')} className="flex items-center gap-3">
+                            <ApplicationLogo className="h-10 w-10 text-brand-700" />
+                            <span className="font-heading font-bold text-brand-900 text-lg hidden sm:block">SEAIT</span>
+                        </Link>
+                    </div>
+
+                    {/* Navigation */}
+                    <nav className="flex-1 overflow-y-auto p-4 space-y-6" aria-label="Main navigation">
+                        {filteredSections.map((section, sectionIndex) => (
+                            <div key={sectionIndex} className="nav-section">
+                                <p className="nav-section-label">{section.label}</p>
+                                <ul className="space-y-1" role="list">
+                                    {section.items
+                                        .filter(item => item.roles.includes(user?.role))
+                                        .map((item, itemIndex) => {
+                                            const routePath = route(item.route).split('?')[0];
+                                            const isActive = url.startsWith(routePath);
+                                            return (
+                                                <li key={itemIndex}>
+                                                    <NavLink
+                                                        href={route(item.route)}
+                                                        active={isActive}
+                                                        className={`nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'}`}
+                                                    >
+                                                        <item.icon className="nav-item-icon" />
+                                                        <span>{item.name}</span>
+                                                    </NavLink>
+                                                </li>
+                                            );
+                                        })}
+                                </ul>
                             </div>
+                        ))}
+                    </nav>
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
+                    {/* Footer */}
+                    <div className="p-4 border-t border-brand-200">
+                        <p className="text-xs text-brand-400 text-center">
+                            SEAIT Enrollment Management System
+                        </p>
+                    </div>
+                </div>
+            </aside>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {user.name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
+            {/* Main Content */}
+            <div className="lg:pl-64">
+                {/* Top Bar */}
+                <header className="top-bar no-print">
+                    <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center gap-4">
                             <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                                onClick={() => setSidebarOpen(true)}
+                                className="lg:hidden p-2 rounded-btn text-brand-500 hover:bg-brand-100 transition-colors"
+                                aria-label="Open navigation menu"
+                                aria-expanded={sidebarOpen}
                             >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
                             </button>
-                        </div>
-                    </div>
-                </div>
 
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
-                >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <div className="border-t border-gray-200 pb-1 pt-4">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
-                                {user.name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
+                            <div className="hidden lg:block">
+                                <h1 className="font-heading font-semibold text-brand-900 text-xl">SEAIT</h1>
                             </div>
                         </div>
 
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+                        <div className="flex items-center gap-4">
+                            <Dropdown>
+                                <Dropdown.Trigger>
+                                    <button
+                                        type="button"
+                                        className="user-menu-trigger"
+                                        onClick={() => setShowingUserMenu(!showingUserMenu)}
+                                        aria-expanded={showingUserMenu}
+                                        aria-haspopup="true"
+                                    >
+                                        <div className="user-avatar">
+                                            {getInitials(user?.name || 'User')}
+                                        </div>
+                                        <span className="hidden sm:block">{user?.name}</span>
+                                        <svg className="h-4 w-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </Dropdown.Trigger>
 
-            {header && (
-                <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
+                                <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white rounded-card shadow-dropdown border border-brand-200">
+                                    <div className="px-3 py-2 border-b border-brand-100">
+                                        <p className="text-sm font-medium text-brand-900">{user?.name}</p>
+                                        <p className="text-xs text-brand-500">{user?.email}</p>
+                                        <span className={roleBadgeClasses[user?.role] || roleBadgeClasses.staff} style={{ textTransform: 'capitalize' }}>
+                                            {user?.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
+                                        </span>
+                                    </div>
+                                    <Dropdown.Link href={route('profile.edit')}>
+                                        Profile
+                                    </Dropdown.Link>
+                                    <Dropdown.Link
+                                        href={route('logout')}
+                                        method="post"
+                                        as="button"
+                                    >
+                                        Log Out
+                                    </Dropdown.Link>
+                                </Dropdown.Content>
+                            </Dropdown>
+                        </div>
                     </div>
                 </header>
-            )}
 
-            <main>{children}</main>
+                {/* Page Header */}
+                {header && (
+                    <header className="bg-white border-b border-brand-100 no-print">
+                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                            {header}
+                        </div>
+                    </header>
+                )}
+
+                {/* Main Content */}
+                <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }
