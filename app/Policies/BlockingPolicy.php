@@ -2,14 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Blocks;
-use App\Models\Schedules;
-use App\Models\Rooms;
-use App\Models\Schedulemeetings;
 use App\Enums\EnrollmentStatus;
+use App\Models\Blocks;
+use App\Models\Enrollments;
+use App\Models\Schedules;
+use App\Models\Staffusers;
 
 class BlockingPolicy
 {
@@ -43,7 +40,7 @@ class BlockingPolicy
      */
     public function assignStudents(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('block.assign')) {
+        if (! $user->hasPermissionTo('block.assign')) {
             return false;
         }
 
@@ -59,7 +56,7 @@ class BlockingPolicy
 
         // Check workflow step 6 (Blocking) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (!$workflow || $workflow->currentStep !== 6) {
+        if (! $workflow || $workflow->currentStep !== 6) {
             return false;
         }
 

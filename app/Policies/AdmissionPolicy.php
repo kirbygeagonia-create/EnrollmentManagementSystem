@@ -2,11 +2,9 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Admissions;
-use App\Models\Students;
 use App\Enums\AdmissionStatus;
-use App\Enums\ApplicantType;
+use App\Models\Admissions;
+use App\Models\Staffusers;
 
 class AdmissionPolicy
 {
@@ -48,7 +46,7 @@ class AdmissionPolicy
      */
     public function approve(Staffusers $user, Admissions $admission): bool
     {
-        if (!$user->hasPermissionTo('admission.approve')) {
+        if (! $user->hasPermissionTo('admission.approve')) {
             return false;
         }
 
@@ -59,7 +57,7 @@ class AdmissionPolicy
 
         // Check if all required documents are submitted and verified (BR32)
         $requiredSubmissions = $admission->studentrequirementsubmissions()
-            ->whereHas('requirement', fn($q) => $q->where('isRequired', true))
+            ->whereHas('requirement', fn ($q) => $q->where('isRequired', true))
             ->get();
 
         foreach ($requiredSubmissions as $submission) {
@@ -74,16 +72,16 @@ class AdmissionPolicy
                 ->where('examStage', 'entrance')
                 ->where('examType', 'general')
                 ->first();
-            
+
             $courseExam = $admission->examresults()
                 ->where('examStage', 'entrance')
                 ->where('examType', 'courseSpecific')
                 ->first();
 
-            if (!$generalExam || $generalExam->examResult->value !== 'pass') {
+            if (! $generalExam || $generalExam->examResult->value !== 'pass') {
                 return false;
             }
-            if (!$courseExam || $courseExam->examResult->value !== 'pass') {
+            if (! $courseExam || $courseExam->examResult->value !== 'pass') {
                 return false;
             }
         }
@@ -96,7 +94,7 @@ class AdmissionPolicy
      */
     public function reject(Staffusers $user, Admissions $admission): bool
     {
-        if (!$user->hasPermissionTo('admission.reject')) {
+        if (! $user->hasPermissionTo('admission.reject')) {
             return false;
         }
 
@@ -108,7 +106,7 @@ class AdmissionPolicy
      */
     public function delete(Staffusers $user, Admissions $admission): bool
     {
-        return $user->hasPermissionTo('admission.delete') 
+        return $user->hasPermissionTo('admission.delete')
             && $admission->admissionStatus === AdmissionStatus::Pending;
     }
 

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Notifications extends Model
 {
     protected $table = 'notifications';
+
     protected $fillable = ['type', 'notifiable_type', 'notifiable_id', 'data', 'read_at'];
 
     protected function casts(): array

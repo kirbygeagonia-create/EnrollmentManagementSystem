@@ -2,16 +2,11 @@
 
 namespace App\Policies;
 
+use App\Enums\EnrollmentStatus;
+use App\Models\Charges;
+use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
-use App\Models\Enrollments;
-use App\Models\Charges;
-use App\Models\Feetypes;
-use App\Models\Studentscholarships;
-use App\Models\Scholarshiptypes;
-use App\Enums\EnrollmentStatus;
-use App\Enums\PaymentStatus;
-use App\Enums\ScholarshipStatus;
 
 class AssessmentPolicy
 {
@@ -37,7 +32,7 @@ class AssessmentPolicy
      */
     public function compute(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('assessment.compute')) {
+        if (! $user->hasPermissionTo('assessment.compute')) {
             return false;
         }
 
@@ -56,7 +51,7 @@ class AssessmentPolicy
      */
     public function applyScholarships(Staffusers $user, Studentassessments $assessment): bool
     {
-        if (!$user->hasPermissionTo('assessment.scholarships.apply')) {
+        if (! $user->hasPermissionTo('assessment.scholarships.apply')) {
             return false;
         }
 
@@ -69,7 +64,7 @@ class AssessmentPolicy
      */
     public function adjustCharges(Staffusers $user, Studentassessments $assessment): bool
     {
-        if (!$user->hasPermissionTo('assessment.charges.adjust')) {
+        if (! $user->hasPermissionTo('assessment.charges.adjust')) {
             return false;
         }
 
@@ -82,7 +77,7 @@ class AssessmentPolicy
      */
     public function finalize(Staffusers $user, Studentassessments $assessment): bool
     {
-        if (!$user->hasPermissionTo('assessment.finalize')) {
+        if (! $user->hasPermissionTo('assessment.finalize')) {
             return false;
         }
 

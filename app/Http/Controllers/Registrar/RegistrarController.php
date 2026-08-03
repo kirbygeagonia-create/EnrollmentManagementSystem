@@ -2,33 +2,25 @@
 
 namespace App\Http\Controllers\Registrar;
 
-use App\Http\Controllers\Controller;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Studentassessments;
-use App\Models\Studentclearances;
-use App\Models\Clearanceperiods;
-use App\Models\Enrollmentworkflow;
-use App\Models\Workflowsteps;
-use App\Models\Documentprintlog;
-use App\Models\Students;
-use App\Models\Subjects;
-use App\Models\Schedules;
-use App\Models\Blocks;
-use App\Models\Staffusers;
-use App\Services\EnrollmentStateMachine;
-use App\Services\WorkflowService;
-use App\Enums\EnrollmentStatus;
-use App\Enums\EnrollmentType;
-use App\Enums\StudentType;
-use App\Enums\EnrolledSubjectStatus;
-use App\Enums\WorkflowStepStatus;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
 use App\Enums\DocumentType;
+use App\Enums\EnrolledSubjectStatus;
+use App\Enums\EnrollmentStatus;
+use App\Enums\EnrollmentType;
+use App\Enums\StudentType;
+use App\Http\Controllers\Controller;
+use App\Models\Clearanceperiods;
+use App\Models\Documentprintlog;
+use App\Models\Enrollments;
+use App\Models\Studentclearances;
+use App\Models\Students;
+use App\Models\Subjects;
+use App\Services\EnrollmentStateMachine;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,12 +42,12 @@ class RegistrarController extends Controller
         $this->authorize('viewAny', Enrollments::class);
 
         $query = Enrollments::with([
-            'student', 'course', 'major', 'term', 
+            'student', 'course', 'major', 'term',
             'studentassessments', 'enrollmentworkflow',
-            'enrolledSubjects.subject'
+            'enrolledSubjects.subject',
         ])
             ->whereIn('enrollmentStatus', [EnrollmentStatus::Assessed, EnrollmentStatus::Paid])
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $enrollments = $query->paginate(20)->withQueryString();
@@ -87,14 +79,14 @@ class RegistrarController extends Controller
 
         // Validation checklist
         $checklist = [
-            'evaluation_signed' => (bool)$enrollment->evaluatedBy,
-            'assessment_completed' => (bool)$enrollment->studentassessments,
+            'evaluation_signed' => (bool) $enrollment->evaluatedBy,
+            'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
             'clearance_verified' => $this->checkClearance($enrollment),
             'workflow_step_5_pending' => $enrollment->enrollmentworkflow?->currentStep === 5,
         ];
 
-        $allValid = collect($checklist)->every(fn($v) => $v);
+        $allValid = collect($checklist)->every(fn ($v) => $v);
 
         return Inertia::render('Registrar/Show', [
             'enrollment' => $enrollment,
@@ -108,12 +100,12 @@ class RegistrarController extends Controller
      */
     private function checkClearance(Enrollments $enrollment): bool
     {
-        if (!in_array($enrollment->studentType->value, ['continuing', 'shifter'])) {
+        if (! in_array($enrollment->studentType->value, ['continuing', 'shifter'])) {
             return true; // First-year and transferee don't need clearance
         }
 
         $currentPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
-        if (!$currentPeriod) {
+        if (! $currentPeriod) {
             return true; // No open period
         }
 
@@ -121,9 +113,9 @@ class RegistrarController extends Controller
             ->where('clearancePeriodId', $currentPeriod->clearancePeriodId)
             ->first();
 
-        return $clearance 
+        return $clearance
             && $clearance->overallStatus === ClearanceOverallStatus::Approved
-            && $clearance->receivedBy 
+            && $clearance->receivedBy
             && $clearance->receivedDate;
     }
 
@@ -138,8 +130,8 @@ class RegistrarController extends Controller
 
         // Validate prerequisites
         $checklist = [
-            'evaluation_signed' => (bool)$enrollment->evaluatedBy,
-            'assessment_completed' => (bool)$enrollment->studentassessments,
+            'evaluation_signed' => (bool) $enrollment->evaluatedBy,
+            'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
             'clearance_verified' => $this->checkClearance($enrollment),
         ];
@@ -149,8 +141,8 @@ class RegistrarController extends Controller
         }
 
         // Determine enrollment type (BR31)
-        $enrollmentType = in_array($enrollment->studentType->value, ['firstYear', 'transferee']) 
-            ? EnrollmentType::New 
+        $enrollmentType = in_array($enrollment->studentType->value, ['firstYear', 'transferee'])
+            ? EnrollmentType::New
             : EnrollmentType::Old;
 
         // Record/update student data
@@ -193,7 +185,7 @@ class RegistrarController extends Controller
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject', 'registrarProcessedBy'
+            'enrolledSubjects.subject', 'registrarProcessedBy',
         ]);
 
         // Log print
@@ -222,7 +214,7 @@ class RegistrarController extends Controller
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
             'enrolledSubjects.subject.schedule.room', 'enrolledSubjects.subject.schedule.instructor',
-            'registrarProcessedBy'
+            'registrarProcessedBy',
         ]);
 
         // Log prints
@@ -250,7 +242,7 @@ class RegistrarController extends Controller
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject', 'registrarProcessedBy'
+            'enrolledSubjects.subject', 'registrarProcessedBy',
         ]);
 
         Documentprintlog::create([

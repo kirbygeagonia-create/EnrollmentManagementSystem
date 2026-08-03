@@ -1,0 +1,16 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+
+    # Level 8 is the highest level
+    level: 5
+
+    tmpDir: storage/framework/cache/phpstan
+
+    # Models declare casts via the casts() method (Laravel 11+ style);
+    # larastan needs this flag to read them, otherwise enum casts are
+    # treated as plain strings.
+    parseModelCastsMethod: true

@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers\Assessment;
 
-use App\Http\Controllers\Controller;
-use App\Models\Studentassessments;
-use App\Models\Enrollments;
-use App\Models\Charges;
-use App\Models\Feetypes;
-use App\Models\Studentscholarships;
-use App\Models\Scholarshiptypes;
-use App\Models\Students;
-use App\Models\Courses;
-use App\Enums\EnrollmentStatus;
-use App\Enums\ScholarshipStatus;
 use App\Enums\CoverageType;
+use App\Enums\EnrollmentStatus;
+use App\Enums\FeeUnitBasis;
+use App\Enums\ScholarshipStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Charges;
+use App\Models\Enrollments;
+use App\Models\Feetypes;
+use App\Models\Scholarshiptypes;
+use App\Models\Studentassessments;
+use App\Models\Studentscholarships;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,8 +32,8 @@ class AssessmentController extends Controller
         $this->authorize('viewAny', Studentassessments::class);
 
         $query = Studentassessments::with(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
-            ->whereHas('enrollment', fn($q) => $q->where('enrollmentStatus', EnrollmentStatus::Evaluated))
-            ->when($request->search, fn($q, $search) => $q->whereHas('enrollment.student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Evaluated))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $assessments = $query->paginate(20)->withQueryString();
@@ -73,17 +72,17 @@ class AssessmentController extends Controller
             ->where('status', '!=', 'dropped')
             ->with('subject')
             ->get()
-            ->sum(fn($es) => $es->subject->lectureUnits + $es->subject->labUnits);
+            ->sum(fn ($es) => $es->subject->lectureUnits + $es->subject->labUnits);
 
         $feeTypes = Feetypes::all();
         $charges = [];
         $totalAssessed = 0;
 
         foreach ($feeTypes as $feeType) {
-            $amount = $feeType->unitBasis === 'perUnit' 
-                ? $feeType->defaultAmount * $enrolledUnits 
+            $amount = $feeType->unitBasis === FeeUnitBasis::PerUnit
+                ? $feeType->defaultAmount * $enrolledUnits
                 : $feeType->defaultAmount;
-            
+
             $charges[] = [
                 'feeTypeId' => $feeType->feeTypeId,
                 'amount' => $amount,
@@ -148,10 +147,10 @@ class AssessmentController extends Controller
         ]);
 
         $scholarshipType = Scholarshiptypes::findOrFail($validated['scholarshipTypeId']);
-        
+
         // Check if student already has full scholarship
         $existingFull = $assessment->scholarships()
-            ->whereHas('scholarshipType', fn($q) => $q->where('coverageType', CoverageType::Full))
+            ->whereHas('scholarshipType', fn ($q) => $q->where('coverageType', CoverageType::Full))
             ->exists();
 
         if ($existingFull && $scholarshipType->coverageType === CoverageType::Full) {
@@ -211,7 +210,7 @@ class AssessmentController extends Controller
         // Recalculate assessment totals
         $totalAssessed = $assessment->charges->sum('amount');
         $totalWaived = $assessment->charges->sum('waivedAmount');
-        
+
         $assessment->update([
             'totalAssessedAmount' => $totalAssessed,
             'totalWaived' => $totalWaived,

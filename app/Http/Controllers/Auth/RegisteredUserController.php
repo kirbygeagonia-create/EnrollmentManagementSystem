@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -40,12 +41,15 @@ class RegisteredUserController extends Controller
         ]);
 
         $user = Staffusers::create([
+            'employeeNo' => 'EMP-'.strtoupper(Str::random(6)),
             'firstName' => $request->firstName,
+            'middleName' => '',
             'lastName' => $request->lastName,
             'username' => $request->username,
             'email' => $request->email,
             'passwordHash' => Hash::make($request->password),
             'officeId' => 1, // Default to Registrar
+            'contactNo' => '',
             'role' => 'staff',
             'status' => 'active',
         ]);

@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers\Accounting;
 
+use App\Enums\EnrollmentStatus;
+use App\Enums\PaymentMode;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payments;
 use App\Models\Studentassessments;
-use App\Models\Enrollments;
-use App\Models\Feetypes;
-use App\Enums\PaymentStatus;
-use App\Enums\PaymentMode;
-use App\Enums\EnrollmentStatus;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,8 +35,8 @@ class AccountingController extends Controller
 
         $query = Studentassessments::with(['enrollment.student', 'enrollment.course', 'enrollment.term'])
             ->where('remainingBalance', '>', 0)
-            ->whereHas('enrollment', fn($q) => $q->where('enrollmentStatus', EnrollmentStatus::Assessed))
-            ->when($request->search, fn($q, $search) => $q->whereHas('enrollment.student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Assessed))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $assessments = $query->paginate(20)->withQueryString();
@@ -99,11 +97,12 @@ class AccountingController extends Controller
         ]);
 
         // Transition enrollment to paid if fully paid
-        if ($newBalance <= 0) {
-            $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Paid, Auth::user(), 'Full payment received');
-            
+        $enrollment = $assessment->enrollment;
+        if ($newBalance <= 0 && $enrollment) {
+            $this->stateMachine->transition($enrollment, EnrollmentStatus::Paid, Auth::user(), 'Full payment received');
+
             // Sign workflow step 4 (Accounting Payment)
-            $workflow = $assessment->enrollment->enrollmentworkflow;
+            $workflow = $enrollment->enrollmentworkflow;
             if ($workflow) {
                 $this->workflowService->signStep($workflow, 4, Auth::user());
             }
@@ -130,7 +129,7 @@ class AccountingController extends Controller
         $summary = [
             'totalAmount' => $payments->sum('amount'),
             'totalCount' => $payments->count(),
-            'byMode' => $payments->groupBy('paymentMode')->map(fn($g) => ['count' => $g->count(), 'amount' => $g->sum('amount')]),
+            'byMode' => $payments->groupBy('paymentMode')->map(fn ($g) => ['count' => $g->count(), 'amount' => $g->sum('amount')]),
         ];
 
         return Inertia::render('Accounting/DailyReport', [

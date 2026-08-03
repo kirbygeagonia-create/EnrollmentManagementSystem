@@ -2,9 +2,9 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Roles;
 use App\Models\Permissions;
+use App\Models\Roles;
+use App\Models\Staffusers;
 
 class UserManagementPolicy
 {
@@ -37,7 +37,7 @@ class UserManagementPolicy
      */
     public function update(Staffusers $user, Staffusers $target): bool
     {
-        if (!$user->hasPermissionTo('user.update')) {
+        if (! $user->hasPermissionTo('user.update')) {
             return false;
         }
 
@@ -55,7 +55,7 @@ class UserManagementPolicy
      */
     public function delete(Staffusers $user, Staffusers $target): bool
     {
-        if (!$user->hasPermissionTo('user.delete')) {
+        if (! $user->hasPermissionTo('user.delete')) {
             return false;
         }
 
@@ -73,7 +73,7 @@ class UserManagementPolicy
      */
     public function assignRoles(Staffusers $user, Staffusers $target): bool
     {
-        if (!$user->hasPermissionTo('user.roles.assign')) {
+        if (! $user->hasPermissionTo('user.roles.assign')) {
             return false;
         }
 
@@ -106,7 +106,7 @@ class UserManagementPolicy
      */
     public function toggleStatus(Staffusers $user, Staffusers $target): bool
     {
-        if (!$user->hasPermissionTo('user.status.toggle')) {
+        if (! $user->hasPermissionTo('user.status.toggle')) {
             return false;
         }
 

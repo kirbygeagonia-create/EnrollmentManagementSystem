@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\Staffusers;
-use App\Models\Roles;
-use App\Models\Permissions;
-use App\Models\Offices;
-use App\Models\Academicunits;
-use App\Models\Settings;
 use App\Enums\StaffRole;
 use App\Enums\StaffStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Academicunits;
+use App\Models\Auditlogs;
+use App\Models\Offices;
+use App\Models\Permissions;
+use App\Models\Roles;
+use App\Models\Settings;
+use App\Models\Staffusers;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,15 +31,16 @@ class UserManagementController extends Controller
         $this->authorize('viewAny', Staffusers::class);
 
         $query = Staffusers::with(['office', 'unit', 'roles'])
-            ->when($request->officeId, fn($q, $id) => $q->where('officeId', $id))
-            ->when($request->status, fn($q, $status) => $q->where('status', $status))
-            ->when($request->search, fn($q, $search) => $q->where('firstName', 'like', "%{$search}%")->orWhere('lastName', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%")->orWhere('employeeNo', $search))
+            ->when($request->officeId, fn ($q, $id) => $q->where('officeId', $id))
+            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->search, fn ($q, $search) => $q->where('firstName', 'like', "%{$search}%")->orWhere('lastName', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%")->orWhere('employeeNo', $search))
             ->latest();
 
         $users = $query->paginate(20)->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
         $units = Academicunits::all(['unitId', 'unitName']);
         $roles = Roles::with('permissions')->get();
+        $permissions = Permissions::all(['id', 'name', 'module']);
 
         return Inertia::render('Admin/UserManagement/Index', [
             'users' => $users,
@@ -106,12 +108,12 @@ class UserManagementController extends Controller
         $validated = $request->validate([
             'officeId' => 'required|exists:offices,officeId',
             'unitId' => 'nullable|exists:academicunits,unitId',
-            'employeeNo' => 'required|string|max:50|unique:staffusers,employeeNo,' . $user->userId . ',userId',
+            'employeeNo' => 'required|string|max:50|unique:staffusers,employeeNo,'.$user->userId.',userId',
             'firstName' => 'required|string|max:100',
             'middleName' => 'nullable|string|max:100',
             'lastName' => 'required|string|max:100',
-            'username' => 'required|string|max:50|unique:staffusers,username,' . $user->userId . ',userId',
-            'email' => 'required|email|max:255|unique:staffusers,email,' . $user->userId . ',userId',
+            'username' => 'required|string|max:50|unique:staffusers,username,'.$user->userId.',userId',
+            'email' => 'required|email|max:255|unique:staffusers,email,'.$user->userId.',userId',
             'role' => 'required|in:staff,officeHead,dean,programHead,admin',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
@@ -152,7 +154,7 @@ class UserManagementController extends Controller
 
         $request->validate([
             'roleIds' => 'required|array',
-            'roleIds.*' => 'exists:roles,roleId',
+            'roleIds.*' => 'exists:roles,id',
         ]);
 
         $user->syncRoles($request->roleIds);
@@ -184,7 +186,7 @@ class UserManagementController extends Controller
         $this->authorize('manageRoles', Roles::class);
 
         $roles = Roles::with('permissions')->latest()->paginate(20);
-        $permissions = Permissions::all(['permissionId', 'permissionName', 'module']);
+        $permissions = Permissions::all(['id', 'name', 'module']);
 
         return Inertia::render('Admin/UserManagement/Roles', [
             'roles' => $roles,
@@ -197,9 +199,9 @@ class UserManagementController extends Controller
         $this->authorize('manageRoles', Roles::class);
 
         $role = Roles::create($request->validate([
-            'roleName' => 'required|string|max:100|unique:roles,roleName',
+            'name' => 'required|string|max:100|unique:roles,name',
             'description' => 'nullable|string',
-        ]));
+        ]) + ['guard_name' => config('auth.defaults.guard')]);
 
         if ($request->filled('permissionIds')) {
             $role->syncPermissions($request->permissionIds);
@@ -213,7 +215,7 @@ class UserManagementController extends Controller
         $this->authorize('manageRoles', Roles::class);
 
         $role->update($request->validate([
-            'roleName' => 'required|string|max:100|unique:roles,roleName,' . $role->roleId . ',roleId',
+            'name' => 'required|string|max:100|unique:roles,name,'.$role->id.',id',
             'description' => 'nullable|string',
         ]));
 
@@ -228,6 +230,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('manageRoles', Roles::class);
         $role->delete();
+
         return back()->with('success', 'Role deleted.');
     }
 
@@ -248,9 +251,9 @@ class UserManagementController extends Controller
         $this->authorize('managePermissions', Permissions::class);
 
         Permissions::create($request->validate([
-            'permissionName' => 'required|string|max:100|unique:permissions,permissionName',
+            'name' => 'required|string|max:100|unique:permissions,name',
             'module' => 'required|string|max:100',
-        ]));
+        ]) + ['guard_name' => config('auth.defaults.guard')]);
 
         return back()->with('success', 'Permission created.');
     }
@@ -259,9 +262,10 @@ class UserManagementController extends Controller
     {
         $this->authorize('managePermissions', Permissions::class);
         $permission->update($request->validate([
-            'permissionName' => 'required|string|max:100|unique:permissions,permissionName,' . $permission->permissionId . ',permissionId',
+            'name' => 'required|string|max:100|unique:permissions,name,'.$permission->id.',id',
             'module' => 'required|string|max:100',
         ]));
+
         return back()->with('success', 'Permission updated.');
     }
 
@@ -269,6 +273,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('managePermissions', Permissions::class);
         $permission->delete();
+
         return back()->with('success', 'Permission deleted.');
     }
 
@@ -300,11 +305,11 @@ class UserManagementController extends Controller
     {
         $this->authorize('viewAuditLogs', Staffusers::class);
 
-        $query = \App\Models\Auditlogs::with('user')
-            ->when($request->action, fn($q, $action) => $q->where('action', $action))
-            ->when($request->entityTable, fn($q, $table) => $q->where('entityTable', $table))
-            ->when($request->dateFrom, fn($q, $date) => $q->whereDate('createdAt', '>=', $date))
-            ->when($request->dateTo, fn($q, $date) => $q->whereDate('createdAt', '<=', $date))
+        $query = Auditlogs::with('user')
+            ->when($request->action, fn ($q, $action) => $q->where('action', $action))
+            ->when($request->entityTable, fn ($q, $table) => $q->where('entityTable', $table))
+            ->when($request->dateFrom, fn ($q, $date) => $q->whereDate('createdAt', '>=', $date))
+            ->when($request->dateTo, fn ($q, $date) => $q->whereDate('createdAt', '<=', $date))
             ->latest();
 
         $logs = $query->paginate(50)->withQueryString();

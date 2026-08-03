@@ -3,10 +3,12 @@
 namespace App\Observers;
 
 use App\Models\Auditlogs;
+use App\Models\Staffusers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
-class AuditObserver
+class AuditLogObserver
 {
     /**
      * Handle the Model "created" event.
@@ -37,7 +39,10 @@ class AuditObserver
      */
     private function log(string $action, Model $model): void
     {
-        $userId = Auth::id() ?? 1; // Default to system user if no auth
+        // Auth::id() returns the username (getAuthIdentifierName() = 'username'),
+        // so read the numeric primary key explicitly for the FK.
+        $user = Auth::user();
+        $userId = $user instanceof Staffusers ? $user->userId : null; // nullable; system tasks run without a session
 
         Auditlogs::create([
             'userId' => $userId,
@@ -46,7 +51,7 @@ class AuditObserver
             'entityId' => $model->getKey(),
             'oldValues' => $action === 'updated' ? json_encode($model->getOriginal()) : null,
             'newValues' => json_encode($model->getAttributes()),
-            'ipAddress' => request()->ip(),
+            'ipAddress' => Request::ip(),
             'createdAt' => now(),
         ]);
     }

@@ -2,21 +2,23 @@
 
 namespace Tests\Unit;
 
-use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
-use App\Models\Workflowsteps;
-use App\Models\Staffusers;
-use App\Models\Students;
-use App\Models\Courses;
-use App\Models\Academicterms;
-use App\Models\Admissions;
-use App\Models\Offices;
-use App\Services\WorkflowService;
 use App\Enums\EnrollmentStatus;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
 use App\Exceptions\InvalidStateTransitionException;
+use App\Models\Academicterms;
+use App\Models\Academicunits;
+use App\Models\Academicyears;
+use App\Models\Admissions;
+use App\Models\Courses;
+use App\Models\Enrollments;
+use App\Models\Offices;
+use App\Models\Religions;
+use App\Models\Staffusers;
+use App\Models\Students;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class WorkflowServiceTest extends TestCase
@@ -24,16 +26,20 @@ class WorkflowServiceTest extends TestCase
     use RefreshDatabase;
 
     private WorkflowService $workflowService;
+
     private Enrollments $enrollment;
+
     private Staffusers $registrarStaff;
+
     private Staffusers $clinicStaff;
+
     private Staffusers $idStaff;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->workflowService = new WorkflowService();
+        $this->workflowService = new WorkflowService;
 
         // Create offices
         Offices::create(['officeId' => 1, 'officeName' => 'Registrar']);
@@ -49,11 +55,24 @@ class WorkflowServiceTest extends TestCase
         $this->clinicStaff = Staffusers::factory()->create(['officeId' => 11]);
         $this->idStaff = Staffusers::factory()->create(['officeId' => 22]);
 
+        Religions::create(['religionName' => 'Roman Catholic']);
+        Academicunits::create([
+            'unitName' => 'College of Computing',
+            'unitType' => 'college',
+        ]);
+        Academicyears::create([
+            'yearLabel' => '2026-2027',
+            'startDate' => '2026-06-01',
+            'endDate' => '2027-03-31',
+        ]);
+
         // Create enrollment
         $student = Students::create([
             'schoolIdNumber' => '2026-0002',
             'lastName' => 'Test',
             'firstName' => 'Student',
+            'middleName' => 'M',
+            'suffix' => '',
             'gender' => 'male',
             'birthdate' => '2000-01-01',
             'birthplace' => 'Test City',
@@ -102,99 +121,227 @@ class WorkflowServiceTest extends TestCase
             'enrollmentType' => 'new',
             'academicStanding' => 'regular',
             'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $this->registrarStaff->userId,
         ]);
     }
 
-    /** @test */
-    public function it_creates_workflow_with_8_steps(): void
+    #[Test]
+    public function it_creates_workflow_with_7_steps_for_first_year(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
-        $this->assertNotNull($workflow);
         $this->assertEquals(1, $workflow->currentStep);
         $this->assertEquals(WorkflowStatus::InProgress, $workflow->workflowStatus);
 
         $steps = $workflow->workflowsteps()->orderBy('stepOrder')->get();
-        $this->assertCount(8, $steps);
+        $this->assertCount(7, $steps);
+
+        // Verify stepOrder is sequential 1..7
         $this->assertEquals(1, $steps[0]->stepOrder);
-        $this->assertEquals(8, $steps[7]->stepOrder);
+        $this->assertEquals(7, $steps[6]->stepOrder);
+
+        // Verify officeId sequence: [4, 3, 2, 1, 5, 11, 22]
+        $expectedOfficeIds = [4, 3, 2, 1, 5, 11, 22];
+        foreach ($expectedOfficeIds as $i => $officeId) {
+            $this->assertEquals($officeId, $steps[$i]->officeId, 'Step '.($i + 1)." should have officeId {$officeId}");
+        }
     }
 
-    /** @test */
+    #[Test]
+    public function it_creates_workflow_without_assessment_for_continuing_student(): void
+    {
+        // Create a continuing student enrollment
+        $student = Students::create([
+            'schoolIdNumber' => '2026-0003',
+            'lastName' => 'Continuing',
+            'firstName' => 'Student',
+            'middleName' => 'C',
+            'suffix' => '',
+            'gender' => 'female',
+            'birthdate' => '2001-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'religionId' => 1,
+            'civilStatus' => 'single',
+            'contactNumber' => '09123456780',
+            'email' => 'continuing@example.com',
+            'username' => 'continuingstudent',
+            'passwordHash' => bcrypt('password'),
+            'status' => 'active',
+            'semestersCompleted' => 2,
+            'yearsInInstitution' => 1,
+        ]);
+
+        $continuingEnrollment = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => 1,
+            'termId' => 1,
+            'admissionId' => null,
+            'yearLevel' => 2,
+            'studentType' => 'continuing',
+            'enrollmentType' => 'old',
+            'academicStanding' => 'regular',
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $this->registrarStaff->userId,
+        ]);
+
+        $workflow = $this->workflowService->createWorkflow($continuingEnrollment);
+
+        $this->assertEquals(1, $workflow->currentStep);
+        $this->assertEquals(WorkflowStatus::InProgress, $workflow->workflowStatus);
+
+        $steps = $workflow->workflowsteps()->orderBy('stepOrder')->get();
+        $this->assertCount(6, $steps);
+
+        // Verify stepOrder is sequential 1..6
+        $this->assertEquals(1, $steps[0]->stepOrder);
+        $this->assertEquals(6, $steps[5]->stepOrder);
+
+        // Verify officeIds: [4, 2, 1, 5, 11, 22] — no officeId 3 (Assessment)
+        $expectedOfficeIds = [4, 2, 1, 5, 11, 22];
+        foreach ($expectedOfficeIds as $i => $officeId) {
+            $this->assertEquals($officeId, $steps[$i]->officeId, 'Step '.($i + 1)." should have officeId {$officeId}");
+        }
+
+        // Step at stepOrder 2 should be Accounting Payment (officeId 2)
+        $this->assertEquals(2, $steps[1]->officeId, 'Step 2 should be Accounting Payment (officeId 2)');
+    }
+
+    #[Test]
+    public function it_creates_workflow_without_assessment_for_shifter_student(): void
+    {
+        // Create a shifter student enrollment
+        $student = Students::create([
+            'schoolIdNumber' => '2026-0004',
+            'lastName' => 'Shifter',
+            'firstName' => 'Student',
+            'middleName' => 'S',
+            'suffix' => '',
+            'gender' => 'male',
+            'birthdate' => '2002-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'religionId' => 1,
+            'civilStatus' => 'single',
+            'contactNumber' => '09123456781',
+            'email' => 'shifter@example.com',
+            'username' => 'shifterstudent',
+            'passwordHash' => bcrypt('password'),
+            'status' => 'active',
+            'semestersCompleted' => 1,
+            'yearsInInstitution' => 1,
+        ]);
+
+        $shifterEnrollment = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => 1,
+            'termId' => 1,
+            'admissionId' => null,
+            'yearLevel' => 2,
+            'studentType' => 'shifter',
+            'enrollmentType' => 'old',
+            'academicStanding' => 'regular',
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $this->registrarStaff->userId,
+        ]);
+
+        $workflow = $this->workflowService->createWorkflow($shifterEnrollment);
+
+        $this->assertEquals(1, $workflow->currentStep);
+        $this->assertEquals(WorkflowStatus::InProgress, $workflow->workflowStatus);
+
+        $steps = $workflow->workflowsteps()->orderBy('stepOrder')->get();
+        $this->assertCount(6, $steps);
+
+        // Verify stepOrder is sequential 1..6
+        $this->assertEquals(1, $steps[0]->stepOrder);
+        $this->assertEquals(6, $steps[5]->stepOrder);
+
+        // Verify officeIds: [4, 2, 1, 5, 11, 22] — no officeId 3 (Assessment)
+        $expectedOfficeIds = [4, 2, 1, 5, 11, 22];
+        foreach ($expectedOfficeIds as $i => $officeId) {
+            $this->assertEquals($officeId, $steps[$i]->officeId, 'Step '.($i + 1)." should have officeId {$officeId}");
+        }
+
+        // Step at stepOrder 2 should be Accounting Payment (officeId 2)
+        $this->assertEquals(2, $steps[1]->officeId, 'Step 2 should be Accounting Payment (officeId 2)');
+    }
+
+    #[Test]
     public function it_allows_signing_step_in_order(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
-        // Sign step 1 (Registrar - Clearance Desk Receipt)
-        $step = $this->workflowService->signStep($workflow, 1, $this->registrarStaff);
+        // Sign step 1 (Department Evaluation - officeId 4)
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $step = $this->workflowService->signStep($workflow, 1, $deptStaff);
         $this->assertEquals(WorkflowStepStatus::Completed, $step->stepStatus);
-        $this->assertEquals($this->registrarStaff->userId, $step->signedBy);
+        $this->assertEquals($deptStaff->userId, $step->signedBy);
         $this->assertNotNull($step->signedDate);
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_exception_when_signing_out_of_order(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
         $this->expectException(InvalidStateTransitionException::class);
 
-        // Try to sign step 3 before step 1 and 2
-        $this->workflowService->signStep($workflow, 3, $this->registrarStaff);
+        // Try to sign step 2 (Assessment, officeId 3) before step 1
+        $assessmentStaff = Staffusers::factory()->create(['officeId' => 3]);
+        $this->workflowService->signStep($workflow, 2, $assessmentStaff);
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_exception_when_wrong_office_signs(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
-        // Sign step 1 first
-        $this->workflowService->signStep($workflow, 1, $this->registrarStaff);
+        // Sign step 1 (Department Evaluation) with office-4 staff
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $this->workflowService->signStep($workflow, 1, $deptStaff);
 
         $this->expectException(InvalidStateTransitionException::class);
 
-        // Try to sign step 7 (Clinic) with Registrar staff
-        $this->workflowService->signStep($workflow, 7, $this->registrarStaff);
+        // Try to sign step 6 (Clinic, officeId 11) with Registrar staff (officeId 1)
+        $this->workflowService->signStep($workflow, 6, $this->registrarStaff);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_correct_office_to_sign(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
-        // Sign step 1 (Registrar)
-        $this->workflowService->signStep($workflow, 1, $this->registrarStaff);
-
-        // Sign step 2 (Guidance/Dept - officeId 4)
+        // Sign step 1 (Department Evaluation - officeId 4)
         $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
-        $this->workflowService->signStep($workflow, 2, $deptStaff);
+        $this->workflowService->signStep($workflow, 1, $deptStaff);
 
-        // Sign step 3 (Accounting/Scholarship - officeId 3)
-        $scholarshipStaff = Staffusers::factory()->create(['officeId' => 3]);
-        $this->workflowService->signStep($workflow, 3, $scholarshipStaff);
+        // Sign step 2 (Assessment - officeId 3)
+        $assessmentStaff = Staffusers::factory()->create(['officeId' => 3]);
+        $this->workflowService->signStep($workflow, 2, $assessmentStaff);
 
-        // Sign step 4 (Accounting - officeId 2)
+        // Sign step 3 (Accounting Payment - officeId 2)
         $accountingStaff = Staffusers::factory()->create(['officeId' => 2]);
-        $this->workflowService->signStep($workflow, 4, $accountingStaff);
+        $this->workflowService->signStep($workflow, 3, $accountingStaff);
 
-        // Sign step 5 (Registrar)
-        $this->workflowService->signStep($workflow, 5, $this->registrarStaff);
+        // Sign step 4 (Registrar Approval - officeId 1)
+        $this->workflowService->signStep($workflow, 4, $this->registrarStaff);
 
-        // Sign step 6 (Academic Dept - officeId 5)
+        // Sign step 5 (Blocking and Scheduling - officeId 5)
         $acadStaff = Staffusers::factory()->create(['officeId' => 5]);
-        $this->workflowService->signStep($workflow, 6, $acadStaff);
+        $this->workflowService->signStep($workflow, 5, $acadStaff);
 
-        // Sign step 7 (Clinic - officeId 11)
-        $this->workflowService->signStep($workflow, 7, $this->clinicStaff);
+        // Sign step 6 (Clinic - officeId 11)
+        $this->workflowService->signStep($workflow, 6, $this->clinicStaff);
 
-        // Sign step 8 (ID Office - officeId 22)
-        $this->workflowService->signStep($workflow, 8, $this->idStaff);
+        // Sign step 7 (ID Office - officeId 22)
+        $this->workflowService->signStep($workflow, 7, $this->idStaff);
 
         $workflow->refresh();
         $this->assertEquals(WorkflowStatus::Completed, $workflow->workflowStatus);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_current_pending_step(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
@@ -203,19 +350,20 @@ class WorkflowServiceTest extends TestCase
         $this->assertNotNull($currentStep);
         $this->assertEquals(1, $currentStep->stepOrder);
 
-        // Sign step 1
-        $this->workflowService->signStep($workflow, 1, $this->registrarStaff);
+        // Sign step 1 (Department Evaluation - officeId 4)
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $this->workflowService->signStep($workflow, 1, $deptStaff);
 
         $currentStep = $this->workflowService->getCurrentStep($workflow);
         $this->assertEquals(2, $currentStep->stepOrder);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_all_steps(): void
     {
         $workflow = $this->workflowService->createWorkflow($this->enrollment);
 
         $steps = $this->workflowService->getSteps($workflow);
-        $this->assertCount(8, $steps);
+        $this->assertCount(7, $steps);
     }
 }

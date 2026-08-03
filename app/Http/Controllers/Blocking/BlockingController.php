@@ -2,22 +2,21 @@
 
 namespace App\Http\Controllers\Blocking;
 
+use App\Enums\DayOfWeek;
+use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Academicterms;
 use App\Models\Blocks;
-use App\Models\Schedules;
-use App\Models\Schedulemeetings;
+use App\Models\Courses;
+use App\Models\Enrollments;
 use App\Models\Rooms;
+use App\Models\Schedulemeetings;
+use App\Models\Schedules;
 use App\Models\Staffusers;
 use App\Models\Subjects;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Courses;
-use App\Models\Academicterms;
-use App\Enums\EnrollmentStatus;
-use App\Enums\DayOfWeek;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,9 +32,9 @@ class BlockingController extends Controller
         $this->authorize('viewAny', Blocks::class);
 
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'enrolledSubjects'])
-            ->when($request->courseId, fn($q, $id) => $q->where('courseId', $id))
-            ->when($request->termId, fn($q, $id) => $q->where('termId', $id))
-            ->when($request->yearLevel, fn($q, $level) => $q->where('yearLevel', $level))
+            ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
+            ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
+            ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
             ->latest();
 
         $blocks = $query->paginate(20)->withQueryString();
@@ -155,7 +154,7 @@ class BlockingController extends Controller
         // Conflict detection
         $conflicts = $this->detectConflicts($schedule);
         if ($conflicts->isNotEmpty()) {
-            return back()->with('warning', 'Schedule conflicts detected: ' . $conflicts->implode('conflict', ', '));
+            return back()->with('warning', 'Schedule conflicts detected: '.$conflicts->implode('conflict', ', '));
         }
 
         return back()->with('success', 'Schedule added.');
@@ -171,31 +170,31 @@ class BlockingController extends Controller
 
         foreach ($meetings as $meeting) {
             // Instructor conflict
-            $instructorConflict = Schedulemeetings::whereHas('schedule', fn($q) => $q->where('instructorId', $schedule->instructorId))
+            $instructorConflict = Schedulemeetings::whereHas('schedule', fn ($q) => $q->where('instructorId', $schedule->instructorId))
                 ->where('dayOfWeek', $meeting->dayOfWeek)
                 ->where(function ($q) use ($meeting) {
                     $q->where('startTime', '<', $meeting->endTime)
-                      ->where('endTime', '>', $meeting->startTime);
+                        ->where('endTime', '>', $meeting->startTime);
                 })
                 ->where('meetingId', '!=', $meeting->meetingId)
                 ->exists();
 
             if ($instructorConflict) {
-                $conflicts->push("Instructor conflict on {$meeting->dayOfWeek} {$meeting->startTime}-{$meeting->endTime}");
+                $conflicts->push("Instructor conflict on {$meeting->dayOfWeek->value} {$meeting->startTime}-{$meeting->endTime}");
             }
 
             // Room conflict
-            $roomConflict = Schedulemeetings::whereHas('schedule', fn($q) => $q->where('roomId', $schedule->roomId))
+            $roomConflict = Schedulemeetings::whereHas('schedule', fn ($q) => $q->where('roomId', $schedule->roomId))
                 ->where('dayOfWeek', $meeting->dayOfWeek)
                 ->where(function ($q) use ($meeting) {
                     $q->where('startTime', '<', $meeting->endTime)
-                      ->where('endTime', '>', $meeting->startTime);
+                        ->where('endTime', '>', $meeting->startTime);
                 })
                 ->where('meetingId', '!=', $meeting->meetingId)
                 ->exists();
 
             if ($roomConflict) {
-                $conflicts->push("Room conflict on {$meeting->dayOfWeek} {$meeting->startTime}-{$meeting->endTime}");
+                $conflicts->push("Room conflict on {$meeting->dayOfWeek->value} {$meeting->startTime}-{$meeting->endTime}");
             }
         }
 
@@ -220,14 +219,14 @@ class BlockingController extends Controller
 
         foreach ($validated['enrollmentIds'] as $enrollmentId) {
             $enrollment = Enrollments::findOrFail($enrollmentId);
-            
+
             // Verify enrollment is enrolled and workflow at step 6
             if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
                 continue;
             }
 
             $workflow = $enrollment->enrollmentworkflow;
-            if (!$workflow || $workflow->currentStep !== 6) {
+            if (! $workflow || $workflow->currentStep !== 6) {
                 continue;
             }
 

@@ -28,7 +28,9 @@ class ProfileTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
-                'name' => 'Test User',
+                'firstName' => 'Test',
+                'middleName' => 'M',
+                'lastName' => 'User',
                 'email' => 'test@example.com',
             ]);
 
@@ -38,30 +40,13 @@ class ProfileTest extends TestCase
 
         $user->refresh();
 
-        $this->assertSame('Test User', $user->name);
+        $this->assertSame('Test', $user->firstName);
+        $this->assertSame('M', $user->middleName);
+        $this->assertSame('User', $user->lastName);
         $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
     }
 
-    public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
-    {
-        $user = Staffusers::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->patch('/profile', [
-                'name' => 'Test User',
-                'email' => $user->email,
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/profile');
-
-        $this->assertNotNull($user->refresh()->email_verified_at);
-    }
-
-    public function test_user_can_delete_their_account(): void
+    public function test_user_can_deactivate_their_account(): void
     {
         $user = Staffusers::factory()->create();
 
@@ -76,7 +61,7 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertSame('inactive', $user->fresh()->status->value);
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

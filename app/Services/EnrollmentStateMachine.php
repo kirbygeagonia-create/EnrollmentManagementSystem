@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
-use App\Enums\EnrollmentStatus;
 use App\Enums\EnrolledSubjectStatus;
+use App\Enums\EnrollmentStatus;
+use App\Events\EnrollmentStatusChanged;
+use App\Exceptions\InvalidStateTransitionException;
+use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Enrollmentstatushistory;
-use App\Models\Enrolledsubjects;
 use App\Models\Staffusers;
 use Illuminate\Support\Facades\DB;
 
@@ -17,27 +19,27 @@ class EnrollmentStateMachine
      * Key = current status, value = allowed next statuses.
      */
     private const TRANSITIONS = [
-        'pending'   => ['evaluated'],
+        'pending' => ['evaluated'],
         'evaluated' => ['assessed'],
-        'assessed'  => ['paid'],
-        'paid'      => ['enrolled'],
-        'enrolled'  => ['dropped'],
-        'dropped'   => [],
+        'assessed' => ['paid'],
+        'paid' => ['enrolled'],
+        'enrolled' => ['dropped'],
+        'dropped' => [],
     ];
 
     /**
      * Allowed transitions for enrolled subject status.
      */
     private const SUBJECT_TRANSITIONS = [
-        'proposed'  => ['confirmed', 'dropped'],
+        'proposed' => ['confirmed', 'dropped'],
         'confirmed' => ['dropped'],
-        'dropped'   => [],
+        'dropped' => [],
     ];
 
     /**
      * Transition the enrollment to a new status.
      *
-     * @throws \App\Exceptions\InvalidStateTransitionException
+     * @throws InvalidStateTransitionException
      */
     public function transition(
         Enrollments $enrollment,
@@ -55,12 +57,20 @@ class EnrollmentStateMachine
 
             Enrollmentstatushistory::create([
                 'enrollmentId' => $enrollment->enrollmentId,
-                'fromStatus'   => $fromStatus->value,
-                'toStatus'     => $newStatus->value,
-                'changedBy'    => $changedBy?->userId,
-                'remarks'      => $remarks,
-                'changedAt'    => now(),
+                'fromStatus' => $fromStatus->value,
+                'toStatus' => $newStatus->value,
+                'changedBy' => $changedBy?->userId,
+                'remarks' => $remarks,
+                'changedAt' => now(),
             ]);
+
+            event(new EnrollmentStatusChanged(
+                $enrollment,
+                $fromStatus->value,
+                $newStatus->value,
+                $changedBy,
+                $remarks
+            ));
         });
 
         return $enrollment->fresh();
@@ -89,7 +99,7 @@ class EnrollmentStateMachine
      */
     public function allowedTransitions(Enrollments $enrollment): array
     {
-        return self::TRANSITIONS[$enrollment->enrollmentStatus->value] ?? [];
+        return self::TRANSITIONS[$enrollment->enrollmentStatus->value];
     }
 
     /**
@@ -97,17 +107,17 @@ class EnrollmentStateMachine
      */
     public function canTransition(Enrollments $enrollment, EnrollmentStatus $newStatus): bool
     {
-        return in_array($newStatus->value, self::TRANSITIONS[$enrollment->enrollmentStatus->value] ?? []);
+        return in_array($newStatus->value, self::TRANSITIONS[$enrollment->enrollmentStatus->value]);
     }
 
     /**
-     * @throws \App\Exceptions\InvalidStateTransitionException
+     * @throws InvalidStateTransitionException
      */
     private function assertValidTransition(string $from, string $to): void
     {
         $allowed = self::TRANSITIONS[$from] ?? [];
 
-        if (!in_array($to, $allowed)) {
+        if (! in_array($to, $allowed)) {
             throw new InvalidStateTransitionException(
                 "Cannot transition enrollment from '{$from}' to '{$to}'."
             );
@@ -115,13 +125,13 @@ class EnrollmentStateMachine
     }
 
     /**
-     * @throws \App\Exceptions\InvalidStateTransitionException
+     * @throws InvalidStateTransitionException
      */
     private function assertValidSubjectTransition(string $from, string $to): void
     {
         $allowed = self::SUBJECT_TRANSITIONS[$from] ?? [];
 
-        if (!in_array($to, $allowed)) {
+        if (! in_array($to, $allowed)) {
             throw new InvalidStateTransitionException(
                 "Cannot transition subject from '{$from}' to '{$to}'."
             );

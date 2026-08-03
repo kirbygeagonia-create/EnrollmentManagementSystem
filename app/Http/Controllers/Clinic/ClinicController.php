@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers\Clinic;
 
+use App\Enums\ClinicRecordStatus;
+use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
-use App\Models\Staffusers;
 use App\Services\WorkflowService;
-use App\Enums\EnrollmentStatus;
-use App\Enums\ClinicRecordStatus;
-use App\Enums\WorkflowStepStatus;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,8 +32,8 @@ class ClinicController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'clinicrecords'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow', fn($q) => $q->where('currentStep', 7))
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->whereHas('enrollmentworkflow', fn ($q) => $q->where('currentStep', 7))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $enrollments = $query->paginate(20)->withQueryString();

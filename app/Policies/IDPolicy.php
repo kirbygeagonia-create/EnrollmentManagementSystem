@@ -2,15 +2,14 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Idrequests;
-use App\Models\Studentids;
-use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\IdValidationStatus;
-use App\Enums\WorkflowStepStatus;
+use App\Models\Enrollments;
+use App\Models\Enrollmentworkflow;
+use App\Models\Idrequests;
+use App\Models\Staffusers;
+use App\Models\Studentids;
 
 class IDPolicy
 {
@@ -37,7 +36,7 @@ class IDPolicy
      */
     public function create(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('id.request.create')) {
+        if (! $user->hasPermissionTo('id.request.create')) {
             return false;
         }
 
@@ -53,7 +52,7 @@ class IDPolicy
 
         // Check workflow step 8 (ID Office) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (!$workflow || $workflow->currentStep !== 8) {
+        if (! $workflow || $workflow->currentStep !== 8) {
             return false;
         }
 
@@ -71,7 +70,7 @@ class IDPolicy
      */
     public function produceCard(Staffusers $user, Idrequests $request): bool
     {
-        if (!$user->hasPermissionTo('id.card.produce')) {
+        if (! $user->hasPermissionTo('id.card.produce')) {
             return false;
         }
 
@@ -89,7 +88,7 @@ class IDPolicy
      */
     public function validate(Staffusers $user, Studentids $id): bool
     {
-        if (!$user->hasPermissionTo('id.validate')) {
+        if (! $user->hasPermissionTo('id.validate')) {
             return false;
         }
 
@@ -107,7 +106,7 @@ class IDPolicy
      */
     public function release(Staffusers $user, Studentids $id): bool
     {
-        if (!$user->hasPermissionTo('id.release')) {
+        if (! $user->hasPermissionTo('id.release')) {
             return false;
         }
 
@@ -125,7 +124,7 @@ class IDPolicy
      */
     public function signWorkflow(Staffusers $user, Enrollmentworkflow $workflow): bool
     {
-        if (!$user->hasPermissionTo('id.sign')) {
+        if (! $user->hasPermissionTo('id.sign')) {
             return false;
         }
 

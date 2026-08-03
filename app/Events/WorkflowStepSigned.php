@@ -3,8 +3,8 @@
 namespace App\Events;
 
 use App\Models\Enrollmentworkflow;
-use App\Models\Workflowsteps;
 use App\Models\Staffusers;
+use App\Models\Workflowsteps;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 

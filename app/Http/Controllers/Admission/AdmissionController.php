@@ -3,22 +3,21 @@
 namespace App\Http\Controllers\Admission;
 
 use App\Http\Controllers\Controller;
-use App\Models\Admissions;
-use App\Models\Students;
-use App\Models\Addresses;
-use App\Models\Guardians;
-use App\Models\Studenteducationalbackgrounds;
-use App\Models\Educationalinstitutions;
-use App\Models\Admissionrequirements;
-use App\Models\Studentrequirementsubmissions;
-use App\Models\Documents;
-use App\Models\Courses;
 use App\Models\Academicterms;
+use App\Models\Addresses;
+use App\Models\Admissionrequirements;
+use App\Models\Admissions;
+use App\Models\Courses;
+use App\Models\Documents;
+use App\Models\Educationalinstitutions;
+use App\Models\Guardians;
 use App\Models\Religions;
-use App\Services\EnrollmentStateMachine;
+use App\Models\Studenteducationalbackgrounds;
+use App\Models\Studentrequirementsubmissions;
+use App\Models\Students;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,9 +25,6 @@ use Inertia\Response;
 class AdmissionController extends Controller
 {
     use AuthorizesRequests;
-    public function __construct(
-        private EnrollmentStateMachine $stateMachine
-    ) {}
 
     /**
      * Display applicant queue (pending/approved).
@@ -38,8 +34,8 @@ class AdmissionController extends Controller
         $this->authorize('viewAny', Admissions::class);
 
         $query = Admissions::with(['student', 'course', 'term', 'evaluatedBy'])
-            ->when($request->status, fn($q, $status) => $q->where('admissionStatus', $status))
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $admissions = $query->paginate(20)->withQueryString();
@@ -151,7 +147,7 @@ class AdmissionController extends Controller
             Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
         }
 
-        if (!empty($validated['educationalBackgrounds'])) {
+        if (! empty($validated['educationalBackgrounds'])) {
             foreach ($validated['educationalBackgrounds'] as $bg) {
                 $institution = Educationalinstitutions::firstOrCreate(
                     ['institutionName' => $bg['institutionName']],

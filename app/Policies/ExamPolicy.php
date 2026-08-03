@@ -2,12 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Examresults;
-use App\Models\Courses;
+use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
-use App\Enums\ExamResult;
+use App\Models\Courses;
+use App\Models\Examresults;
+use App\Models\Staffusers;
 
 class ExamPolicy
 {
@@ -34,25 +34,20 @@ class ExamPolicy
      */
     public function record(Staffusers $user, Courses $course, ExamStage $stage, ExamType $type): bool
     {
-        // Guidance Office records general entrance exam
-        if ($stage === ExamStage::Entrance && $type === ExamType::General) {
-            return $user->hasPermissionTo('exam.record.general');
+        // Entrance exam: Guidance records general, Department records course-specific (BR9)
+        if ($stage === ExamStage::Entrance) {
+            return match ($type) {
+                ExamType::General => $user->hasPermissionTo('exam.record.general'),
+                ExamType::CourseSpecific => $user->hasPermissionTo('exam.record.courseSpecific'),
+            };
         }
 
-        // Department records course-specific entrance exam (after verifying general)
-        if ($stage === ExamStage::Entrance && $type === ExamType::CourseSpecific) {
-            return $user->hasPermissionTo('exam.record.courseSpecific');
+        // Retention exam for continuing board-course students (BR10)
+        if (! $course->requiresRetentionExam) {
+            return false;
         }
 
-        // Department records retention exam for continuing board-course students
-        if ($stage === ExamStage::Retention) {
-            if (!$course->requiresRetentionExam) {
-                return false;
-            }
-            return $user->hasPermissionTo('exam.record.retention');
-        }
-
-        return false;
+        return $user->hasPermissionTo('exam.record.retention');
     }
 
     /**

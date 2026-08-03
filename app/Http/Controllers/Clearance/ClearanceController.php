@@ -2,24 +2,22 @@
 
 namespace App\Http\Controllers\Clearance;
 
+use App\Enums\ClearanceApprovalStatus;
+use App\Enums\ClearanceOverallStatus;
+use App\Enums\ClearancePeriodStatus;
+use App\Enums\PaymentMode;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Studentclearances;
 use App\Models\Clearanceapprovals;
 use App\Models\Clearanceperiods;
 use App\Models\Clearancerequirements;
-use App\Models\Students;
-use App\Models\Staffusers;
-use App\Models\Offices;
 use App\Models\Feetypes;
 use App\Models\Payments;
-use App\Enums\ClearancePeriodStatus;
-use App\Enums\ClearanceApprovalStatus;
-use App\Enums\ClearanceOverallStatus;
-use App\Enums\PaymentStatus;
-use App\Enums\PaymentMode;
+use App\Models\Studentclearances;
+use App\Models\Students;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -38,9 +36,9 @@ class ClearanceController extends Controller
         $periods = Clearanceperiods::with('term.academicYear')->get();
 
         $query = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedBy'])
-            ->when($request->periodId, fn($q, $id) => $q->where('clearancePeriodId', $id))
-            ->when($request->status, fn($q, $status) => $q->where('overallStatus', $status))
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->periodId, fn ($q, $id) => $q->where('clearancePeriodId', $id))
+            ->when($request->status, fn ($q, $status) => $q->where('overallStatus', $status))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $clearances = $query->paginate(20)->withQueryString();
@@ -127,7 +125,7 @@ class ClearanceController extends Controller
             return back()->withErrors(['student' => 'Student already has a clearance for this period.']);
         }
 
-        if (!$existing) {
+        if (! $existing) {
             $clearance = Studentclearances::create([
                 'studentId' => $student->studentId,
                 'clearancePeriodId' => $period->clearancePeriodId,
@@ -229,17 +227,17 @@ class ClearanceController extends Controller
             ->where('clearancePeriodId', $period->clearancePeriodId)
             ->first();
 
-        if (!$clearance || $clearance->overallStatus !== ClearanceOverallStatus::Incomplete) {
+        if (! $clearance || $clearance->overallStatus !== ClearanceOverallStatus::Incomplete) {
             return back()->withErrors(['clearance' => 'No lost clearance to replace.']);
         }
 
         // Record payment
         $feeType = Feetypes::where('feeName', 'Clearance Slip Replacement')->first();
-        
+
         Payments::create([
             'enrollmentId' => null, // No enrollment for clearance replacement
             'orNumber' => $validated['orNumber'],
-            'amount' => $feeType?->defaultAmount ?? 100,
+            'amount' => $feeType->defaultAmount ?? 100,
             'paymentDate' => now(),
             'paymentMode' => PaymentMode::Cash,
             'processedBy' => Auth::id(),

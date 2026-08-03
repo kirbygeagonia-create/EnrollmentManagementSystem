@@ -2,12 +2,10 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Payments;
-use App\Models\Studentassessments;
-use App\Models\Enrollments;
 use App\Enums\PaymentStatus;
-use App\Enums\EnrollmentStatus;
+use App\Models\Payments;
+use App\Models\Staffusers;
+use App\Models\Studentassessments;
 
 class PaymentPolicy
 {
@@ -34,7 +32,7 @@ class PaymentPolicy
      */
     public function record(Staffusers $user, Studentassessments $assessment): bool
     {
-        if (!$user->hasPermissionTo('payment.record')) {
+        if (! $user->hasPermissionTo('payment.record')) {
             return false;
         }
 
@@ -56,7 +54,7 @@ class PaymentPolicy
      */
     public function void(Staffusers $user, Payments $payment): bool
     {
-        if (!$user->hasPermissionTo('payment.void')) {
+        if (! $user->hasPermissionTo('payment.void')) {
             return false;
         }
 

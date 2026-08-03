@@ -2,20 +2,17 @@
 
 namespace App\Http\Controllers\ID;
 
-use App\Http\Controllers\Controller;
-use App\Models\Idrequests;
-use App\Models\Studentids;
-use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
-use App\Models\Students;
-use App\Services\WorkflowService;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\IdValidationStatus;
-use App\Enums\WorkflowStepStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Enrollments;
+use App\Models\Idrequests;
+use App\Models\Studentids;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,8 +34,8 @@ class IDController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow', fn($q) => $q->where('currentStep', 8))
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->whereHas('enrollmentworkflow', fn ($q) => $q->where('currentStep', 8))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $enrollments = $query->paginate(20)->withQueryString();

@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Permissions extends Model
 {
     protected $table = 'permissions';
+
     public $timestamps = false;
-    protected $fillable = ['permissionName', 'module'];
+
+    protected $fillable = ['name', 'module', 'guard_name'];
 
     public function role_permissions(): HasMany
     {

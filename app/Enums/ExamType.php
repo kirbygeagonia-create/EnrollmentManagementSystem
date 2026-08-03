@@ -4,5 +4,6 @@ namespace App\Enums;
 
 enum ExamType: string
 {
-    case General = 'general'; case CourseSpecific = 'courseSpecific';
+    case General = 'general';
+    case CourseSpecific = 'courseSpecific';
 }

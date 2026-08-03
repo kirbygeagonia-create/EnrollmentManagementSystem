@@ -8,13 +8,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StaffRoles extends Model
 {
     protected $table = 'staff_roles';
+
     public $timestamps = false;
 
+    /**
+     * @return BelongsTo<Roles, $this>
+     */
     public function role(): BelongsTo
     {
         return $this->belongsTo(Roles::class, 'roleId');
     }
 
+    /**
+     * @return BelongsTo<Staffusers, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'userId');

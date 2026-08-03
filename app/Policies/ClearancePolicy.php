@@ -2,15 +2,14 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Studentclearances;
-use App\Models\Clearanceapprovals;
-use App\Models\Clearanceperiods;
-use App\Models\Clearancerequirements;
-use App\Models\Students;
-use App\Enums\ClearancePeriodStatus;
 use App\Enums\ClearanceApprovalStatus;
 use App\Enums\ClearanceOverallStatus;
+use App\Enums\ClearancePeriodStatus;
+use App\Models\Clearanceapprovals;
+use App\Models\Clearanceperiods;
+use App\Models\Staffusers;
+use App\Models\Studentclearances;
+use App\Models\Students;
 
 class ClearancePolicy
 {
@@ -44,7 +43,7 @@ class ClearancePolicy
      */
     public function generateSlip(Staffusers $user, Students $student, Clearanceperiods $period): bool
     {
-        if (!$user->hasPermissionTo('clearance.slip.generate')) {
+        if (! $user->hasPermissionTo('clearance.slip.generate')) {
             return false;
         }
 
@@ -59,7 +58,7 @@ class ClearancePolicy
             ->first();
 
         // Allow if no existing or if replacing lost slip (with payment)
-        return !$existing || $existing->overallStatus === ClearanceOverallStatus::Incomplete;
+        return ! $existing || $existing->overallStatus === ClearanceOverallStatus::Incomplete;
     }
 
     /**
@@ -68,7 +67,7 @@ class ClearancePolicy
      */
     public function recordDeskReceipt(Staffusers $user, Studentclearances $clearance): bool
     {
-        if (!$user->hasPermissionTo('clearance.receipt.record')) {
+        if (! $user->hasPermissionTo('clearance.receipt.record')) {
             return false;
         }
 
@@ -96,7 +95,7 @@ class ClearancePolicy
      */
     public function approveRequirement(Staffusers $user, Clearanceapprovals $approval): bool
     {
-        if (!$user->hasPermissionTo('clearance.approve')) {
+        if (! $user->hasPermissionTo('clearance.approve')) {
             return false;
         }
 
@@ -115,7 +114,7 @@ class ClearancePolicy
      */
     public function replaceLostSlip(Staffusers $user, Students $student, Clearanceperiods $period): bool
     {
-        if (!$user->hasPermissionTo('clearance.slip.replace')) {
+        if (! $user->hasPermissionTo('clearance.slip.replace')) {
             return false;
         }
 

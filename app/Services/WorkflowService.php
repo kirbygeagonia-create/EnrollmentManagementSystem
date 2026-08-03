@@ -2,49 +2,69 @@
 
 namespace App\Services;
 
-use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
-use App\Models\Workflowsteps;
-use App\Models\Staffusers;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
+use App\Events\WorkflowStepSigned;
+use App\Exceptions\InvalidStateTransitionException;
+use App\Models\Enrollments;
+use App\Models\Enrollmentworkflow;
+use App\Models\Staffusers;
+use App\Models\Workflowsteps;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowService
 {
     /**
-     * The 8-step enrollment workflow with officeId mappings.
-     * stepOrder => [officeId, label]
+     * Build the ordered workflow steps for an enrollment.
+     *
+     * Assessment (officeId 3) is included only for firstYear and transferee
+     * students. Continuing and shifter students skip it: their scholarship
+     * status was already settled by the clearance that precedes enrollment.
+     *
+     * @return array<int, array{0: int, 1: string}> [officeId, label]
      */
-    private const STEPS = [
-        1 => [1, 'Clearance Desk Receipt'],          // Registrar
-        2 => [4, 'Department Evaluation'],            // Guidance/Dept
-        3 => [3, 'Assessment'],                       // Accounting/Scholarship
-        4 => [2, 'Accounting Payment'],               // Accounting
-        5 => [1, 'Registrar Approval'],               // Registrar
-        6 => [5, 'Blocking and Scheduling'],          // Academic Dept (Blocking)
-        7 => [11, 'Clinic'],                          // Clinic
-        8 => [22, 'ID Office'],                       // ID Office
-    ];
+    private function stepsFor(Enrollments $enrollment): array
+    {
+        $includesAssessment = in_array($enrollment->studentType->value, ['firstYear', 'transferee'], true);
+
+        $steps = [
+            1 => [4, 'Department Evaluation'],
+            2 => [3, 'Assessment'],
+            3 => [2, 'Accounting Payment'],
+            4 => [1, 'Registrar Approval'],
+            5 => [5, 'Blocking and Scheduling'],
+            6 => [11, 'Clinic'],
+            7 => [22, 'ID Office'],
+        ];
+
+        if (! $includesAssessment) {
+            unset($steps[2]);
+        }
+
+        return array_values($steps);
+    }
 
     /**
-     * Create the 8-step workflow for a new enrollment.
+     * Create the enrollment workflow for a new enrollment.
+     *
+     * Step 1 is Department Evaluation. Assessment (step 2) is included only
+     * for firstYear and transferee students.
      */
     public function createWorkflow(Enrollments $enrollment): Enrollmentworkflow
     {
         return DB::transaction(function () use ($enrollment) {
             $workflow = Enrollmentworkflow::create([
-                'enrollmentId'  => $enrollment->enrollmentId,
-                'currentStep'   => 1,
+                'enrollmentId' => $enrollment->enrollmentId,
+                'currentStep' => 1,
                 'workflowStatus' => WorkflowStatus::InProgress,
             ]);
 
-            foreach (self::STEPS as $order => [$officeId, $label]) {
+            foreach ($this->stepsFor($enrollment) as $order => [$officeId, $label]) {
                 Workflowsteps::create([
-                    'workflowId'  => $workflow->workflowId,
-                    'officeId'    => $officeId,
-                    'stepOrder'   => $order,
-                    'stepStatus'  => $order === 1 ? WorkflowStepStatus::Pending : WorkflowStepStatus::Pending,
+                    'workflowId' => $workflow->workflowId,
+                    'officeId' => $officeId,
+                    'stepOrder' => $order + 1,
+                    'stepStatus' => WorkflowStepStatus::Pending,
                 ]);
             }
 
@@ -56,7 +76,7 @@ class WorkflowService
      * Sign a workflow step. Only the assigned office can sign.
      * Steps must be signed in order (BR13/BR14).
      *
-     * @throws \App\Exceptions\InvalidStateTransitionException
+     * @throws InvalidStateTransitionException
      */
     public function signStep(
         Enrollmentworkflow $workflow,
@@ -71,7 +91,7 @@ class WorkflowService
 
         // Check office scope (BR14)
         if ($step->officeId !== $signedBy->officeId) {
-            throw new \App\Exceptions\InvalidStateTransitionException(
+            throw new InvalidStateTransitionException(
                 "Staff from office {$signedBy->officeId} cannot sign step {$stepOrder} (requires office {$step->officeId})."
             );
         }
@@ -82,9 +102,9 @@ class WorkflowService
                 ->where('stepOrder', $stepOrder - 1)
                 ->first();
 
-            if (!$prevStep || $prevStep->stepStatus->value !== 'completed') {
-                throw new \App\Exceptions\InvalidStateTransitionException(
-                    "Step {$stepOrder} cannot be signed: step " . ($stepOrder - 1) . " is not yet completed."
+            if (! $prevStep || $prevStep->stepStatus->value !== 'completed') {
+                throw new InvalidStateTransitionException(
+                    "Step {$stepOrder} cannot be signed: step ".($stepOrder - 1).' is not yet completed.'
                 );
             }
         }
@@ -94,6 +114,8 @@ class WorkflowService
         $step->signedBy = $signedBy->userId;
         $step->signedDate = now();
         $step->save();
+
+        event(new WorkflowStepSigned($workflow, $step, $signedBy));
 
         // Update workflow current step
         $workflow->currentStep = $stepOrder;

@@ -2,33 +2,47 @@
 
 namespace App\Models;
 
+use App\Enums\ClearanceApprovalStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Clearanceapprovals extends Model
 {
     protected $table = 'clearanceapprovals';
+
+    protected $primaryKey = 'clearanceApprovalId';
+
     public $timestamps = false;
+
     protected $fillable = ['studentClearanceId', 'clearanceRequirementId', 'status', 'approvedBy', 'approvalDate', 'remarks'];
 
     protected function casts(): array
     {
         return [
-            'status' => \App\Enums\ClearanceApprovalStatus::class,
+            'status' => ClearanceApprovalStatus::class,
             'approvalDate' => 'date',
         ];
     }
 
+    /**
+     * @return BelongsTo<Staffusers, $this>
+     */
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'approvedBy');
     }
 
+    /**
+     * @return BelongsTo<Clearancerequirements, $this>
+     */
     public function clearanceRequirement(): BelongsTo
     {
         return $this->belongsTo(Clearancerequirements::class, 'clearanceRequirementId');
     }
 
+    /**
+     * @return BelongsTo<Studentclearances, $this>
+     */
     public function studentClearance(): BelongsTo
     {
         return $this->belongsTo(Studentclearances::class, 'studentClearanceId');

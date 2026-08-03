@@ -2,12 +2,21 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Offices;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Controller defaults new accounts to officeId 1 (Registrar).
+        Offices::create(['officeName' => 'Registrar']);
+    }
 
     public function test_registration_screen_can_be_rendered(): void
     {

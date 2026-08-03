@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Academicyears extends Model
 {
     protected $table = 'academicyears';
+
+    protected $primaryKey = 'academicYearId';
+
     public $timestamps = false;
+
     protected $fillable = ['yearLabel', 'startDate', 'endDate'];
 
     protected function casts(): array
@@ -19,8 +23,11 @@ class Academicyears extends Model
         ];
     }
 
-    public function ﻿academicterms(): HasMany
+    /**
+     * @return HasMany<Academicterms, $this>
+     */
+    public function academicterms(): HasMany
     {
-        return $this->hasMany(﻿academicterms::class, 'academicYearId');
+        return $this->hasMany(Academicterms::class, 'academicYearId');
     }
 }

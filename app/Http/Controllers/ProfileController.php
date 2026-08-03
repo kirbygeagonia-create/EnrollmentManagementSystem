@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StaffStatus;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -29,19 +30,16 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
-
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
+        $request->user()->fill($request->validated())->save();
 
         return Redirect::route('profile.edit');
     }
 
     /**
-     * Delete the user's account.
+     * Deactivate the user's account.
+     *
+     * Staff accounts are never hard-deleted (other tables reference staffusers
+     * via foreign keys); disabling is done through the status field instead.
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -51,9 +49,9 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        $user->update(['status' => StaffStatus::Inactive]);
 
-        $user->delete();
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

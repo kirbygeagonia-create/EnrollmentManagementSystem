@@ -2,21 +2,15 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Studentassessments;
-use App\Models\Studentclearances;
-use App\Models\Payments;
-use App\Models\Enrollmentworkflow;
-use App\Models\Workflowsteps;
-use App\Models\Clearanceperiods;
+use App\Enums\ClearanceOverallStatus;
+use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\StudentType;
-use App\Enums\WorkflowStepStatus;
-use App\Enums\ClearanceOverallStatus;
-use App\Enums\ClearancePeriodStatus;
+use App\Models\Clearanceperiods;
+use App\Models\Enrollments;
+use App\Models\Staffusers;
+use App\Models\Studentclearances;
 
 class RegistrarPolicy
 {
@@ -43,7 +37,7 @@ class RegistrarPolicy
      */
     public function validatePrerequisites(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('enrollment.approve')) {
+        if (! $user->hasPermissionTo('enrollment.approve')) {
             return false;
         }
 
@@ -53,35 +47,35 @@ class RegistrarPolicy
         }
 
         // Enrollment must be in assessed or paid status
-        if (!in_array($enrollment->enrollmentStatus->value, ['assessed', 'paid'])) {
+        if (! in_array($enrollment->enrollmentStatus->value, ['assessed', 'paid'])) {
             return false;
         }
 
         // Check payment completed
         $assessment = $enrollment->studentassessments;
-        if (!$assessment || $assessment->remainingBalance > 0) {
+        if (! $assessment || $assessment->remainingBalance > 0) {
             return false;
         }
 
         // Check evaluation signed
-        if (!$enrollment->evaluatedBy) {
+        if (! $enrollment->evaluatedBy) {
             return false;
         }
 
         // Check clearance for continuing students (BR8)
         if (in_array($enrollment->studentType->value, ['continuing', 'shifter'])) {
-            $currentPeriod = \App\Models\Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
+            $currentPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
             if ($currentPeriod) {
                 $clearance = Studentclearances::where('studentId', $enrollment->studentId)
                     ->where('clearancePeriodId', $currentPeriod->clearancePeriodId)
                     ->first();
-                
-                if (!$clearance || $clearance->overallStatus !== ClearanceOverallStatus::Approved) {
+
+                if (! $clearance || $clearance->overallStatus !== ClearanceOverallStatus::Approved) {
                     return false;
                 }
-                
+
                 // Check desk receipt recorded (BR34)
-                if (!$clearance->receivedBy || !$clearance->receivedDate) {
+                if (! $clearance->receivedBy || ! $clearance->receivedDate) {
                     return false;
                 }
             }
@@ -96,7 +90,7 @@ class RegistrarPolicy
      */
     public function approve(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$this->validatePrerequisites($user, $enrollment)) {
+        if (! $this->validatePrerequisites($user, $enrollment)) {
             return false;
         }
 
@@ -109,7 +103,7 @@ class RegistrarPolicy
      */
     public function printCertificate(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('print.certificate')) {
+        if (! $user->hasPermissionTo('print.certificate')) {
             return false;
         }
 
@@ -122,7 +116,7 @@ class RegistrarPolicy
      */
     public function printClassCards(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('print.classCard')) {
+        if (! $user->hasPermissionTo('print.classCard')) {
             return false;
         }
 
@@ -135,7 +129,7 @@ class RegistrarPolicy
      */
     public function printSubjectLoad(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('print.subjectLoad')) {
+        if (! $user->hasPermissionTo('print.subjectLoad')) {
             return false;
         }
 
@@ -149,7 +143,7 @@ class RegistrarPolicy
      */
     public function recordStudentData(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('enrollment.studentdata.record')) {
+        if (! $user->hasPermissionTo('enrollment.studentdata.record')) {
             return false;
         }
 

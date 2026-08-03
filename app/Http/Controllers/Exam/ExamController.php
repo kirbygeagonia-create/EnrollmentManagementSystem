@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Exam;
 
-use App\Http\Controllers\Controller;
-use App\Models\Examresults;
-use App\Models\Students;
-use App\Models\Courses;
-use App\Models\Academicterms;
-use App\Models\Admissions;
+use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
-use App\Enums\ExamResult;
+use App\Http\Controllers\Controller;
+use App\Models\Academicterms;
+use App\Models\Admissions;
+use App\Models\Courses;
+use App\Models\Examresults;
+use App\Models\Students;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,9 +29,9 @@ class ExamController extends Controller
         $this->authorize('viewAny', Examresults::class);
 
         $query = Examresults::with(['student', 'course', 'term'])
-            ->when($request->stage, fn($q, $stage) => $q->where('examStage', $stage))
-            ->when($request->type, fn($q, $type) => $q->where('examType', $type))
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
+            ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $exams = $query->paginate(20)->withQueryString();
@@ -78,7 +78,7 @@ class ExamController extends Controller
         ]);
 
         $course = Courses::findOrFail($validated['courseId']);
-        if (!$course->requiresEntranceExam) {
+        if (! $course->requiresEntranceExam) {
             return back()->withErrors(['courseId' => 'This course does not require an entrance exam.']);
         }
 
@@ -127,12 +127,12 @@ class ExamController extends Controller
             ->where('examType', ExamType::General)
             ->first();
 
-        if (!$generalExam || $generalExam->examResult !== ExamResult::Pass) {
+        if (! $generalExam || $generalExam->examResult !== ExamResult::Pass) {
             return back()->withErrors(['generalExam' => 'General entrance exam must be passed first.']);
         }
 
         $course = Courses::findOrFail($validated['courseId']);
-        if (!$course->requiresEntranceExam) {
+        if (! $course->requiresEntranceExam) {
             return back()->withErrors(['courseId' => 'This course does not require an entrance exam.']);
         }
 
@@ -178,7 +178,7 @@ class ExamController extends Controller
         ]);
 
         $course = Courses::findOrFail($validated['courseId']);
-        if (!$course->requiresRetentionExam) {
+        if (! $course->requiresRetentionExam) {
             return back()->withErrors(['courseId' => 'This course does not require a retention exam.']);
         }
 
@@ -203,8 +203,8 @@ class ExamController extends Controller
         $this->authorize('viewAny', Examresults::class);
 
         $query = Examresults::with(['student', 'course', 'term'])
-            ->when($request->stage, fn($q, $stage) => $q->where('examStage', $stage))
-            ->when($request->result, fn($q, $result) => $q->where('examResult', $result))
+            ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
+            ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
             ->latest();
 
         $exams = $query->paginate(50)->withQueryString();

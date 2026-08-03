@@ -2,19 +2,13 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Students;
-use App\Models\Courses;
-use App\Models\Curriculumsubjects;
-use App\Models\Creditedsubjects;
-use App\Models\Transferacademicrecords;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\StudentType;
-use App\Enums\AcademicStanding;
-use App\Enums\EnrolledSubjectStatus;
+use App\Models\Courses;
+use App\Models\Enrollments;
+use App\Models\Staffusers;
+use App\Models\Students;
 
 class EvaluationPolicy
 {
@@ -41,7 +35,7 @@ class EvaluationPolicy
      */
     public function create(Staffusers $user, Students $student, Courses $course): bool
     {
-        if (!$user->hasPermissionTo('evaluation.create')) {
+        if (! $user->hasPermissionTo('evaluation.create')) {
             return false;
         }
 
@@ -55,12 +49,12 @@ class EvaluationPolicy
      */
     public function captureProfile(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('evaluation.profile.capture')) {
+        if (! $user->hasPermissionTo('evaluation.profile.capture')) {
             return false;
         }
 
         // Only the evaluator who created the enrollment or dean can edit
-        return $enrollment->evaluatedBy === $user->userId 
+        return $enrollment->evaluatedBy === $user->userId
             || $user->hasPermissionTo('evaluation.profile.capture.any');
     }
 
@@ -71,7 +65,7 @@ class EvaluationPolicy
      */
     public function proposeSubjects(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('evaluation.subjects.propose')) {
+        if (! $user->hasPermissionTo('evaluation.subjects.propose')) {
             return false;
         }
 
@@ -81,7 +75,7 @@ class EvaluationPolicy
         }
 
         // Only evaluator or dean
-        return $enrollment->evaluatedBy === $user->userId 
+        return $enrollment->evaluatedBy === $user->userId
             || $user->hasPermissionTo('evaluation.subjects.propose.any');
     }
 
@@ -90,7 +84,7 @@ class EvaluationPolicy
      */
     public function processCredits(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('evaluation.credits.process')) {
+        if (! $user->hasPermissionTo('evaluation.credits.process')) {
             return false;
         }
 
@@ -103,7 +97,7 @@ class EvaluationPolicy
      */
     public function sign(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('evaluation.sign')) {
+        if (! $user->hasPermissionTo('evaluation.sign')) {
             return false;
         }
 
@@ -113,7 +107,7 @@ class EvaluationPolicy
         }
 
         // Must be evaluator or dean/program head
-        return $enrollment->evaluatedBy === $user->userId 
+        return $enrollment->evaluatedBy === $user->userId
             || $user->hasPermissionTo('evaluation.sign.dean');
     }
 
@@ -122,7 +116,7 @@ class EvaluationPolicy
      */
     public function confirmSubjects(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('enrollment.subjects.confirm')) {
+        if (! $user->hasPermissionTo('enrollment.subjects.confirm')) {
             return false;
         }
 

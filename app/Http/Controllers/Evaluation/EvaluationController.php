@@ -2,34 +2,26 @@
 
 namespace App\Http\Controllers\Evaluation;
 
-use App\Http\Controllers\Controller;
-use App\Models\Enrollments;
-use App\Models\Enrolledsubjects;
-use App\Models\Students;
-use App\Models\Courses;
-use App\Models\Majors;
-use App\Models\Curriculums;
-use App\Models\Curriculumsubjects;
-use App\Models\Subjects;
-use App\Models\Creditedsubjects;
-use App\Models\Transferacademicrecords;
-use App\Models\Educationalinstitutions;
-use App\Models\Admissions;
-use App\Models\Addresses;
-use App\Models\Guardians;
-use App\Models\Religions;
-use App\Models\Blocks;
-use App\Models\Schedules;
-use App\Services\EnrollmentStateMachine;
-use App\Services\WorkflowService;
-use App\Enums\EnrollmentStatus;
-use App\Enums\EnrollmentType;
-use App\Enums\StudentType;
 use App\Enums\AcademicStanding;
 use App\Enums\EnrolledSubjectStatus;
+use App\Enums\EnrollmentStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Addresses;
+use App\Models\Creditedsubjects;
+use App\Models\Curriculums;
+use App\Models\Curriculumsubjects;
+use App\Models\Educationalinstitutions;
+use App\Models\Enrolledsubjects;
+use App\Models\Enrollments;
+use App\Models\Guardians;
+use App\Models\Religions;
+use App\Models\Subjects;
+use App\Models\Transferacademicrecords;
+use App\Services\EnrollmentStateMachine;
+use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,7 +44,7 @@ class EvaluationController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedBy'])
             ->where('enrollmentStatus', EnrollmentStatus::Pending)
-            ->when($request->search, fn($q, $search) => $q->whereHas('student', fn($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->latest();
 
         $enrollments = $query->paginate(20)->withQueryString();
@@ -280,7 +272,7 @@ class EvaluationController extends Controller
         ]);
 
         // Create workflow if not exists
-        if (!$enrollment->enrollmentworkflow) {
+        if (! $enrollment->enrollmentworkflow) {
             $this->workflowService->createWorkflow($enrollment);
         }
 

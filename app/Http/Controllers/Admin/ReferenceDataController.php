@@ -2,37 +2,31 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\Courses;
-use App\Models\Majors;
-use App\Models\Curriculums;
-use App\Models\Curriculumsubjects;
-use App\Models\Subjects;
-use App\Models\Academicterms;
-use App\Models\Academicyears;
-use App\Models\Feetypes;
-use App\Models\Scholarshiptypes;
-use App\Models\Offices;
-use App\Models\Rooms;
-use App\Models\Blocks;
-use App\Models\Admissionrequirements;
-use App\Models\Clearancerequirements;
-use App\Models\Staffusers;
-use App\Models\Roles;
-use App\Models\Permissions;
-use App\Models\Settings;
+use App\Enums\AppliesTo;
+use App\Enums\CoverageType;
+use App\Enums\FeeUnitBasis;
 use App\Enums\Semester;
 use App\Enums\SemesterOffered;
 use App\Enums\SubjectType;
-use App\Enums\UnitType;
-use App\Enums\FeeUnitBasis;
-use App\Enums\CoverageType;
-use App\Enums\AppliesTo;
-use App\Enums\StaffRole;
-use App\Enums\StaffStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Academicterms;
+use App\Models\Academicunits;
+use App\Models\Academicyears;
+use App\Models\Admissionrequirements;
+use App\Models\Blocks;
+use App\Models\Clearancerequirements;
+use App\Models\Courses;
+use App\Models\Curriculums;
+use App\Models\Curriculumsubjects;
+use App\Models\Feetypes;
+use App\Models\Majors;
+use App\Models\Offices;
+use App\Models\Rooms;
+use App\Models\Scholarshiptypes;
+use App\Models\Subjects;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,7 +63,7 @@ class ReferenceDataController extends Controller
         $this->authorize('manageCourses', Courses::class);
 
         $courses = Courses::with('unit')->latest()->paginate(20);
-        $units = \App\Models\Academicunits::all(['unitId', 'unitName']);
+        $units = Academicunits::all(['unitId', 'unitName']);
 
         return Inertia::render('Admin/ReferenceData/Courses', [
             'courses' => $courses,
@@ -101,7 +95,7 @@ class ReferenceDataController extends Controller
         $course->update($request->validate([
             'unitId' => 'required|exists:academicunits,unitId',
             'courseName' => 'required|string|max:255',
-            'courseCode' => 'required|string|max:50|unique:courses,courseCode,' . $course->courseId . ',courseId',
+            'courseCode' => 'required|string|max:50|unique:courses,courseCode,'.$course->courseId.',courseId',
             'requiresEntranceExam' => 'boolean',
             'requiresRetentionExam' => 'boolean',
         ]));
@@ -113,6 +107,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
         $course->delete();
+
         return back()->with('success', 'Course deleted.');
     }
 
@@ -146,6 +141,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageMajors', Majors::class);
         $major->update($request->validate(['majorName' => 'required|string|max:255']));
+
         return back()->with('success', 'Major updated.');
     }
 
@@ -153,6 +149,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageMajors', Majors::class);
         $major->delete();
+
         return back()->with('success', 'Major deleted.');
     }
 
@@ -195,6 +192,7 @@ class ReferenceDataController extends Controller
             'effectiveYear' => 'required|date',
             'curriculumName' => 'required|string|max:255',
         ]));
+
         return back()->with('success', 'Curriculum updated.');
     }
 
@@ -202,6 +200,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCurriculums', Curriculums::class);
         $curriculum->delete();
+
         return back()->with('success', 'Curriculum deleted.');
     }
 
@@ -250,6 +249,7 @@ class ReferenceDataController extends Controller
             'yearLevel' => 'required|integer|min:1|max:5',
             'semesterOffered' => 'required|in:1st,2nd,summer',
         ]));
+
         return back()->with('success', 'Curriculum subject updated.');
     }
 
@@ -257,6 +257,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCurriculumSubjects', Curriculumsubjects::class);
         $cs->delete();
+
         return back()->with('success', 'Curriculum subject deleted.');
     }
 
@@ -292,12 +293,13 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageSubjects', Subjects::class);
         $subject->update($request->validate([
-            'subjectCode' => 'required|string|max:20|unique:subjects,subjectCode,' . $subject->subjectId . ',subjectId',
+            'subjectCode' => 'required|string|max:20|unique:subjects,subjectCode,'.$subject->subjectId.',subjectId',
             'subjectName' => 'required|string|max:255',
             'lectureUnits' => 'required|numeric|min:0',
             'labUnits' => 'required|numeric|min:0',
             'subjectType' => 'required|in:lecture,lab,lectureLab',
         ]));
+
         return back()->with('success', 'Subject updated.');
     }
 
@@ -305,6 +307,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageSubjects', Subjects::class);
         $subject->delete();
+
         return back()->with('success', 'Subject deleted.');
     }
 
@@ -346,6 +349,7 @@ class ReferenceDataController extends Controller
             'startDate' => 'required|date',
             'endDate' => 'required|date|after:startDate',
         ]));
+
         return back()->with('success', 'Term updated.');
     }
 
@@ -353,6 +357,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageTerms', Academicterms::class);
         $term->delete();
+
         return back()->with('success', 'Term deleted.');
     }
 
@@ -390,6 +395,7 @@ class ReferenceDataController extends Controller
             'defaultAmount' => 'required|numeric|min:0',
             'unitBasis' => 'required|in:perUnit,flat',
         ]));
+
         return back()->with('success', 'Fee type updated.');
     }
 
@@ -397,6 +403,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageFeeTypes', Feetypes::class);
         $feeType->delete();
+
         return back()->with('success', 'Fee type deleted.');
     }
 
@@ -434,6 +441,7 @@ class ReferenceDataController extends Controller
             'coverageType' => 'required|in:full,partial',
             'coveragePercent' => 'required|numeric|min:0|max:100',
         ]));
+
         return back()->with('success', 'Scholarship type updated.');
     }
 
@@ -441,6 +449,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageScholarshipTypes', Scholarshiptypes::class);
         $type->delete();
+
         return back()->with('success', 'Scholarship type deleted.');
     }
 
@@ -460,6 +469,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
         Offices::create($request->validate(['officeName' => 'required|string|max:255']));
+
         return back()->with('success', 'Office created.');
     }
 
@@ -467,6 +477,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
         $office->update($request->validate(['officeName' => 'required|string|max:255']));
+
         return back()->with('success', 'Office updated.');
     }
 
@@ -474,6 +485,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
         $office->delete();
+
         return back()->with('success', 'Office deleted.');
     }
 
@@ -497,6 +509,7 @@ class ReferenceDataController extends Controller
             'capacity' => 'required|integer|min:1',
             'building' => 'nullable|string|max:100',
         ]));
+
         return back()->with('success', 'Room created.');
     }
 
@@ -508,6 +521,7 @@ class ReferenceDataController extends Controller
             'capacity' => 'required|integer|min:1',
             'building' => 'nullable|string|max:100',
         ]));
+
         return back()->with('success', 'Room updated.');
     }
 
@@ -515,6 +529,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageRooms', Rooms::class);
         $room->delete();
+
         return back()->with('success', 'Room deleted.');
     }
 
@@ -544,6 +559,7 @@ class ReferenceDataController extends Controller
             'blockName' => 'required|string|max:50',
             'maxStudents' => 'required|integer|min:1',
         ]));
+
         return back()->with('success', 'Block created.');
     }
 
@@ -554,6 +570,7 @@ class ReferenceDataController extends Controller
             'blockName' => 'required|string|max:50',
             'maxStudents' => 'required|integer|min:1',
         ]));
+
         return back()->with('success', 'Block updated.');
     }
 
@@ -561,6 +578,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageBlocks', Blocks::class);
         $block->delete();
+
         return back()->with('success', 'Block deleted.');
     }
 
@@ -585,6 +603,7 @@ class ReferenceDataController extends Controller
             'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
             'isRequired' => 'boolean',
         ]));
+
         return back()->with('success', 'Requirement created.');
     }
 
@@ -596,6 +615,7 @@ class ReferenceDataController extends Controller
             'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
             'isRequired' => 'boolean',
         ]));
+
         return back()->with('success', 'Requirement updated.');
     }
 
@@ -603,6 +623,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
         $req->delete();
+
         return back()->with('success', 'Requirement deleted.');
     }
 
@@ -626,6 +647,7 @@ class ReferenceDataController extends Controller
         Clearancerequirements::create($request->validate([
             'officeId' => 'required|exists:offices,officeId',
         ]));
+
         return back()->with('success', 'Clearance requirement created.');
     }
 
@@ -633,6 +655,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
         $req->delete();
+
         return back()->with('success', 'Clearance requirement deleted.');
     }
 }

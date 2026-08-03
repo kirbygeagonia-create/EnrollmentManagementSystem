@@ -2,13 +2,12 @@
 
 namespace App\Policies;
 
-use App\Models\Staffusers;
+use App\Enums\ClinicRecordStatus;
+use App\Enums\EnrollmentStatus;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
-use App\Enums\EnrollmentStatus;
-use App\Enums\ClinicRecordStatus;
-use App\Enums\WorkflowStepStatus;
+use App\Models\Staffusers;
 
 class ClinicPolicy
 {
@@ -35,7 +34,7 @@ class ClinicPolicy
      */
     public function record(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (!$user->hasPermissionTo('clinic.record')) {
+        if (! $user->hasPermissionTo('clinic.record')) {
             return false;
         }
 
@@ -51,7 +50,7 @@ class ClinicPolicy
 
         // Check workflow step 7 (Clinic) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (!$workflow || $workflow->currentStep !== 7) {
+        if (! $workflow || $workflow->currentStep !== 7) {
             return false;
         }
 
@@ -69,7 +68,7 @@ class ClinicPolicy
      */
     public function update(Staffusers $user, Clinicrecords $clinic): bool
     {
-        if (!$user->hasPermissionTo('clinic.update')) {
+        if (! $user->hasPermissionTo('clinic.update')) {
             return false;
         }
 
@@ -87,7 +86,7 @@ class ClinicPolicy
      */
     public function signWorkflow(Staffusers $user, Enrollmentworkflow $workflow): bool
     {
-        if (!$user->hasPermissionTo('clinic.sign')) {
+        if (! $user->hasPermissionTo('clinic.sign')) {
             return false;
         }
 

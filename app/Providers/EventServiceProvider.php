@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\EnrollmentStatusChanged;
+use App\Events\WorkflowStepSigned;
+use App\Listeners\SendEnrollmentNotification;
+use App\Listeners\SendWorkflowNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -12,11 +16,11 @@ class EventServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        \App\Events\EnrollmentStatusChanged::class => [
-            \App\Listeners\SendEnrollmentNotification::class,
+        EnrollmentStatusChanged::class => [
+            SendEnrollmentNotification::class,
         ],
-        \App\Events\WorkflowStepSigned::class => [
-            \App\Listeners\SendWorkflowNotification::class,
+        WorkflowStepSigned::class => [
+            SendWorkflowNotification::class,
         ],
     ];
 

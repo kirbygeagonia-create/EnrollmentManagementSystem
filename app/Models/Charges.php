@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Charges extends Model
 {
     protected $table = 'charges';
+
+    protected $primaryKey = 'chargeId';
+
     public $timestamps = false;
+
     protected $fillable = ['assessmentId', 'feeTypeId', 'amount', 'waivedAmount'];
 
     protected function casts(): array
@@ -19,11 +23,17 @@ class Charges extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Studentassessments, $this>
+     */
     public function assessment(): BelongsTo
     {
         return $this->belongsTo(Studentassessments::class, 'assessmentId');
     }
 
+    /**
+     * @return BelongsTo<Feetypes, $this>
+     */
     public function feeType(): BelongsTo
     {
         return $this->belongsTo(Feetypes::class, 'feeTypeId');

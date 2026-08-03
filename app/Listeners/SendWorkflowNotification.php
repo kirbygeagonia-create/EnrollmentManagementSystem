@@ -35,32 +35,30 @@ class SendWorkflowNotification implements ShouldQueue
         // Create in-app notification
         Notifications::create([
             'type' => 'workflow_step_signed',
-            'notifiableType' => 'App\Models\Students',
-            'notifiableId' => $student->studentId,
+            'notifiable_type' => 'App\Models\Students',
+            'notifiable_id' => $student->studentId,
             'data' => json_encode([
                 'message' => $message,
                 'enrollmentId' => $enrollment->enrollmentId,
                 'workflowId' => $workflow->workflowId,
                 'stepOrder' => $step->stepOrder,
                 'stepLabel' => $stepLabel,
-                'signedBy' => $event->signedBy->firstName . ' ' . $event->signedBy->lastName,
+                'signedBy' => $event->signedBy->firstName.' '.$event->signedBy->lastName,
                 'signedDate' => $step->signedDate->toDateTimeString(),
             ]),
-            'createdAt' => now(),
         ]);
 
         // If workflow is completed, send completion notification
         if ($workflow->workflowStatus->value === 'completed') {
             Notifications::create([
                 'type' => 'workflow_completed',
-                'notifiableType' => 'App\Models\Students',
-                'notifiableId' => $student->studentId,
+                'notifiable_type' => 'App\Models\Students',
+                'notifiable_id' => $student->studentId,
                 'data' => json_encode([
-                    'message' => "Your enrollment workflow is now complete! All steps have been signed.",
+                    'message' => 'Your enrollment workflow is now complete! All steps have been signed.',
                     'enrollmentId' => $enrollment->enrollmentId,
                     'workflowId' => $workflow->workflowId,
                 ]),
-                'createdAt' => now(),
             ]);
         }
     }

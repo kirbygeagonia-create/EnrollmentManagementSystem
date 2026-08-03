@@ -4,5 +4,6 @@ namespace App\Enums;
 
 enum PaymentMode: string
 {
-    case Cash = 'cash'; case Online = 'online';
+    case Cash = 'cash';
+    case Online = 'online';
 }

@@ -2,17 +2,20 @@
 
 namespace Tests\Unit;
 
+use App\Enums\EnrollmentStatus;
+use App\Exceptions\InvalidStateTransitionException;
+use App\Models\Academicterms;
+use App\Models\Academicunits;
+use App\Models\Academicyears;
+use App\Models\Admissions;
+use App\Models\Courses;
 use App\Models\Enrollments;
+use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
-use App\Models\Courses;
-use App\Models\Academicterms;
-use App\Models\Admissions;
 use App\Services\EnrollmentStateMachine;
-use App\Enums\EnrollmentStatus;
-use App\Enums\EnrolledSubjectStatus;
-use App\Exceptions\InvalidStateTransitionException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EnrollmentStateMachineTest extends TestCase
@@ -20,20 +23,35 @@ class EnrollmentStateMachineTest extends TestCase
     use RefreshDatabase;
 
     private EnrollmentStateMachine $stateMachine;
+
     private Enrollments $enrollment;
+
     private Staffusers $staff;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->stateMachine = new EnrollmentStateMachine();
+        $this->stateMachine = new EnrollmentStateMachine;
         $this->staff = Staffusers::factory()->create();
+
+        Religions::create(['religionName' => 'Roman Catholic']);
+        Academicunits::create([
+            'unitName' => 'College of Computing',
+            'unitType' => 'college',
+        ]);
+        Academicyears::create([
+            'yearLabel' => '2026-2027',
+            'startDate' => '2026-06-01',
+            'endDate' => '2027-03-31',
+        ]);
 
         $student = Students::create([
             'schoolIdNumber' => '2026-0001',
             'lastName' => 'Test',
             'firstName' => 'Student',
+            'middleName' => 'M',
+            'suffix' => '',
             'gender' => 'male',
             'birthdate' => '2000-01-01',
             'birthplace' => 'Test City',
@@ -82,10 +100,11 @@ class EnrollmentStateMachineTest extends TestCase
             'enrollmentType' => 'new',
             'academicStanding' => 'regular',
             'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $this->staff->userId,
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_valid_transition_from_pending_to_evaluated(): void
     {
         $this->stateMachine->transition(
@@ -98,7 +117,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('evaluated', $this->enrollment->fresh()->enrollmentStatus->value);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_valid_transition_from_evaluated_to_assessed(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Evaluated]);
@@ -113,7 +132,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('assessed', $this->enrollment->fresh()->enrollmentStatus->value);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_valid_transition_from_assessed_to_paid(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Assessed]);
@@ -128,7 +147,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('paid', $this->enrollment->fresh()->enrollmentStatus->value);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_valid_transition_from_paid_to_enrolled(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Paid]);
@@ -143,7 +162,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('enrolled', $this->enrollment->fresh()->enrollmentStatus->value);
     }
 
-    /** @test */
+    #[Test]
     public function it_allows_valid_transition_from_enrolled_to_dropped(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Enrolled]);
@@ -158,7 +177,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('dropped', $this->enrollment->fresh()->enrollmentStatus->value);
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_exception_for_invalid_transition(): void
     {
         $this->expectException(InvalidStateTransitionException::class);
@@ -171,7 +190,7 @@ class EnrollmentStateMachineTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_exception_for_transition_from_dropped(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
@@ -186,7 +205,7 @@ class EnrollmentStateMachineTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_status_history_on_transition(): void
     {
         $this->stateMachine->transition(
@@ -205,7 +224,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals('Evaluation completed', $history->remarks);
     }
 
-    /** @test */
+    #[Test]
     public function it_returns_allowed_transitions(): void
     {
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);
@@ -220,7 +239,7 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertEquals([], $allowed);
     }
 
-    /** @test */
+    #[Test]
     public function it_correctly_checks_can_transition(): void
     {
         $this->assertTrue($this->stateMachine->canTransition($this->enrollment, EnrollmentStatus::Evaluated));
