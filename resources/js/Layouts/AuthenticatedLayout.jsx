@@ -15,7 +15,7 @@ const navSections = [
         label: 'Admission',
         items: [
             { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Entrance Exam', route: 'entrance-exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
             { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
         ],
     },
@@ -43,10 +43,7 @@ const navSections = [
     {
         label: 'Registrar',
         items: [
-            { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Print Certificate', route: 'registrar.print-certificate', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Print Class Cards', route: 'registrar.print-class-cards', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Print Subject Load', route: 'registrar.print-subject-load', icon: PrintIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+{ name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
         ],
     },
     {
@@ -58,14 +55,14 @@ const navSections = [
     {
         label: 'ID Office',
         items: [
-            { name: 'ID Requests', route: 'id-office.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'ID Requests', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
         ],
     },
     {
         label: 'Administration',
         items: [
-            { name: 'Reference Data', route: 'admin.reference-data', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
-            { name: 'User Management', route: 'admin.users', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
+{ name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
+    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
         ],
         adminOnly: true,
     },
@@ -121,7 +118,8 @@ function UsersIcon({ className }) {
 }
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { user, url } = usePage().props.auth;
+    const { user } = usePage().props.auth;
+    const { url } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showingUserMenu, setShowingUserMenu] = useState(false);
 
