@@ -49,6 +49,16 @@ class Staffusers extends Authenticatable
     }
 
     /**
+     * Full display name (first + middle initial + last).
+     */
+    public function getNameAttribute(): string
+    {
+        $middle = $this->middleName ? ' '.mb_substr($this->middleName, 0, 1).'.' : '';
+
+        return trim($this->firstName.$middle.' '.$this->lastName);
+    }
+
+    /**
      * Get the name of the unique identifier for the user.
      */
     public function getAuthIdentifierName(): string
