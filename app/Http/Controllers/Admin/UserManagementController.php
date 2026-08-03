@@ -34,7 +34,7 @@ class UserManagementController extends Controller
             ->when($request->officeId, fn ($q, $id) => $q->where('officeId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->search, fn ($q, $search) => $q->where('firstName', 'like', "%{$search}%")->orWhere('lastName', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%")->orWhere('employeeNo', $search))
-            ->latest();
+            ->orderByDesc('userId');
 
         $users = $query->paginate(20)->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
@@ -185,7 +185,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('manageRoles', Roles::class);
 
-        $roles = Roles::with('permissions')->latest()->paginate(20);
+        $roles = Roles::with('permissions')->orderByDesc('id')->paginate(20);
         $permissions = Permissions::all(['id', 'name', 'module']);
 
         return Inertia::render('Admin/UserManagement/Roles', [
@@ -239,7 +239,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('managePermissions', Permissions::class);
 
-        $permissions = Permissions::latest()->paginate(20);
+        $permissions = Permissions::orderByDesc('id')->paginate(20);
 
         return Inertia::render('Admin/UserManagement/Permissions', [
             'permissions' => $permissions,
@@ -310,7 +310,7 @@ class UserManagementController extends Controller
             ->when($request->entityTable, fn ($q, $table) => $q->where('entityTable', $table))
             ->when($request->dateFrom, fn ($q, $date) => $q->whereDate('createdAt', '>=', $date))
             ->when($request->dateTo, fn ($q, $date) => $q->whereDate('createdAt', '<=', $date))
-            ->latest();
+            ->orderByDesc('createdAt');
 
         $logs = $query->paginate(50)->withQueryString();
 

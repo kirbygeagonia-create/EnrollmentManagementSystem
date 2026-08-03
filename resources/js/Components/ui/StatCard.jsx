@@ -1,6 +1,7 @@
 export default function StatCard({ label, value, icon, iconBg = 'brand', trend, trendUp, className = '' }) {
     const iconBgClasses = {
         brand: 'bg-brand-100 text-brand-700',
+        seait: 'bg-seait-100 text-seait-700',
         success: 'bg-success-100 text-success-700',
         warning: 'bg-warning-100 text-warning-700',
         danger: 'bg-danger-100 text-danger-700',
@@ -21,7 +22,7 @@ export default function StatCard({ label, value, icon, iconBg = 'brand', trend, 
                     )}
                 </div>
                 {icon && (
-                    <div className={`stat-card-icon ${iconBgClasses[iconBg]} flex-shrink-0`}>
+                    <div className={`stat-card-icon ${iconBgClasses[iconBg] || iconBgClasses.brand} flex-shrink-0`}>
                         {icon}
                     </div>
                 )}

@@ -8,7 +8,7 @@
     }
 
     body {
-        @apply bg-brand-50 text-brand-900 font-sans leading-relaxed;
+        @apply bg-gradient-to-b from-navy-50 to-navy-100 text-brand-900 font-sans leading-relaxed min-h-screen;
         font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
 
@@ -24,26 +24,30 @@
     h6 { @apply text-sm sm:text-base; }
 
     a {
-        @apply text-brand-600 hover:text-brand-700 transition-colors duration-150;
+        @apply text-seait-600 hover:text-seait-700 transition-colors duration-150;
     }
 
     ::selection {
-        @apply bg-accent-200 text-brand-900;
+        @apply bg-seait-200 text-brand-900;
     }
 
     :focus-visible {
-        @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+        @apply outline-none ring-2 ring-seait-500 ring-offset-2;
     }
 }
 
 @layer components {
     /* Card Component */
     .card {
-        @apply bg-white rounded-card shadow-card border border-brand-100 transition-shadow duration-200 hover:shadow-card-hover;
+        @apply bg-white rounded-card shadow-card border border-gray-100/60 transition-all duration-200 hover:shadow-card-hover;
+    }
+
+    .card-hover {
+        @apply transform -translate-y-1 shadow-card-lg;
     }
 
     .card-header {
-        @apply px-6 py-4 border-b border-brand-100 bg-brand-50 rounded-t-card;
+        @apply px-6 py-4 border-b border-gray-100/60 bg-gray-50/50 rounded-t-card;
     }
 
     .card-title {
@@ -59,7 +63,7 @@
     }
 
     .card-footer {
-        @apply px-6 py-4 border-t border-brand-100 bg-brand-50 rounded-b-card flex items-center justify-end gap-3;
+        @apply px-6 py-4 border-t border-gray-100/60 bg-gray-50/50 rounded-b-card flex items-center justify-end gap-3;
     }
 
     /* Button Variants */
@@ -68,15 +72,15 @@
     }
 
     .btn-primary {
-        @apply btn bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 focus:ring-brand-500;
+        @apply btn bg-gradient-to-r from-seait-500 to-seait-600 text-white shadow-card hover:shadow-card-hover active:scale-[0.97] focus:ring-seait-500;
     }
 
     .btn-secondary {
-        @apply btn bg-white text-brand-700 border border-brand-300 hover:bg-brand-50 active:bg-brand-100 focus:ring-brand-500;
+        @apply btn bg-white text-brand-700 border border-brand-300 dark:bg-navy-800/80 dark:border-navy-700/50 dark:text-navy-100 hover:bg-brand-50 dark:hover:bg-navy-700/50 active:bg-brand-100 dark:active:bg-navy-700 focus:ring-brand-500;
     }
 
     .btn-accent {
-        @apply btn bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700 focus:ring-accent-500;
+        @apply btn bg-gradient-to-r from-seait-500 via-seait-500 to-orange-500 text-white shadow-[0_0_20px_rgba(255,107,53,0.12)] hover:shadow-[0_0_30px_rgba(255,107,53,0.18)] active:scale-[0.97] focus:ring-seait-500;
     }
 
     .btn-danger {
@@ -84,7 +88,7 @@
     }
 
     .btn-ghost {
-        @apply btn bg-transparent text-brand-600 hover:bg-brand-100 active:bg-brand-200 focus:ring-brand-500;
+        @apply btn bg-transparent text-brand-600 hover:bg-brand-100 dark:hover:bg-navy-800/50 active:bg-brand-200 dark:active:bg-navy-700 focus:ring-brand-500;
     }
 
     .btn-sm {
@@ -107,7 +111,7 @@
     .form-input {
         @apply w-full rounded-input border border-brand-300 bg-white px-3 py-2.5 text-sm text-brand-900 placeholder:text-brand-400
                transition-all duration-150
-               focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none
+               focus:border-seait-500 focus:ring-2 focus:ring-seait-500/20 focus:outline-none
                disabled:bg-brand-50 disabled:text-brand-500 disabled:cursor-not-allowed
                hover:border-brand-400;
     }
@@ -133,17 +137,17 @@
     }
 
     .form-checkbox {
-        @apply h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2
+        @apply h-4 w-4 rounded border-brand-300 text-seait-600 focus:ring-2 focus:ring-seait-500/20 focus:ring-offset-2
                transition-colors duration-150
                hover:border-brand-400
-               checked:bg-brand-600 checked:border-brand-600;
+               checked:bg-seait-600 checked:border-seait-600;
     }
 
     .form-radio {
-        @apply h-4 w-4 border-brand-300 text-brand-600 focus:ring-2 focus:ring-brand-500/20 focus:ring-offset-2
+        @apply h-4 w-4 border-brand-300 text-seait-600 focus:ring-2 focus:ring-seait-500/20 focus:ring-offset-2
                transition-colors duration-150
                hover:border-brand-400
-               checked:border-brand-600;
+               checked:border-seait-600;
     }
 
     /* Badge Variants */
@@ -248,11 +252,11 @@
     .pagination-link {
         @apply inline-flex items-center justify-center min-w-[2rem] h-8 rounded-btn px-3 text-sm font-medium
                transition-all duration-150
-               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2;
+               focus:outline-none focus:ring-2 focus:ring-seait-500 focus:ring-offset-2;
     }
 
     .pagination-link-active {
-        @apply pagination-link bg-brand-700 text-white;
+        @apply pagination-link bg-gradient-to-r from-seait-500 to-seait-600 text-white;
     }
 
     .pagination-link-inactive {
@@ -318,7 +322,7 @@
     }
 
     .step-progress-circle.current {
-        @apply bg-brand-600 border-brand-600 text-white ring-4 ring-brand-200;
+        @apply bg-seait-500 border-seait-500 text-white ring-4 ring-seait-200;
     }
 
     .step-progress-circle.pending {
@@ -386,7 +390,12 @@
 
     /* Stat Card */
     .stat-card {
-        @apply card p-6;
+        @apply card p-6 relative overflow-hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        @apply absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-seait-500 to-seait-400;
     }
 
     .stat-card-icon {
@@ -457,11 +466,11 @@
 
     /* Sidebar */
     .sidebar {
-        @apply fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-brand-200 transform transition-transform duration-200 ease-out lg:translate-x-0;
+        @apply fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-navy-900 to-navy-950 border-r border-navy-800 transform transition-transform duration-200 ease-out lg:translate-x-0;
     }
 
     .sidebar-collapsed {
-        @apply -translate-x-full;
+        @apply -translate-x-full lg:translate-x-0;
     }
 
     .sidebar-open {
@@ -481,19 +490,24 @@
     }
 
     .nav-section-label {
-        @apply text-xs font-semibold uppercase tracking-wider text-brand-400 mb-2 px-2;
+        @apply text-xs font-semibold uppercase tracking-wider text-navy-500 mb-2 px-2;
     }
 
     .nav-item {
-        @apply flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium transition-all duration-150;
+        @apply flex items-center gap-3 px-3 py-2.5 rounded-btn text-sm font-medium transition-all duration-150 relative;
     }
 
     .nav-item-active {
-        @apply bg-brand-100 text-brand-800;
+        @apply bg-seait-500/10 text-white;
+    }
+
+    .nav-item-active::before {
+        content: '';
+        @apply absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-seait-500 rounded-r-full;
     }
 
     .nav-item-inactive {
-        @apply text-brand-600 hover:bg-brand-50 hover:text-brand-900;
+        @apply text-navy-300 hover:bg-navy-800 hover:text-white;
     }
 
     .nav-item-icon {
@@ -510,18 +524,32 @@
     }
 
     .user-avatar {
-        @apply h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-medium;
+        @apply h-8 w-8 rounded-full bg-seait-100 flex items-center justify-center text-seait-700 font-medium;
     }
 
     .role-badge {
         @apply inline-flex items-center px-2 py-0.5 rounded-badge text-xs font-medium;
     }
 
-    .role-badge-admin { @apply bg-danger-100 text-danger-800; }
-    .role-badge-dean { @apply bg-brand-700 text-white; }
-    .role-badge-officehead { @apply bg-accent-100 text-accent-800; }
-    .role-badge-programhead { @apply bg-info-100 text-info-800; }
-    .role-badge-staff { @apply bg-brand-100 text-brand-700; }
+    .role-badge-admin { @apply bg-seait-100 text-seait-800; }
+    .role-badge-dean { @apply bg-indigo-100 text-indigo-800; }
+    .role-badge-officehead { @apply bg-navy-100 text-navy-800; }
+    .role-badge-programhead { @apply bg-slate-100 text-slate-800; }
+    .role-badge-staff { @apply bg-emerald-100 text-emerald-800; }
+
+    /* Role Panel Skins (CSS variables for accent bars) */
+    .panel-super { --panel-accent: #1F2937; --panel-accent-light: #374151; }
+    .panel-dean { --panel-accent: #4338CA; --panel-accent-light: #6366F1; }
+    .panel-program-head { --panel-accent: #2D4258; --panel-accent-light: #1E2D3D; }
+    .panel-moderator { --panel-accent: #059669; --panel-accent-light: #10B981; }
+    .panel-sao { --panel-accent: #475569; --panel-accent-light: #64748B; }
+
+    /* Apply panel accent to stat cards within role panels */
+    .panel-super .stat-card::before { background: linear-gradient(90deg, var(--panel-accent), var(--panel-accent-light)); }
+    .panel-dean .stat-card::before { background: linear-gradient(90deg, var(--panel-accent), var(--panel-accent-light)); }
+    .panel-program-head .stat-card::before { background: linear-gradient(90deg, var(--panel-accent), var(--panel-accent-light)); }
+    .panel-moderator .stat-card::before { background: linear-gradient(90deg, var(--panel-accent), var(--panel-accent-light)); }
+    .panel-sao .stat-card::before { background: linear-gradient(90deg, var(--panel-accent), var(--panel-accent-light)); }
 }
 
 @layer utilities {

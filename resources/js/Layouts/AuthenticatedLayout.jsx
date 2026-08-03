@@ -4,65 +4,70 @@ import NavLink from '@/Components/NavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
+// Office ID mapping
+// 1 = Registrar, 2 = Accounting, 3 = Assessment, 4 = Department Evaluation
+// 5 = Blocking, 6 = Admission, 7 = Guidance/Entrance Exam, 8 = Clearance
+// 11 = Clinic, 22 = ID Office
+
 const navSections = [
     {
         label: 'Dashboard',
         items: [
-            { name: 'Dashboard', route: 'dashboard', icon: DashboardIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Dashboard', route: 'dashboard', icon: DashboardIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [] },
         ],
     },
     {
         label: 'Admission',
         items: [
-            { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
+            { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [7] },
+            { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4] },
         ],
     },
     {
         label: 'Assessment & Accounting',
         items: [
-            { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Daily Report', route: 'accounting.daily-report', icon: ReportIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [3] },
+            { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
+            { name: 'Daily Report', route: 'accounting.daily-report', icon: ReportIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
         ],
     },
     {
         label: 'Clearance',
         items: [
-            { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-            { name: 'Periods', route: 'clearance.periods', icon: CalendarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
+            { name: 'Periods', route: 'clearance.periods', icon: CalendarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
         ],
     },
     {
         label: 'Blocking',
         items: [
-            { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
         ],
     },
     {
         label: 'Registrar',
         items: [
-{ name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
         ],
     },
     {
         label: 'Clinic',
         items: [
-            { name: 'Clinic Records', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'Clinic Records', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
         ],
     },
     {
         label: 'ID Office',
         items: [
-            { name: 'ID Requests', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
+            { name: 'ID Requests', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
         ],
     },
     {
         label: 'Administration',
         items: [
-{ name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
-    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
+            { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
+            { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
         ],
         adminOnly: true,
     },
@@ -101,9 +106,6 @@ function BlockingIcon({ className }) {
 function RegistrarIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>;
 }
-function PrintIcon({ className }) {
-    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>;
-}
 function ClinicIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }
@@ -123,11 +125,39 @@ export default function AuthenticatedLayout({ header, children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showingUserMenu, setShowingUserMenu] = useState(false);
 
+    // Role-aware navigation filtering
     const filteredSections = navSections.filter(section => {
+        // Admin sees everything
+        if (user?.role === 'admin') return true;
+
+        // Admin-only sections (Administration) - only admin
         if (section.adminOnly) {
-            return ['admin', 'dean', 'officeHead'].includes(user?.role);
+            return user?.role === 'admin';
         }
-        return true;
+
+        // For other sections, check if any item is accessible to this user
+        return section.items.some(item => {
+            // Role match required
+            if (!item.roles.includes(user?.role)) return false;
+
+            // If item has specific offices, user must belong to one of them (or be admin/dean/programHead with broader access)
+            if (item.offices && item.offices.length > 0) {
+                // Admin already handled above
+                // Dean sees Admission, Exam, Evaluation modules (offices 4, 6, 7)
+                if (user?.role === 'dean') {
+                    return item.offices.some(o => [4, 6, 7].includes(o));
+                }
+                // ProgramHead sees Admission + Evaluation (offices 4, 6)
+                if (user?.role === 'programHead') {
+                    return item.offices.some(o => [4, 6].includes(o));
+                }
+                // officeHead and staff must match their officeId
+                return item.offices.includes(user?.officeId);
+            }
+
+            // No office restriction - accessible by role
+            return true;
+        });
     });
 
     const roleBadgeClasses = {
@@ -147,6 +177,18 @@ export default function AuthenticatedLayout({ header, children }) {
             .slice(0, 2);
     };
 
+    // Determine sidebar panel class based on role
+    const getSidebarPanelClass = () => {
+        switch (user?.role) {
+            case 'admin': return 'panel-super';
+            case 'dean': return 'panel-dean';
+            case 'programHead': return 'panel-program-head';
+            case 'officeHead': return 'panel-sao';
+            case 'staff': return 'panel-moderator';
+            default: return '';
+        }
+    };
+
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 1024) {
@@ -158,7 +200,7 @@ export default function AuthenticatedLayout({ header, children }) {
     }, []);
 
     return (
-        <div className="min-h-screen bg-brand-50">
+        <div className="min-h-screen bg-gradient-to-b from-navy-50 to-navy-100">
             {/* Sidebar Overlay */}
             <div
                 className={`sidebar-overlay ${sidebarOpen ? 'sidebar-overlay-open' : ''}`}
@@ -168,28 +210,39 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Sidebar */}
             <aside
-                className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}
+                className={`sidebar ${getSidebarPanelClass()} ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}
                 role="navigation"
                 aria-label="Main navigation"
             >
                 <div className="flex flex-col h-full">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 p-4 border-b border-brand-200">
+                    <div className="flex items-center gap-3 p-4 border-b border-navy-800">
                         <Link href={route('dashboard')} className="flex items-center gap-3">
-                            <ApplicationLogo className="h-10 w-10 text-brand-700" />
-                            <span className="font-heading font-bold text-brand-900 text-lg hidden sm:block">SEAIT</span>
+                            <ApplicationLogo className="h-10 w-10" />
+                            <span className="font-heading font-bold text-white text-lg hidden sm:block">SEAIT</span>
                         </Link>
                     </div>
 
                     {/* Navigation */}
                     <nav className="flex-1 overflow-y-auto p-4 space-y-6" aria-label="Main navigation">
-                        {filteredSections.map((section, sectionIndex) => (
-                            <div key={sectionIndex} className="nav-section">
-                                <p className="nav-section-label">{section.label}</p>
-                                <ul className="space-y-1" role="list">
-                                    {section.items
-                                        .filter(item => item.roles.includes(user?.role))
-                                        .map((item, itemIndex) => {
+                        {filteredSections.map((section, sectionIndex) => {
+                            // Filter items for this user
+                            const visibleItems = section.items.filter(item => {
+                                if (!item.roles.includes(user?.role)) return false;
+                                if (item.offices && item.offices.length > 0) {
+                                    if (['dean', 'programHead'].includes(user?.role)) return true;
+                                    return item.offices.includes(user?.officeId);
+                                }
+                                return true;
+                            });
+
+                            if (visibleItems.length === 0) return null;
+
+                            return (
+                                <div key={sectionIndex} className="nav-section">
+                                    <p className="nav-section-label">{section.label}</p>
+                                    <ul className="space-y-1" role="list">
+                                        {visibleItems.map((item, itemIndex) => {
                                             const routePath = route(item.route).split('?')[0];
                                             const isActive = url.startsWith(routePath);
                                             return (
@@ -205,14 +258,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 </li>
                                             );
                                         })}
-                                </ul>
-                            </div>
-                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })}
                     </nav>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-brand-200">
-                        <p className="text-xs text-brand-400 text-center">
+                    <div className="p-4 border-t border-navy-800">
+                        <p className="text-xs text-navy-500 text-center">
                             SEAIT Enrollment Management System
                         </p>
                     </div>

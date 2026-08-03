@@ -5,18 +5,18 @@ import { Link } from '@inertiajs/react';
 import { Card, StatCard } from '@/Components/ui';
 
 const quickLinks = [
-    { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'ID Office', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'] },
-    { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin', 'dean', 'officeHead'] },
-    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin', 'dean', 'officeHead'] },
+    { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
+    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [7] },
+    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4] },
+    { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [3] },
+    { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
+    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
+    { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
+    { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
+    { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
+    { name: 'ID Office', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
+    { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
+    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
 ];
 
 function AdmissionIcon({ className }) {
@@ -60,7 +60,19 @@ export default function Dashboard() {
     const { user } = usePage().props.auth;
     const stats = usePage().props.stats || {};
 
-    const accessibleLinks = quickLinks.filter(link => link.roles.includes(user?.role));
+    // Filter quick links same way as nav
+    const accessibleLinks = quickLinks.filter(link => {
+        if (!link.roles.includes(user?.role)) return false;
+        if (link.offices && link.offices.length > 0) {
+            if (user?.role === 'admin') return true;
+            // Dean sees Admission, Exam, Evaluation modules (offices 4, 6, 7)
+            if (user?.role === 'dean') return link.offices.some(o => [4, 6, 7].includes(o));
+            // ProgramHead sees Admission + Evaluation (offices 4, 6)
+            if (user?.role === 'programHead') return link.offices.some(o => [4, 6].includes(o));
+            return link.offices.includes(user?.officeId);
+        }
+        return true;
+    });
 
     const timeOfDay = new Date().getHours();
     let greeting = 'Good morning';
@@ -86,7 +98,7 @@ export default function Dashboard() {
                     label="Total Admissions"
                     value={stats.totalAdmissions || '—'}
                     icon={<AdmissionIcon className="h-5 w-5" />}
-                    iconBg="brand"
+                    iconBg="seait"
                     trend={stats.admissionsTrend}
                     trendUp={stats.admissionsTrendUp}
                 />
@@ -123,13 +135,13 @@ export default function Dashboard() {
                         <Link
                             key={link.route}
                             href={route(link.route)}
-                            className="card p-4 hover:shadow-card-hover transition-shadow group"
+                            className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 group"
                         >
                             <div className="flex flex-col items-center text-center">
-                                <div className="h-12 w-12 rounded-lg bg-brand-100 flex items-center justify-center text-brand-700 group-hover:bg-brand-200 transition-colors">
+                                <div className="h-12 w-12 rounded-lg bg-seait-100 flex items-center justify-center text-seait-600 group-hover:bg-seait-200 group-hover:scale-105 transition-all duration-200">
                                     <link.icon className="h-6 w-6" />
                                 </div>
-                                <span className="mt-3 text-sm font-medium text-brand-900 group-hover:text-brand-700 transition-colors">
+                                <span className="mt-3 text-sm font-medium text-brand-900 group-hover:text-seait-600 transition-colors">
                                     {link.name}
                                 </span>
                             </div>
