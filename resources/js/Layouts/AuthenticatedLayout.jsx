@@ -64,6 +64,12 @@ const navSections = [
         ],
     },
     {
+        label: 'Student',
+        items: [
+            { name: 'Student 360', route: 'students.index', icon: StudentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [] },
+        ],
+    },
+    {
         label: 'Administration',
         items: [
             { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
@@ -118,12 +124,56 @@ function DatabaseIcon({ className }) {
 function UsersIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 }
+function StudentIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>;
+}
 
 export default function AuthenticatedLayout({ header, children }) {
     const { user } = usePage().props.auth;
     const { url } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showingUserMenu, setShowingUserMenu] = useState(false);
+    const [showingNotifications, setShowingNotifications] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Fetch notifications on mount and every 30s
+    useEffect(() => {
+        const fetchNotifications = () => {
+            fetch(route('notifications.index'))
+                .then((res) => res.json())
+                .then((data) => {
+                    setNotifications(data.notifications || []);
+                    setUnreadCount(data.unreadCount || 0);
+                })
+                .catch(() => {});
+        };
+
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleMarkAllRead = () => {
+        const xsrf = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith('XSRF-TOKEN='))
+            ?.split('=')[1];
+
+        fetch(route('notifications.read-all'), {
+            method: 'POST',
+            headers: {
+                'X-XSRF-TOKEN': xsrf ? decodeURIComponent(xsrf) : '',
+                'Accept': 'application/json',
+            },
+        })
+            .then((res) => res.json())
+            .then(() => {
+                setUnreadCount(0);
+                setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
+            })
+            .catch(() => {});
+    };
 
     // Role-aware navigation filtering
     const filteredSections = navSections.filter(section => {
@@ -296,6 +346,58 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {/* Notification Bell */}
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    className="p-2 rounded-btn text-brand-500 hover:bg-brand-100 hover:text-brand-900 transition-colors relative"
+                                    onClick={() => {
+                                        setShowingNotifications(!showingNotifications);
+                                        setShowingUserMenu(false);
+                                    }}
+                                    aria-label="Notifications"
+                                    aria-expanded={showingNotifications}
+                                >
+                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {showingNotifications && (
+                                    <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-card shadow-dropdown border border-brand-200 bg-white z-50">
+                                        <div className="flex items-center justify-between px-4 py-3 border-b border-brand-100">
+                                            <h3 className="font-heading font-semibold text-brand-900 text-sm">Notifications</h3>
+                                            <button
+                                                type="button"
+                                                onClick={handleMarkAllRead}
+                                                className="text-xs text-brand-600 hover:text-brand-900"
+                                            >
+                                                Mark all as read
+                                            </button>
+                                        </div>
+                                        <div className="max-h-96 overflow-y-auto">
+                                            {notifications.length === 0 ? (
+                                                <p className="px-4 py-8 text-center text-sm text-brand-500">No notifications yet.</p>
+                                            ) : (
+                                                notifications.map((n) => (
+                                                    <div key={n.id} className={`px-4 py-3 border-b border-brand-50 last:border-0 ${n.read_at ? '' : 'bg-brand-50/50'}`}>
+                                                        <p className="text-sm text-brand-900">{n.data?.message || 'Notification'}</p>
+                                                        <p className="text-xs text-brand-500 mt-1">
+                                                            {n.created_at ? new Date(n.created_at).toLocaleString('en-PH') : ''}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button

@@ -12,8 +12,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Evaluation\EvaluationController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\ID\IDController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Registrar\RegistrarController;
+use App\Http\Controllers\StudentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -28,6 +30,7 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth'])->name('dashboard');
+Route::get('/dashboard/queue-counts', [DashboardController::class, 'queueCounts'])->middleware(['auth'])->name('dashboard.queue-counts');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -226,6 +229,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/users/settings', [UserManagementController::class, 'settings'])->name('admin.users.settings');
     Route::patch('/admin/users/settings/{setting}', [UserManagementController::class, 'updateSetting'])->name('admin.users.settings.update');
     Route::get('/admin/users/audit-logs', [UserManagementController::class, 'auditLogs'])->name('admin.users.audit-logs');
+
+    /* ==================== Student 360 ==================== */
+    Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+    Route::get('/students/{student}', [StudentController::class, 'show'])->name('students.show');
+
+    /* ==================== Notifications ==================== */
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
 });
 

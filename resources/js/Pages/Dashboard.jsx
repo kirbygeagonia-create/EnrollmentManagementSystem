@@ -2,7 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { Card, StatCard } from '@/Components/ui';
+import { Card, StatCard, Badge } from '@/Components/ui';
+import { useState, useEffect } from 'react';
 
 const quickLinks = [
     { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
@@ -59,6 +60,42 @@ function UsersIcon({ className }) {
 export default function Dashboard() {
     const { user } = usePage().props.auth;
     const stats = usePage().props.stats || {};
+    const [queueCounts, setQueueCounts] = useState({});
+
+    // Poll live queue counts every 30s
+    useEffect(() => {
+        const fetchQueueCounts = () => {
+            fetch(route('dashboard.queue-counts'))
+                .then((res) => res.json())
+                .then((data) => setQueueCounts(data.queueCounts || {}))
+                .catch(() => {});
+        };
+
+        fetchQueueCounts();
+        const interval = setInterval(fetchQueueCounts, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const queueItems = [
+        { key: 'admission', label: 'Admission', route: 'admission.index', offices: [6] },
+        { key: 'evaluation', label: 'Evaluation', route: 'evaluation.index', offices: [4] },
+        { key: 'assessment', label: 'Assessment', route: 'assessment.index', offices: [3] },
+        { key: 'accounting', label: 'Accounting', route: 'accounting.index', offices: [2] },
+        { key: 'registrar', label: 'Registrar', route: 'registrar.index', offices: [1] },
+        { key: 'blocking', label: 'Blocking', route: 'blocking.index', offices: [5] },
+        { key: 'clinic', label: 'Clinic', route: 'clinic.index', offices: [11] },
+        { key: 'id', label: 'ID Office', route: 'id.index', offices: [22] },
+        { key: 'clearance', label: 'Clearance', route: 'clearance.index', offices: [8] },
+    ];
+
+    const canSeeQueue = (offices) => {
+        if (user?.role === 'admin') return true;
+        if (user?.role === 'dean') return offices.some((o) => [4, 6, 7].includes(o));
+        if (user?.role === 'programHead') return offices.some((o) => [4, 6].includes(o));
+        return offices.includes(user?.officeId);
+    };
+
+    const visibleQueues = queueItems.filter((q) => canSeeQueue(q.offices));
 
     // Filter quick links same way as nav
     const accessibleLinks = quickLinks.filter(link => {
@@ -145,6 +182,32 @@ export default function Dashboard() {
                                     {link.name}
                                 </span>
                             </div>
+                        </Link>
+                    ))}
+                </div>
+            </Card>
+
+            {/* Live Office Queues (polled) */}
+            <Card title="Live Office Queues" subtitle="Pending work per office — refreshes every 30 seconds" className="mt-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {visibleQueues.map((q) => (
+                        <Link
+                            key={q.key}
+                            href={route(q.route)}
+                            className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-brand-700">{q.label}</span>
+                                <Badge tone={queueCounts[q.key] > 0 ? 'warning' : 'success'}>
+                                    {queueCounts[q.key] > 0 ? 'Incoming' : 'Clear'}
+                                </Badge>
+                            </div>
+                            <p className="mt-2 text-3xl font-bold text-brand-900">
+                                {queueCounts[q.key] !== undefined ? Number(queueCounts[q.key]).toLocaleString() : '—'}
+                            </p>
+                            <p className="text-xs text-brand-500 mt-1">
+                                {queueCounts[q.key] > 0 ? 'Waiting' : 'No pending work'}
+                            </p>
                         </Link>
                     ))}
                 </div>
