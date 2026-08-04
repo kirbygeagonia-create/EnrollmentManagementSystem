@@ -41,6 +41,16 @@ class Clearanceapprovals extends Model
     }
 
     /**
+     * Alias used by clearance pages (approvals.requirement.office).
+     *
+     * @return BelongsTo<Clearancerequirements, $this>
+     */
+    public function requirement(): BelongsTo
+    {
+        return $this->belongsTo(Clearancerequirements::class, 'clearanceRequirementId');
+    }
+
+    /**
      * @return BelongsTo<Studentclearances, $this>
      */
     public function studentClearance(): BelongsTo

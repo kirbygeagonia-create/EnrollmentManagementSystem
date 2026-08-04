@@ -37,7 +37,7 @@ class AccountingController extends Controller
             ->where('remainingBalance', '>', 0)
             ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Assessed))
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('assessmentId');
 
         $assessments = $query->paginate(20)->withQueryString();
 
@@ -123,7 +123,7 @@ class AccountingController extends Controller
         $payments = Payments::with(['enrollment.student', 'processedBy'])
             ->whereDate('paymentDate', $date)
             ->where('paymentStatus', PaymentStatus::Paid)
-            ->latest()
+            ->orderByDesc('paymentId')
             ->get();
 
         $summary = [

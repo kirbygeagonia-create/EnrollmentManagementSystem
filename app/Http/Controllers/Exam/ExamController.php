@@ -33,7 +33,7 @@ class ExamController extends Controller
             ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('examId');
 
         $exams = $query->paginate(20)->withQueryString();
 
@@ -227,7 +227,7 @@ class ExamController extends Controller
         $query = Examresults::with(['student', 'course', 'term'])
             ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
-            ->latest();
+            ->orderByDesc('examId');
 
         $exams = $query->paginate(50)->withQueryString();
 

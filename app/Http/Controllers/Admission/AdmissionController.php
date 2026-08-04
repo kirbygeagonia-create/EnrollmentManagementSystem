@@ -36,7 +36,7 @@ class AdmissionController extends Controller
         $query = Admissions::with(['student', 'course', 'term', 'evaluatedBy'])
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('admissionId');
 
         $admissions = $query->paginate(20)->withQueryString();
 

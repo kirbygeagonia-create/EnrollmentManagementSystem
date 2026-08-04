@@ -45,7 +45,7 @@ class EvaluationController extends Controller
         $query = Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedBy'])
             ->where('enrollmentStatus', EnrollmentStatus::Pending)
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('enrollmentId');
 
         $enrollments = $query->paginate(20)->withQueryString();
 

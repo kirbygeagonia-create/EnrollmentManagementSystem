@@ -21,7 +21,7 @@ class AdminAccessSmokeTest extends TestCase
         ]);
         DB::purge('mysql');
 
-        $admin = Staffusers::where('username', 'admin')->firstOrFail();
+        $admin = Staffusers::where('username', 'staff8')->firstOrFail();
 
         $routes = [
             'dashboard',

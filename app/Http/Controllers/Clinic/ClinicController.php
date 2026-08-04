@@ -34,7 +34,7 @@ class ClinicController extends Controller
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q->where('stepStatus', 'pending')->where('officeId', 11))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('enrollmentId');
 
         $enrollments = $query->paginate(20)->withQueryString();
 

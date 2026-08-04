@@ -39,7 +39,7 @@ class ClearanceController extends Controller
             ->when($request->periodId, fn ($q, $id) => $q->where('clearancePeriodId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('overallStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->latest();
+            ->orderByDesc('studentClearanceId');
 
         $clearances = $query->paginate(20)->withQueryString();
 
@@ -57,7 +57,7 @@ class ClearanceController extends Controller
     {
         $this->authorize('managePeriods', Studentclearances::class);
 
-        $periods = Clearanceperiods::with('term.academicYear')->latest()->get();
+        $periods = Clearanceperiods::with('term.academicYear')->orderByDesc('clearancePeriodId')->get();
 
         return Inertia::render('Clearance/Periods', [
             'periods' => $periods,

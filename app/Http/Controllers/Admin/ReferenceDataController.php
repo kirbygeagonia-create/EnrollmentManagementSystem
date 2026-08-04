@@ -62,7 +62,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
 
-        $courses = Courses::with('unit')->latest()->paginate(20);
+        $courses = Courses::with('unit')->orderByDesc('courseId')->paginate(20);
         $units = Academicunits::all(['unitId', 'unitName']);
 
         return Inertia::render('Admin/ReferenceData/Courses', [
@@ -116,7 +116,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageMajors', Majors::class);
 
-        $majors = Majors::with('course')->latest()->paginate(20);
+        $majors = Majors::with('course')->orderByDesc('majorId')->paginate(20);
         $courses = Courses::all(['courseId', 'courseName']);
 
         return Inertia::render('Admin/ReferenceData/Majors', [
@@ -158,7 +158,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCurriculums', Curriculums::class);
 
-        $curriculums = Curriculums::with(['course', 'major'])->latest()->paginate(20);
+        $curriculums = Curriculums::with(['course', 'major'])->orderByDesc('curriculumId')->paginate(20);
         $courses = Courses::all(['courseId', 'courseName']);
         $majors = Majors::all(['majorId', 'majorName']);
 
@@ -266,7 +266,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageSubjects', Subjects::class);
 
-        $subjects = Subjects::latest()->paginate(20);
+        $subjects = Subjects::orderByDesc('subjectId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/Subjects', [
             'subjects' => $subjects,
@@ -316,7 +316,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageTerms', Academicterms::class);
 
-        $terms = Academicterms::with('academicYear')->latest()->paginate(20);
+        $terms = Academicterms::with('academicYear')->orderByDesc('termId')->paginate(20);
         $years = Academicyears::all(['academicYearId', 'yearLabel']);
 
         return Inertia::render('Admin/ReferenceData/Terms', [
@@ -366,7 +366,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageFeeTypes', Feetypes::class);
 
-        $feeTypes = Feetypes::latest()->paginate(20);
+        $feeTypes = Feetypes::orderByDesc('feeTypeId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/FeeTypes', [
             'feeTypes' => $feeTypes,
@@ -412,7 +412,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageScholarshipTypes', Scholarshiptypes::class);
 
-        $types = Scholarshiptypes::latest()->paginate(20);
+        $types = Scholarshiptypes::orderByDesc('scholarshipTypeId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/ScholarshipTypes', [
             'types' => $types,
@@ -458,7 +458,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
 
-        $offices = Offices::latest()->paginate(20);
+        $offices = Offices::orderByDesc('officeId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/Offices', [
             'offices' => $offices,
@@ -494,7 +494,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageRooms', Rooms::class);
 
-        $rooms = Rooms::latest()->paginate(20);
+        $rooms = Rooms::orderByDesc('roomId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/Rooms', [
             'rooms' => $rooms,
@@ -538,7 +538,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageBlocks', Blocks::class);
 
-        $blocks = Blocks::with(['course', 'term.academicYear'])->latest()->paginate(20);
+        $blocks = Blocks::with(['course', 'term.academicYear'])->orderByDesc('blockId')->paginate(20);
         $courses = Courses::all(['courseId', 'courseName']);
         $terms = Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']);
 
@@ -587,7 +587,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
 
-        $requirements = Admissionrequirements::latest()->paginate(20);
+        $requirements = Admissionrequirements::orderByDesc('requirementId')->paginate(20);
 
         return Inertia::render('Admin/ReferenceData/AdmissionRequirements', [
             'requirements' => $requirements,
@@ -632,7 +632,7 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
 
-        $requirements = Clearancerequirements::with('office')->latest()->paginate(20);
+        $requirements = Clearancerequirements::with('office')->orderByDesc('clearanceRequirementId')->paginate(20);
         $offices = Offices::all(['officeId', 'officeName']);
 
         return Inertia::render('Admin/ReferenceData/ClearanceRequirements', [

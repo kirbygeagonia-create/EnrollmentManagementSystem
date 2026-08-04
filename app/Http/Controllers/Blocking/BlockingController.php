@@ -41,7 +41,7 @@ class BlockingController extends Controller
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
             ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
-            ->latest();
+            ->orderByDesc('blockId');
 
         $blocks = $query->paginate(20)->withQueryString();
 
