@@ -166,7 +166,7 @@ class AssessmentController extends Controller
             'scholarshipTypeId' => $scholarshipType->scholarshipTypeId,
             'termId' => $assessment->enrollment->termId,
             'status' => ScholarshipStatus::Active,
-            'approvedBy' => Auth::id(),
+            'approvedBy' => Auth::user()->userId,
             'awardedBeforeEnrollment' => false,
         ]);
 

@@ -136,7 +136,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('delete', $user);
 
-        if ($user->userId === Auth::id()) {
+        if ($user->userId === Auth::user()->userId) {
             return back()->withErrors(['user' => 'Cannot delete yourself.']);
         }
 
@@ -169,7 +169,7 @@ class UserManagementController extends Controller
     {
         $this->authorize('toggleStatus', $user);
 
-        if ($user->userId === Auth::id()) {
+        if ($user->userId === Auth::user()->userId) {
             return back()->withErrors(['user' => 'Cannot change your own status.']);
         }
 

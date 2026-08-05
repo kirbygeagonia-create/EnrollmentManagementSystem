@@ -283,7 +283,7 @@ class AdmissionController extends Controller
 
         $admission->update([
             'admissionStatus' => 'approved',
-            'evaluatedBy' => Auth::id(),
+            'evaluatedBy' => Auth::user()->userId,
             'evaluatedDate' => now(),
         ]);
 
@@ -299,7 +299,7 @@ class AdmissionController extends Controller
 
         $admission->update([
             'admissionStatus' => 'rejected',
-            'evaluatedBy' => Auth::id(),
+            'evaluatedBy' => Auth::user()->userId,
             'evaluatedDate' => now(),
         ]);
 

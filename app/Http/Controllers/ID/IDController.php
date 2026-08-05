@@ -133,7 +133,7 @@ class IDController extends Controller
 
         $studentId->update([
             'validationStatus' => IdValidationStatus::Active,
-            'validatedBy' => Auth::id(),
+            'validatedBy' => Auth::user()->userId,
             'validatedDate' => now(),
         ]);
 

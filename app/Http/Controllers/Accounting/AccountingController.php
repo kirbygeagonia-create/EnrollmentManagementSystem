@@ -84,7 +84,7 @@ class AccountingController extends Controller
             'amount' => $validated['amount'],
             'paymentDate' => $validated['paymentDate'],
             'paymentMode' => $validated['paymentMode'],
-            'processedBy' => Auth::id(),
+            'processedBy' => Auth::user()->userId,
             'paymentStatus' => PaymentStatus::Paid,
         ]);
 

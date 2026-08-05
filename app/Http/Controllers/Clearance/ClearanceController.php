@@ -160,7 +160,7 @@ class ClearanceController extends Controller
         $this->authorize('recordDeskReceipt', $clearance);
 
         $clearance->update([
-            'receivedBy' => Auth::id(),
+            'receivedBy' => Auth::user()->userId,
             'receivedDate' => now(),
             'overallStatus' => ClearanceOverallStatus::Approved,
         ]);
@@ -182,7 +182,7 @@ class ClearanceController extends Controller
 
         $approval->update([
             'status' => $validated['status'],
-            'approvedBy' => Auth::id(),
+            'approvedBy' => Auth::user()->userId,
             'approvalDate' => now(),
             'remarks' => $validated['remarks'],
         ]);
@@ -240,7 +240,7 @@ class ClearanceController extends Controller
             'amount' => $feeType->defaultAmount ?? 100,
             'paymentDate' => now(),
             'paymentMode' => PaymentMode::Cash,
-            'processedBy' => Auth::id(),
+            'processedBy' => Auth::user()->userId,
             'paymentStatus' => PaymentStatus::Paid,
         ]);
 

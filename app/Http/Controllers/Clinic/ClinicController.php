@@ -83,7 +83,7 @@ class ClinicController extends Controller
         $clinicRecord = Clinicrecords::updateOrCreate(
             ['enrollmentId' => $enrollment->enrollmentId],
             array_merge($validated, [
-                'clinicStaffId' => Auth::id(),
+                'clinicStaffId' => Auth::user()->userId,
                 'status' => ClinicRecordStatus::Completed,
             ])
         );

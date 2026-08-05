@@ -176,7 +176,7 @@ class EvaluationController extends Controller
         $enrollment->update([
             'academicStanding' => $validated['academicStanding'],
             'formIssuedDate' => $validated['formIssuedDate'],
-            'evaluatedBy' => Auth::id(),
+            'evaluatedBy' => Auth::user()->userId,
         ]);
 
         return back()->with('success', 'Profile captured successfully.');

@@ -163,7 +163,7 @@ class RegistrarController extends Controller
 
         $enrollment->update([
             'enrollmentType' => $enrollmentType,
-            'registrarProcessedBy' => Auth::id(),
+            'registrarProcessedBy' => Auth::user()->userId,
             'enrolledDate' => now(),
         ]);
 
@@ -193,7 +193,7 @@ class RegistrarController extends Controller
             'enrollmentId' => $enrollment->enrollmentId,
             'documentType' => DocumentType::Certificate,
             'printedDate' => now(),
-            'printedBy' => Auth::id(),
+            'printedBy' => Auth::user()->userId,
             'documentNumber' => Documentprintlog::where('enrollmentId', $enrollment->enrollmentId)
                 ->where('documentType', DocumentType::Certificate)
                 ->count() + 1,
@@ -223,7 +223,7 @@ class RegistrarController extends Controller
                 'enrollmentId' => $enrollment->enrollmentId,
                 'documentType' => DocumentType::ClassCard,
                 'printedDate' => now(),
-                'printedBy' => Auth::id(),
+                'printedBy' => Auth::user()->userId,
                 'documentNumber' => $index + 1,
             ]);
         }
@@ -249,7 +249,7 @@ class RegistrarController extends Controller
             'enrollmentId' => $enrollment->enrollmentId,
             'documentType' => DocumentType::SubjectLoad,
             'printedDate' => now(),
-            'printedBy' => Auth::id(),
+            'printedBy' => Auth::user()->userId,
             'documentNumber' => Documentprintlog::where('enrollmentId', $enrollment->enrollmentId)
                 ->where('documentType', DocumentType::SubjectLoad)
                 ->count() + 1,
