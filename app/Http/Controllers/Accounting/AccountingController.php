@@ -69,7 +69,7 @@ class AccountingController extends Controller
      */
     public function record(Request $request, Studentassessments $assessment): RedirectResponse
     {
-        $this->authorize('record', $assessment);
+        $this->authorize('payment.record', $assessment);
 
         $validated = $request->validate([
             'orNumber' => 'required|string|max:50|unique:payments,orNumber',

@@ -48,7 +48,7 @@ class ExamController extends Controller
      */
     public function create(Request $request): Response
     {
-        $this->authorize('record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
 
         $courseId = $request->courseId;
         $termId = $request->termId;
@@ -68,7 +68,7 @@ class ExamController extends Controller
      */
     public function students(Request $request): JsonResponse
     {
-        $this->authorize('record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
 
         $request->validate([
             'courseId' => 'required|exists:courses,courseId',
@@ -89,7 +89,7 @@ class ExamController extends Controller
      */
     public function recordGeneral(Request $request): RedirectResponse
     {
-        $this->authorize('record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
 
         $validated = $request->validate([
             'studentId' => 'required|exists:students,studentId',
@@ -131,7 +131,7 @@ class ExamController extends Controller
      */
     public function recordCourseSpecific(Request $request): RedirectResponse
     {
-        $this->authorize('record', [Courses::class, ExamStage::Entrance, ExamType::CourseSpecific]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::CourseSpecific]);
 
         $validated = $request->validate([
             'studentId' => 'required|exists:students,studentId',
@@ -189,7 +189,7 @@ class ExamController extends Controller
      */
     public function recordRetention(Request $request): RedirectResponse
     {
-        $this->authorize('record', [Courses::class, ExamStage::Retention, ExamType::CourseSpecific]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Retention, ExamType::CourseSpecific]);
 
         $validated = $request->validate([
             'studentId' => 'required|exists:students,studentId',
@@ -237,3 +237,4 @@ class ExamController extends Controller
         ]);
     }
 }
+

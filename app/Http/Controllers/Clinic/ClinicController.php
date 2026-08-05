@@ -50,7 +50,7 @@ class ClinicController extends Controller
      */
     public function show(Enrollments $enrollment): Response
     {
-        $this->authorize('view', [Clinicrecords::class, $enrollment]);
+        $this->authorize('clinic.view', $enrollment);
 
         $enrollment->load(['student', 'course', 'term', 'clinicrecords', 'enrollmentworkflow.workflowsteps']);
 
@@ -67,7 +67,7 @@ class ClinicController extends Controller
      */
     public function record(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('record', $enrollment);
+        $this->authorize('clinic.record', $enrollment);
 
         $validated = $request->validate([
             'heightCm' => 'required|numeric|min:0|max:300',

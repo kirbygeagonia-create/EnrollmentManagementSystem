@@ -35,7 +35,7 @@ class BlockingController extends Controller
      */
     public function index(Request $request): Response
     {
-        $this->authorize('viewAny', Blocks::class);
+        $this->authorize('blocking.viewAny');
 
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'enrolledSubjects'])
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
@@ -58,7 +58,7 @@ class BlockingController extends Controller
      */
     public function show(Blocks $block): Response
     {
-        $this->authorize('view', $block);
+        $this->authorize('blocking.view', $block);
 
         $block->load([
             'course', 'term.academicYear',
@@ -87,7 +87,7 @@ class BlockingController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $this->authorize('manageBlocks', Blocks::class);
+        $this->authorize('blocking.manageBlocks');
 
         $validated = $request->validate([
             'courseId' => 'required|exists:courses,courseId',
@@ -107,7 +107,7 @@ class BlockingController extends Controller
      */
     public function update(Request $request, Blocks $block): RedirectResponse
     {
-        $this->authorize('manageBlocks', Blocks::class);
+        $this->authorize('blocking.manageBlocks');
 
         $block->update($request->validate([
             'blockName' => 'required|string|max:50',
@@ -122,7 +122,7 @@ class BlockingController extends Controller
      */
     public function destroy(Blocks $block): RedirectResponse
     {
-        $this->authorize('manageBlocks', Blocks::class);
+        $this->authorize('blocking.manageBlocks');
 
         $block->delete();
 
@@ -134,7 +134,7 @@ class BlockingController extends Controller
      */
     public function storeSchedule(Request $request, Blocks $block): RedirectResponse
     {
-        $this->authorize('manageSchedules', Blocks::class);
+        $this->authorize('blocking.manageSchedules');
 
         $validated = $request->validate([
             'subjectId' => 'required|exists:subjects,subjectId',
@@ -213,7 +213,7 @@ class BlockingController extends Controller
      */
     public function assignStudents(Request $request, Blocks $block): RedirectResponse
     {
-        $this->authorize('assignStudents', [Enrollments::class, $block]);
+        $this->authorize('blocking.assignStudents', $block);
 
         $validated = $request->validate([
             'enrollmentIds' => 'required|array',
@@ -256,7 +256,7 @@ class BlockingController extends Controller
      */
     public function printBlockSchedule(Blocks $block): Response
     {
-        $this->authorize('printBlockSchedule', $block);
+        $this->authorize('blocking.printBlockSchedule', $block);
 
         $block->load([
             'course', 'term.academicYear',

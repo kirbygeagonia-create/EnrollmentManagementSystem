@@ -52,7 +52,7 @@ class IDController extends Controller
      */
     public function show(Enrollments $enrollment): Response
     {
-        $this->authorize('view', [Idrequests::class, $enrollment]);
+        $this->authorize('id.view', $enrollment);
 
         $enrollment->load(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow.workflowsteps']);
 
@@ -72,7 +72,7 @@ class IDController extends Controller
      */
     public function create(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('create', $enrollment);
+        $this->authorize('id.create', $enrollment);
 
         $validated = $request->validate([
             'requestReason' => 'required|in:newStudent,lost,renewal,shifted',
@@ -129,7 +129,7 @@ class IDController extends Controller
      */
     public function validate(Request $request, Studentids $studentId): RedirectResponse
     {
-        $this->authorize('validate', $studentId);
+        $this->authorize('id.validate', $studentId);
 
         $studentId->update([
             'validationStatus' => IdValidationStatus::Active,
@@ -151,7 +151,7 @@ class IDController extends Controller
      */
     public function release(Request $request, Studentids $studentId): RedirectResponse
     {
-        $this->authorize('release', $studentId);
+        $this->authorize('id.release', $studentId);
 
         $studentId->update([
             'validationStatus' => IdValidationStatus::Active,

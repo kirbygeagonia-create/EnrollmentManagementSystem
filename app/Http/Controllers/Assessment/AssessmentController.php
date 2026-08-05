@@ -73,7 +73,7 @@ class AssessmentController extends Controller
      */
     public function compute(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('compute', $enrollment);
+        $this->authorize('assessment.compute', $enrollment);
 
         $enrolledUnits = $enrollment->enrolledSubjects()
             ->where('status', '!=', 'dropped')

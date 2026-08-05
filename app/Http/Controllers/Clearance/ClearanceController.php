@@ -103,7 +103,7 @@ class ClearanceController extends Controller
      */
     public function generateSlip(Request $request): RedirectResponse
     {
-        $this->authorize('generateSlip', [Students::class, Clearanceperiods::class]);
+        $this->authorize('clearance.generateSlip', [Students::class, Clearanceperiods::class]);
 
         $validated = $request->validate([
             'studentId' => 'required|exists:students,studentId',
@@ -173,7 +173,7 @@ class ClearanceController extends Controller
      */
     public function approveRequirement(Request $request, Clearanceapprovals $approval): RedirectResponse
     {
-        $this->authorize('approveRequirement', $approval);
+        $this->authorize('clearance.approveRequirement', $approval);
 
         $validated = $request->validate([
             'status' => 'required|in:approved,waived,rejected',
@@ -212,7 +212,7 @@ class ClearanceController extends Controller
      */
     public function replaceLostSlip(Request $request): RedirectResponse
     {
-        $this->authorize('replaceLostSlip', [Students::class, Clearanceperiods::class]);
+        $this->authorize('clearance.replaceLostSlip', [Students::class, Clearanceperiods::class]);
 
         $validated = $request->validate([
             'studentId' => 'required|exists:students,studentId',
