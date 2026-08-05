@@ -69,8 +69,8 @@ class EvaluationPolicy
             return false;
         }
 
-        // Enrollment must be in evaluated status
-        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Evaluated) {
+        // Enrollment must still be pending (the controller transitions to evaluated after proposing)
+        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Pending) {
             return false;
         }
 

@@ -13,6 +13,7 @@ use App\Models\Feetypes;
 use App\Models\Scholarshiptypes;
 use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
+use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,8 @@ class AssessmentController extends Controller
     use AuthorizesRequests;
 
     public function __construct(
-        private WorkflowService $workflowService
+        private WorkflowService $workflowService,
+        private EnrollmentStateMachine $stateMachine
     ) {}
 
     /**
@@ -97,14 +99,12 @@ class AssessmentController extends Controller
         }
 
         // Apply School Grant (100% full tuition) - BR19
-        $schoolGrant = Scholarshiptypes::where('scholarshipName', 'School Grant (Free Tuition)')->first();
+        // NOTE: Not auto-awarded here. Scholarships are applied explicitly via
+        // applyScholarship (office 3) or during clearance, matching the school's
+        // real process. Auto-awarding 100% coverage to everyone would zero out
+        // every balance and block the Accounting payment step.
         $totalScholarshipCoverage = 0;
         $totalWaived = 0;
-
-        if ($schoolGrant) {
-            $totalScholarshipCoverage = $totalAssessed;
-            $totalWaived = 0; // Lab fees might be waived separately
-        }
 
         $remainingBalance = $totalAssessed - $totalScholarshipCoverage - $totalWaived;
 
@@ -119,18 +119,6 @@ class AssessmentController extends Controller
 
         foreach ($charges as $charge) {
             Charges::create(array_merge($charge, ['assessmentId' => $assessment->assessmentId]));
-        }
-
-        // Auto-award School Grant
-        if ($schoolGrant) {
-            Studentscholarships::create([
-                'studentId' => $enrollment->studentId,
-                'scholarshipTypeId' => $schoolGrant->scholarshipTypeId,
-                'termId' => $enrollment->termId,
-                'status' => ScholarshipStatus::Active,
-                'approvedBy' => Auth::id(),
-                'awardedBeforeEnrollment' => true,
-            ]);
         }
 
         // Transition enrollment to assessed
@@ -232,8 +220,8 @@ class AssessmentController extends Controller
     {
         $this->authorize('finalize', $assessment);
 
-        // Transition enrollment to assessed
-        // $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment finalized');
+        // Transition enrollment to assessed (moves it into the Accounting queue)
+        $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment finalized');
 
         // Sign the Assessment step (office 3) — null-safe: skipped for continuing/shifter students
         $workflow = $assessment->enrollment->enrollmentworkflow;

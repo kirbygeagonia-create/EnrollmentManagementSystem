@@ -161,9 +161,10 @@ class AdmissionController extends Controller
                     'studentId' => $student->studentId,
                     'institutionId' => $institution->institutionId,
                     'levelCompleted' => $bg['levelCompleted'],
-                    'strandTrack' => $bg['strandTrack'],
+                    'strandTrack' => $bg['strandTrack'] ?? '',
                     'yearCompleted' => $bg['yearCompleted'],
-                    'honorsCertifications' => $bg['honorsCertifications'],
+                    'honorsCertifications' => $bg['honorsCertifications'] ?? '',
+                    'supportingDocumentPath' => $bg['supportingDocumentPath'] ?? '',
                 ]);
             }
         }
@@ -186,6 +187,8 @@ class AdmissionController extends Controller
                 'admissionId' => $admission->admissionId,
                 'requirementId' => $req->requirementId,
                 'submissionStatus' => 'pending',
+                'submittedDate' => now(),
+                'remarks' => '',
             ]);
         }
 
