@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\IdValidationStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Studentids extends Model
 {
@@ -27,28 +26,15 @@ class Studentids extends Model
     }
 
     /**
+     * The enrollment this ID was requested for, via the ID request.
+     * NOTE: use $this->idRequest->enrollment — a direct hasOneThrough is not
+     * possible here because studentids points at idrequests (reverse direction).
+     *
      * @return BelongsTo<Idrequests, $this>
      */
     public function idRequest(): BelongsTo
     {
         return $this->belongsTo(Idrequests::class, 'idRequestId');
-    }
-
-    /**
-     * The enrollment this ID was requested for, via the ID request.
-     *
-     * @return HasOneThrough<Enrollments, Idrequests, $this>
-     */
-    public function enrollment(): HasOneThrough
-    {
-        return $this->hasOneThrough(
-            Enrollments::class,
-            Idrequests::class,
-            'idRequestId',
-            'enrollmentId',
-            'idRequestId',
-            'enrollmentId'
-        );
     }
 
     /**

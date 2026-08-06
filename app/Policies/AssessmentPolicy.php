@@ -74,6 +74,8 @@ class AssessmentPolicy
 
     /**
      * Determine whether the user can finalize assessment.
+     * The Assessment office (3) finalizes what it computed and signs its own
+     * workflow step (BR13/BR14); Accounting (2) may also finalize.
      */
     public function finalize(Staffusers $user, Studentassessments $assessment): bool
     {
@@ -81,7 +83,7 @@ class AssessmentPolicy
             return false;
         }
 
-        // Must be Accounting office (officeId = 2)
-        return $user->officeId === 2;
+        // Must be Assessment or Accounting office (officeId = 3 or 2)
+        return in_array($user->officeId, [2, 3]);
     }
 }

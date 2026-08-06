@@ -10,6 +10,7 @@ use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Studentrequirementsubmissions;
+use App\Models\Students;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -51,6 +52,10 @@ class EnrollmentWalkthroughTest extends TestCase
             'database.connections.mysql.password' => '',
         ]);
         DB::purge('mysql');
+
+        // The trait's transaction began on the ORIGINAL default connection;
+        // re-begin it on the real MySQL connection so tests roll back cleanly.
+        $this->beginDatabaseTransaction();
     }
 
     /**
@@ -63,6 +68,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $staff = Staffusers::factory()->make([
             'officeId' => $officeId,
             'role' => 'officeHead',
+            'employeeNo' => 'EMP-E2E-'.uniqid(), // factory's fake()->unique() collides across instances
             'username' => 'e2e_office'.$officeId.'_'.uniqid(),
             'email' => 'e2e_office'.$officeId.'_'.uniqid().'@example.com',
         ]);
@@ -167,6 +173,42 @@ class EnrollmentWalkthroughTest extends TestCase
     }
 
     /**
+     * Ensure a block + schedule exists for the enrollment's course/term.
+     * The live dataset only carries blocks for term 16, but the current term
+     * is 18 — create a minimal fixture block when missing.
+     */
+    private function ensureBlockAndSchedule(Enrollments $enrollment): void
+    {
+        $block = DB::table('blocks')
+            ->where('courseId', $enrollment->courseId)
+            ->where('termId', $enrollment->termId)
+            ->first();
+
+        if (! $block) {
+            $blockId = DB::table('blocks')->insertGetId([
+                'courseId' => $enrollment->courseId,
+                'termId' => $enrollment->termId,
+                'yearLevel' => $enrollment->yearLevel,
+                'blockName' => 'E2E Block '.$enrollment->courseId.'-'.$enrollment->termId,
+                'maxStudents' => 40,
+            ]);
+
+            $scheduleExists = DB::table('schedules')
+                ->where('blockId', $blockId)
+                ->exists();
+
+            if (! $scheduleExists) {
+                DB::table('schedules')->insert([
+                    'blockId' => $blockId,
+                    'subjectId' => DB::table('subjects')->value('subjectId'),
+                    'instructorId' => Staffusers::value('userId'),
+                    'roomId' => DB::table('rooms')->value('roomId'),
+                ]);
+            }
+        }
+    }
+
+    /**
      * Verify all required admission requirements for an admission.
      */
     private function verifyAllRequirements(Admissions $admission): void
@@ -178,20 +220,83 @@ class EnrollmentWalkthroughTest extends TestCase
     /**
      * Create an enrollment directly (the system creates enrollments from
      * approved admissions; there is no enrollment-creation endpoint).
+     *
+     * evaluatedBy is NOT NULL on enrollments; an existing Department
+     * Evaluation (office 4) staff is used as a realistic default.
      */
-    private function createEnrollment(Admissions $admission, string $studentType, int $yearLevel = 1): Enrollments
+    private function createEnrollment(Admissions $admission, string $studentType, int $yearLevel = 1, ?int $evaluatedBy = null): Enrollments
     {
-        return Enrollments::create([
+        return $this->persistEnrollment([
             'studentId' => $admission->studentId,
             'courseId' => $admission->courseId,
             'termId' => $admission->termId,
             'admissionId' => $admission->admissionId,
             'yearLevel' => $yearLevel,
             'studentType' => $studentType,
-            'enrollmentType' => in_array($studentType, ['firstYear', 'transferee']) ? 'new' : 'old',
-            'academicStanding' => 'regular',
-            'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $evaluatedBy,
         ]);
+    }
+
+    /**
+     * Create a student directly. Continuing and shifter students skip the
+     * admission phase entirely (per the enrollment business process), so they
+     * enter the pipeline through the enrollment record alone.
+     */
+    private function createStudent(string $firstName): Students
+    {
+        return Students::create([
+            'schoolIdNumber' => 'E2E-'.uniqid(),
+            'lastName' => 'Walkthrough',
+            'firstName' => $firstName,
+            'middleName' => 'E',
+            'suffix' => 'N/A',
+            'gender' => 'male',
+            'birthdate' => '2002-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'civilStatus' => 'single',
+            'religionId' => 1,
+            'contactNumber' => '09171234567',
+            'telephoneNumber' => null,
+            'semestersCompleted' => 0,
+            'yearsInInstitution' => 0,
+            'email' => 'e2e_'.uniqid().'@example.com',
+            'username' => 'e2e_student_'.uniqid(),
+            'passwordHash' => bcrypt('password123'),
+            'status' => 'active',
+        ]);
+    }
+
+    /**
+     * Create an enrollment without an admission (continuing/shifter path).
+     * admissionId is nullable on enrollments.
+     */
+    private function createEnrollmentNoAdmission(Students $student, int $courseId, string $studentType, int $yearLevel = 1, ?int $evaluatedBy = null): Enrollments
+    {
+        return $this->persistEnrollment([
+            'studentId' => $student->studentId,
+            'courseId' => $courseId,
+            'termId' => 18, // current term
+            'admissionId' => null,
+            'yearLevel' => $yearLevel,
+            'studentType' => $studentType,
+            'evaluatedBy' => $evaluatedBy,
+        ]);
+    }
+
+    private function persistEnrollment(array $attrs): Enrollments
+    {
+        // evaluatedBy is NOT NULL — fall back to an existing office-4 staff
+        if (empty($attrs['evaluatedBy'])) {
+            unset($attrs['evaluatedBy']);
+        }
+
+        return Enrollments::create(array_merge([
+            'enrollmentType' => in_array($attrs['studentType'], ['firstYear', 'transferee'], true) ? 'new' : 'old',
+            'academicStanding' => 'regular',
+            'evaluatedBy' => Staffusers::where('officeId', 4)->value('userId'),
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+        ], $attrs));
     }
 
     /**
@@ -254,6 +359,8 @@ class EnrollmentWalkthroughTest extends TestCase
         );
 
         // --- Blocking (assign to block + schedule) ---
+        $this->ensureBlockAndSchedule($enrollment);
+
         $block = DB::table('blocks')
             ->where('courseId', $enrollment->courseId)
             ->where('termId', $enrollment->termId)
@@ -307,7 +414,9 @@ class EnrollmentWalkthroughTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $studentId = $idRequest->fresh()->studentids->first();
+        // HasOne relation — returns the single model directly (->first() on a
+        // model would forward to a fresh query and return the table's first row!)
+        $studentId = $idRequest->fresh()->studentids;
         $this->assertNotNull($studentId, 'Student ID card should be produced');
 
         $this->actingAs($staff['id'])
@@ -349,11 +458,11 @@ class EnrollmentWalkthroughTest extends TestCase
         $admission->refresh();
         $this->assertEquals('approved', $admission->admissionStatus->value, 'Admission auto-approved after passing course-specific exam');
 
-        // --- Enrollment (system-created) ---
-        $enrollment = $this->createEnrollment($admission, 'firstYear', 1);
-
         // --- Evaluation (office 4) ---
         $evaluator = $this->staffForOffice(4);
+
+        // --- Enrollment (system-created; evaluatedBy = the evaluator) ---
+        $enrollment = $this->createEnrollment($admission, 'firstYear', 1, $evaluator->userId);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -409,7 +518,7 @@ class EnrollmentWalkthroughTest extends TestCase
 
         // --- Walk the rest of the pipeline ---
         $final = $this->walkPipeline($enrollment, [
-            'assessment' => $this->staffForOffice(2),
+            'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1),
             'blocking' => $this->staffForOffice(5),
@@ -428,28 +537,20 @@ class EnrollmentWalkthroughTest extends TestCase
     #[Test]
     public function continuing_student_with_retention_exam_and_clearance_completes_pipeline(): void
     {
-        // --- Admission (BSAIS requires retention exam) ---
-        $admission = $this->createAdmission(['applicantType' => 'continuing', 'courseId' => 5]);
-        $this->verifyAllRequirements($admission);
+        // Continuing students skip the admission phase (ApplicantType only
+        // covers firstYear/transferee) — they enter via enrollment directly.
+        $student = $this->createStudent('Continuing');
 
-        // Retention exam (Guidance, office 7)
+        // Retention exam (BSAIS requires retention exam; Guidance, office 7)
         $this->actingAs($this->staffForOffice(7))
             ->post(route('exam.retention.record'), [
-                'studentId' => $admission->studentId,
-                'courseId' => $admission->courseId,
-                'termId' => $admission->termId,
+                'studentId' => $student->studentId,
+                'courseId' => 5,
+                'termId' => 18,
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
             ->assertSessionHasNoErrors();
-
-        // Approve admission (no entrance exam for continuing)
-        $this->actingAs($this->staffForOffice(6))
-            ->post(route('admission.approve', $admission))
-            ->assertSessionHasNoErrors();
-
-        $admission->refresh();
-        $this->assertEquals('approved', $admission->admissionStatus->value);
 
         // --- Clearance (mandatory for continuing) ---
         $period = Clearanceperiods::where('periodStatus', 'open')->first();
@@ -457,12 +558,12 @@ class EnrollmentWalkthroughTest extends TestCase
 
         $this->actingAs($this->staffForOffice(1))
             ->post(route('clearance.slip.generate'), [
-                'studentId' => $admission->studentId,
+                'studentId' => $student->studentId,
                 'clearancePeriodId' => $period->clearancePeriodId,
             ])
             ->assertSessionHasNoErrors();
 
-        $clearance = Studentclearances::where('studentId', $admission->studentId)
+        $clearance = Studentclearances::where('studentId', $student->studentId)
             ->where('clearancePeriodId', $period->clearancePeriodId)
             ->first();
         $this->assertNotNull($clearance, 'Clearance slip should be generated');
@@ -483,11 +584,11 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals('approved', $clearance->overallStatus->value);
         $this->assertNotNull($clearance->receivedBy, 'Desk receipt should be recorded');
 
-        // --- Enrollment (system-created) ---
-        $enrollment = $this->createEnrollment($admission, 'continuing', 2);
-
         // --- Evaluation (office 4) ---
         $evaluator = $this->staffForOffice(4);
+
+        // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
+        $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', 2, $evaluator->userId);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -535,7 +636,7 @@ class EnrollmentWalkthroughTest extends TestCase
 
         // --- Walk the rest of the pipeline (no assessment step) ---
         $final = $this->walkPipeline($enrollment, [
-            'assessment' => $this->staffForOffice(2),
+            'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1),
             'blocking' => $this->staffForOffice(5),
@@ -562,11 +663,11 @@ class EnrollmentWalkthroughTest extends TestCase
         $admission->refresh();
         $this->assertEquals('approved', $admission->admissionStatus->value);
 
-        // --- Enrollment (system-created) ---
-        $enrollment = $this->createEnrollment($admission, 'transferee', 2);
-
         // --- Evaluation (office 4) with credit transfer ---
         $evaluator = $this->staffForOffice(4);
+
+        // --- Enrollment (system-created; evaluatedBy = the evaluator) ---
+        $enrollment = $this->createEnrollment($admission, 'transferee', 2, $evaluator->userId);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -608,7 +709,7 @@ class EnrollmentWalkthroughTest extends TestCase
                         'creditedUnits' => 3,
                         'institutionName' => 'Old University',
                         'institutionType' => 'college',
-                        'grade' => 85,
+                        'grade' => 1.5, // 1.0-5.0 scale (decimal(3,2)), NOT percentage
                         'remarks' => 'E2E credit transfer',
                     ],
                 ],
@@ -635,7 +736,7 @@ class EnrollmentWalkthroughTest extends TestCase
 
         // --- Walk the rest of the pipeline ---
         $final = $this->walkPipeline($enrollment, [
-            'assessment' => $this->staffForOffice(2),
+            'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1),
             'blocking' => $this->staffForOffice(5),
@@ -651,22 +752,44 @@ class EnrollmentWalkthroughTest extends TestCase
     #[Test]
     public function shifter_with_credit_transfer_completes_pipeline(): void
     {
-        // --- Admission (non-exam course) ---
-        $admission = $this->createAdmission(['applicantType' => 'shifter', 'courseId' => 1]);
-        $this->verifyAllRequirements($admission);
+        // Shifter students skip the admission phase (ApplicantType only covers
+        // firstYear/transferee) — they enter via enrollment directly.
+        $student = $this->createStudent('Shifter');
 
-        $this->actingAs($this->staffForOffice(6))
-            ->post(route('admission.approve', $admission))
+        // --- Clearance (mandatory for shifter; RegistrarPolicy requires it) ---
+        $period = Clearanceperiods::where('periodStatus', 'open')->first();
+        $this->assertNotNull($period, 'An open clearance period must exist');
+
+        $this->actingAs($this->staffForOffice(1))
+            ->post(route('clearance.slip.generate'), [
+                'studentId' => $student->studentId,
+                'clearancePeriodId' => $period->clearancePeriodId,
+            ])
             ->assertSessionHasNoErrors();
 
-        $admission->refresh();
-        $this->assertEquals('approved', $admission->admissionStatus->value);
+        $clearance = Studentclearances::where('studentId', $student->studentId)
+            ->where('clearancePeriodId', $period->clearancePeriodId)
+            ->first();
+        $this->assertNotNull($clearance, 'Clearance slip should be generated');
 
-        // --- Enrollment (system-created) ---
-        $enrollment = $this->createEnrollment($admission, 'shifter', 2);
+        foreach ($clearance->approvals as $approval) {
+            $this->actingAs($this->staffForOffice($approval->requirement->officeId))
+                ->post(route('clearance.approve', $approval), ['status' => 'approved'])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->actingAs($this->staffForOffice(1))
+            ->post(route('clearance.receipt.record', $clearance))
+            ->assertSessionHasNoErrors();
+
+        $clearance->refresh();
+        $this->assertEquals('approved', $clearance->overallStatus->value);
 
         // --- Evaluation (office 4) with credit transfer ---
         $evaluator = $this->staffForOffice(4);
+
+        // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
+        $enrollment = $this->createEnrollmentNoAdmission($student, 1, 'shifter', 2, $evaluator->userId);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -708,7 +831,7 @@ class EnrollmentWalkthroughTest extends TestCase
                         'creditedUnits' => 3,
                         'institutionName' => 'SEAIT',
                         'institutionType' => 'college',
-                        'grade' => 88,
+                        'grade' => 1.5, // 1.0-5.0 scale (decimal(3,2)), NOT percentage
                         'remarks' => 'E2E shifter credit transfer',
                     ],
                 ],
@@ -733,7 +856,7 @@ class EnrollmentWalkthroughTest extends TestCase
 
         // --- Walk the rest of the pipeline (no assessment step) ---
         $final = $this->walkPipeline($enrollment, [
-            'assessment' => $this->staffForOffice(2),
+            'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1),
             'blocking' => $this->staffForOffice(5),

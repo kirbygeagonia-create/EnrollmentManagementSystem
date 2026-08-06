@@ -244,6 +244,7 @@ class RbacSeeder extends Seeder
             // Module action permissions
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
+            'clearance.receipt.record', 'clearance.approve',
             'clinic.record', 'clinic.update', 'clinic.sign',
             'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign',
             'payment.record', 'payment.report.daily',

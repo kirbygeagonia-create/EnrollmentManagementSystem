@@ -57,7 +57,10 @@ class IDController extends Controller
         $enrollment->load(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow.workflowsteps']);
 
         $idRequest = $enrollment->idrequests->first();
-        $studentId = $idRequest?->studentids->first();
+        // studentids is a HasOne — returns the single model directly (calling
+        // ->first() on a model would forward to a fresh query builder and
+        // return the first row of the whole table).
+        $studentId = $idRequest?->studentids;
 
         return Inertia::render('ID/Show', [
             'enrollment' => $enrollment,
@@ -138,7 +141,7 @@ class IDController extends Controller
         ]);
 
         // Sign workflow step 8 (ID Office)
-        $workflow = $studentId->enrollment->enrollmentworkflow;
+        $workflow = $studentId->idRequest?->enrollment?->enrollmentworkflow;
         if ($workflow) {
             $this->workflowService->signStepByOffice($workflow, 22, Auth::user());
         }

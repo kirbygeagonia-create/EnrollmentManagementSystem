@@ -126,7 +126,7 @@ class RegistrarController extends Controller
      */
     public function approve(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('approve', $enrollment);
+        $this->authorize('registrar.approve', $enrollment);
 
         // Validate prerequisites
         $checklist = [
