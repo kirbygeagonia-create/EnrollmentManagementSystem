@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Link, usePage } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select } from '@/Components/ui';
+import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, ConfirmDialog } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 
@@ -98,6 +98,10 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     const [assignErrors, setAssignErrors] = useState({});
     const [submittingSchedule, setSubmittingSchedule] = useState(false);
     const [submittingAssign, setSubmittingAssign] = useState(false);
+    const [confirmUnassign, setConfirmUnassign] = useState({ open: false, enrollmentId: null });
+    const [confirmDeleteSchedule, setConfirmDeleteSchedule] = useState({ open: false, scheduleId: null });
+    const [submittingUnassign, setSubmittingUnassign] = useState(false);
+    const [submittingDeleteSchedule, setSubmittingDeleteSchedule] = useState(false);
 
     const scheduleColumns = useMemo(() => [
         { key: 'subject', label: 'Subject', render: (row) => row.subject?.subjectCode || '—' },
@@ -238,12 +242,21 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     };
 
     const handleDeleteSchedule = (scheduleId) => {
-        if (!window.confirm('Delete this schedule? This action cannot be undone.')) return;
-        router.delete(route('blocking.schedules.destroy', { schedule: scheduleId }), {
+        setConfirmDeleteSchedule({ open: true, scheduleId });
+    };
+
+    const confirmDeleteScheduleAction = () => {
+        setSubmittingDeleteSchedule(true);
+        router.delete(route('blocking.schedules.destroy', { schedule: confirmDeleteSchedule.scheduleId }), {
+            onSuccess: () => {
+                setConfirmDeleteSchedule({ open: false, scheduleId: null });
+                setSubmittingDeleteSchedule(false);
+            },
             onError: (errors) => {
                 if (errors.schedule) {
                     alert(errors.schedule);
                 }
+                setSubmittingDeleteSchedule(false);
             },
         });
     };
@@ -266,12 +279,21 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     };
 
     const handleUnassign = (enrollmentId) => {
-        if (!window.confirm('Unassign this student from the block?')) return;
-        router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentId }, {
+        setConfirmUnassign({ open: true, enrollmentId });
+    };
+
+    const confirmUnassignStudent = () => {
+        setSubmittingUnassign(true);
+        router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentId: confirmUnassign.enrollmentId }, {
+            onSuccess: () => {
+                setConfirmUnassign({ open: false, enrollmentId: null });
+                setSubmittingUnassign(false);
+            },
             onError: (errors) => {
                 if (errors.enrollmentId) {
                     alert(errors.enrollmentId);
                 }
+                setSubmittingUnassign(false);
             },
         });
     };
@@ -650,6 +672,30 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     </div>
                 </form>
             </Modal>
+
+            {/* Unassign Student Confirm */}
+            <ConfirmDialog
+                show={confirmUnassign.open}
+                onClose={() => setConfirmUnassign({ open: false, enrollmentId: null })}
+                onConfirm={confirmUnassignStudent}
+                title="Unassign Student"
+                message="Remove this student from the block? Their enrolled subjects will be unassigned."
+                confirmText="Unassign"
+                variant="danger"
+                loading={submittingUnassign}
+            />
+
+            {/* Delete Schedule Confirm */}
+            <ConfirmDialog
+                show={confirmDeleteSchedule.open}
+                onClose={() => setConfirmDeleteSchedule({ open: false, scheduleId: null })}
+                onConfirm={confirmDeleteScheduleAction}
+                title="Delete Schedule"
+                message="Delete this schedule? This action cannot be undone."
+                confirmText="Delete"
+                variant="danger"
+                loading={submittingDeleteSchedule}
+            />
         </AuthenticatedLayout>
     );
 }
