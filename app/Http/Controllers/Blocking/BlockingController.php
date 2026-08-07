@@ -73,6 +73,48 @@ class BlockingController extends Controller
         $enrolled = $block->enrolledSubjects->count();
         $available = $capacity - $enrolled;
 
+        // Eligible enrollments for assignment (mirrors assignStudents eligibility logic)
+        $eligibleEnrollments = Enrollments::with(['student', 'enrolledSubjects.subject'])
+            ->where('courseId', $block->courseId)
+            ->where('termId', $block->termId)
+            ->where('yearLevel', $block->yearLevel)
+            ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
+            ->whereDoesntHave('enrolledSubjects', function ($q) use ($block) {
+                $q->where('blockId', $block->blockId);
+            })
+            ->get()
+            ->filter(function ($enrollment) {
+                $workflow = $enrollment->enrollmentworkflow;
+                if (! $workflow) {
+                    return false;
+                }
+                $nextPendingStep = $workflow->workflowsteps()
+                    ->where('stepStatus', 'pending')
+                    ->orderBy('stepOrder')
+                    ->first();
+
+                return $nextPendingStep && $nextPendingStep->officeId === 5;
+            })
+            ->map(function ($enrollment) {
+                return [
+                    'enrollmentId' => $enrollment->enrollmentId,
+                    'student' => [
+                        'firstName' => $enrollment->student->firstName,
+                        'lastName' => $enrollment->student->lastName,
+                        'middleName' => $enrollment->student->middleName,
+                        'schoolIdNumber' => $enrollment->student->schoolIdNumber,
+                    ],
+                    'subjects' => $enrollment->enrolledSubjects->map(function ($es) {
+                        return [
+                            'enrolledSubjectId' => $es->enrolledSubjectId,
+                            'subjectCode' => $es->subject->subjectCode,
+                            'subjectName' => $es->subject->subjectName,
+                        ];
+                    })->values()->toArray(),
+                ];
+            })
+            ->values();
+
         return Inertia::render('Blocking/Show', [
             'block' => $block,
             'capacity' => $capacity,
@@ -82,6 +124,7 @@ class BlockingController extends Controller
             'rooms' => Rooms::all(['roomId', 'roomName', 'capacity', 'building']),
             'instructors' => Staffusers::where('officeId', '!=', 1)->get(['userId', 'firstName', 'lastName']),
             'days' => collect(DayOfWeek::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'eligibleEnrollments' => $eligibleEnrollments,
         ]);
     }
 

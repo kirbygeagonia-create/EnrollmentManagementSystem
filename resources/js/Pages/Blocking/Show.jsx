@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
@@ -24,9 +24,66 @@ const AvailableIcon = () => (
     </svg>
 );
 
-export default function Show({ block, capacity, enrolled, available, subjects, rooms, instructors, days }) {
+// Flash message display component
+function FlashMessages({ flash }) {
+    if (!flash) return null;
+    return (
+        <div className="mb-6 space-y-3" role="status" aria-live="polite">
+            {flash.success && (
+                <div className="p-4 bg-success-50 border border-success-200 rounded-card text-success-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{flash.success}</span>
+                </div>
+            )}
+            {flash.warning && (
+                <div className="p-4 bg-warning-50 border border-warning-200 rounded-card text-warning-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{flash.warning}</span>
+                </div>
+            )}
+            {flash.error && (
+                <div className="p-4 bg-danger-50 border border-danger-200 rounded-card text-danger-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{flash.error}</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Conflict alert component for modals
+function ConflictAlert({ conflicts, title = 'Conflicts detected' }) {
+    if (!conflicts || conflicts.length === 0) return null;
+    return (
+        <div className="p-4 bg-danger-50 border border-danger-200 rounded-card text-danger-800 mb-4" role="alert">
+            <div className="flex items-start gap-3">
+                <svg className="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                    <p className="font-medium">{title}</p>
+                    <ul className="mt-2 list-disc list-inside space-y-1 text-sm">
+                        {conflicts.map((conflict, index) => (
+                            <li key={index}>{conflict}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function Show({ block, capacity, enrolled, available, subjects, rooms, instructors, days, eligibleEnrollments }) {
+    const { flash } = usePage().props;
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [editingScheduleId, setEditingScheduleId] = useState(null);
     const [scheduleForm, setScheduleForm] = useState({
         subjectId: '',
         instructorId: '',
@@ -71,40 +128,55 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         )},
     ], []);
 
-    const handleScheduleSubmit = (e) => {
-        e.preventDefault();
-        setScheduleErrors({});
-        setSubmittingSchedule(true);
+    const renderScheduleActions = (row) => (
+        <div className="flex items-center gap-2">
+            <button
+                onClick={() => handleEditSchedule(row)}
+                className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
+                title="Edit schedule"
+            >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </button>
+            <button
+                onClick={() => handleDeleteSchedule(row.scheduleId)}
+                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
+                title="Delete schedule"
+            >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    );
 
-        router.post(route('blocking.schedules.store', { block: block.blockId }), scheduleForm, {
-            onSuccess: () => {
-                setShowScheduleModal(false);
-                setScheduleForm({ subjectId: '', instructorId: '', roomId: '', meetings: [{ dayOfWeek: '', startTime: '', endTime: '' }] });
-                setSubmittingSchedule(false);
-            },
-            onError: (errors) => {
-                setScheduleErrors(errors);
-                setSubmittingSchedule(false);
-            },
-        });
+    const renderStudentActions = (row) => (
+        <div className="flex items-center gap-2">
+            <button
+                onClick={() => handleUnassign(row.enrollment?.enrollmentId)}
+                disabled={!row.enrollment?.enrollmentId}
+                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
+                title="Unassign student"
+            >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </button>
+        </div>
+    );
+
+    const handleCloseScheduleModal = () => {
+        setShowScheduleModal(false);
+        setScheduleForm({ subjectId: '', instructorId: '', roomId: '', meetings: [{ dayOfWeek: '', startTime: '', endTime: '' }] });
+        setScheduleErrors({});
+        setEditingScheduleId(null);
     };
 
-    const handleAssignSubmit = (e) => {
-        e.preventDefault();
+    const handleCloseAssignModal = () => {
+        setShowAssignModal(false);
+        setAssignForm({ enrollmentIds: [], scheduleId: '' });
         setAssignErrors({});
-        setSubmittingAssign(true);
-
-        router.post(route('blocking.assign', { block: block.blockId }), assignForm, {
-            onSuccess: () => {
-                setShowAssignModal(false);
-                setAssignForm({ enrollmentIds: [], scheduleId: '' });
-                setSubmittingAssign(false);
-            },
-            onError: (errors) => {
-                setAssignErrors(errors);
-                setSubmittingAssign(false);
-            },
-        });
     };
 
     const addMeeting = () => {
@@ -126,6 +198,82 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             ...prev,
             meetings: prev.meetings.map((m, i) => i === index ? { ...m, [field]: value } : m),
         }));
+    };
+
+    const handleScheduleSubmit = (e) => {
+        e.preventDefault();
+        setScheduleErrors({});
+        setSubmittingSchedule(true);
+
+        const url = editingScheduleId
+            ? route('blocking.schedules.update', { schedule: editingScheduleId })
+            : route('blocking.schedules.store', { block: block.blockId });
+        const method = editingScheduleId ? 'patch' : 'post';
+
+        router[method](url, scheduleForm, {
+            onSuccess: () => {
+                handleCloseScheduleModal();
+                setSubmittingSchedule(false);
+            },
+            onError: (errors) => {
+                setScheduleErrors(errors);
+                setSubmittingSchedule(false);
+            },
+        });
+    };
+
+    const handleEditSchedule = (schedule) => {
+        setEditingScheduleId(schedule.scheduleId);
+        setScheduleForm({
+            subjectId: schedule.subjectId,
+            instructorId: schedule.instructorId,
+            roomId: schedule.roomId,
+            meetings: schedule.meetings?.map(m => ({
+                dayOfWeek: m.dayOfWeek?.value || m.dayOfWeek,
+                startTime: m.startTime,
+                endTime: m.endTime,
+            })) || [{ dayOfWeek: '', startTime: '', endTime: '' }],
+        });
+        setShowScheduleModal(true);
+    };
+
+    const handleDeleteSchedule = (scheduleId) => {
+        if (!window.confirm('Delete this schedule? This action cannot be undone.')) return;
+        router.delete(route('blocking.schedules.destroy', { schedule: scheduleId }), {
+            onError: (errors) => {
+                if (errors.schedule) {
+                    alert(errors.schedule);
+                }
+            },
+        });
+    };
+
+    const handleAssignSubmit = (e) => {
+        e.preventDefault();
+        setAssignErrors({});
+        setSubmittingAssign(true);
+
+        router.post(route('blocking.assign', { block: block.blockId }), assignForm, {
+            onSuccess: () => {
+                handleCloseAssignModal();
+                setSubmittingAssign(false);
+            },
+            onError: (errors) => {
+                setAssignErrors(errors);
+                setSubmittingAssign(false);
+            },
+        });
+    };
+
+    const handleUnassign = (enrollmentId) => {
+        if (!window.confirm('Unassign this student from the block?')) return;
+        router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentId }, {
+            onError: (errors) => {
+                if (errors.enrollmentId) {
+                    alert(errors.enrollmentId);
+                }
+            },
+        });
     };
 
     const sortedSchedules = useMemo(() => {
@@ -175,6 +323,9 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             }
         >
             <Head title={`Block: ${block.blockName}`} />
+
+            {/* Flash Messages */}
+            <FlashMessages flash={flash} />
 
             {/* Block Info Card */}
             <Card title="Block Information" className="mb-6">
@@ -238,6 +389,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <DataTable
                         columns={scheduleColumns}
                         rows={sortedSchedules}
+                        children={renderScheduleActions}
                         emptyMessage="No schedules added yet"
                     />
                 ) : (
@@ -267,6 +419,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <DataTable
                         columns={studentColumns}
                         rows={sortedStudents}
+                        children={renderStudentActions}
                         emptyMessage="No students assigned yet"
                     />
                 ) : (
@@ -281,14 +434,15 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 )}
             </Card>
 
-            {/* Add Schedule Modal */}
+            {/* Add/Edit Schedule Modal */}
             <Modal
                 show={showScheduleModal}
                 onClose={() => setShowScheduleModal(false)}
-                title="Add Schedule"
+                title={editingScheduleId ? 'Edit Schedule' : 'Add Schedule'}
                 size="lg"
             >
                 <form onSubmit={handleScheduleSubmit} className="space-y-4">
+                    <ConflictAlert conflicts={scheduleErrors.conflicts} title="Schedule conflicts detected" />
                     <FormSection label="Subject">
                         <Select
                             value={scheduleForm.subjectId}
@@ -297,6 +451,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                             placeholder="Select subject"
                             className="form-input"
                             error={scheduleErrors.subjectId}
+                            disabled={editingScheduleId}
                         />
                     </FormSection>
 
@@ -381,7 +536,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
                         <button
                             type="button"
-                            onClick={() => setShowScheduleModal(false)}
+                            onClick={handleCloseScheduleModal}
                             className="btn btn-secondary"
                         >
                             Cancel
@@ -391,7 +546,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                             disabled={submittingSchedule}
                             className="btn btn-primary"
                         >
-                            {submittingSchedule ? 'Adding...' : 'Add Schedule'}
+                            {submittingSchedule ? (editingScheduleId ? 'Updating...' : 'Adding...') : (editingScheduleId ? 'Update Schedule' : 'Add Schedule')}
                         </button>
                     </div>
                 </form>
@@ -400,11 +555,22 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             {/* Assign Students Modal */}
             <Modal
                 show={showAssignModal}
-                onClose={() => setShowAssignModal(false)}
+                onClose={handleCloseAssignModal}
                 title="Assign Students to Block"
                 size="lg"
             >
                 <form onSubmit={handleAssignSubmit} className="space-y-4">
+                    <ConflictAlert conflicts={assignErrors.conflicts} title="Assignment conflicts" />
+                    {assignErrors.capacity && (
+                        <div className="p-4 bg-danger-50 border border-danger-200 rounded-card text-danger-800 mb-4" role="alert">
+                            {assignErrors.capacity}
+                        </div>
+                    )}
+                    {assignErrors.room_capacity && (
+                        <div className="p-4 bg-danger-50 border border-danger-200 rounded-card text-danger-800 mb-4" role="alert">
+                            {assignErrors.room_capacity}
+                        </div>
+                    )}
                     <FormSection label="Schedule">
                         <Select
                             value={assignForm.scheduleId}
@@ -419,35 +585,51 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                         />
                     </FormSection>
 
-                    <FormSection label="Students to Assign">
+                    <FormSection label={`Students to Assign (${available} slots available)`}>
                         <div className="max-h-96 overflow-y-auto border border-brand-200 rounded-btn p-4">
-                            {block.enrolledSubjects?.filter(es => !es.blockId && es.enrollment?.enrollmentStatus === 'Enrolled').map((es) => (
-                                <label key={es.enrolledSubjectId} className="flex items-center gap-3 p-2 hover:bg-brand-50 rounded-btn cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        value={es.enrollmentId}
-                                        checked={assignForm.enrollmentIds.includes(es.enrollmentId)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setAssignForm(prev => ({ ...prev, enrollmentIds: [...prev.enrollmentIds, es.enrollmentId] }));
-                                            } else {
-                                                setAssignForm(prev => ({ ...prev, enrollmentIds: prev.enrollmentIds.filter(id => id !== es.enrollmentId) }));
-                                            }
-                                        }}
-                                        className="form-checkbox"
-                                    />
-                                    <div>
-                                        <p className="font-medium">
-                                            {es.enrollment?.student?.lastName}, {es.enrollment?.student?.firstName} {es.enrollment?.student?.middleName?.charAt(0) + '.' || ''}
-                                        </p>
-                                        <p className="text-sm text-brand-500">{es.enrollment?.student?.schoolIdNumber} - {es.subject?.subjectCode}</p>
-                                    </div>
-                                </label>
-                            ))}
-                            {block.enrolledSubjects?.filter(es => !es.blockId && es.enrollment?.enrollmentStatus === 'Enrolled').length === 0 && (
-                                <p className="text-brand-500 text-center py-4">No eligible students available for assignment.</p>
+                            {(eligibleEnrollments?.length || 0) > 0 ? (
+                                eligibleEnrollments.map((enrollment) => {
+                                    const isSelected = assignForm.enrollmentIds.includes(enrollment.enrollmentId);
+                                    const selectedCount = assignForm.enrollmentIds.length;
+                                    const wouldExceed = !isSelected && selectedCount >= available;
+                                    return (
+                                        <label key={enrollment.enrollmentId} className="flex items-center gap-3 p-2 hover:bg-brand-50 rounded-btn cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                value={enrollment.enrollmentId}
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setAssignForm(prev => ({ ...prev, enrollmentIds: [...prev.enrollmentIds, enrollment.enrollmentId] }));
+                                                    } else {
+                                                        setAssignForm(prev => ({ ...prev, enrollmentIds: prev.enrollmentIds.filter(id => id !== enrollment.enrollmentId) }));
+                                                    }
+                                                }}
+                                                disabled={wouldExceed}
+                                                className="form-checkbox"
+                                            />
+                                            <div className={wouldExceed ? 'opacity-50' : ''}>
+                                                <p className="font-medium">
+                                                    {enrollment.student.lastName}, {enrollment.student.firstName} {enrollment.student.middleName ? enrollment.student.middleName.charAt(0) + '.' : ''}
+                                                </p>
+                                                <p className="text-sm text-brand-500">{enrollment.student.schoolIdNumber} - {enrollment.subjects.map(s => s.subjectCode).join(', ')}</p>
+                                            </div>
+                                            {wouldExceed && (
+                                                <span className="text-xs text-warning-600 ml-auto">Capacity reached</span>
+                                            )}
+                                        </label>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-brand-500">No eligible students available for assignment.</p>
+                                    <p className="text-xs text-brand-400 mt-1">Students must be enrolled and at the Blocking workflow step.</p>
+                                </div>
                             )}
                         </div>
+                        <p className="mt-2 text-sm text-brand-500">
+                            {assignForm.enrollmentIds.length} of {available} slots selected
+                        </p>
                     </FormSection>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
@@ -460,7 +642,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                         </button>
                         <button
                             type="submit"
-                            disabled={submittingAssign || assignForm.enrollmentIds.length === 0 || !assignForm.scheduleId}
+                            disabled={submittingAssign || assignForm.enrollmentIds.length === 0 || !assignForm.scheduleId || assignForm.enrollmentIds.length > available}
                             className="btn btn-primary"
                         >
                             {submittingAssign ? 'Assigning...' : 'Assign Students'}
