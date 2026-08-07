@@ -2,10 +2,7 @@
 
 namespace App\Policies;
 
-use App\Enums\EnrollmentStatus;
 use App\Models\Blocks;
-use App\Models\Enrollments;
-use App\Models\Schedules;
 use App\Models\Staffusers;
 
 class BlockingPolicy
@@ -19,9 +16,9 @@ class BlockingPolicy
     }
 
     /**
-     * Determine whether the user can view blocking for enrollment.
+     * Determine whether the user can view a block.
      */
-    public function view(Staffusers $user, Enrollments $enrollment): bool
+    public function view(Staffusers $user, Blocks $block): bool
     {
         return $user->hasPermissionTo('block.view');
     }
@@ -36,9 +33,9 @@ class BlockingPolicy
 
     /**
      * Determine whether the user can assign students to blocks.
-     * BR13/BR14: Workflow step for Academic Department (office 5) must be completed in order
+     * Policy only checks permission + office; workflow/enrollment checks moved to controller.
      */
-    public function assignStudents(Staffusers $user, Enrollments $enrollment): bool
+    public function assignStudents(Staffusers $user, Blocks $block): bool
     {
         if (! $user->hasPermissionTo('block.assign')) {
             return false;
@@ -46,17 +43,6 @@ class BlockingPolicy
 
         // Must be Academic Department (officeId = 5)
         if ($user->officeId !== 5) {
-            return false;
-        }
-
-        // Enrollment must be enrolled
-        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
-            return false;
-        }
-
-        // Check workflow step for Academic Department (office 5) is current
-        $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 5) {
             return false;
         }
 

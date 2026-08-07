@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Blocks;
 use App\Models\Courses;
+use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Rooms;
 use App\Models\Schedulemeetings;
@@ -19,6 +20,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -146,28 +149,123 @@ class BlockingController extends Controller
             'meetings.*.endTime' => 'required|date_format:H:i|after:meetings.*.startTime',
         ]);
 
-        $schedule = Schedules::create([
+        // Run conflict detection BEFORE persisting
+        $tempSchedule = new Schedules([
             'blockId' => $block->blockId,
             'subjectId' => $validated['subjectId'],
             'instructorId' => $validated['instructorId'],
             'roomId' => $validated['roomId'],
         ]);
+        $tempSchedule->setRelation('meetings', collect($validated['meetings'])->map(fn ($m) => new Schedulemeetings($m)));
 
-        foreach ($validated['meetings'] as $meeting) {
-            Schedulemeetings::create(array_merge($meeting, ['scheduleId' => $schedule->scheduleId]));
-        }
-
-        // Conflict detection
-        $conflicts = $this->detectConflicts($schedule);
+        $conflicts = $this->detectConflicts($tempSchedule);
         if ($conflicts->isNotEmpty()) {
-            return back()->with('warning', 'Schedule conflicts detected: '.$conflicts->implode('conflict', ', '));
+            throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
         }
 
-        return back()->with('success', 'Schedule added.');
+        // Room capacity warning: if block's maxStudents exceeds room capacity
+        $room = Rooms::find($validated['roomId']);
+        if ($room && $block->maxStudents > $room->capacity) {
+            return back()->with('warning', "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}.");
+        }
+
+        // Persist within transaction
+        return DB::transaction(function () use ($validated, $block) {
+            $schedule = Schedules::create([
+                'blockId' => $block->blockId,
+                'subjectId' => $validated['subjectId'],
+                'instructorId' => $validated['instructorId'],
+                'roomId' => $validated['roomId'],
+            ]);
+
+            foreach ($validated['meetings'] as $meeting) {
+                Schedulemeetings::create(array_merge($meeting, ['scheduleId' => $schedule->scheduleId]));
+            }
+
+            return back()->with('success', 'Schedule added.');
+        });
+    }
+
+    /**
+     * Update schedule (instructor, room, meetings).
+     */
+    public function updateSchedule(Request $request, Schedules $schedule): RedirectResponse
+    {
+        $this->authorize('blocking.manageSchedules');
+
+        $validated = $request->validate([
+            'instructorId' => 'sometimes|required|exists:staffusers,userId',
+            'roomId' => 'sometimes|required|exists:rooms,roomId',
+            'meetings' => 'sometimes|required|array|min:1',
+            'meetings.*.dayOfWeek' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+            'meetings.*.startTime' => 'required|date_format:H:i',
+            'meetings.*.endTime' => 'required|date_format:H:i|after:meetings.*.startTime',
+        ]);
+
+        // Build temp schedule with proposed changes for conflict detection
+        $tempSchedule = $schedule->replicate();
+        $tempSchedule->fill(array_intersect_key($validated, array_flip(['instructorId', 'roomId'])));
+        if (isset($validated['meetings'])) {
+            $tempSchedule->setRelation('meetings', collect($validated['meetings'])->map(fn ($m) => new Schedulemeetings($m)));
+        } else {
+            $tempSchedule->load('meetings');
+        }
+
+        $conflicts = $this->detectConflicts($tempSchedule);
+        if ($conflicts->isNotEmpty()) {
+            throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
+        }
+
+        // Room capacity warning
+        if (isset($validated['roomId'])) {
+            $room = Rooms::find($validated['roomId']);
+            $block = $schedule->block;
+            if ($room && $block && $block->maxStudents > $room->capacity) {
+                return back()->with('warning', "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}.");
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $schedule) {
+            $schedule->update(array_intersect_key($validated, array_flip(['instructorId', 'roomId'])));
+
+            if (isset($validated['meetings'])) {
+                $schedule->meetings()->delete();
+                foreach ($validated['meetings'] as $meeting) {
+                    Schedulemeetings::create(array_merge($meeting, ['scheduleId' => $schedule->scheduleId]));
+                }
+            }
+
+            return back()->with('success', 'Schedule updated.');
+        });
+    }
+
+    /**
+     * Delete schedule.
+     */
+    public function destroySchedule(Schedules $schedule): RedirectResponse
+    {
+        $this->authorize('blocking.manageSchedules');
+
+        // Guard: only if no enrolledsubjects reference it (or null them out first)
+        $enrolledCount = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
+            ->where('status', '!=', 'dropped')
+            ->count();
+
+        if ($enrolledCount > 0) {
+            throw ValidationException::withMessages([
+                'schedule' => "Cannot delete schedule: {$enrolledCount} enrolled student(s) still reference it. Unassign them first.",
+            ]);
+        }
+
+        $schedule->meetings()->delete();
+        $schedule->delete();
+
+        return back()->with('success', 'Schedule deleted.');
     }
 
     /**
      * Detect schedule conflicts (instructor/room/time overlap).
+     * Two meetings overlap if same dayOfWeek AND startTime < other.endTime AND endTime > other.startTime.
      */
     private function detectConflicts(Schedules $schedule)
     {
@@ -223,6 +321,31 @@ class BlockingController extends Controller
 
         $schedule = Schedules::findOrFail($validated['scheduleId']);
 
+        // Block capacity enforcement
+        $currentEnrolled = Enrolledsubjects::where('blockId', $block->blockId)
+            ->where('status', '!=', 'dropped')
+            ->count();
+        $requestedCount = count($validated['enrollmentIds']);
+        if ($currentEnrolled + $requestedCount > $block->maxStudents) {
+            throw ValidationException::withMessages([
+                'capacity' => "Block capacity exceeded. Current: {$currentEnrolled}, Max: {$block->maxStudents}, Requested: {$requestedCount}.",
+            ]);
+        }
+
+        // Room capacity check for this schedule's room
+        $room = $schedule->room;
+        if ($room) {
+            $roomEnrolled = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
+                ->where('status', '!=', 'dropped')
+                ->count();
+            if ($roomEnrolled + $requestedCount > $room->capacity) {
+                throw ValidationException::withMessages([
+                    'room_capacity' => "Room capacity exceeded. Room {$room->roomName} capacity: {$room->capacity}, Current enrolled: {$roomEnrolled}, Requested: {$requestedCount}.",
+                ]);
+            }
+        }
+
+        $assigned = 0;
         foreach ($validated['enrollmentIds'] as $enrollmentId) {
             $enrollment = Enrollments::findOrFail($enrollmentId);
 
@@ -246,9 +369,42 @@ class BlockingController extends Controller
 
             // Sign the Blocking step (office 5) now that the student is assigned
             $this->workflowService->signStepByOffice($workflow, 5, Auth::user());
+            $assigned++;
         }
 
-        return back()->with('success', 'Students assigned to block.');
+        return back()->with('success', "{$assigned} student(s) assigned to block.");
+    }
+
+    /**
+     * Unassign students from block (correction, not workflow regression).
+     */
+    public function unassignStudents(Request $request, Blocks $block): RedirectResponse
+    {
+        $this->authorize('blocking.assignStudents', $block);
+
+        $validated = $request->validate([
+            'enrollmentIds' => 'required|array',
+            'enrollmentIds.*' => 'exists:enrollments,enrollmentId',
+        ]);
+
+        $unassigned = 0;
+        foreach ($validated['enrollmentIds'] as $enrollmentId) {
+            $enrollment = Enrollments::findOrFail($enrollmentId);
+
+            $updated = $enrollment->enrolledSubjects()
+                ->where('status', '!=', 'dropped')
+                ->where('blockId', $block->blockId)
+                ->update([
+                    'blockId' => null,
+                    'scheduleId' => null,
+                ]);
+
+            if ($updated > 0) {
+                $unassigned += $updated;
+            }
+        }
+
+        return back()->with('success', "{$unassigned} enrollment subject(s) unassigned from block.");
     }
 
     /**

@@ -213,12 +213,15 @@ class RegistrarController extends Controller
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject.schedule.room', 'enrolledSubjects.subject.schedule.instructor',
+            'enrolledSubjects.subject',
+            'enrolledSubjects.schedule.room',
+            'enrolledSubjects.schedule.instructor',
+            'enrolledSubjects.schedule.meetings',
             'registrarProcessedBy',
         ]);
 
         // Log prints
-        foreach ($enrollment->enrolledSubjects as $index => $subject) {
+        foreach ($enrollment->enrolledSubjects as $index => $es) {
             Documentprintlog::create([
                 'enrollmentId' => $enrollment->enrollmentId,
                 'documentType' => DocumentType::ClassCard,

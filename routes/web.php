@@ -106,7 +106,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/blocking/{block}', [BlockingController::class, 'update'])->name('blocking.update');
     Route::delete('/blocking/{block}', [BlockingController::class, 'destroy'])->name('blocking.destroy');
     Route::post('/blocking/{block}/schedules', [BlockingController::class, 'storeSchedule'])->name('blocking.schedules.store');
+    Route::patch('/blocking/schedules/{schedule}', [BlockingController::class, 'updateSchedule'])->name('blocking.schedules.update');
+    Route::delete('/blocking/schedules/{schedule}', [BlockingController::class, 'destroySchedule'])->name('blocking.schedules.destroy');
     Route::post('/blocking/{block}/assign', [BlockingController::class, 'assignStudents'])->name('blocking.assign');
+    Route::post('/blocking/{block}/unassign', [BlockingController::class, 'unassignStudents'])->name('blocking.unassign');
     Route::get('/blocking/{block}/print', [BlockingController::class, 'printBlockSchedule'])->name('blocking.print-schedule');
 
     /* ==================== Registrar ==================== */
