@@ -6,4 +6,5 @@ enum ClinicRecordStatus: string
 {
     case Pending = 'pending';
     case Completed = 'completed';
+    case Reopened = 'reopened';
 }

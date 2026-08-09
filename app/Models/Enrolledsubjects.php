@@ -14,13 +14,15 @@ class Enrolledsubjects extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['enrollmentId', 'subjectId', 'blockId', 'scheduleId', 'grade', 'status'];
+    protected $fillable = ['enrollmentId', 'subjectId', 'blockId', 'scheduleId', 'grade', 'status', 'attempt_number', 'original_enrolled_subject_id'];
 
     protected function casts(): array
     {
         return [
             'grade' => 'decimal:2',
             'status' => EnrolledSubjectStatus::class,
+            'attempt_number' => 'integer',
+            'original_enrolled_subject_id' => 'integer',
         ];
     }
 
@@ -54,5 +56,18 @@ class Enrolledsubjects extends Model
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subjects::class, 'subjectId');
+    }
+
+    /**
+     * @return BelongsTo<Enrolledsubjects, $this>
+     */
+    public function originalAttempt(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'original_enrolled_subject_id', 'enrolledSubjectId');
+    }
+
+    public function isRetake(): bool
+    {
+        return $this->attempt_number > 1;
     }
 }

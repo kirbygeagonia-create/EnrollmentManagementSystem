@@ -17,12 +17,14 @@ use App\Models\Guardians;
 use App\Models\Religions;
 use App\Models\Subjects;
 use App\Models\Transferacademicrecords;
+use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -197,14 +199,66 @@ class EvaluationController extends Controller
             'subjects.*.curriculumSubjectId' => 'nullable|exists:curriculumsubjects,curriculumSubjectId',
         ]);
 
+        // Validate no duplicate subjectId in the same payload
+        $subjectIds = collect($validated['subjects'])->pluck('subjectId')->all();
+        if (count($subjectIds) !== count(array_unique($subjectIds))) {
+            throw ValidationException::withMessages([
+                'subjects' => 'Duplicate subject IDs are not allowed in the same proposal.',
+            ]);
+        }
+
+        // Load curriculum subjects for this enrollment's year level and term
+        $curriculum = Curriculums::where('courseId', $enrollment->courseId)
+            ->where('majorId', $enrollment->majorId)
+            ->latest('effectiveYear')
+            ->first();
+
+        $curriculumSubjects = $curriculum ? Curriculumsubjects::with('subject')
+            ->where('curriculumId', $curriculum->curriculumId)
+            ->where('yearLevel', $enrollment->yearLevel)
+            ->where('semesterOffered', $enrollment->term->semester)
+            ->get() : collect();
+
+        // Elective group validation
+        $electiveGroups = $curriculumSubjects->where('is_elective', true)->groupBy('elective_group');
+        foreach ($electiveGroups as $groupName => $groupSubjects) {
+            if (! $groupName) {
+                continue; // Skip electives without a group
+            }
+            $minChoices = $groupSubjects->first()->elective_min_choices ?? 0;
+            $maxChoices = $groupSubjects->first()->elective_max_choices ?? $groupSubjects->count();
+            $groupSubjectIds = $groupSubjects->pluck('subjectId')->toArray();
+            $proposedInGroup = array_intersect($subjectIds, $groupSubjectIds);
+            $count = count($proposedInGroup);
+
+            if ($count < $minChoices || $count > $maxChoices) {
+                throw ValidationException::withMessages([
+                    'subjects' => "Elective group '{$groupName}' requires between {$minChoices} and {$maxChoices} subjects. {$count} selected.",
+                ]);
+            }
+        }
+
+        // Mandatory subjects validation (non-elective curriculum subjects must be proposed)
+        $mandatorySubjectIds = $curriculumSubjects->where('is_elective', false)->pluck('subjectId')->toArray();
+        $missingMandatory = array_diff($mandatorySubjectIds, $subjectIds);
+        if (! empty($missingMandatory)) {
+            throw ValidationException::withMessages([
+                'subjects' => 'The following mandatory subjects are required but not in the proposal: ' . implode(', ', $missingMandatory),
+            ]);
+        }
+
         // Clear existing proposed subjects
         $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
 
         foreach ($validated['subjects'] as $subj) {
+            $attemptInfo = EnrollmentService::determineAttemptNumber($enrollment->enrollmentId, $subj['subjectId']);
+
             Enrolledsubjects::create([
                 'enrollmentId' => $enrollment->enrollmentId,
                 'subjectId' => $subj['subjectId'],
                 'status' => EnrolledSubjectStatus::Proposed,
+                'attempt_number' => $attemptInfo['attempt'],
+                'original_enrolled_subject_id' => $attemptInfo['originalId'],
             ]);
         }
 
