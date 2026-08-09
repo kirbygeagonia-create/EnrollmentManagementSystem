@@ -37,7 +37,7 @@ class Studentclearances extends Model
     /**
      * @return BelongsTo<Staffusers, $this>
      */
-    public function receivedBy(): BelongsTo
+    public function receivedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'receivedBy');
     }

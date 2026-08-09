@@ -27,7 +27,7 @@ class Studentscholarships extends Model
     /**
      * @return BelongsTo<Staffusers, $this>
      */
-    public function approvedBy(): BelongsTo
+    public function approvedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'approvedBy');
     }

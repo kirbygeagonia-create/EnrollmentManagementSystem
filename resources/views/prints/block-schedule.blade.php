@@ -87,7 +87,7 @@
                         <td>{{ $counter }}</td>
                         <td style="text-align: left;">{{ $schedule->subject->subjectCode }} - {{ $schedule->subject->subjectName }}</td>
                         <td>{{ $meeting->dayOfWeek->value }}</td>
-                        <td>{{ $meeting->startTime->format('H:i') }} - {{ $meeting->endTime->format('H:i') }}</td>
+                        <td>{{ \Illuminate\Support\Carbon::parse($meeting->startTime)->format('H:i') }} - {{ \Illuminate\Support\Carbon::parse($meeting->endTime)->format('H:i') }}</td>
                         <td>{{ $schedule->room->roomName }} ({{ $schedule->room->building }})</td>
                         <td>{{ $schedule->instructor->firstName }} {{ $schedule->instructor->lastName }}</td>
                     </tr>

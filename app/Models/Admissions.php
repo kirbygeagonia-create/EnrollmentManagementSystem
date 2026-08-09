@@ -38,7 +38,7 @@ class Admissions extends Model
     /**
      * @return BelongsTo<Staffusers, $this>
      */
-    public function evaluatedBy(): BelongsTo
+    public function evaluatedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'evaluatedBy');
     }

@@ -67,11 +67,11 @@
         </div>
         <div class="field">
             <span class="label">Sex/Gender:</span>
-            <span class="value">{{ ucfirst($enrollment->student->gender) }}</span>
+            <span class="value">{{ ucfirst($enrollment->student->gender?->value ?? '') }}</span>
         </div>
         <div class="field">
             <span class="label">Date of Birth:</span>
-            <span class="value">{{ $enrollment->student->birthdate->format('F d, Y') }}</span>
+            <span class="value">{{ $enrollment->student->birthdate?->format('F d, Y') ?? '' }}</span>
         </div>
         <div class="field">
             <span class="label">Place of Birth:</span>
@@ -79,7 +79,7 @@
         </div>
         <div class="field">
             <span class="label">Religion:</span>
-            <span class="value">{{ $enrollment->student->religion->religionName }}</span>
+            <span class="value">{{ $enrollment->student->religion?->religionName ?? '' }}</span>
         </div>
         <div class="field">
             <span class="label">Citizenship:</span>
@@ -87,7 +87,7 @@
         </div>
         <div class="field">
             <span class="label">Civil Status:</span>
-            <span class="value">{{ ucfirst($enrollment->student->civilStatus) }}</span>
+            <span class="value">{{ ucfirst($enrollment->student->civilStatus?->value ?? '') }}</span>
         </div>
         <div class="field">
             <span class="label">Contact Number:</span>
@@ -115,7 +115,7 @@
     <div class="section-title">Addresses</div>
     @foreach($enrollment->student->addresses as $address)
     <div class="address-section">
-        <div class="address-title">{{ ucfirst($address->addressType) }} Address</div>
+        <div class="address-title">{{ ucfirst($address->addressType?->value ?? '') }} Address</div>
         <div class="form-grid">
             <div class="field">
                 <span class="label">House/Building No:</span>
@@ -173,7 +173,7 @@
     <div class="form-grid">
         <div class="field">
             <span class="label">Relationship:</span>
-            <span class="value">{{ ucfirst($guardian->relationship) }}</span>
+            <span class="value">{{ ucfirst($guardian->relationship?->value ?? '') }}</span>
         </div>
         <div class="field">
             <span class="label">Full Name:</span>
@@ -223,7 +223,7 @@
         </div>
         <div class="field">
             <span class="label">Form Issue Date:</span>
-            <span class="value">{{ $enrollment->formIssuedDate->format('F d, Y') }}</span>
+            <span class="value">{{ $enrollment->formIssuedDate?->format('F d, Y') ?? '' }}</span>
         </div>
     </div>
 

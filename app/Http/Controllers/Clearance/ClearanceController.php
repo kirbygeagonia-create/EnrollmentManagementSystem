@@ -35,7 +35,7 @@ class ClearanceController extends Controller
 
         $periods = Clearanceperiods::with('term.academicYear')->get();
 
-        $query = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedBy'])
+        $query = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser'])
             ->when($request->periodId, fn ($q, $id) => $q->where('clearancePeriodId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('overallStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))

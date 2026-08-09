@@ -33,7 +33,7 @@ class AdmissionController extends Controller
     {
         $this->authorize('viewAny', Admissions::class);
 
-        $query = Admissions::with(['student', 'course', 'term', 'evaluatedBy'])
+        $query = Admissions::with(['student', 'course', 'term', 'evaluatedByUser'])
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('admissionId');

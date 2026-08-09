@@ -185,7 +185,7 @@ class RegistrarController extends Controller
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject', 'registrarProcessedBy',
+            'enrolledSubjects.subject', 'registrarProcessedByUser',
         ]);
 
         // Log print
@@ -217,7 +217,7 @@ class RegistrarController extends Controller
             'enrolledSubjects.schedule.room',
             'enrolledSubjects.schedule.instructor',
             'enrolledSubjects.schedule.meetings',
-            'registrarProcessedBy',
+            'registrarProcessedByUser',
         ]);
 
         // Log prints
@@ -245,7 +245,7 @@ class RegistrarController extends Controller
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject', 'registrarProcessedBy',
+            'enrolledSubjects.subject', 'registrarProcessedByUser',
         ]);
 
         Documentprintlog::create([

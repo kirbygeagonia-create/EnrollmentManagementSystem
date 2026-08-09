@@ -48,7 +48,7 @@ class PrintService
         $filename = "clearance-slip-{$clearance->studentClearanceId}-".now()->format('YmdHis').'.pdf';
 
         $this->generatePdf('prints.clearance-slip', [
-            'clearance' => $clearance->load(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser']),
+            'clearance' => $clearance->load(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'approvals.approvedByUser', 'receivedByUser']),
         ], $filename);
 
         $printLog = Documentprintlog::create([
@@ -100,7 +100,8 @@ class PrintService
 
             $this->generatePdf('prints.class-card', [
                 'enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'registrarProcessedByUser']),
-                'subject' => $es->subject->load(['schedule.room', 'schedule.instructor', 'schedule.meetings']),
+                'subject' => $es->subject,
+                'schedule' => $es->load(['schedule.room', 'schedule.instructor', 'schedule.meetings'])->schedule,
             ], $filename);
 
             $printLogs[] = Documentprintlog::create([

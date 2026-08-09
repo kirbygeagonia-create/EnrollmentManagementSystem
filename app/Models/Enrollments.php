@@ -53,7 +53,7 @@ class Enrollments extends Model
     /**
      * @return BelongsTo<Staffusers, $this>
      */
-    public function evaluatedBy(): BelongsTo
+    public function evaluatedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'evaluatedBy');
     }
@@ -69,7 +69,7 @@ class Enrollments extends Model
     /**
      * @return BelongsTo<Staffusers, $this>
      */
-    public function registrarProcessedBy(): BelongsTo
+    public function registrarProcessedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'registrarProcessedBy');
     }

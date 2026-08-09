@@ -79,14 +79,14 @@
     <div class="boxes-grid">
         <div class="box">
             <div class="box-title">Set</div>
-            <div class="box-content">{{ $subject->schedule?->block?->blockName ?? '' }}</div>
+            <div class="box-content">{{ $schedule?->block?->blockName ?? '' }}</div>
         </div>
         <div class="box">
             <div class="box-title">Time</div>
             <div class="box-content">
-                @if($subject->schedule && $subject->schedule->meetings->count())
-                    @foreach($subject->schedule->meetings as $meeting)
-                        {{ $meeting->dayOfWeek->value }} {{ $meeting->startTime->format('H:i') }}-{{ $meeting->endTime->format('H:i') }}<br>
+                @if($schedule && $schedule->meetings->count())
+                    @foreach($schedule->meetings as $meeting)
+                        {{ $meeting->dayOfWeek->value }} {{ \Illuminate\Support\Carbon::parse($meeting->startTime)->format('H:i') }}-{{ \Illuminate\Support\Carbon::parse($meeting->endTime)->format('H:i') }}<br>
                     @endforeach
                 @endif
             </div>
@@ -94,8 +94,8 @@
         <div class="box">
             <div class="box-title">Day</div>
             <div class="box-content">
-                @if($subject->schedule && $subject->schedule->meetings->count())
-                    @foreach($subject->schedule->meetings as $meeting)
+                @if($schedule && $schedule->meetings->count())
+                    @foreach($schedule->meetings as $meeting)
                         {{ $meeting->dayOfWeek->value }}<br>
                     @endforeach
                 @endif
@@ -107,7 +107,7 @@
         </div>
         <div class="box">
             <div class="box-title">Name & Signature of Instructor</div>
-            <div class="box-content">{{ $subject->schedule?->instructor?->firstName }} {{ $subject->schedule?->instructor?->lastName }}</div>
+            <div class="box-content">{{ $schedule?->instructor?->firstName }} {{ $schedule?->instructor?->lastName }}</div>
         </div>
         <div class="box">
             <div class="box-title">Date</div>

@@ -89,10 +89,11 @@ class PrintFidelitySamples extends Command
 
         // Class cards: one per subject of the chosen enrollment
         foreach ($enrollment->enrolledSubjects as $i => $es) {
-            $subject = $es->subject->load(['schedule.room', 'schedule.instructor', 'schedule.meetings']);
+            $subject = $es->subject;
             $templates["class-card-{$i}"] = fn () => view('prints.class-card', [
                 'enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'registrarProcessedByUser']),
                 'subject' => $subject,
+                'schedule' => $es->load(['schedule.room', 'schedule.instructor', 'schedule.meetings'])->schedule,
             ]);
         }
 
@@ -106,7 +107,7 @@ class PrintFidelitySamples extends Command
         }
 
         // Clearance slip: most recent approved clearance if any
-        $clearance = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser'])
+        $clearance = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'approvals.approvedByUser', 'receivedByUser'])
             ->latest('studentClearanceId')->first();
         if ($clearance) {
             $templates['clearance-slip'] = fn () => view('prints.clearance-slip', ['clearance' => $clearance]);
