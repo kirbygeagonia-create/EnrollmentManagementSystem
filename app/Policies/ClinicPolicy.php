@@ -82,6 +82,24 @@ class ClinicPolicy
     }
 
     /**
+     * Determine whether the user can reopen a completed clinic record.
+     */
+    public function reopen(Staffusers $user, Clinicrecords $clinic): bool
+    {
+        if (! $user->hasPermissionTo('clinic.reopen')) {
+            return false;
+        }
+
+        // Must be Clinic office
+        if ($user->officeId !== 11) {
+            return false;
+        }
+
+        // Can only reopen if status is completed
+        return $clinic->status === ClinicRecordStatus::Completed;
+    }
+
+    /**
      * Determine whether the user can sign workflow step.
      */
     public function signWorkflow(Staffusers $user, Enrollmentworkflow $workflow): bool

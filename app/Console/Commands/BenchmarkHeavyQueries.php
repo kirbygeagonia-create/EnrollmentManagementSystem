@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\Blocks;
 use App\Models\Enrollments;
-use App\Enums\EnrollmentStatus;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -44,9 +44,12 @@ class BenchmarkHeavyQueries extends Command
                     'schedules.room', 'schedules.instructor', 'enrolledSubjects',
                 ])->paginate(20);
             },
-            'Blocking eligible enrollments (unassigned, pending workflow)' => function () {
+            'Blocking eligible enrollments (enrolled, unassigned to block)' => function () {
                 return Enrollments::with(['student', 'enrolledSubjects.subject'])
-                    ->whereDoesntHave('blocks')
+                    ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
+                    ->whereDoesntHave('enrolledSubjects', function ($q) {
+                        $q->whereNotNull('blockId');
+                    })
                     ->orderByDesc('enrollmentId')
                     ->paginate(20);
             },

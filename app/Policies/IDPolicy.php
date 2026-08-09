@@ -102,6 +102,14 @@ class IDPolicy
     }
 
     /**
+     * Alias for validate - used by explicit gate 'id.validateCard'.
+     */
+    public function validateCard(Staffusers $user, Studentids $id): bool
+    {
+        return $this->validate($user, $id);
+    }
+
+    /**
      * Determine whether the user can release ID to student.
      */
     public function release(Staffusers $user, Studentids $id): bool
@@ -117,6 +125,44 @@ class IDPolicy
 
         // ID must be active
         return $id->validationStatus === IdValidationStatus::Active;
+    }
+
+    /**
+     * Determine whether the user can reissue ID card.
+     * Reissue allowed when status is cardProduced (reprint) or released (replacement).
+     */
+    public function reissue(Staffusers $user, Idrequests $idRequest): bool
+    {
+        if (! $user->hasPermissionTo('id.reissue')) {
+            return false;
+        }
+
+        // Must be ID Office
+        if ($user->officeId !== 22) {
+            return false;
+        }
+
+        // Only allow reissue from cardProduced (reprint) or released (replacement)
+        return in_array($idRequest->status, [IdRequestStatus::CardProduced, IdRequestStatus::Released], true);
+    }
+
+    /**
+     * Determine whether the user can cancel ID request.
+     * Cancel allowed when status is pending or cardProduced.
+     */
+    public function cancel(Staffusers $user, Idrequests $idRequest): bool
+    {
+        if (! $user->hasPermissionTo('id.cancel')) {
+            return false;
+        }
+
+        // Must be ID Office
+        if ($user->officeId !== 22) {
+            return false;
+        }
+
+        // Only allow cancel from pending or cardProduced
+        return in_array($idRequest->status, [IdRequestStatus::Pending, IdRequestStatus::CardProduced], true);
     }
 
     /**

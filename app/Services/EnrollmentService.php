@@ -4,15 +4,14 @@ namespace App\Services;
 
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
-use Illuminate\Support\Facades\DB;
 
 class EnrollmentService
 {
     /**
      * Determine the attempt number for a subject in a new enrollment.
      *
-     * @param int $enrollmentId The new enrollment ID
-     * @param int $subjectId The subject ID being proposed
+     * @param  int  $enrollmentId  The new enrollment ID
+     * @param  int  $subjectId  The subject ID being proposed
      * @return array ['attempt' => int, 'originalId' => int|null]
      */
     public static function determineAttemptNumber(int $enrollmentId, int $subjectId): array
@@ -48,7 +47,7 @@ class EnrollmentService
             ->select('enrolledsubjects.enrolledSubjectId')
             ->first();
 
-        $originalId = $firstAttempt?->enrolledSubjectId ?? $priorAttempt->enrolledSubjectId;
+        $originalId = $firstAttempt->enrolledSubjectId ?? $priorAttempt->enrolledSubjectId;
 
         return ['attempt' => $nextAttempt, 'originalId' => $originalId];
     }

@@ -1,13 +1,14 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, Modal } from '@/Components/ui';
-import { useForm } from '@inertiajs/react';
+import { PageHeader, Card, Badge, FormSection, Modal, ConfirmDialog } from '@/Components/ui';
+import { useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Show({ enrollment, clinicRecord }) {
     const [showRecordModal, setShowRecordModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [showReopenConfirm, setShowReopenConfirm] = useState(false);
 
     const student = enrollment.student;
     const course = enrollment.course;
@@ -68,6 +69,13 @@ export default function Show({ enrollment, clinicRecord }) {
         setShowUpdateModal(true);
     };
 
+    const handleReopen = () => {
+        router.post(route('clinic.reopen', { clinic: clinicRecord.clinicRecordId }), {
+            onSuccess: () => setShowReopenConfirm(false),
+            onError: () => {},
+        });
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '—';
         return new Date(dateStr).toLocaleDateString('en-PH');
@@ -79,6 +87,18 @@ export default function Show({ enrollment, clinicRecord }) {
         if (student.middleName) parts.splice(1, 0, student.middleName);
         if (student.suffix) parts.push(student.suffix);
         return parts.join(', ');
+    };
+
+    const statusToneMap = {
+        pending: 'warning',
+        completed: 'success',
+        reopened: 'info',
+    };
+
+    const statusLabelMap = {
+        pending: 'Pending',
+        completed: 'Completed',
+        reopened: 'Reopened',
     };
 
     return (
@@ -149,6 +169,11 @@ export default function Show({ enrollment, clinicRecord }) {
                         <FormSection label="Assessment Date">
                             <p className="text-brand-900">{formatDate(clinicRecord.assessmentDate)}</p>
                         </FormSection>
+                        <FormSection label="Status">
+                            <Badge tone={statusToneMap[clinicRecord.status] || 'neutral'}>
+                                {statusLabelMap[clinicRecord.status] || clinicRecord.status}
+                            </Badge>
+                        </FormSection>
                         <FormSection label="Assessment Notes" className="sm:col-span-2">
                             <p className="text-brand-900 whitespace-pre-wrap">{clinicRecord.assessmentNotes || '—'}</p>
                         </FormSection>
@@ -173,15 +198,28 @@ export default function Show({ enrollment, clinicRecord }) {
 
                 {clinicRecord && (
                     <div className="mt-6 flex gap-3 border-t border-brand-100 pt-4">
-                        <button
-                            onClick={handleOpenUpdate}
-                            className="btn btn-secondary btn-sm"
-                        >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Update Record
-                        </button>
+                        {clinicRecord.status !== 'completed' && (
+                            <button
+                                onClick={handleOpenUpdate}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Update Record
+                            </button>
+                        )}
+                        {clinicRecord.status === 'completed' && (
+                            <button
+                                onClick={() => setShowReopenConfirm(true)}
+                                className="btn btn-warning btn-sm"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Reopen Record
+                            </button>
+                        )}
                     </div>
                 )}
             </Card>
@@ -418,6 +456,17 @@ export default function Show({ enrollment, clinicRecord }) {
                     </div>
                 </form>
             </Modal>
+
+            {/* Reopen Confirm Dialog */}
+            <ConfirmDialog
+                show={showReopenConfirm}
+                onClose={() => setShowReopenConfirm(false)}
+                onConfirm={handleReopen}
+                title="Reopen Clinic Record"
+                message="This will reopen the completed clinic record for editing. The record status will change to 'Reopened'. Continue?"
+                confirmText="Reopen"
+                variant="warning"
+            />
         </AuthenticatedLayout>
     );
 }

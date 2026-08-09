@@ -16,7 +16,7 @@ class Idrequests extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'producedByVendor', 'requestDate', 'status'];
+    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'producedByVendor', 'requestDate', 'status', 'reissueReason', 'is_reissue'];
 
     protected function casts(): array
     {
@@ -24,6 +24,7 @@ class Idrequests extends Model
             'requestReason' => IdRequestReason::class,
             'requestDate' => 'date',
             'status' => IdRequestStatus::class,
+            'is_reissue' => 'boolean',
         ];
     }
 

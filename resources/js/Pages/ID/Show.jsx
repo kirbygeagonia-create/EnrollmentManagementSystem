@@ -27,6 +27,10 @@ const requestReasonOptions = [
 const idRequestStatusToneMap = {
     pending: 'warning',
     cardProduced: 'info',
+    validated: 'success',
+    released: 'success',
+    reissuePending: 'warning',
+    cancelled: 'danger',
 };
 
 const idValidationStatusToneMap = {
@@ -48,6 +52,8 @@ export default function Show({ enrollment, idRequest, studentId }) {
     const [showProduceModal, setShowProduceModal] = useState(false);
     const [showValidateConfirm, setShowValidateConfirm] = useState(false);
     const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
+    const [showReissueModal, setShowReissueModal] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const student = enrollment.student;
     const course = enrollment.course;
@@ -67,6 +73,11 @@ export default function Show({ enrollment, idRequest, studentId }) {
     const produceForm = useForm({
         qrCode: '',
         securityPhotoPath: '',
+    });
+
+    // Form for reissue
+    const reissueForm = useForm({
+        reissueReason: '',
     });
 
     const handleCreateSubmit = (e) => {
@@ -99,6 +110,20 @@ export default function Show({ enrollment, idRequest, studentId }) {
         });
     };
 
+    const handleReissue = () => {
+        reissueForm.post(route('id.reissue', { idRequest: idRequest.idRequestId }), {
+            onSuccess: () => setShowReissueModal(false),
+            onError: () => {},
+        });
+    };
+
+    const handleCancel = () => {
+        router.post(route('id.cancel', { idRequest: idRequest.idRequestId }), {
+            onSuccess: () => setShowCancelConfirm(false),
+            onError: () => {},
+        });
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr) return '—';
         return new Date(dateStr).toLocaleDateString('en-PH');
@@ -116,6 +141,9 @@ export default function Show({ enrollment, idRequest, studentId }) {
         const opt = requestReasonOptions.find(o => o.value === value);
         return opt ? opt.label : value;
     };
+
+    const canReissue = idRequest && ['cardProduced', 'released'].includes(idRequest.status);
+    const canCancel = idRequest && ['pending', 'cardProduced'].includes(idRequest.status);
 
     return (
         <AuthenticatedLayout
@@ -192,6 +220,11 @@ export default function Show({ enrollment, idRequest, studentId }) {
                             <FormSection label="Produced By Vendor" className="sm:col-span-2">
                                 <p className="text-brand-900">{idRequest.producedByVendor || '—'}</p>
                             </FormSection>
+                            {idRequest.is_reissue && (
+                                <FormSection label="Reissue Reason" className="sm:col-span-2">
+                                    <p className="text-brand-900">{idRequest.reissueReason || '—'}</p>
+                                </FormSection>
+                            )}
                         </div>
 
                         {!studentId && (
@@ -205,6 +238,34 @@ export default function Show({ enrollment, idRequest, studentId }) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                                     </svg>
                                     Produce ID Card
+                                </button>
+                            </div>
+                        )}
+
+                        {studentId && canReissue && (
+                            <div className="mt-6 flex gap-3 border-t border-brand-100 pt-4">
+                                <button
+                                    onClick={() => setShowReissueModal(true)}
+                                    className="btn btn-warning"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    {idRequest.status === 'released' ? 'Request Replacement' : 'Request Reprint'}
+                                </button>
+                            </div>
+                        )}
+
+                        {canCancel && (
+                            <div className="mt-6 flex gap-3 border-t border-brand-100 pt-4">
+                                <button
+                                    onClick={() => setShowCancelConfirm(true)}
+                                    className="btn btn-danger"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Cancel Request
                                 </button>
                             </div>
                         )}
@@ -428,6 +489,45 @@ export default function Show({ enrollment, idRequest, studentId }) {
                 </form>
             </Modal>
 
+            {/* Reissue Modal */}
+            <Modal
+                show={showReissueModal}
+                onClose={() => setShowReissueModal(false)}
+                title={idRequest?.status === 'released' ? 'Request ID Replacement' : 'Request ID Reprint'}
+                size="lg"
+            >
+                <form onSubmit={handleReissue} className="space-y-4">
+                    <FormSection label="Reissue Reason" required>
+                        <textarea
+                            value={reissueForm.data.reissueReason}
+                            onChange={(e) => reissueForm.setData('reissueReason', e.target.value)}
+                            className="form-input"
+                            rows={3}
+                            placeholder="Reason for reissue (e.g., lost, damaged, name change, etc.)"
+                            required
+                        />
+                        {reissueForm.errors.reissueReason && <p className="text-sm text-red-600">{reissueForm.errors.reissueReason}</p>}
+                    </FormSection>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
+                        <button
+                            type="button"
+                            onClick={() => setShowReissueModal(false)}
+                            className="btn btn-secondary"
+                            disabled={reissueForm.processing}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="btn btn-warning"
+                            disabled={reissueForm.processing}
+                        >
+                            {reissueForm.processing ? 'Processing...' : (idRequest?.status === 'released' ? 'Request Replacement' : 'Request Reprint')}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
             {/* Validate Confirm Dialog */}
             <ConfirmDialog
                 show={showValidateConfirm}
@@ -448,6 +548,17 @@ export default function Show({ enrollment, idRequest, studentId }) {
                 message="Confirm releasing this ID card to the student?"
                 confirmText="Release"
                 variant="primary"
+            />
+
+            {/* Cancel Confirm Dialog */}
+            <ConfirmDialog
+                show={showCancelConfirm}
+                onClose={() => setShowCancelConfirm(false)}
+                onConfirm={handleCancel}
+                title="Cancel ID Request"
+                message="Are you sure you want to cancel this ID request? This action cannot be undone."
+                confirmText="Cancel Request"
+                variant="danger"
             />
         </AuthenticatedLayout>
     );

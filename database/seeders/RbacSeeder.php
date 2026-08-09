@@ -64,12 +64,13 @@ class RbacSeeder extends Seeder
                 'clearance.slip.replace',
             ],
 
-            // Clinic module (4)
+            // Clinic module (5)
             'clinic' => [
                 'clinic.view',
                 'clinic.record',
                 'clinic.update',
                 'clinic.sign',
+                'clinic.reopen',
             ],
 
             // Evaluation module (10)
@@ -95,7 +96,7 @@ class RbacSeeder extends Seeder
                 'exam.verify.general',
             ],
 
-            // ID module (6)
+            // ID module (8)
             'id' => [
                 'id.view',
                 'id.request.create',
@@ -103,6 +104,8 @@ class RbacSeeder extends Seeder
                 'id.validate',
                 'id.release',
                 'id.sign',
+                'id.reissue',
+                'id.cancel',
             ],
 
             // Payment module (4)
@@ -245,8 +248,8 @@ class RbacSeeder extends Seeder
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
-            'clinic.record', 'clinic.update', 'clinic.sign',
-            'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign',
+            'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
+            'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign', 'id.reissue', 'id.cancel',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
             'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',

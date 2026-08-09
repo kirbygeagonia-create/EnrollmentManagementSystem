@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('findings');
             $table->integer('clinicStaffId')->nullable();
             $table->date('assessmentDate')->nullable();
-            $table->enum('status', ['pending', 'completed'])->default('pending');
+            $table->enum('status', ['pending', 'completed', 'reopened'])->default('pending');
             $table->index(['enrollmentId'], 'fk_clinicrecords_enrollmentid');
             $table->index(['clinicStaffId'], 'fk_clinicrecords_clinicstaffid');
             $table->foreign(['clinicStaffId'])->references(['userId'])->on('staffusers')->onDelete('set null')->onUpdate('cascade');

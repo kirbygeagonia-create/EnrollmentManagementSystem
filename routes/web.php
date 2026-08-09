@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/clinic/{enrollment}', [ClinicController::class, 'show'])->name('clinic.show');
     Route::post('/clinic/{enrollment}', [ClinicController::class, 'record'])->name('clinic.record');
     Route::patch('/clinic/records/{clinic}', [ClinicController::class, 'update'])->name('clinic.update');
+    Route::post('/clinic/records/{clinic}/reopen', [ClinicController::class, 'reopen'])->name('clinic.reopen');
 
     /* ==================== ID ==================== */
     Route::get('/id', [IDController::class, 'index'])->name('id.index');
@@ -133,6 +134,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/id/requests/{idRequest}/produce', [IDController::class, 'produceCard'])->name('id.produce');
     Route::post('/id/cards/{studentId}/validate', [IDController::class, 'validate'])->name('id.validate');
     Route::post('/id/cards/{studentId}/release', [IDController::class, 'release'])->name('id.release');
+    Route::post('/id/requests/{idRequest}/reissue', [IDController::class, 'reissue'])->name('id.reissue');
+    Route::post('/id/requests/{idRequest}/cancel', [IDController::class, 'cancel'])->name('id.cancel');
 
     /* ==================== Admin / Reference Data ==================== */
     Route::get('/admin/reference-data', [ReferenceDataController::class, 'index'])->name('admin.reference-data.index');

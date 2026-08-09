@@ -144,6 +144,12 @@ class IDController extends Controller
             'validatedDate' => now(),
         ]);
 
+        // Update ID request status to Validated
+        $idRequest = $studentId->idRequest;
+        if ($idRequest) {
+            $idRequest->update(['status' => IdRequestStatus::Validated]);
+        }
+
         // Sign workflow step 8 (ID Office)
         $workflow = $studentId->idRequest?->enrollment?->enrollmentworkflow;
         if ($workflow) {
@@ -164,6 +170,63 @@ class IDController extends Controller
             'validationStatus' => IdValidationStatus::Active,
         ]);
 
+        // Update ID request status to Released
+        $idRequest = $studentId->idRequest;
+        if ($idRequest) {
+            $idRequest->update(['status' => IdRequestStatus::Released]);
+        }
+
         return back()->with('success', 'ID released to student.');
+    }
+
+    /**
+     * Reissue ID card (reprint or replacement).
+     */
+    public function reissue(Request $request, Idrequests $idRequest): RedirectResponse
+    {
+        $this->authorize('reissue', $idRequest);
+
+        $validated = $request->validate([
+            'reissueReason' => 'required|string|max:255',
+        ]);
+
+        $previousStatus = $idRequest->status;
+
+        if ($previousStatus === IdRequestStatus::CardProduced) {
+            // Reprint: keep status as cardProduced, mark as reissue
+            $idRequest->update([
+                'is_reissue' => true,
+                'reissueReason' => $validated['reissueReason'],
+                'status' => IdRequestStatus::CardProduced,
+            ]);
+            $message = 'ID card marked for reprint.';
+        } elseif ($previousStatus === IdRequestStatus::Released) {
+            // Replacement: set status to reissuePending
+            $idRequest->update([
+                'is_reissue' => true,
+                'reissueReason' => $validated['reissueReason'],
+                'status' => IdRequestStatus::ReissuePending,
+            ]);
+            $message = 'ID replacement requested. Status set to Reissue Pending.';
+        } else {
+            // Should not reach here due to policy check, but safeguard
+            return back()->withErrors(['status' => 'Cannot reissue from current status.']);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Cancel ID request.
+     */
+    public function cancel(Request $request, Idrequests $idRequest): RedirectResponse
+    {
+        $this->authorize('cancel', $idRequest);
+
+        $idRequest->update([
+            'status' => IdRequestStatus::Cancelled,
+        ]);
+
+        return back()->with('success', 'ID request cancelled.');
     }
 }

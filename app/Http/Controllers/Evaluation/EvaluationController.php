@@ -243,7 +243,7 @@ class EvaluationController extends Controller
         $missingMandatory = array_diff($mandatorySubjectIds, $subjectIds);
         if (! empty($missingMandatory)) {
             throw ValidationException::withMessages([
-                'subjects' => 'The following mandatory subjects are required but not in the proposal: ' . implode(', ', $missingMandatory),
+                'subjects' => 'The following mandatory subjects are required but not in the proposal: '.implode(', ', $missingMandatory),
             ]);
         }
 

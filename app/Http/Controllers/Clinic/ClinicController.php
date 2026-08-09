@@ -123,4 +123,18 @@ class ClinicController extends Controller
 
         return back()->with('success', 'Clinic record updated.');
     }
+
+    /**
+     * Reopen a completed clinic record.
+     */
+    public function reopen(Clinicrecords $clinic): RedirectResponse
+    {
+        $this->authorize('reopen', $clinic);
+
+        $clinic->update([
+            'status' => ClinicRecordStatus::Reopened,
+        ]);
+
+        return back()->with('success', 'Clinic record reopened for editing.');
+    }
 }

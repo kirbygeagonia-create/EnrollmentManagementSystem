@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('enrolledsubjects', function (Blueprint $table) {
-            if (!Schema::hasColumn('enrolledsubjects', 'attempt_number')) {
+            if (! Schema::hasColumn('enrolledsubjects', 'attempt_number')) {
                 $table->unsignedTinyInteger('attempt_number')->default(1)->after('status');
             }
-            if (!Schema::hasColumn('enrolledsubjects', 'original_enrolled_subject_id')) {
+            if (! Schema::hasColumn('enrolledsubjects', 'original_enrolled_subject_id')) {
                 $table->integer('original_enrolled_subject_id')->nullable()->after('attempt_number');
             }
         });
