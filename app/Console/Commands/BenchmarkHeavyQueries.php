@@ -24,6 +24,9 @@ class BenchmarkHeavyQueries extends Command
     {
         $iterations = max(1, (int) $this->option('iterations'));
 
+        // Concrete block used for the eligibility benchmark (mirrors show())
+        $benchBlockId = Blocks::query()->min('blockId') ?? 0;
+
         $this->info("Benchmarking heavy queries ({$iterations} iterations each)...");
         $this->newLine();
 
@@ -38,17 +41,19 @@ class BenchmarkHeavyQueries extends Command
                     ->orderByDesc('enrollmentId')
                     ->paginate(20);
             },
-            'Blocking roster (Blocks + schedules + enrolledSubjects)' => function () {
+            'Blocking roster (Blocks + schedules + enrolled count)' => function () {
                 return Blocks::with([
                     'course', 'term.academicYear', 'schedules.subject',
-                    'schedules.room', 'schedules.instructor', 'enrolledSubjects',
-                ])->paginate(20);
+                    'schedules.room', 'schedules.instructor',
+                ])->withCount('enrolledSubjects')->paginate(20);
             },
-            'Blocking eligible enrollments (enrolled, unassigned to block)' => function () {
+            'Blocking eligible enrollments (enrolled, unassigned to block)' => function () use ($benchBlockId) {
                 return Enrollments::with(['student', 'enrolledSubjects.subject'])
                     ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-                    ->whereDoesntHave('enrolledSubjects', function ($q) {
-                        $q->whereNotNull('blockId');
+                    ->whereNotIn('enrollmentId', function ($q) use ($benchBlockId) {
+                        $q->select('enrollmentId')
+                            ->from('enrolledsubjects')
+                            ->where('blockId', $benchBlockId);
                     })
                     ->orderByDesc('enrollmentId')
                     ->paginate(20);

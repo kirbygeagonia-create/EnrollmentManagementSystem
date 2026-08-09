@@ -54,12 +54,12 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         }},
         { key: 'yearLevel', label: 'Year Level', render: (row) => `${row.yearLevel}${getYearSuffix(row.yearLevel)}` },
         { key: 'capacity', label: 'Enrolled / Capacity', render: (row) => {
-            const enrolled = row.enrolledSubjects?.length || 0;
+            const enrolled = row.enrolled_subjects_count ?? 0;
             const capacity = row.maxStudents;
             return `${enrolled} / ${capacity}`;
         }},
         { key: 'available', label: 'Available', render: (row) => {
-            const enrolled = row.enrolledSubjects?.length || 0;
+            const enrolled = row.enrolled_subjects_count ?? 0;
             const capacity = row.maxStudents;
             const available = capacity - enrolled;
             const hasAvailable = available > 0;

@@ -40,7 +40,8 @@ class BlockingController extends Controller
     {
         $this->authorize('blocking.viewAny');
 
-        $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'enrolledSubjects'])
+        $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
+            ->withCount('enrolledSubjects')
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
             ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
@@ -79,8 +80,10 @@ class BlockingController extends Controller
             ->where('termId', $block->termId)
             ->where('yearLevel', $block->yearLevel)
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereDoesntHave('enrolledSubjects', function ($q) use ($block) {
-                $q->where('blockId', $block->blockId);
+            ->whereNotIn('enrollmentId', function ($q) use ($block) {
+                $q->select('enrollmentId')
+                    ->from('enrolledsubjects')
+                    ->where('blockId', $block->blockId);
             })
             ->get()
             ->filter(function ($enrollment) {
