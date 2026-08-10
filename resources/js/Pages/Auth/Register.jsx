@@ -1,9 +1,7 @@
 import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -15,6 +13,9 @@ export default function Register() {
         password_confirmation: '',
     });
 
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
     const submit = (e) => {
         e.preventDefault();
 
@@ -23,131 +24,355 @@ export default function Register() {
         });
     };
 
+    const hasErrors = Object.keys(errors).length > 0;
+
     return (
         <GuestLayout>
             <Head title="Register" />
 
-            <form onSubmit={submit}>
+            <div className="mb-6">
+                <h1 className="font-heading text-2xl font-bold tracking-tight text-brand-900">
+                    Create your account
+                </h1>
+                <p className="mt-1 text-sm text-brand-500">
+                    Fill in your details to get started.
+                </p>
+            </div>
+
+            {hasErrors && (
+                <div
+                    role="alert"
+                    className="mb-4 flex items-start gap-2.5 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
+                >
+                    <svg
+                        className="mt-0.5 h-4 w-4 flex-shrink-0"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="2"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 9v3.75m0 3.75h.008v.008H12v-.008Zm9-3.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                        />
+                    </svg>
+                    <span>
+                        There were problems with your submission. Please
+                        review the fields below.
+                    </span>
+                </div>
+            )}
+
+            <form onSubmit={submit} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label
+                            htmlFor="firstName"
+                            className="form-label"
+                        >
+                            First Name
+                        </label>
+                        <input
+                            id="firstName"
+                            name="firstName"
+                            value={data.firstName}
+                            autoComplete="given-name"
+                            autoFocus
+                            onChange={(e) =>
+                                setData('firstName', e.target.value)
+                            }
+                            className={`form-input ${
+                                errors.firstName ? 'form-input-error' : ''
+                            }`}
+                            required
+                        />
+                        <InputError
+                            message={errors.firstName}
+                            className="mt-1.5"
+                        />
+                    </div>
+
+                    <div>
+                        <label
+                            htmlFor="lastName"
+                            className="form-label"
+                        >
+                            Last Name
+                        </label>
+                        <input
+                            id="lastName"
+                            name="lastName"
+                            value={data.lastName}
+                            autoComplete="family-name"
+                            onChange={(e) =>
+                                setData('lastName', e.target.value)
+                            }
+                            className={`form-input ${
+                                errors.lastName ? 'form-input-error' : ''
+                            }`}
+                            required
+                        />
+                        <InputError
+                            message={errors.lastName}
+                            className="mt-1.5"
+                        />
+                    </div>
+                </div>
+
                 <div>
-                    <InputLabel htmlFor="firstName" value="First Name" />
-
-                    <TextInput
-                        id="firstName"
-                        name="firstName"
-                        value={data.firstName}
-                        className="mt-1 block w-full"
-                        autoComplete="given-name"
-                        isFocused={true}
-                        onChange={(e) => setData('firstName', e.target.value)}
-                        required
-                    />
-
-                    <InputError message={errors.firstName} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="lastName" value="Last Name" />
-
-                    <TextInput
-                        id="lastName"
-                        name="lastName"
-                        value={data.lastName}
-                        className="mt-1 block w-full"
-                        autoComplete="family-name"
-                        onChange={(e) => setData('lastName', e.target.value)}
-                        required
-                    />
-
-                    <InputError message={errors.lastName} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="username" value="Username" />
-
-                    <TextInput
+                    <label htmlFor="username" className="form-label">
+                        Username
+                    </label>
+                    <input
                         id="username"
                         name="username"
                         value={data.username}
-                        className="mt-1 block w-full"
                         autoComplete="username"
-                        onChange={(e) => setData('username', e.target.value)}
+                        onChange={(e) =>
+                            setData('username', e.target.value)
+                        }
+                        className={`form-input ${
+                            errors.username ? 'form-input-error' : ''
+                        }`}
                         required
                     />
-
-                    <InputError message={errors.username} className="mt-2" />
+                    <InputError
+                        message={errors.username}
+                        className="mt-1.5"
+                    />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
+                <div>
+                    <label htmlFor="email" className="form-label">
+                        Email
+                    </label>
+                    <input
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
                         autoComplete="email"
                         onChange={(e) => setData('email', e.target.value)}
+                        className={`form-input ${
+                            errors.email ? 'form-input-error' : ''
+                        }`}
+                        placeholder="you@example.com"
                         required
                     />
-
-                    <InputError message={errors.email} className="mt-2" />
+                    <InputError message={errors.email} className="mt-1.5" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                        required
+                <div>
+                    <label htmlFor="password" className="form-label">
+                        Password
+                    </label>
+                    <div className="relative">
+                        <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            value={data.password}
+                            autoComplete="new-password"
+                            onChange={(e) =>
+                                setData('password', e.target.value)
+                            }
+                            className={`form-input pr-11 ${
+                                errors.password ? 'form-input-error' : ''
+                            }`}
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setShowPassword((show) => !show)
+                            }
+                            aria-label={
+                                showPassword
+                                    ? 'Hide password'
+                                    : 'Show password'
+                            }
+                            aria-pressed={showPassword}
+                            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-brand-400 transition-colors hover:text-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-seait-500 focus-visible:ring-offset-2"
+                        >
+                            {showPassword ? (
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth="1.8"
+                                    stroke="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                                    />
+                                </svg>
+                            ) : (
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth="1.8"
+                                    stroke="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                                    />
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                    />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
+                    <InputError
+                        message={errors.password}
+                        className="mt-1.5"
                     />
-
-                    <InputError message={errors.password} className="mt-2" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel
+                <div>
+                    <label
                         htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        type="password"
-                        name="password_confirmation"
-                        value={data.password_confirmation}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        required
-                    />
-
+                        className="form-label"
+                    >
+                        Confirm Password
+                    </label>
+                    <div className="relative">
+                        <input
+                            id="password_confirmation"
+                            type={showConfirm ? 'text' : 'password'}
+                            name="password_confirmation"
+                            value={data.password_confirmation}
+                            autoComplete="new-password"
+                            onChange={(e) =>
+                                setData(
+                                    'password_confirmation',
+                                    e.target.value,
+                                )
+                            }
+                            className={`form-input pr-11 ${
+                                errors.password_confirmation
+                                    ? 'form-input-error'
+                                    : ''
+                            }`}
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setShowConfirm((show) => !show)
+                            }
+                            aria-label={
+                                showConfirm
+                                    ? 'Hide password'
+                                    : 'Show password'
+                            }
+                            aria-pressed={showConfirm}
+                            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-brand-400 transition-colors hover:text-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-seait-500 focus-visible:ring-offset-2"
+                        >
+                            {showConfirm ? (
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth="1.8"
+                                    stroke="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                                    />
+                                </svg>
+                            ) : (
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth="1.8"
+                                    stroke="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                                    />
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                    />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
                     <InputError
                         message={errors.password_confirmation}
-                        className="mt-2"
+                        className="mt-1.5"
                     />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="btn-primary btn-lg w-full justify-center"
+                >
+                    {processing ? (
+                        <>
+                            <svg
+                                className="h-5 w-5 animate-spin"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"
+                                />
+                            </svg>
+                            Creating account…
+                        </>
+                    ) : (
+                        'Create account'
+                    )}
+                </button>
+
+                <p className="text-center text-sm text-brand-500">
+                    Already registered?{' '}
                     <Link
                         href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="font-medium text-seait-600 hover:text-seait-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-seait-500 focus-visible:ring-offset-2"
                     >
-                        Already registered?
+                        Sign in
                     </Link>
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
+                </p>
             </form>
         </GuestLayout>
     );
