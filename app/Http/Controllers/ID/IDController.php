@@ -34,7 +34,11 @@ class IDController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q->where('stepStatus', 'pending')->where('officeId', 22))
+            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+                ->where('stepStatus', 'pending')
+                ->where('officeId', 22)
+                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
+            )
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
 
@@ -92,8 +96,8 @@ class IDController extends Controller
             'emergencyContactName' => $validated['emergencyContactName'],
             'emergencyContactNumber' => $validated['emergencyContactNumber'],
             'bloodType' => $validated['bloodType'],
-            'cardPhotoPath' => $validated['cardPhotoPath'],
-            'producedByVendor' => $validated['producedByVendor'],
+            'cardPhotoPath' => $validated['cardPhotoPath'] ?? null,
+            'producedByVendor' => $validated['producedByVendor'] ?? null,
             'requestDate' => now(),
             'status' => IdRequestStatus::Pending,
         ]);
@@ -119,7 +123,7 @@ class IDController extends Controller
             'qrCode' => $validated['qrCode'],
             'issueDate' => now(),
             'validationStatus' => IdValidationStatus::PendingValidation,
-            'securityPhotoPath' => $validated['securityPhotoPath'],
+            'securityPhotoPath' => $validated['securityPhotoPath'] ?? null,
         ]);
 
         $idRequest->update(['status' => IdRequestStatus::CardProduced]);
@@ -132,7 +136,7 @@ class IDController extends Controller
      */
     public function validate(Request $request, Studentids $studentId): RedirectResponse
     {
-        $this->authorize('id.validate', $studentId);
+        $this->authorize('id.validateCard', $studentId);
 
         $studentId->update([
             'validationStatus' => IdValidationStatus::Active,
@@ -154,7 +158,7 @@ class IDController extends Controller
      */
     public function release(Request $request, Studentids $studentId): RedirectResponse
     {
-        $this->authorize('id.release', $studentId);
+        $this->authorize('id.releaseCard', $studentId);
 
         $studentId->update([
             'validationStatus' => IdValidationStatus::Active,

@@ -32,7 +32,11 @@ class ClinicController extends Controller
 
         $query = Enrollments::with(['student', 'course', 'term', 'clinicrecords'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q->where('stepStatus', 'pending')->where('officeId', 11))
+            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+                ->where('stepStatus', 'pending')
+                ->where('officeId', 11)
+                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
+            )
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
 

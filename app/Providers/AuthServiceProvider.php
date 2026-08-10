@@ -147,17 +147,20 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         // ID: create acts on the enrollment; validate/release act on Studentids
-        // (which has no model-policy mapping).
+        // (which has no model-policy mapping). Note: the ability names must NOT
+        // collide with permission names — Spatie's Gate::before auto-grants any
+        // ability matching a permission the user holds, which would bypass the
+        // office-22 scope check below (the permission is shared by all OfficeHeads).
         Gate::define('id.view', function ($user) {
             return $user->hasPermissionTo('id.view');
         });
         Gate::define('id.create', function ($user, $enrollment) {
             return app(IDPolicy::class)->create($user, $enrollment);
         });
-        Gate::define('id.validate', function ($user, $studentId) {
+        Gate::define('id.validateCard', function ($user, $studentId) {
             return app(IDPolicy::class)->validate($user, $studentId);
         });
-        Gate::define('id.release', function ($user, $studentId) {
+        Gate::define('id.releaseCard', function ($user, $studentId) {
             return app(IDPolicy::class)->release($user, $studentId);
         });
 
