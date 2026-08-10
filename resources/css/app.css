@@ -80,7 +80,7 @@
     }
 
     .btn-accent {
-        @apply btn bg-gradient-to-r from-seait-500 via-seait-500 to-orange-500 text-white shadow-[0_0_20px_rgba(255,107,53,0.12)] hover:shadow-[0_0_30px_rgba(255,107,53,0.18)] active:scale-[0.97] focus:ring-seait-500;
+        @apply btn bg-gradient-to-r from-seait-500 via-seait-500 to-seait-550 text-white shadow-[0_0_20px_rgba(255,121,0,0.15)] hover:shadow-[0_0_30px_rgba(255,121,0,0.22)] active:scale-[0.97] focus:ring-seait-500;
     }
 
     .btn-danger {
