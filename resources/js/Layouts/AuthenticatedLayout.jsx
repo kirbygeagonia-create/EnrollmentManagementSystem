@@ -128,6 +128,15 @@ function StudentIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>;
 }
 
+// Pretty role labels for badges
+const roleLabels = {
+    admin: 'Administrator',
+    dean: 'Dean',
+    officeHead: 'Office Head',
+    programHead: 'Program Head',
+    staff: 'Staff',
+};
+
 export default function AuthenticatedLayout({ header, children }) {
     const { user } = usePage().props.auth;
     const { url } = usePage();
@@ -239,6 +248,27 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     };
 
+    // Compute breadcrumb (section label + active item name) from the current route
+    const activeBreadcrumb = (() => {
+        for (const section of filteredSections) {
+            for (const item of section.items) {
+                if (!item.roles.includes(user?.role)) continue;
+                if (item.offices && item.offices.length > 0) {
+                    if (['dean', 'programHead'].includes(user?.role)) {
+                        // ok
+                    } else if (!item.offices.includes(user?.officeId)) {
+                        continue;
+                    }
+                }
+                const routePath = route(item.route).split('?')[0];
+                if (url.startsWith(routePath)) {
+                    return { section: section.label, item: item.name };
+                }
+            }
+        }
+        return null;
+    })();
+
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 1024) {
@@ -265,16 +295,21 @@ export default function AuthenticatedLayout({ header, children }) {
                 aria-label="Main navigation"
             >
                 <div className="flex flex-col h-full">
-                    {/* Logo */}
-                    <div className="flex items-center gap-3 p-4 border-b border-navy-800">
-                        <Link href={route('dashboard')} className="flex items-center gap-3">
-                            <ApplicationLogo className="h-10 w-10" />
-                            <span className="font-heading font-bold text-white text-lg hidden sm:block">SEAIT</span>
+                    {/* Logo / Wordmark */}
+                    <div className="px-4 py-4 border-b border-navy-800">
+                        <Link href={route('dashboard')} className="flex items-center gap-3 group">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15 overflow-hidden transition-transform duration-200 group-hover:scale-105">
+                                <ApplicationLogo className="h-9 w-9 object-contain" />
+                            </span>
+                            <span className="flex flex-col leading-tight">
+                                <span className="font-heading font-bold text-white text-lg tracking-wide">SEAIT</span>
+                                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-seait-300/80">Enrollment Management</span>
+                            </span>
                         </Link>
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto p-4 space-y-6" aria-label="Main navigation">
+                    <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-4" aria-label="Main navigation">
                         {filteredSections.map((section, sectionIndex) => {
                             // Filter items for this user
                             const visibleItems = section.items.filter(item => {
@@ -302,7 +337,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                                         active={isActive}
                                                         className={`nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'}`}
                                                     >
-                                                        <item.icon className="nav-item-icon" />
+                                                        <item.icon className={`nav-item-icon ${isActive ? 'text-seait-400' : ''}`} />
                                                         <span>{item.name}</span>
                                                     </NavLink>
                                                 </li>
@@ -315,9 +350,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     </nav>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-navy-800">
-                        <p className="text-xs text-navy-500 text-center">
-                            SEAIT Enrollment Management System
+                    <div className="px-4 py-3 border-t border-navy-800">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-navy-500 text-center font-medium">
+                            SEAIT · Enrollment Management
                         </p>
                     </div>
                 </div>
@@ -328,7 +363,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 {/* Top Bar */}
                 <header className="top-bar no-print">
                     <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                             <button
                                 onClick={() => setSidebarOpen(true)}
                                 className="lg:hidden p-2 rounded-btn text-brand-500 hover:bg-brand-100 transition-colors"
@@ -340,12 +375,25 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </svg>
                             </button>
 
-                            <div className="hidden lg:block">
-                                <h1 className="font-heading font-semibold text-brand-900 text-xl">SEAIT</h1>
+                            {/* Breadcrumb / Page Title (desktop) */}
+                            <div className="hidden lg:flex items-center gap-2 min-w-0">
+                                {activeBreadcrumb ? (
+                                    <>
+                                        <span className="text-sm font-medium text-brand-400">{activeBreadcrumb.section}</span>
+                                        <svg className="h-4 w-4 text-brand-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                        <h1 className="font-heading font-semibold text-brand-900 text-base truncate">
+                                            {activeBreadcrumb.item}
+                                        </h1>
+                                    </>
+                                ) : (
+                                    <h1 className="font-heading font-semibold text-brand-900 text-base">SEAIT</h1>
+                                )}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                             {/* Notification Bell */}
                             <div className="relative">
                                 <button
@@ -362,34 +410,53 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
                                     {unreadCount > 0 && (
-                                        <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                        <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-seait-500 ring-2 ring-white text-white text-[10px] font-bold flex items-center justify-center">
                                             {unreadCount > 99 ? '99+' : unreadCount}
                                         </span>
                                     )}
                                 </button>
 
                                 {showingNotifications && (
-                                    <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-card shadow-dropdown border border-brand-200 bg-white z-50">
-                                        <div className="flex items-center justify-between px-4 py-3 border-b border-brand-100">
-                                            <h3 className="font-heading font-semibold text-brand-900 text-sm">Notifications</h3>
+                                    <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-card shadow-dropdown border border-brand-200 bg-white z-50 overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-3 border-b border-brand-100 bg-brand-50/40">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-heading font-semibold text-brand-900 text-sm">Notifications</h3>
+                                                {unreadCount > 0 && (
+                                                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-seait-500 text-white text-[10px] font-bold">
+                                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={handleMarkAllRead}
-                                                className="text-xs text-brand-600 hover:text-brand-900"
+                                                className="text-xs font-medium text-seait-600 hover:text-seait-800 transition-colors"
                                             >
                                                 Mark all as read
                                             </button>
                                         </div>
-                                        <div className="max-h-96 overflow-y-auto">
+                                        <div className="max-h-96 overflow-y-auto divide-y divide-brand-50">
                                             {notifications.length === 0 ? (
-                                                <p className="px-4 py-8 text-center text-sm text-brand-500">No notifications yet.</p>
+                                                <div className="px-4 py-10 text-center">
+                                                    <svg className="mx-auto h-8 w-8 text-brand-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                    </svg>
+                                                    <p className="text-sm text-brand-500">No notifications yet.</p>
+                                                </div>
                                             ) : (
                                                 notifications.map((n) => (
-                                                    <div key={n.id} className={`px-4 py-3 border-b border-brand-50 last:border-0 ${n.read_at ? '' : 'bg-brand-50/50'}`}>
-                                                        <p className="text-sm text-brand-900">{n.data?.message || 'Notification'}</p>
-                                                        <p className="text-xs text-brand-500 mt-1">
-                                                            {n.created_at ? new Date(n.created_at).toLocaleString('en-PH') : ''}
-                                                        </p>
+                                                    <div key={n.id} className={`px-4 py-3 transition-colors ${n.read_at ? '' : 'bg-seait-50/60'}`}>
+                                                        <div className="flex items-start gap-2.5">
+                                                            {!n.read_at && (
+                                                                <span className="mt-1.5 h-2 w-2 rounded-full bg-seait-500 flex-shrink-0" aria-hidden="true" />
+                                                            )}
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm leading-snug text-brand-900">{n.data?.message || 'Notification'}</p>
+                                                                <p className="text-xs text-brand-500 mt-1">
+                                                                    {n.created_at ? new Date(n.created_at).toLocaleString('en-PH') : ''}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 ))
                                             )}
@@ -398,6 +465,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 )}
                             </div>
 
+                            {/* User Dropdown */}
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button
@@ -407,10 +475,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                         aria-expanded={showingUserMenu}
                                         aria-haspopup="true"
                                     >
-                                        <div className="user-avatar">
+                                        <div className="user-avatar ring-2 ring-seait-200/60">
                                             {getInitials(user?.name || 'User')}
                                         </div>
-                                        <span className="hidden sm:block">{user?.name}</span>
+                                        <span className="hidden sm:block font-medium">{user?.name}</span>
                                         <svg className="h-4 w-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                                         </svg>
@@ -418,11 +486,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white rounded-card shadow-dropdown border border-brand-200">
-                                    <div className="px-3 py-2 border-b border-brand-100">
-                                        <p className="text-sm font-medium text-brand-900">{user?.name}</p>
-                                        <p className="text-xs text-brand-500">{user?.email}</p>
-                                        <span className={roleBadgeClasses[user?.role] || roleBadgeClasses.staff} style={{ textTransform: 'capitalize' }}>
-                                            {user?.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
+                                    <div className="px-4 py-3 border-b border-brand-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="user-avatar ring-2 ring-seait-200/60">
+                                                {getInitials(user?.name || 'User')}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-brand-900 truncate">{user?.name}</p>
+                                                <p className="text-xs text-brand-500 truncate">{user?.email}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`${roleBadgeClasses[user?.role] || roleBadgeClasses.staff} mt-2.5`} style={{ textTransform: 'capitalize' }}>
+                                            {roleLabels[user?.role] || user?.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
                                         </span>
                                     </div>
                                     <Dropdown.Link href={route('profile.edit')}>
