@@ -19,17 +19,17 @@ export default {
             colors: {
                 // SEAIT Primary Accent - Orange
                 seait: {
-                    50: '#FFF5F0',
-                    100: '#FFE8DB',
-                    200: '#FFD3C0',
-                    300: '#FFB899',
-                    400: '#FF8C5A',
-                    500: '#FF6B35',
-                    600: '#E5512A',
-                    700: '#C44020',
-                    800: '#993C1D',
-                    900: '#662618',
-                    950: '#331009',
+                    50: '#fff2e6',
+                    100: '#ffd5b0',
+                    200: '#ffc18a',
+                    300: '#ffa554',
+                    400: '#ff9433',
+                    500: '#ff7900',
+                    550: '#f15e00',
+                    600: '#e86e00',
+                    700: '#b55600',
+                    800: '#8c4300',
+                    900: '#6b3300',
                 },
                 // SEAIT Navy - Dark surfaces (replaces brand)
                 navy: {
@@ -63,17 +63,17 @@ export default {
                 },
                 // Accent = SEAIT Orange (warm CTA/highlight)
                 accent: {
-                    50: '#FFF5F0',
-                    100: '#FFE8DB',
-                    200: '#FFD3C0',
-                    300: '#FFB899',
-                    400: '#FF8C5A',
-                    500: '#FF6B35',
-                    600: '#E5512A',
-                    700: '#C44020',
-                    800: '#993C1D',
-                    900: '#662618',
-                    950: '#331009',
+                    50: '#fff2e6',
+                    100: '#ffd5b0',
+                    200: '#ffc18a',
+                    300: '#ffa554',
+                    400: '#ff9433',
+                    500: '#ff7900',
+                    550: '#f15e00',
+                    600: '#e86e00',
+                    700: '#b55600',
+                    800: '#8c4300',
+                    900: '#6b3300',
                 },
                 // Semantic colors
                 success: {
