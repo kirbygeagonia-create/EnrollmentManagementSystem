@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Clearance;
 use App\Enums\ClearanceApprovalStatus;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
+use App\Enums\DocumentType;
 use App\Enums\PaymentMode;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Clearanceapprovals;
 use App\Models\Clearanceperiods;
 use App\Models\Clearancerequirements;
+use App\Models\Documentprintlog;
 use App\Models\Feetypes;
 use App\Models\Payments;
 use App\Models\Studentclearances;
@@ -146,8 +148,6 @@ class ClearanceController extends Controller
             $clearance->update(['overallStatus' => ClearanceOverallStatus::Pending]);
         }
 
-        // TODO: Generate PDF slip here
-
         return back()->with('success', 'Clearance slip generated.');
     }
 
@@ -259,7 +259,18 @@ class ClearanceController extends Controller
 
         $clearance->load(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office']);
 
-        // TODO: Generate PDF using Browsershot
+        // Log print (BR: every print inserts a documentprintlog row)
+        $enrollmentId = $clearance->student->enrollments->first()?->enrollmentId;
+        Documentprintlog::create([
+            'enrollmentId' => $enrollmentId,
+            'documentType' => DocumentType::ClearanceSlip,
+            'printedDate' => now(),
+            'printedBy' => Auth::user()->userId,
+            'documentNumber' => Documentprintlog::where('enrollmentId', $enrollmentId)
+                ->where('documentType', DocumentType::ClearanceSlip)
+                ->count() + 1,
+        ]);
+
         return Inertia::render('Clearance/PrintSlip', [
             'clearance' => $clearance,
         ]);

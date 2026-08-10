@@ -469,8 +469,11 @@ class PrintControllerTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('Clearance/PrintSlip')
             ->has('clearance'));
 
-        // Note: ClearanceController::printSlip does NOT write a Documentprintlog row
-        // (verified in controller code - it only renders the Inertia page)
+        // Assert Documentprintlog row created (BR: every print inserts a log row)
+        $this->assertDatabaseHas('documentprintlog', [
+            'documentType' => DocumentType::ClearanceSlip->value,
+            'printedBy' => $clearanceStaff->userId,
+        ]);
     }
 
     #[Test]
