@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const appliesToOptions = [
     { value: '', label: 'All Types' },
@@ -143,6 +143,8 @@ export default function AdmissionRequirements({ requirements, appliesTo }) {
                 <PageHeader
                     title="Admission Requirements"
                     subtitle="Manage admission requirements by applicant type"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,25 +211,43 @@ export default function AdmissionRequirements({ requirements, appliesTo }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingRequirement ? 'Edit Requirement' : 'Create Requirement'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingRequirement ? 'Edit Requirement' : 'Create Requirement'}
+                subtitle="Define the requirement name, who it applies to, and whether it is mandatory."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="admission-req-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingRequirement ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="admission-req-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Requirement Name <span className="text-danger-500">*</span></label>
+                        <FormSection label="Requirement Name" error={form.errors.requirementName} required>
                             <input
                                 type="text"
-                                value={form.requirementName}
+                                value={form.data.requirementName}
                                 onChange={(e) => form.setData('requirementName', e.target.value)}
                                 className={`form-input ${form.errors.requirementName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Form 138, Good Moral Certificate"
                                 required
                             />
-                            {form.errors.requirementName && <p className="form-error">{form.errors.requirementName}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Applies To <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Applies To" error={form.errors.appliesTo} required>
                             <Select
-                                value={form.appliesTo}
+                                value={form.data.appliesTo}
                                 onChange={(e) => form.setData('appliesTo', e.target.value)}
                                 options={appliesTo.map(a => ({ value: a.value, label: a.value.charAt(0).toUpperCase() + a.value.slice(1).replace(/([A-Z])/g, ' $1') }))}
                                 placeholder="Select applicant type"
@@ -235,27 +255,21 @@ export default function AdmissionRequirements({ requirements, appliesTo }) {
                                 error={form.errors.appliesTo}
                                 required
                             />
-                            {form.errors.appliesTo && <p className="form-error">{form.errors.appliesTo}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label flex items-center gap-2">
+                        </FormSection>
+                        <div className="md:col-span-2">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
                                 <input
                                     type="checkbox"
-                                    checked={form.isRequired}
+                                    checked={form.data.isRequired}
                                     onChange={(e) => form.setData('isRequired', e.target.checked)}
                                     className="form-checkbox"
                                 />
-                                Required
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Required</span>
+                                    <p className="text-xs text-brand-500">If unchecked, this requirement is optional for the selected applicant type.</p>
+                                </div>
                             </label>
                         </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingRequirement ? 'Update' : 'Create')}
-                        </button>
                     </div>
                 </form>
             </Modal>

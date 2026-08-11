@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 export default function CurriculumSubjects({ curriculum, subjects, allSubjects, semesters }) {
     const [showModal, setShowModal] = useState(false);
@@ -121,6 +121,8 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                 <PageHeader
                     title="Curriculum Subjects"
                     subtitle={curriculumTitle}
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <>
                             <Link href={route('admin.reference-data.curriculums')} className="btn btn-secondary">
@@ -162,13 +164,33 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingSubject ? 'Edit Curriculum Subject' : 'Add Subject to Curriculum'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingSubject ? 'Edit Curriculum Subject' : 'Add Subject to Curriculum'}
+                subtitle="Choose the subject, year level, semester, and optional prerequisite."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="curriculum-subject-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingSubject ? 'Update' : 'Add')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="curriculum-subject-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Subject <span className="text-danger-500">*</span></label>
+                        <FormSection label="Subject" error={form.errors.subjectId} required>
                             <Select
-                                value={form.subjectId}
+                                value={form.data.subjectId}
                                 onChange={(e) => form.setData('subjectId', e.target.value)}
                                 options={allSubjects.map(s => ({ value: s.subjectId, label: `${s.subjectCode} - ${s.subjectName}` }))}
                                 placeholder="Select subject"
@@ -176,24 +198,20 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                                 error={form.errors.subjectId}
                                 required
                             />
-                            {form.errors.subjectId && <p className="form-error">{form.errors.subjectId}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Prerequisite Subject</label>
+                        </FormSection>
+                        <FormSection label="Prerequisite Subject" error={form.errors.prerequisiteSubjectId}>
                             <Select
-                                value={form.prerequisiteSubjectId}
+                                value={form.data.prerequisiteSubjectId}
                                 onChange={(e) => form.setData('prerequisiteSubjectId', e.target.value)}
                                 options={allSubjects.map(s => ({ value: s.subjectId, label: `${s.subjectCode} - ${s.subjectName}` }))}
                                 placeholder="Select prerequisite (optional)"
                                 className="form-input"
                                 error={form.errors.prerequisiteSubjectId}
                             />
-                            {form.errors.prerequisiteSubjectId && <p className="form-error">{form.errors.prerequisiteSubjectId}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Year Level <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Year Level" error={form.errors.yearLevel} required>
                             <Select
-                                value={form.yearLevel}
+                                value={form.data.yearLevel}
                                 onChange={(e) => form.setData('yearLevel', parseInt(e.target.value))}
                                 options={[
                                     { value: 1, label: '1st Year' },
@@ -207,12 +225,10 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                                 error={form.errors.yearLevel}
                                 required
                             />
-                            {form.errors.yearLevel && <p className="form-error">{form.errors.yearLevel}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Semester Offered <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Semester Offered" error={form.errors.semesterOffered} required>
                             <Select
-                                value={form.semesterOffered}
+                                value={form.data.semesterOffered}
                                 onChange={(e) => form.setData('semesterOffered', e.target.value)}
                                 options={semesterOptions}
                                 placeholder="Select semester"
@@ -220,16 +236,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                                 error={form.errors.semesterOffered}
                                 required
                             />
-                            {form.errors.semesterOffered && <p className="form-error">{form.errors.semesterOffered}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingSubject ? 'Update' : 'Add')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>
