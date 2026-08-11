@@ -25,6 +25,28 @@ const submissionStatusToneMap = {
     incomplete: 'warning',
 };
 
+// Status banner styling per admission status
+const statusBannerMap = {
+    pending: {
+        wrap: 'bg-warning-50 border-warning-200',
+        chip: 'bg-warning-100 text-warning-800',
+        title: 'Pending Review',
+        desc: 'This application is awaiting admission office action.',
+    },
+    approved: {
+        wrap: 'bg-success-50 border-success-200',
+        chip: 'bg-success-100 text-success-800',
+        title: 'Admission Approved',
+        desc: 'This applicant has been admitted and may proceed to evaluation.',
+    },
+    rejected: {
+        wrap: 'bg-danger-50 border-danger-200',
+        chip: 'bg-danger-100 text-danger-800',
+        title: 'Admission Rejected',
+        desc: 'This application has been rejected. Contact the admission office for details.',
+    },
+};
+
 export default function Show({ admission, requirements }) {
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,86 +121,119 @@ export default function Show({ admission, requirements }) {
         setIsSubmitting(true);
     };
 
+    const banner = statusBannerMap[admission.admissionStatus] || statusBannerMap.pending;
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
                     title="Admission Details"
                     subtitle={`${student?.firstName} ${student?.lastName} — ${admission.course?.courseName || '—'}`}
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
             <Head title="Admission Details" />
 
+            {/* Status Banner */}
+            <div className={`mb-6 rounded-card border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${banner.wrap}`}>
+                <div className="flex items-center gap-3">
+                    <span className={`inline-flex items-center justify-center h-10 w-10 rounded-xl ${banner.chip}`}>
+                        {admission.admissionStatus === 'approved' ? (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                        ) : admission.admissionStatus === 'rejected' ? (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                        ) : (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        )}
+                    </span>
+                    <div>
+                        <p className="font-semibold text-brand-900">{banner.title}</p>
+                        <p className="text-sm text-brand-600">{banner.desc}</p>
+                    </div>
+                </div>
+                <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
+                    {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
+                </Badge>
+            </div>
+
             {/* Student Profile Card */}
             <Card title="Student Profile" subtitle="Demographic and academic information" className="mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                     <FormSection label="School ID">
-                        <p className="text-brand-900 font-mono">{student?.schoolIdNumber || '—'}</p>
+                        <dd className="text-brand-900 font-mono">{student?.schoolIdNumber || '—'}</dd>
                     </FormSection>
                     <FormSection label="Full Name">
-                        <p className="text-brand-900">
+                        <dd className="text-brand-900">
                             {student?.lastName}, {student?.firstName} {student?.middleName ? student.middleName.charAt(0) + '.' : ''} {student?.suffix || ''}
-                        </p>
+                        </dd>
                     </FormSection>
                     <FormSection label="Applicant Type">
-                        <Badge tone={applicantTypeToneMap[admission.applicantType] || 'neutral'}>
-                            {admission.applicantType?.replace(/([A-Z])/g, ' $1') || '—'}
-                        </Badge>
+                        <dd>
+                            <Badge tone={applicantTypeToneMap[admission.applicantType] || 'neutral'}>
+                                {admission.applicantType?.replace(/([A-Z])/g, ' $1') || '—'}
+                            </Badge>
+                        </dd>
                     </FormSection>
                     <FormSection label="Course">
-                        <p className="text-brand-900">{admission.course?.courseName || '—'}</p>
+                        <dd className="text-brand-900">{admission.course?.courseName || '—'}</dd>
                     </FormSection>
                     <FormSection label="Term">
-                        <p className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.year || ''}</p>
+                        <dd className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.year || ''}</dd>
                     </FormSection>
                     <FormSection label="Admission Status">
-                        <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
-                            {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
-                        </Badge>
+                        <dd>
+                            <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
+                                {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
+                            </Badge>
+                        </dd>
                     </FormSection>
                     <FormSection label="Gender">
-                        <p className="text-brand-900">{student?.gender?.charAt(0).toUpperCase() + student?.gender?.slice(1) || '—'}</p>
+                        <dd className="text-brand-900">{student?.gender?.charAt(0).toUpperCase() + student?.gender?.slice(1) || '—'}</dd>
                     </FormSection>
                     <FormSection label="Birthdate">
-                        <p className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</p>
+                        <dd className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</dd>
                     </FormSection>
                     <FormSection label="Birthplace">
-                        <p className="text-brand-900">{student?.birthplace || '—'}</p>
+                        <dd className="text-brand-900">{student?.birthplace || '—'}</dd>
                     </FormSection>
                     <FormSection label="Citizenship">
-                        <p className="text-brand-900">{student?.citizenship || '—'}</p>
+                        <dd className="text-brand-900">{student?.citizenship || '—'}</dd>
                     </FormSection>
                     <FormSection label="Civil Status">
-                        <p className="text-brand-900">{student?.civilStatus?.charAt(0).toUpperCase() + student?.civilStatus?.slice(1) || '—'}</p>
+                        <dd className="text-brand-900">{student?.civilStatus?.charAt(0).toUpperCase() + student?.civilStatus?.slice(1) || '—'}</dd>
                     </FormSection>
                     <FormSection label="Religion">
-                        <p className="text-brand-900">{student?.religion?.religionName || '—'}</p>
+                        <dd className="text-brand-900">{student?.religion?.religionName || '—'}</dd>
                     </FormSection>
                     <FormSection label="Contact Number">
-                        <p className="text-brand-900">{student?.contactNumber || '—'}</p>
+                        <dd className="text-brand-900">{student?.contactNumber || '—'}</dd>
                     </FormSection>
                     <FormSection label="Email">
-                        <p className="text-brand-900">{student?.email || '—'}</p>
+                        <dd className="text-brand-900">{student?.email || '—'}</dd>
                     </FormSection>
-                </div>
+                </dl>
 
                 {/* Addresses */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormSection label="Home Address">
-                        <p className="text-brand-600">{formatAddress(homeAddress)}</p>
-                    </FormSection>
-                    <FormSection label="Current Address">
-                        <p className="text-brand-600">{formatAddress(currentAddress)}</p>
-                    </FormSection>
-                    <FormSection label="Permanent Address">
-                        <p className="text-brand-600">{formatAddress(permanentAddress)}</p>
-                    </FormSection>
+                <div className="mt-6 pt-6 border-t border-brand-100">
+                    <h4 className="font-medium text-brand-900 mb-3">Addresses</h4>
+                    <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormSection label="Home Address">
+                            <dd className="text-brand-600">{formatAddress(homeAddress)}</dd>
+                        </FormSection>
+                        <FormSection label="Current Address">
+                            <dd className="text-brand-600">{formatAddress(currentAddress)}</dd>
+                        </FormSection>
+                        <FormSection label="Permanent Address">
+                            <dd className="text-brand-600">{formatAddress(permanentAddress)}</dd>
+                        </FormSection>
+                    </dl>
                 </div>
 
                 {/* Guardians */}
                 {guardians.length > 0 && (
-                    <div className="mt-6">
+                    <div className="mt-6 pt-6 border-t border-brand-100">
                         <h4 className="font-medium text-brand-900 mb-3">Guardians</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {guardians.map((guardian, idx) => (
@@ -187,8 +242,10 @@ export default function Show({ admission, requirements }) {
                                     <p className="text-sm text-brand-600">{guardian.relationship?.charAt(0).toUpperCase() + guardian.relationship?.slice(1)}</p>
                                     <p className="text-sm text-brand-600">{guardian.contactNumber}</p>
                                     {guardian.email && <p className="text-sm text-brand-600">{guardian.email}</p>}
-                                    {guardian.isEmergencyContact && <span className="badge badge-info mt-2 inline-block">Emergency Contact</span>}
-                                    {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning mt-2 inline-block ml-2">Authorized Representative</span>}
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {guardian.isEmergencyContact && <span className="badge badge-info">Emergency Contact</span>}
+                                        {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning">Authorized Representative</span>}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -199,14 +256,14 @@ export default function Show({ admission, requirements }) {
             {/* Requirements */}
             <Card title="Requirements" subtitle="Document submissions and verification status" className="mb-6">
                 {requirements.length > 0 ? (
-                    <div className="space-y-3">
+                    <ul className="space-y-3">
                         {requirements.map((req) => {
                             const submission = requirementSubmissions.find(s => s.requirementId === req.requirementId);
                             const status = submission?.submissionStatus || 'pending';
                             const hasDocument = submission?.documents && submission.documents.length > 0;
 
                             return (
-                                <div key={req.requirementId} className="border border-brand-200 rounded-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <li key={req.requirementId} className="border border-brand-200 rounded-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                     <div className="flex-1">
                                         <p className="font-medium text-brand-900">{req.requirementName}</p>
                                         <p className="text-sm text-brand-500">
@@ -235,7 +292,7 @@ export default function Show({ admission, requirements }) {
                                                 <button
                                                     onClick={() => handleVerifyRequirement(req.requirementId, true)}
                                                     disabled={isSubmitting}
-                                                    className="btn btn-success btn-sm"
+                                                    className="btn btn-primary btn-sm"
                                                 >
                                                     Verify
                                                 </button>
@@ -249,10 +306,10 @@ export default function Show({ admission, requirements }) {
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                </li>
                             );
                         })}
-                    </div>
+                    </ul>
                 ) : (
                     <p className="text-brand-500 text-center py-8">No requirements configured for this applicant type.</p>
                 )}
@@ -266,7 +323,7 @@ export default function Show({ admission, requirements }) {
                             <button
                                 onClick={handleApprove}
                                 disabled={isSubmitting}
-                                className="btn btn-success"
+                                className="btn btn-primary"
                             >
                                 {isSubmitting ? 'Approving...' : 'Approve Admission'}
                             </button>

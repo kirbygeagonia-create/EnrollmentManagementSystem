@@ -20,6 +20,46 @@ const enrollmentStatusToneMap = {
     dropped: 'dropped',
 };
 
+// Status banner styling per enrollment status
+const statusBannerMap = {
+    pending: {
+        wrap: 'bg-warning-50 border-warning-200',
+        chip: 'bg-warning-100 text-warning-800',
+        title: 'Pending Evaluation',
+        desc: 'This enrollment is awaiting subject proposal and evaluation signing.',
+    },
+    evaluated: {
+        wrap: 'bg-info-50 border-info-200',
+        chip: 'bg-info-100 text-info-800',
+        title: 'Evaluated',
+        desc: 'Evaluation is complete and ready for the enrollment workflow to be signed.',
+    },
+    assessed: {
+        wrap: 'bg-accent-50 border-accent-200',
+        chip: 'bg-accent-100 text-accent-800',
+        title: 'Assessed',
+        desc: 'This enrollment has been assessed. Proceed to accounting for payment.',
+    },
+    paid: {
+        wrap: 'bg-success-50 border-success-200',
+        chip: 'bg-success-100 text-success-800',
+        title: 'Paid',
+        desc: 'Fees have been settled. Proceed to enrollment finalization.',
+    },
+    enrolled: {
+        wrap: 'bg-brand-50 border-brand-200',
+        chip: 'bg-brand-700 text-white',
+        title: 'Enrolled',
+        desc: 'This student is fully enrolled for the term.',
+    },
+    dropped: {
+        wrap: 'bg-danger-50 border-danger-200',
+        chip: 'bg-danger-100 text-danger-800',
+        title: 'Dropped',
+        desc: 'This enrollment has been dropped.',
+    },
+};
+
 export default function Show({ enrollment, curriculumSubjects }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -166,95 +206,130 @@ export default function Show({ enrollment, curriculumSubjects }) {
         return parts.join(', ') || '—';
     };
 
+    const banner = statusBannerMap[enrollment.enrollmentStatus] || statusBannerMap.pending;
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
                     title="Evaluation Details"
                     subtitle={`${student?.firstName} ${student?.lastName} — ${enrollment.course?.name || '—'}`}
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
             <Head title="Evaluation Details" />
 
+            {/* Status Banner */}
+            <div className={`mb-6 rounded-card border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${banner.wrap}`}>
+                <div className="flex items-center gap-3">
+                    <span className={`inline-flex items-center justify-center h-10 w-10 rounded-xl ${banner.chip}`}>
+                        {enrollment.enrollmentStatus === 'evaluated' ? (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        ) : enrollment.enrollmentStatus === 'enrolled' ? (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                        ) : enrollment.enrollmentStatus === 'dropped' ? (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                        ) : (
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        )}
+                    </span>
+                    <div>
+                        <p className="font-semibold text-brand-900">{banner.title}</p>
+                        <p className="text-sm text-brand-600">{banner.desc}</p>
+                    </div>
+                </div>
+                <Badge tone={enrollmentStatusToneMap[enrollment.enrollmentStatus] || 'neutral'}>
+                    {enrollment.enrollmentStatus?.charAt(0).toUpperCase() + enrollment.enrollmentStatus?.slice(1)}
+                </Badge>
+            </div>
+
             {/* Student Profile Card */}
             <Card title="Student Profile" subtitle="Demographic and academic information" className="mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
                     <FormSection label="School ID">
-                        <p className="text-brand-900 font-mono">{student?.schoolIdNumber || '—'}</p>
+                        <dd className="text-brand-900 font-mono">{student?.schoolIdNumber || '—'}</dd>
                     </FormSection>
                     <FormSection label="Full Name">
-                        <p className="text-brand-900">
+                        <dd className="text-brand-900">
                             {student?.lastName}, {student?.firstName} {student?.middleName ? student.middleName.charAt(0) + '.' : ''} {student?.suffix || ''}
-                        </p>
+                        </dd>
                     </FormSection>
                     <FormSection label="Student Type">
-                        <Badge tone={studentTypeToneMap[enrollment.studentType] || 'neutral'}>
-                            {enrollment.studentType?.replace(/([A-Z])/g, ' $1') || '—'}
-                        </Badge>
+                        <dd>
+                            <Badge tone={studentTypeToneMap[enrollment.studentType] || 'neutral'}>
+                                {enrollment.studentType?.replace(/([A-Z])/g, ' $1') || '—'}
+                            </Badge>
+                        </dd>
                     </FormSection>
                     <FormSection label="Course">
-                        <p className="text-brand-900">{enrollment.course?.name || '—'}</p>
+                        <dd className="text-brand-900">{enrollment.course?.name || '—'}</dd>
                     </FormSection>
                     <FormSection label="Major">
-                        <p className="text-brand-900">{enrollment.major?.name || '—'}</p>
+                        <dd className="text-brand-900">{enrollment.major?.name || '—'}</dd>
                     </FormSection>
                     <FormSection label="Year Level">
-                        <p className="text-brand-900">Year {enrollment.yearLevel || '—'}</p>
+                        <dd className="text-brand-900">Year {enrollment.yearLevel || '—'}</dd>
                     </FormSection>
                     <FormSection label="Term">
-                        <p className="text-brand-900">{enrollment.term?.name || '—'} {enrollment.term?.academicYear?.year || ''}</p>
+                        <dd className="text-brand-900">{enrollment.term?.name || '—'} {enrollment.term?.academicYear?.year || ''}</dd>
                     </FormSection>
                     <FormSection label="Enrollment Status">
-                        <Badge tone={enrollmentStatusToneMap[enrollment.enrollmentStatus] || 'neutral'}>
-                            {enrollment.enrollmentStatus?.charAt(0).toUpperCase() + enrollment.enrollmentStatus?.slice(1)}
-                        </Badge>
+                        <dd>
+                            <Badge tone={enrollmentStatusToneMap[enrollment.enrollmentStatus] || 'neutral'}>
+                                {enrollment.enrollmentStatus?.charAt(0).toUpperCase() + enrollment.enrollmentStatus?.slice(1)}
+                            </Badge>
+                        </dd>
                     </FormSection>
                     <FormSection label="Academic Standing">
-                        <p className="text-brand-900">{enrollment.academicStanding?.charAt(0).toUpperCase() + enrollment.academicStanding?.slice(1) || '—'}</p>
+                        <dd className="text-brand-900">{enrollment.academicStanding?.charAt(0).toUpperCase() + enrollment.academicStanding?.slice(1) || '—'}</dd>
                     </FormSection>
                     <FormSection label="Gender">
-                        <p className="text-brand-900">{student?.gender?.charAt(0).toUpperCase() + student?.gender?.slice(1) || '—'}</p>
+                        <dd className="text-brand-900">{student?.gender?.charAt(0).toUpperCase() + student?.gender?.slice(1) || '—'}</dd>
                     </FormSection>
                     <FormSection label="Birthdate">
-                        <p className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</p>
+                        <dd className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</dd>
                     </FormSection>
                     <FormSection label="Birthplace">
-                        <p className="text-brand-900">{student?.birthplace || '—'}</p>
+                        <dd className="text-brand-900">{student?.birthplace || '—'}</dd>
                     </FormSection>
                     <FormSection label="Citizenship">
-                        <p className="text-brand-900">{student?.citizenship || '—'}</p>
+                        <dd className="text-brand-900">{student?.citizenship || '—'}</dd>
                     </FormSection>
                     <FormSection label="Civil Status">
-                        <p className="text-brand-900">{student?.civilStatus?.charAt(0).toUpperCase() + student?.civilStatus?.slice(1) || '—'}</p>
+                        <dd className="text-brand-900">{student?.civilStatus?.charAt(0).toUpperCase() + student?.civilStatus?.slice(1) || '—'}</dd>
                     </FormSection>
                     <FormSection label="Religion">
-                        <p className="text-brand-900">{student?.religion?.religionName || '—'}</p>
+                        <dd className="text-brand-900">{student?.religion?.religionName || '—'}</dd>
                     </FormSection>
                     <FormSection label="Contact Number">
-                        <p className="text-brand-900">{student?.contactNumber || '—'}</p>
+                        <dd className="text-brand-900">{student?.contactNumber || '—'}</dd>
                     </FormSection>
                     <FormSection label="Email">
-                        <p className="text-brand-900">{student?.email || '—'}</p>
+                        <dd className="text-brand-900">{student?.email || '—'}</dd>
                     </FormSection>
-                </div>
+                </dl>
 
                 {/* Addresses */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormSection label="Home Address">
-                        <p className="text-brand-600">{formatAddress(homeAddress)}</p>
-                    </FormSection>
-                    <FormSection label="Current Address">
-                        <p className="text-brand-600">{formatAddress(currentAddress)}</p>
-                    </FormSection>
-                    <FormSection label="Permanent Address">
-                        <p className="text-brand-600">{formatAddress(permanentAddress)}</p>
-                    </FormSection>
+                <div className="mt-6 pt-6 border-t border-brand-100">
+                    <h4 className="font-medium text-brand-900 mb-3">Addresses</h4>
+                    <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormSection label="Home Address">
+                            <dd className="text-brand-600">{formatAddress(homeAddress)}</dd>
+                        </FormSection>
+                        <FormSection label="Current Address">
+                            <dd className="text-brand-600">{formatAddress(currentAddress)}</dd>
+                        </FormSection>
+                        <FormSection label="Permanent Address">
+                            <dd className="text-brand-600">{formatAddress(permanentAddress)}</dd>
+                        </FormSection>
+                    </dl>
                 </div>
 
                 {/* Guardians */}
                 {guardians.length > 0 && (
-                    <div className="mt-6">
+                    <div className="mt-6 pt-6 border-t border-brand-100">
                         <h4 className="font-medium text-brand-900 mb-3">Guardians</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {guardians.map((guardian, idx) => (
@@ -263,8 +338,10 @@ export default function Show({ enrollment, curriculumSubjects }) {
                                     <p className="text-sm text-brand-600">{guardian.relationship?.charAt(0).toUpperCase() + guardian.relationship?.slice(1)}</p>
                                     <p className="text-sm text-brand-600">{guardian.contactNumber}</p>
                                     {guardian.email && <p className="text-sm text-brand-600">{guardian.email}</p>}
-                                    {guardian.isEmergencyContact && <span className="badge badge-info mt-2 inline-block">Emergency Contact</span>}
-                                    {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning mt-2 inline-block ml-2">Authorized Representative</span>}
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {guardian.isEmergencyContact && <span className="badge badge-info">Emergency Contact</span>}
+                                        {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning">Authorized Representative</span>}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -386,7 +463,7 @@ export default function Show({ enrollment, curriculumSubjects }) {
                     title="Sign Evaluation"
                     message="This will sign the evaluation and create the enrollment workflow. Are you sure you want to proceed?"
                     confirmText="Sign"
-                    variant="accent"
+                    variant="warning"
                     loading={isSubmitting}
                 />
             </Card>

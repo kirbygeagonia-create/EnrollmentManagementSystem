@@ -82,6 +82,8 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <PageHeader
                     title={getStageLabel()}
                     subtitle={getStageDescription()}
+                    logo="/images/logos/guidance-office.jpg"
+                    logoAlt="Guidance Office"
                 />
             }
         >
@@ -94,7 +96,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         <FormSection label="Course" required>
                             <Select
                                 value={form.data.courseId}
-                                onChange={(e) => form.setData('courseId', e.target.value)}
+                                onChange={(value) => form.setData('courseId', value)}
                                 options={courses.map(c => ({ value: c.courseId, label: `${c.courseCode} - ${c.courseName}` }))}
                                 placeholder="Select course"
                                 required
@@ -105,7 +107,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         <FormSection label="Term" required>
                             <Select
                                 value={form.data.termId}
-                                onChange={(e) => form.setData('termId', e.target.value)}
+                                onChange={(value) => form.setData('termId', value)}
                                 options={terms.map(t => ({ value: t.termId, label: `${t.semester} ${t.academicYear?.year || ''}` }))}
                                 placeholder="Select term"
                                 required
@@ -119,24 +121,29 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <Card title="Student" subtitle="Select the student to record exam for">
                     <FormSection label="Student" required>
                         {loadingStudents ? (
-                            <div className="flex items-center gap-3">
-                                <svg className="animate-spin h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24">
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50">
+                                <svg className="animate-spin h-5 w-5 text-seait-600" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
-                                <span className="text-brand-600">Loading students...</span>
+                                <span className="text-brand-600 text-sm">Loading students...</span>
                             </div>
                         ) : students.length > 0 ? (
                             <Select
                                 value={form.data.studentId}
-                                onChange={(e) => form.setData('studentId', e.target.value)}
+                                onChange={(value) => form.setData('studentId', value)}
                                 options={students.map(s => ({ value: s.studentId, label: `${s.schoolIdNumber} - ${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` }))}
                                 placeholder="Select student"
                                 required
                             />
                         ) : (
-                            <div className="text-brand-500">
-                                {form.data.courseId && form.data.termId ? 'No students found for this course and term.' : 'Select a course and term to load students.'}
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-50">
+                                <svg className="h-5 w-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-8 0 4 4 0 008 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <span className="text-brand-500 text-sm">
+                                    {form.data.courseId && form.data.termId ? 'No students found for this course and term.' : 'Select a course and term to load students.'}
+                                </span>
                             </div>
                         )}
                         {form.errors.studentId && <p className="form-error">{form.errors.studentId}</p>}
@@ -149,7 +156,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         <FormSection label="Result" required>
                             <Select
                                 value={form.data.examResult}
-                                onChange={(e) => form.setData('examResult', e.target.value)}
+                                onChange={(value) => form.setData('examResult', value)}
                                 options={resultOptions}
                                 placeholder="Select result"
                                 required
@@ -185,7 +192,22 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         disabled={form.processing || !form.data.studentId}
                         className="btn btn-primary"
                     >
-                        {form.processing ? 'Recording...' : 'Record Exam'}
+                        {form.processing ? (
+                            <>
+                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Recording...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Record Exam
+                            </>
+                        )}
                     </button>
                 </div>
             </form>

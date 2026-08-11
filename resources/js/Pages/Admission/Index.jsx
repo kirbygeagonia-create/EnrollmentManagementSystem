@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState } from '@/Components/ui';
+import { Head, Link } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusOptions = [
@@ -20,6 +19,18 @@ const statusToneMap = {
 export default function Index({ admissions, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
+
+    // Derive quick stats from the full paginator payload (if available)
+    const stats = useMemo(() => {
+        const rows = admissions?.data || [];
+        const count = (tone) => rows.filter((r) => r.admissionStatus === tone).length;
+        return {
+            total: admissions?.total ?? rows.length,
+            pending: count('pending'),
+            approved: count('approved'),
+            rejected: count('rejected'),
+        };
+    }, [admissions]);
 
     const columns = useMemo(() => [
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -72,6 +83,8 @@ export default function Index({ admissions, filters = {} }) {
                 <PageHeader
                     title="Admissions"
                     subtitle="Manage student admission applications"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <Link href={route('admission.create')} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,51 +98,107 @@ export default function Index({ admissions, filters = {} }) {
         >
             <Head title="Admissions" />
 
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                    <StatCard
+                        label="Total Applications"
+                        value={stats.total}
+                        iconBg="seait"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '60ms' }}>
+                    <StatCard
+                        label="Pending Review"
+                        value={stats.pending}
+                        iconBg="warning"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                    <StatCard
+                        label="Approved"
+                        value={stats.approved}
+                        iconBg="success"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
+                    <StatCard
+                        label="Rejected"
+                        value={stats.rejected}
+                        iconBg="danger"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
+                    />
+                </div>
+            </div>
+
             {/* Filter Bar */}
-            <FilterBar onSubmit={handleFilter}>
-                <FilterBarField label="Search">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by name, ID number..."
-                        className="form-input"
-                    />
-                </FilterBarField>
-                <FilterBarField label="Status">
-                    <Select
-                        value={status}
-                        onChange={setStatus}
-                        options={statusOptions}
-                        placeholder="All Statuses"
-                        className="form-input"
-                    />
-                </FilterBarField>
-            </FilterBar>
+            <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                <FilterBar onSubmit={handleFilter}>
+                    <FilterBarField label="Search">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by name, ID number..."
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                    <FilterBarField label="Status">
+                        <Select
+                            value={status}
+                            onChange={setStatus}
+                            options={statusOptions}
+                            placeholder="All Statuses"
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                </FilterBar>
+            </div>
 
             {/* Data Table */}
-            <Card>
-                {admissions?.data?.length > 0 ? (
-                    <>
-                        <DataTable
-                            columns={columns}
-                            rows={admissions.data}
-                            children={renderActions}
-                            emptyMessage="No admissions found"
+            <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
+                <Card>
+                    {admissions?.data?.length > 0 ? (
+                        <>
+                            <DataTable
+                                columns={columns}
+                                rows={admissions.data}
+                                children={renderActions}
+                                emptyMessage="No admissions found"
+                            />
+                            <div className="mt-4">
+                                <Pagination paginator={admissions} />
+                            </div>
+                        </>
+                    ) : (
+                        <EmptyState
+                            title="No admissions found"
+                            message={search || status ? 'Try adjusting your filters to find matching records.' : 'No admission applications have been submitted yet.'}
+                            actionLabel={!search && !status ? 'Create First Admission' : undefined}
+                            onAction={!search && !status ? () => window.location.href = route('admission.create') : undefined}
                         />
-                        <div className="mt-4">
-                            <Pagination paginator={admissions} />
-                        </div>
-                    </>
-                ) : (
-                    <EmptyState
-                        title="No admissions found"
-                        message={search || status ? 'Try adjusting your filters to find matching records.' : 'No admission applications have been submitted yet.'}
-                        actionLabel={!search && !status ? 'Create First Admission' : undefined}
-                        onAction={!search && !status ? () => window.location.href = route('admission.create') : undefined}
-                    />
-                )}
-            </Card>
+                    )}
+                </Card>
+            </div>
         </AuthenticatedLayout>
     );
 }

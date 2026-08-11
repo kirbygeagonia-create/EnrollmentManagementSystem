@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState } from '@/Components/ui';
+import { Head, Link } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const studentTypeToneMap = {
@@ -22,6 +21,17 @@ const enrollmentStatusToneMap = {
 
 export default function Index({ enrollments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
+
+    // Derive quick stats from the full paginator payload (if available)
+    const stats = useMemo(() => {
+        const rows = enrollments?.data || [];
+        return {
+            total: enrollments?.total ?? rows.length,
+            pending: rows.filter((r) => r.enrollmentStatus === 'pending').length,
+            evaluated: rows.filter((r) => r.enrollmentStatus === 'evaluated').length,
+            transferees: rows.filter((r) => r.studentType === 'transferee' || r.studentType === 'shifter').length,
+        };
+    }, [enrollments]);
 
     const columns = useMemo(() => [
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -68,45 +78,103 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="Evaluation Queue"
                     subtitle="Manage student enrollment evaluations"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
             <Head title="Evaluation Queue" />
 
-            {/* Filter Bar */}
-            <FilterBar onSubmit={handleFilter}>
-                <FilterBarField label="Search">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by name, ID number..."
-                        className="form-input"
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+                    <StatCard
+                        label="In Queue"
+                        value={stats.total}
+                        iconBg="seait"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
                     />
-                </FilterBarField>
-            </FilterBar>
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '60ms' }}>
+                    <StatCard
+                        label="Pending Evaluation"
+                        value={stats.pending}
+                        iconBg="warning"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                    <StatCard
+                        label="Evaluated"
+                        value={stats.evaluated}
+                        iconBg="success"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
+                    <StatCard
+                        label="Transferees / Shifters"
+                        value={stats.transferees}
+                        iconBg="info"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        }
+                    />
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                <FilterBar onSubmit={handleFilter}>
+                    <FilterBarField label="Search">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by name, ID number..."
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                </FilterBar>
+            </div>
 
             {/* Data Table */}
-            <Card>
-                {enrollments?.data?.length > 0 ? (
-                    <>
-                        <DataTable
-                            columns={columns}
-                            rows={enrollments.data}
-                            children={renderActions}
-                            emptyMessage="No enrollments pending evaluation"
+            <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
+                <Card>
+                    {enrollments?.data?.length > 0 ? (
+                        <>
+                            <DataTable
+                                columns={columns}
+                                rows={enrollments.data}
+                                children={renderActions}
+                                emptyMessage="No enrollments pending evaluation"
+                            />
+                            <div className="mt-4">
+                                <Pagination paginator={enrollments} />
+                            </div>
+                        </>
+                    ) : (
+                        <EmptyState
+                            title="No enrollments found"
+                            message={search ? 'Try adjusting your search to find matching records.' : 'No enrollments are currently pending evaluation.'}
                         />
-                        <div className="mt-4">
-                            <Pagination paginator={enrollments} />
-                        </div>
-                    </>
-                ) : (
-                    <EmptyState
-                        title="No enrollments found"
-                        message={search ? 'Try adjusting your search to find matching records.' : 'No enrollments are currently pending evaluation.'}
-                    />
-                )}
-            </Card>
+                    )}
+                </Card>
+            </div>
         </AuthenticatedLayout>
     );
 }

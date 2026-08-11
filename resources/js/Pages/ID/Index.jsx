@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState } from '@/Components/ui';
+import { Head, Link } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const idStatusToneMap = {
@@ -24,6 +23,28 @@ const idStatusLabelMap = {
 
 export default function Index({ enrollments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
+
+    const rows = useMemo(() => enrollments?.data || [], [enrollments]);
+
+    // Summary tiles derived from the current page
+    const stats = useMemo(() => {
+        let pending = 0;
+        let produced = 0;
+        let active = 0;
+        rows.forEach((row) => {
+            let status = null;
+            if (row.studentids && row.studentids.length > 0) {
+                status = row.studentids[0].validationStatus || 'active';
+            } else if (row.idrequests && row.idrequests.length > 0) {
+                status = row.idrequests[0].status || 'pending';
+            }
+            if (!status) return;
+            if (status === 'active') active += 1;
+            else if (status === 'cardProduced') produced += 1;
+            else if (['pending', 'pendingValidation'].includes(status)) pending += 1;
+        });
+        return { pending, produced, active };
+    }, [rows]);
 
     const columns = useMemo(() => [
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -81,10 +102,46 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="ID Requests"
                     subtitle="Manage student ID requests and cards (Phase 8)"
+                    logo="/images/logos/gzel-id-validation.jpg"
+                    logoAlt="ID Office"
                 />
             }
         >
             <Head title="ID Requests" />
+
+            {/* Summary tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <StatCard
+                    label="Pending / Validation"
+                    value={stats.pending}
+                    iconBg="warning"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Card Produced"
+                    value={stats.produced}
+                    iconBg="info"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Active IDs"
+                    value={stats.active}
+                    iconBg="success"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+            </div>
 
             {/* Filter Bar */}
             <FilterBar onSubmit={handleFilter}>
@@ -116,7 +173,12 @@ export default function Index({ enrollments, filters = {} }) {
                 ) : (
                     <EmptyState
                         title="No ID requests found"
-                        message={search ? 'Try adjusting your search to find matching records.' : 'No students pending ID processing.'}
+                        message={search ? 'Try adjusting your search to find matching records.' : 'No students are currently pending ID processing.'}
+                        icon={
+                            <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M10 6l1.5-1.5a2 2 0 011.414-.586H16a2 2 0 012 2v2.586a2 2 0 01-.586 1.414L16 12M10 6V4a2 2 0 012-2h2a2 2 0 012 2v2" />
+                            </svg>
+                        }
                     />
                 )}
             </Card>

@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState } from '@/Components/ui';
+import { Head, Link } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const stageOptions = [
@@ -35,6 +34,19 @@ export default function Index({ exams, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [stage, setStage] = useState(filters.stage || '');
     const [type, setType] = useState(filters.type || '');
+
+    const rows = useMemo(() => exams?.data || [], [exams]);
+
+    // Summary tiles derived from the current page
+    const stats = useMemo(() => {
+        let pass = 0;
+        let fail = 0;
+        rows.forEach((r) => {
+            if (r.examResult === 'pass') pass += 1;
+            else if (r.examResult === 'fail') fail += 1;
+        });
+        return { pass, fail, total: rows.length };
+    }, [rows]);
 
     const columns = useMemo(() => [
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -87,6 +99,8 @@ export default function Index({ exams, filters = {} }) {
                 <PageHeader
                     title="Entrance Exams"
                     subtitle="Record and manage exam results"
+                    logo="/images/logos/guidance-office.jpg"
+                    logoAlt="Guidance Office"
                     actions={
                         <Link href={route('exam.create')} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,6 +113,40 @@ export default function Index({ exams, filters = {} }) {
             }
         >
             <Head title="Entrance Exams" />
+
+            {/* Summary tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <StatCard
+                    label="Exams on Page"
+                    value={stats.total}
+                    iconBg="brand"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Passed"
+                    value={stats.pass}
+                    iconBg="success"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Failed"
+                    value={stats.fail}
+                    iconBg="danger"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+            </div>
 
             {/* Filter Bar */}
             <FilterBar onSubmit={handleFilter}>
@@ -151,6 +199,11 @@ export default function Index({ exams, filters = {} }) {
                         message={search || stage || type ? 'Try adjusting your filters to find matching records.' : 'No exam results have been recorded yet.'}
                         actionLabel={!search && !stage && !type ? 'Record First Exam' : undefined}
                         onAction={!search && !stage && !type ? () => window.location.href = route('exam.create') : undefined}
+                        icon={
+                            <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        }
                     />
                 )}
             </Card>
