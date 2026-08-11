@@ -76,86 +76,101 @@ export default function Show({ enrollment, checklist, allValid }) {
         )},
     ];
 
+    const enrolledSubjectCount = enrollment.enrolledSubjects?.length || 0;
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
                     title="Enrollment Review"
                     subtitle={`${studentName} — ${enrollment.course?.courseName || '—'}`}
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
+                    actions={
+                        <Link
+                            href={route('registrar.index')}
+                            className="btn btn-secondary btn-sm"
+                        >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Queue
+                        </Link>
+                    }
                 />
             }
         >
             <Head title={`Enrollment Review — ${studentName}`} />
 
-            {/* Enrollment Info Card */}
-            <Card className="mb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <p className="text-sm text-brand-500">School ID</p>
-                        <p className="font-mono font-medium text-brand-900">{enrollment.student?.schoolIdNumber || '—'}</p>
+            <div className="space-y-6">
+                {/* Enrollment Info Card */}
+                <Card title="Enrollment Information" subtitle="Identifying details for this enrollment record">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <p className="text-sm text-brand-500">School ID</p>
+                            <p className="font-mono font-medium text-brand-900">{enrollment.student?.schoolIdNumber || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Student Name</p>
+                            <p className="font-medium text-brand-900">{studentName}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Course</p>
+                            <p className="font-medium text-brand-900">{enrollment.course?.courseName || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Major</p>
+                            <p className="font-medium text-brand-900">{enrollment.major?.majorName || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Year Level</p>
+                            <p className="font-medium text-brand-900">{enrollment.yearLevel ? `${enrollment.yearLevel}${getYearSuffix(enrollment.yearLevel)} Year` : '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Student Type</p>
+                            <p className="font-medium text-brand-900">{formatStudentType(enrollment.studentType?.value || enrollment.studentType)}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Term</p>
+                            <p className="font-medium text-brand-900">{termLabel}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-brand-500">Enrollment Status</p>
+                            <Badge tone={getStatusTone(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)}>
+                                {formatStatus(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)}
+                            </Badge>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Student Name</p>
-                        <p className="font-medium text-brand-900">{studentName}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Course</p>
-                        <p className="font-medium text-brand-900">{enrollment.course?.courseName || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Major</p>
-                        <p className="font-medium text-brand-900">{enrollment.major?.majorName || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Year Level</p>
-                        <p className="font-medium text-brand-900">{enrollment.yearLevel ? `${enrollment.yearLevel}${getYearSuffix(enrollment.yearLevel)} Year` : '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Student Type</p>
-                        <p className="font-medium text-brand-900">{formatStudentType(enrollment.studentType?.value || enrollment.studentType)}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Term</p>
-                        <p className="font-medium text-brand-900">{termLabel}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Enrollment Status</p>
-                        <Badge tone={getStatusTone(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)}>
-                            {formatStatus(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)}
-                        </Badge>
-                    </div>
-                </div>
-            </Card>
+                </Card>
 
-            {/* Validation Checklist */}
-            <Card className="mb-6">
-                <FormSection title="Validation Checklist" subtitle="All items must be completed before approval">
-                    <StepProgress steps={steps} className="mb-6" />
+                {/* Validation Checklist */}
+                <Card>
+                    <FormSection title="Validation Checklist" subtitle="All items must be completed before approval">
+                        <StepProgress steps={steps} className="mb-6" />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {checklistSteps.map((item) => (
-                            <div key={item.key} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${checklist[item.key] ? 'bg-success-100 text-success-600' : 'bg-brand-200 text-brand-400'}`}>
-                                    {checklist[item.key] ? (
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {checklistSteps.map((item) => (
+                                <div key={item.key} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${checklist[item.key] ? 'bg-success-100 text-success-600' : 'bg-brand-200 text-brand-400'}`}>
+                                        {checklist[item.key] ? (
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-medium text-brand-900">{item.label}</span>
                                 </div>
-                                <span className="text-sm font-medium text-brand-900">{item.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </FormSection>
-            </Card>
+                            ))}
+                        </div>
+                    </FormSection>
+                </Card>
 
-            {/* Enrolled Subjects */}
-            <Card className="mb-6">
-                <FormSection title="Enrolled Subjects" subtitle={`${enrollment.enrolledSubjects?.length || 0} subject(s)`}>
+                {/* Enrolled Subjects */}
+                <Card title="Enrolled Subjects" subtitle={`${enrolledSubjectCount} subject(s)`}>
                     {enrollment.enrolledSubjects && enrollment.enrolledSubjects.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="data-table data-table-striped">
@@ -191,58 +206,57 @@ export default function Show({ enrollment, checklist, allValid }) {
                             <p className="empty-state-message">No enrolled subjects found.</p>
                         </div>
                     )}
-                </FormSection>
-            </Card>
+                </Card>
 
-            {/* Actions */}
-            <Card>
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                        <h3 className="font-medium text-brand-900 mb-3">Print Documents</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {printLinks.map((link) => (
-                                <Link
-                                    key={link.route}
-                                    href={route(link.route, { enrollment: enrollment.enrollmentId })}
-                                    target="_blank"
-                                    className="btn btn-outline btn-sm flex items-center gap-2"
-                                >
-                                    {link.icon}
-                                    <span>{link.label}</span>
-                                </Link>
-                            ))}
+                {/* Actions */}
+                <Card title="Print Documents" subtitle="Generate registrar-issued documents for this enrollment">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                            <div className="flex flex-wrap gap-2">
+                                {printLinks.map((link) => (
+                                    <Link
+                                        key={link.route}
+                                        href={route(link.route, { enrollment: enrollment.enrollmentId })}
+                                        target="_blank"
+                                        className="btn btn-secondary btn-sm flex items-center gap-2"
+                                    >
+                                        {link.icon}
+                                        <span>{link.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex items-end sm:items-center sm:justify-end">
+                            {checklist.registrarApprovalPending && (
+                                <>
+                                    <ConfirmDialog
+                                        show={confirmOpen}
+                                        onClose={() => setConfirmOpen(false)}
+                                        onConfirm={confirmApprove}
+                                        title="Approve Enrollment"
+                                        message="This will mark the enrollment as enrolled and confirm all proposed subjects. This action cannot be undone."
+                                        confirmText="Approve"
+                                        variant="primary"
+                                    />
+                                    <PrimaryButton
+                                        onClick={handleApprove}
+                                        disabled={!allValid || form.processing}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        {form.processing ? 'Processing...' : 'Approve Enrollment'}
+                                    </PrimaryButton>
+                                </>
+                            )}
+                            {!checklist.registrarApprovalPending && (
+                                <Badge tone="info" className="text-sm">
+                                    Not pending registrar approval
+                                </Badge>
+                            )}
                         </div>
                     </div>
-
-                    <div className="flex items-end sm:items-center sm:justify-end">
-                        {checklist.registrarApprovalPending && (
-                            <>
-                                <ConfirmDialog
-                                    isOpen={confirmOpen}
-                                    onClose={() => setConfirmOpen(false)}
-                                    onConfirm={confirmApprove}
-                                    title="Approve Enrollment"
-                                    message="This will mark the enrollment as enrolled and confirm all proposed subjects. This action cannot be undone."
-                                    confirmText="Approve"
-                                    confirmClassName="btn-primary"
-                                />
-                                <PrimaryButton
-                                    onClick={handleApprove}
-                                    disabled={!allValid || form.processing}
-                                    className="w-full sm:w-auto"
-                                >
-                                    {form.processing ? 'Processing...' : 'Approve Enrollment'}
-                                </PrimaryButton>
-                            </>
-                        )}
-                        {!checklist.registrarApprovalPending && (
-                            <Badge tone="info" className="text-sm">
-                                Not pending registrar approval
-                            </Badge>
-                        )}
-                    </div>
-                </div>
-            </Card>
+                </Card>
+            </div>
         </AuthenticatedLayout>
     );
 }

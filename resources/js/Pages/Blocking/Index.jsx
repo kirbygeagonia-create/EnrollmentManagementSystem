@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection } from '@/Components/ui';
-import PrimaryButton from '@/Components/PrimaryButton';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const yearLevelOptions = [
@@ -17,6 +16,13 @@ const availableToneMap = {
     true: 'success',
     false: 'danger',
 };
+
+// Modal icon — block section
+const BlockIcon = () => (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+    </svg>
+);
 
 export default function Index({ blocks, courses, terms, filters = {} }) {
     const [search, setSearch] = useState('');
@@ -106,12 +112,20 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         </div>
     );
 
+    // Summary stats
+    const totalBlocks = blocks?.total ?? blocks?.data?.length ?? 0;
+    const totalCapacity = (blocks?.data || []).reduce((sum, b) => sum + (b.maxStudents || 0), 0);
+    const totalEnrolled = (blocks?.data || []).reduce((sum, b) => sum + (b.enrolled_subjects_count ?? 0), 0);
+    const totalAvailable = Math.max(0, totalCapacity - totalEnrolled);
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
                     title="Blocking"
                     subtitle="Manage block sections and schedules"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,73 +139,136 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         >
             <Head title="Blocking" />
 
-            {/* Filter Bar */}
-            <FilterBar onSubmit={handleFilter}>
-                <FilterBarField label="Search">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by block name..."
-                        className="form-input"
+            <div className="space-y-6">
+                {/* Summary Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard
+                        label="Total Blocks"
+                        value={totalBlocks}
+                        icon={<BlockIcon />}
+                        iconBg="seait"
                     />
-                </FilterBarField>
-                <FilterBarField label="Course">
-                    <Select
-                        value={courseId}
-                        onChange={setCourseId}
-                        options={courses.map(c => ({ value: c.courseId, label: `${c.courseCode} - ${c.courseName}` }))}
-                        placeholder="All Courses"
-                        className="form-input"
+                    <StatCard
+                        label="Total Capacity"
+                        value={totalCapacity}
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        }
+                        iconBg="brand"
                     />
-                </FilterBarField>
-                <FilterBarField label="Term">
-                    <Select
-                        value={termId}
-                        onChange={setTermId}
-                        options={terms.map(t => ({ value: t.termId, label: `${t.semester?.value || t.semester} ${t.academicYear?.yearLabel || ''}`.trim() }))}
-                        placeholder="All Terms"
-                        className="form-input"
+                    <StatCard
+                        label="Enrolled"
+                        value={totalEnrolled}
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        }
+                        iconBg="info"
                     />
-                </FilterBarField>
-                <FilterBarField label="Year Level">
-                    <Select
-                        value={yearLevel}
-                        onChange={setYearLevel}
-                        options={yearLevelOptions}
-                        placeholder="All Year Levels"
-                        className="form-input"
+                    <StatCard
+                        label="Available Slots"
+                        value={totalAvailable}
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        }
+                        iconBg={totalAvailable > 0 ? 'success' : 'danger'}
                     />
-                </FilterBarField>
-            </FilterBar>
+                </div>
 
-            {/* Data Table */}
-            <Card>
-                {blocks?.data?.length > 0 ? (
-                    <>
-                        <DataTable
-                            columns={columns}
-                            rows={blocks.data}
-                            children={renderActions}
-                            emptyMessage="No blocks found"
+                {/* Filter Bar */}
+                <FilterBar onSubmit={handleFilter}>
+                    <FilterBarField label="Search">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by block name..."
+                            className="form-input"
                         />
-                        <div className="mt-4">
-                            <Pagination paginator={blocks} />
-                        </div>
-                    </>
-                ) : (
-                    <EmptyState
-                        title="No blocks found"
-                        message={search || courseId || termId || yearLevel ? 'Try adjusting your filters to find matching records.' : 'No blocks have been created yet.'}
-                        actionLabel={!search && !courseId && !termId && !yearLevel ? 'Create First Block' : undefined}
-                        onAction={!search && !courseId && !termId && !yearLevel ? () => { createForm.reset(); setShowCreateModal(true); } : undefined}
-                    />
-                )}
-            </Card>
+                    </FilterBarField>
+                    <FilterBarField label="Course">
+                        <Select
+                            value={courseId}
+                            onChange={setCourseId}
+                            options={courses.map(c => ({ value: c.courseId, label: `${c.courseCode} - ${c.courseName}` }))}
+                            placeholder="All Courses"
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                    <FilterBarField label="Term">
+                        <Select
+                            value={termId}
+                            onChange={setTermId}
+                            options={terms.map(t => ({ value: t.termId, label: `${t.semester?.value || t.semester} ${t.academicYear?.yearLabel || ''}`.trim() }))}
+                            placeholder="All Terms"
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                    <FilterBarField label="Year Level">
+                        <Select
+                            value={yearLevel}
+                            onChange={setYearLevel}
+                            options={yearLevelOptions}
+                            placeholder="All Year Levels"
+                            className="form-input"
+                        />
+                    </FilterBarField>
+                </FilterBar>
+
+                {/* Data Table */}
+                <Card>
+                    {blocks?.data?.length > 0 ? (
+                        <>
+                            <DataTable
+                                columns={columns}
+                                rows={blocks.data}
+                                children={renderActions}
+                                emptyMessage="No blocks found"
+                            />
+                            <div className="mt-4">
+                                <Pagination paginator={blocks} />
+                            </div>
+                        </>
+                    ) : (
+                        <EmptyState
+                            title="No blocks found"
+                            message={search || courseId || termId || yearLevel ? 'Try adjusting your filters to find matching records.' : 'No blocks have been created yet.'}
+                            actionLabel={!search && !courseId && !termId && !yearLevel ? 'Create First Block' : undefined}
+                            onAction={!search && !courseId && !termId && !yearLevel ? () => { createForm.reset(); setShowCreateModal(true); } : undefined}
+                        />
+                    )}
+                </Card>
+            </div>
 
             {/* Create Block Modal */}
-            <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Block">
-                <form onSubmit={handleCreate}>
+            <Modal
+                show={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Create Block"
+                subtitle="Define a new block section for a course, term, and year level"
+                icon={<BlockIcon />}
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="create-block-form"
+                            disabled={createForm.processing}
+                            className="btn btn-primary"
+                        >
+                            {createForm.processing ? 'Creating...' : 'Create Block'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="create-block-form" onSubmit={handleCreate}>
                     <div className="space-y-4">
                         <FormSection label="Block Name / Section">
                             <input
@@ -237,14 +314,6 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
                                 required
                             />
                         </FormSection>
-                    </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary">
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={createForm.processing}>
-                            Create Block
-                        </PrimaryButton>
                     </div>
                 </form>
             </Modal>

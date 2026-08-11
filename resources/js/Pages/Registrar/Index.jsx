@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusToneMap = {
@@ -12,6 +12,13 @@ const statusToneMap = {
     enrolled: 'enrolled',
     dropped: 'dropped',
 };
+
+// Inline icon — queue of records awaiting registrar validation
+const QueueIcon = () => (
+    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+);
 
 export default function Index({ enrollments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -51,51 +58,99 @@ export default function Index({ enrollments, filters = {} }) {
         </div>
     );
 
+    // Summary stats from the paginator
+    const totalCount = enrollments?.total ?? enrollments?.data?.length ?? 0;
+    const currentCount = enrollments?.data?.length ?? 0;
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
                     title="Registrar Approval Queue"
                     subtitle="Review and approve enrollments pending registrar validation"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
             <Head title="Registrar Approval Queue" />
 
-            {/* Filter Bar */}
-            <FilterBar onSubmit={handleFilter}>
-                <FilterBarField label="Search">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by name, ID number..."
-                        className="form-input"
+            <div className="space-y-6">
+                {/* Summary Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard
+                        label="Pending Approval"
+                        value={totalCount}
+                        icon={<QueueIcon />}
+                        iconBg="seait"
                     />
-                </FilterBarField>
-            </FilterBar>
+                    <StatCard
+                        label="On This Page"
+                        value={currentCount}
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        }
+                        iconBg="info"
+                    />
+                    <StatCard
+                        label="Office"
+                        value="Registrar"
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        }
+                        iconBg="brand"
+                    />
+                    <StatCard
+                        label="Workflow Phase"
+                        value="Phase 6"
+                        icon={
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                        }
+                        iconBg="accent"
+                    />
+                </div>
 
-            {/* Data Table */}
-            <Card>
-                {enrollments?.data?.length > 0 ? (
-                    <>
-                        <DataTable
-                            columns={columns}
-                            rows={enrollments.data}
-                            children={renderActions}
-                            emptyMessage="No enrollments found"
+                {/* Filter Bar */}
+                <FilterBar onSubmit={handleFilter}>
+                    <FilterBarField label="Search">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by name, ID number..."
+                            className="form-input"
                         />
-                        <div className="mt-4">
-                            <Pagination paginator={enrollments} />
-                        </div>
-                    </>
-                ) : (
-                    <EmptyState
-                        title="No enrollments found"
-                        message={search ? 'Try adjusting your search to find matching records.' : 'No enrollments are currently pending registrar approval.'}
-                    />
-                )}
-            </Card>
+                    </FilterBarField>
+                </FilterBar>
+
+                {/* Data Table */}
+                <Card>
+                    {enrollments?.data?.length > 0 ? (
+                        <>
+                            <DataTable
+                                columns={columns}
+                                rows={enrollments.data}
+                                children={renderActions}
+                                emptyMessage="No enrollments found"
+                            />
+                            <div className="mt-4">
+                                <Pagination paginator={enrollments} />
+                            </div>
+                        </>
+                    ) : (
+                        <EmptyState
+                            title="No enrollments found"
+                            message={search ? 'Try adjusting your search to find matching records.' : 'No enrollments are currently pending registrar approval.'}
+                        />
+                    )}
+                </Card>
+            </div>
         </AuthenticatedLayout>
     );
 }
