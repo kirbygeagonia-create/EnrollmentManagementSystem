@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -112,6 +112,8 @@ export default function Rooms({ rooms }) {
                 <PageHeader
                     title="Rooms"
                     subtitle="Manage classrooms and facilities"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,52 +171,59 @@ export default function Rooms({ rooms }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingRoom ? 'Edit Room' : 'Create Room'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingRoom ? 'Edit Room' : 'Create Room'}
+                subtitle="Define the room name, capacity, and building."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="room-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingRoom ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="room-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">Room Name <span className="text-danger-500">*</span></label>
+                        <FormSection label="Room Name" error={form.errors.roomName} required>
                             <input
                                 type="text"
-                                value={form.roomName}
+                                value={form.data.roomName}
                                 onChange={(e) => form.setData('roomName', e.target.value)}
                                 className={`form-input ${form.errors.roomName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Room 101, Computer Lab A"
                                 required
                             />
-                            {form.errors.roomName && <p className="form-error">{form.errors.roomName}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Capacity <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Capacity" error={form.errors.capacity} required>
                             <input
                                 type="number"
                                 min="1"
-                                value={form.capacity}
+                                value={form.data.capacity}
                                 onChange={(e) => form.setData('capacity', parseInt(e.target.value) || 1)}
                                 className={`form-input ${form.errors.capacity ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.capacity && <p className="form-error">{form.errors.capacity}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Building</label>
+                        </FormSection>
+                        <FormSection label="Building" error={form.errors.building}>
                             <input
                                 type="text"
-                                value={form.building}
+                                value={form.data.building}
                                 onChange={(e) => form.setData('building', e.target.value)}
                                 className={`form-input ${form.errors.building ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Main Building, Engineering Building"
                             />
-                            {form.errors.building && <p className="form-error">{form.errors.building}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingRoom ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>

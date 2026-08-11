@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const coverageOptions = [
     { value: '', label: 'All Coverage Types' },
@@ -129,6 +129,8 @@ export default function ScholarshipTypes({ types, coverageTypes }) {
                 <PageHeader
                     title="Scholarship Types"
                     subtitle="Manage available scholarship programs"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,25 +188,43 @@ export default function ScholarshipTypes({ types, coverageTypes }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingType ? 'Edit Scholarship Type' : 'Create Scholarship Type'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingType ? 'Edit Scholarship Type' : 'Create Scholarship Type'}
+                subtitle="Define the scholarship name, coverage type, and percentage."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="scholarship-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingType ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="scholarship-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Scholarship Name <span className="text-danger-500">*</span></label>
+                        <FormSection label="Scholarship Name" error={form.errors.scholarshipName} required>
                             <input
                                 type="text"
-                                value={form.scholarshipName}
+                                value={form.data.scholarshipName}
                                 onChange={(e) => form.setData('scholarshipName', e.target.value)}
                                 className={`form-input ${form.errors.scholarshipName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Academic Scholarship, Athletic Scholarship"
                                 required
                             />
-                            {form.errors.scholarshipName && <p className="form-error">{form.errors.scholarshipName}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Coverage Type <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Coverage Type" error={form.errors.coverageType} required>
                             <Select
-                                value={form.coverageType}
+                                value={form.data.coverageType}
                                 onChange={(e) => form.setData('coverageType', e.target.value)}
                                 options={coverageTypes.map(c => ({ value: c.value, label: c.value.charAt(0).toUpperCase() + c.value.slice(1) }))}
                                 placeholder="Select coverage type"
@@ -212,30 +232,19 @@ export default function ScholarshipTypes({ types, coverageTypes }) {
                                 error={form.errors.coverageType}
                                 required
                             />
-                            {form.errors.coverageType && <p className="form-error">{form.errors.coverageType}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Coverage Percent <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Coverage Percent" error={form.errors.coveragePercent} required>
                             <input
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 max="100"
-                                value={form.coveragePercent}
+                                value={form.data.coveragePercent}
                                 onChange={(e) => form.setData('coveragePercent', parseFloat(e.target.value) || 0)}
                                 className={`form-input ${form.errors.coveragePercent ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.coveragePercent && <p className="form-error">{form.errors.coveragePercent}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingType ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>

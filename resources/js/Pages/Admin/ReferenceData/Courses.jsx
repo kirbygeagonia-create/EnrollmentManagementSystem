@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -130,6 +130,8 @@ export default function Courses({ courses, units }) {
                 <PageHeader
                     title="Courses"
                     subtitle="Manage academic programs offered"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,13 +189,33 @@ export default function Courses({ courses, units }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingCourse ? 'Edit Course' : 'Create Course'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingCourse ? 'Edit Course' : 'Create Course'}
+                subtitle="Set the course code, name, unit, and exam requirements."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="course-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingCourse ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="course-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">Unit <span className="text-danger-500">*</span></label>
+                        <FormSection label="Unit" error={form.errors.unitId} required>
                             <Select
-                                value={form.unitId}
+                                value={form.data.unitId}
                                 onChange={(e) => form.setData('unitId', e.target.value)}
                                 options={units.map(u => ({ value: u.unitId, label: u.unitName }))}
                                 placeholder="Select unit"
@@ -201,62 +223,53 @@ export default function Courses({ courses, units }) {
                                 error={form.errors.unitId}
                                 required
                             />
-                            {form.errors.unitId && <p className="form-error">{form.errors.unitId}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Course Code <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Course Code" error={form.errors.courseCode} required>
                             <input
                                 type="text"
-                                value={form.courseCode}
+                                value={form.data.courseCode}
                                 onChange={(e) => form.setData('courseCode', e.target.value)}
                                 className={`form-input ${form.errors.courseCode ? 'form-input-error' : ''}`}
                                 placeholder="e.g., BSIT"
                                 required
                             />
-                            {form.errors.courseCode && <p className="form-error">{form.errors.courseCode}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Course Name <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Course Name" error={form.errors.courseName} required>
                             <input
                                 type="text"
-                                value={form.courseName}
+                                value={form.data.courseName}
                                 onChange={(e) => form.setData('courseName', e.target.value)}
                                 className={`form-input ${form.errors.courseName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Bachelor of Science in Information Technology"
                                 required
                             />
-                            {form.errors.courseName && <p className="form-error">{form.errors.courseName}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label flex items-center gap-2">
+                        </FormSection>
+                        <div className="md:col-span-2 space-y-3 pt-2">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
                                 <input
                                     type="checkbox"
-                                    checked={form.requiresEntranceExam}
+                                    checked={form.data.requiresEntranceExam}
                                     onChange={(e) => form.setData('requiresEntranceExam', e.target.checked)}
                                     className="form-checkbox"
                                 />
-                                Requires Entrance Exam
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Requires Entrance Exam</span>
+                                    <p className="text-xs text-brand-500">Applicants must pass an entrance exam before admission.</p>
+                                </div>
                             </label>
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label flex items-center gap-2">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
                                 <input
                                     type="checkbox"
-                                    checked={form.requiresRetentionExam}
+                                    checked={form.data.requiresRetentionExam}
                                     onChange={(e) => form.setData('requiresRetentionExam', e.target.checked)}
                                     className="form-checkbox"
                                 />
-                                Requires Retention Exam
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Requires Retention Exam</span>
+                                    <p className="text-xs text-brand-500">Continuing students must pass a retention exam to stay enrolled.</p>
+                                </div>
                             </label>
                         </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingCourse ? 'Update' : 'Create')}
-                        </button>
                     </div>
                 </form>
             </Modal>

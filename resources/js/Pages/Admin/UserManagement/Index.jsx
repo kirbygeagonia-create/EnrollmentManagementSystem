@@ -2,7 +2,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
-import PrimaryButton from '@/Components/PrimaryButton';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -15,12 +14,12 @@ const statusToneMap = {
     inactive: 'neutral',
 };
 
-const roleToneMap = {
-    admin: 'danger',
-    dean: 'warning',
-    officeHead: 'info',
-    programHead: 'accent',
-    staff: 'neutral',
+const roleBadgeMap = {
+    admin: 'role-badge-admin',
+    dean: 'role-badge-dean',
+    'office-head': 'role-badge-officehead',
+    'program-head': 'role-badge-programhead',
+    staff: 'role-badge-staff',
 };
 
 export default function Index({ users, offices, units, roles, filters = {}, staffRoles, staffStatuses }) {
@@ -70,14 +69,29 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (row) => `${row.firstName} ${row.middleName ? row.middleName[0] + '. ' : ''}${row.lastName}` },
-        { key: 'username', label: 'Username', className: 'font-mono text-sm' },
-        { key: 'office', label: 'Office', render: (row) => row.office?.officeName || '—' },
-        { key: 'role', label: 'Role', render: (row) => (
-            <Badge tone={roleToneMap[row.role] || 'neutral'} className="role-badge">
-                {row.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
-            </Badge>
+        { key: 'name', label: 'Name', render: (row) => (
+            <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-seait-100 text-seait-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                    {row.firstName?.[0]?.toUpperCase()}{row.lastName?.[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                    <div className="font-medium text-brand-900 truncate">
+                        {row.firstName} {row.middleName ? row.middleName[0] + '. ' : ''}{row.lastName}
+                    </div>
+                    {row.email && <div className="text-xs text-brand-500 truncate">{row.email}</div>}
+                </div>
+            </div>
         )},
+        { key: 'username', label: 'Username', className: 'font-mono text-sm text-brand-600' },
+        { key: 'office', label: 'Office', render: (row) => row.office?.officeName || '—' },
+        { key: 'role', label: 'Role', render: (row) => {
+            const roleKey = row.role ? row.role.replace(/([A-Z])/g, '-$1').toLowerCase() : 'staff';
+            return (
+                <span className={`role-badge ${roleBadgeMap[roleKey] || 'role-badge-staff'}`}>
+                    {row.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
+                </span>
+            );
+        }},
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={statusToneMap[row.status] || 'neutral'}>
                 {row.status?.charAt(0).toUpperCase() + row.status?.slice(1)}
@@ -248,14 +262,16 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
             header={
                 <PageHeader
                     title="User Management"
-                    subtitle="Manage staff users, roles, and permissions"
+                    subtitle="Manage staff users, roles, and permissions across the system"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
-                        <PrimaryButton onClick={openCreateModal}>
+                        <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                             Add Staff User
-                        </PrimaryButton>
+                        </button>
                     }
                 />
             }
@@ -318,8 +334,29 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
             </Card>
 
             {/* Create Modal */}
-            <Modal show={showCreateModal} onClose={closeCreateModal} title="Create Staff User" size="lg">
-                <form onSubmit={handleCreate} className="space-y-4">
+            <Modal
+                show={showCreateModal}
+                onClose={closeCreateModal}
+                title="Create Staff User"
+                subtitle="Add a new staff account. Fields marked * are required."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeCreateModal} className="btn btn-secondary" disabled={createForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="create-user-form" className="btn btn-primary" disabled={createForm.processing}>
+                            {createForm.processing ? 'Creating...' : 'Create User'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="create-user-form" onSubmit={handleCreate} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormSection label="Office" error={createForm.errors.officeId} required>
                             <Select
@@ -448,20 +485,33 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                             />
                         </FormSection>
                     </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeCreateModal} className="btn btn-secondary" disabled={createForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={createForm.processing}>
-                            {createForm.processing ? 'Creating...' : 'Create User'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 
             {/* Edit Modal */}
-            <Modal show={!!editingUser} onClose={closeEditModal} title="Edit Staff User" size="lg">
-                <form onSubmit={handleEdit} className="space-y-4">
+            <Modal
+                show={!!editingUser}
+                onClose={closeEditModal}
+                title="Edit Staff User"
+                subtitle={editingUser ? `${editingUser.firstName} ${editingUser.lastName} · ${editingUser.username}` : ''}
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="edit-user-form" className="btn btn-primary" disabled={editForm.processing}>
+                            {editForm.processing ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-user-form" onSubmit={handleEdit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormSection label="Office" error={editForm.errors.officeId} required>
                             <Select
@@ -571,9 +621,9 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                             />
                         </FormSection>
                         <FormSection label="Roles (Spatie)" error={editForm.errors.roleIds} className="md:col-span-2">
-                            <div className="space-y-2 max-h-48 overflow-y-auto border border-brand-200 rounded-btn p-3">
+                            <div className="space-y-2 max-h-48 overflow-y-auto border border-brand-200 rounded-btn p-3 bg-brand-50/30">
                                 {roles.map(role => (
-                                    <label key={role.id} className="flex items-center gap-2 cursor-pointer">
+                                    <label key={role.id} className="flex items-center gap-2 cursor-pointer py-1">
                                         <input
                                             type="checkbox"
                                             checked={editForm.data.roleIds?.includes(role.id)}
@@ -585,33 +635,46 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                                                     editForm.setData('roleIds', ids.filter(id => id !== role.id));
                                                 }
                                             }}
-                                            className="rounded border-gray-300 text-brand-600 shadow-sm focus:ring-brand-500"
+                                            className="form-checkbox"
                                         />
-                                        <span className="text-sm text-brand-700">{role.name}</span>
+                                        <span className="text-sm text-brand-700 font-medium">{role.name}</span>
                                         {role.description && <span className="text-xs text-brand-400 ml-auto">({role.description})</span>}
                                     </label>
                                 ))}
                             </div>
                         </FormSection>
                     </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={editForm.processing}>
-                            {editForm.processing ? 'Saving...' : 'Save Changes'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 
             {/* Assign Roles Modal */}
-            <Modal show={!!assigningRolesUser} onClose={closeAssignRolesModal} title={`Assign Roles: ${assigningRolesUser ? `${assigningRolesUser.firstName} ${assigningRolesUser.lastName}` : ''}`} size="md">
-                <form onSubmit={handleAssignRoles} className="space-y-4">
+            <Modal
+                show={!!assigningRolesUser}
+                onClose={closeAssignRolesModal}
+                title={`Assign Roles: ${assigningRolesUser ? `${assigningRolesUser.firstName} ${assigningRolesUser.lastName}` : ''}`}
+                subtitle="Select one or more Spatie roles to grant to this user."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeAssignRolesModal} className="btn btn-secondary" disabled={assignRolesForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="assign-roles-form" className="btn btn-primary" disabled={assignRolesForm.processing}>
+                            {assignRolesForm.processing ? 'Assigning...' : 'Assign Roles'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="assign-roles-form" onSubmit={handleAssignRoles} className="space-y-4">
                     <FormSection label="Roles" error={assignRolesForm.errors.roleIds}>
-                        <div className="space-y-2 max-h-64 overflow-y-auto border border-brand-200 rounded-btn p-3">
+                        <div className="space-y-2 max-h-64 overflow-y-auto border border-brand-200 rounded-btn p-3 bg-brand-50/30">
                             {roles.map(role => (
-                                <label key={role.id} className="flex items-center gap-2 cursor-pointer">
+                                <label key={role.id} className="flex items-center gap-2 cursor-pointer py-1">
                                     <input
                                         type="checkbox"
                                         checked={assignRolesForm.data.roleIds?.includes(role.id)}
@@ -623,22 +686,14 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                                                 assignRolesForm.setData('roleIds', ids.filter(id => id !== role.id));
                                             }
                                         }}
-                                        className="rounded border-gray-300 text-brand-600 shadow-sm focus:ring-brand-500"
+                                        className="form-checkbox"
                                     />
-                                    <span className="text-sm text-brand-700">{role.name}</span>
+                                    <span className="text-sm text-brand-700 font-medium">{role.name}</span>
                                     {role.description && <span className="text-xs text-brand-400 ml-auto">({role.description})</span>}
                                 </label>
                             ))}
                         </div>
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeAssignRolesModal} className="btn btn-secondary" disabled={assignRolesForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={assignRolesForm.processing}>
-                            {assignRolesForm.processing ? 'Assigning...' : 'Assign Roles'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 

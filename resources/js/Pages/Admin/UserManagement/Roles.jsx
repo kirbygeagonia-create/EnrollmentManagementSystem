@@ -2,9 +2,45 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
-import PrimaryButton from '@/Components/PrimaryButton';
-import Checkbox from '@/Components/Checkbox';
+import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge } from '@/Components/ui';
+
+function PermissionsMatrix({ permissions, selectedIds, onToggle }) {
+    const grouped = useMemo(() => {
+        const map = {};
+        permissions.forEach(p => {
+            const mod = p.module || 'General';
+            if (!map[mod]) map[mod] = [];
+            map[mod].push(p);
+        });
+        return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+    }, [permissions]);
+
+    return (
+        <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
+            {grouped.map(([module, perms]) => (
+                <div key={module} className="border border-brand-200 rounded-btn overflow-hidden">
+                    <div className="px-3 py-2 bg-brand-50 border-b border-brand-200 flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-brand-700">{module}</span>
+                        <span className="text-xs text-brand-400">{perms.length}</span>
+                    </div>
+                    <div className="p-3 bg-white space-y-1.5">
+                        {perms.map(permission => (
+                            <label key={permission.id} className="flex items-center gap-2 cursor-pointer py-1 hover:bg-brand-50/50 px-1 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds?.includes(permission.id)}
+                                    onChange={(e) => onToggle(permission.id, e.target.checked)}
+                                    className="form-checkbox"
+                                />
+                                <span className="text-sm text-brand-700 font-medium font-mono">{permission.name}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 export default function Roles({ roles, permissions }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -24,9 +60,13 @@ export default function Roles({ roles, permissions }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Role Name' },
+        { key: 'name', label: 'Role Name', render: (row) => (
+            <span className="font-semibold text-brand-900">{row.name}</span>
+        )},
         { key: 'description', label: 'Description', render: (row) => row.description || '—' },
-        { key: 'permissionsCount', label: 'Permissions', render: (row) => row.permissions?.length || 0 },
+        { key: 'permissionsCount', label: 'Permissions', render: (row) => (
+            <Badge tone="info">{row.permissions?.length || 0}</Badge>
+        ), className: 'text-center' },
     ], []);
 
     const handleCreate = (e) => {
@@ -74,6 +114,16 @@ export default function Roles({ roles, permissions }) {
         }
     };
 
+    const toggleCreatePermission = (id, checked) => {
+        const ids = createForm.data.permissionIds || [];
+        createForm.setData('permissionIds', checked ? [...ids, id] : ids.filter(x => x !== id));
+    };
+
+    const toggleEditPermission = (id, checked) => {
+        const ids = editForm.data.permissionIds || [];
+        editForm.setData('permissionIds', checked ? [...ids, id] : ids.filter(x => x !== id));
+    };
+
     const renderActions = (row) => (
         <div className="flex items-center gap-1">
             <button
@@ -102,14 +152,16 @@ export default function Roles({ roles, permissions }) {
             header={
                 <PageHeader
                     title="Roles Management"
-                    subtitle="Manage system roles and their permissions"
+                    subtitle="Define system roles and assign granular permissions"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
-                        <PrimaryButton onClick={() => { createForm.reset(); setShowCreateModal(true); }}>
+                        <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                             Create Role
-                        </PrimaryButton>
+                        </button>
                     }
                 />
             }
@@ -141,8 +193,29 @@ export default function Roles({ roles, permissions }) {
             </Card>
 
             {/* Create Modal */}
-            <Modal show={showCreateModal} onClose={() => { createForm.reset(); setShowCreateModal(false); }} title="Create Role" size="lg">
-                <form onSubmit={handleCreate} className="space-y-4">
+            <Modal
+                show={showCreateModal}
+                onClose={() => { createForm.reset(); setShowCreateModal(false); }}
+                title="Create Role"
+                subtitle="Name the role and select the permissions it grants."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => { createForm.reset(); setShowCreateModal(false); }} className="btn btn-secondary" disabled={createForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="create-role-form" className="btn btn-primary" disabled={createForm.processing}>
+                            {createForm.processing ? 'Creating...' : 'Create Role'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="create-role-form" onSubmit={handleCreate} className="space-y-4">
                     <FormSection label="Role Name" error={createForm.errors.name} required>
                         <input
                             type="text"
@@ -151,6 +224,7 @@ export default function Roles({ roles, permissions }) {
                             className="form-input"
                             required
                             maxLength={100}
+                            placeholder="e.g., Registrar Staff, Dean"
                         />
                     </FormSection>
                     <FormSection label="Description" error={createForm.errors.description}>
@@ -159,43 +233,43 @@ export default function Roles({ roles, permissions }) {
                             onChange={(e) => createForm.setData('description', e.target.value)}
                             className="form-input"
                             rows={3}
+                            placeholder="Briefly describe what this role is for..."
                         />
                     </FormSection>
-                    <FormSection label="Permissions" error={createForm.errors.permissionIds}>
-                        <div className="space-y-2 max-h-64 overflow-y-auto border border-brand-200 rounded-btn p-3">
-                            {permissions.map(permission => (
-                                <label key={permission.id} className="flex items-center gap-2 cursor-pointer">
-                                    <Checkbox
-                                        checked={createForm.data.permissionIds?.includes(permission.id)}
-                                        onChange={(e) => {
-                                            const ids = createForm.data.permissionIds || [];
-                                            if (e.target.checked) {
-                                                createForm.setData('permissionIds', [...ids, permission.id]);
-                                            } else {
-                                                createForm.setData('permissionIds', ids.filter(id => id !== permission.id));
-                                            }
-                                        }}
-                                    />
-                                    <span className="text-sm text-brand-700">{permission.name}</span>
-                                    <span className="text-xs text-brand-400 ml-auto badge badge-neutral">{permission.module}</span>
-                                </label>
-                            ))}
-                        </div>
+                    <FormSection label="Permissions" error={createForm.errors.permissionIds} hint={`${createForm.data.permissionIds?.length || 0} selected`}>
+                        <PermissionsMatrix
+                            permissions={permissions}
+                            selectedIds={createForm.data.permissionIds}
+                            onToggle={toggleCreatePermission}
+                        />
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={() => { createForm.reset(); setShowCreateModal(false); }} className="btn btn-secondary" disabled={createForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={createForm.processing}>
-                            {createForm.processing ? 'Creating...' : 'Create Role'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 
             {/* Edit Modal */}
-            <Modal show={!!editingRole} onClose={closeEditModal} title="Edit Role" size="lg">
-                <form onSubmit={handleEdit} className="space-y-4">
+            <Modal
+                show={!!editingRole}
+                onClose={closeEditModal}
+                title="Edit Role"
+                subtitle={editingRole?.name || ''}
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="edit-role-form" className="btn btn-primary" disabled={editForm.processing}>
+                            {editForm.processing ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-role-form" onSubmit={handleEdit} className="space-y-4">
                     <FormSection label="Role Name" error={editForm.errors.name} required>
                         <input
                             type="text"
@@ -214,35 +288,13 @@ export default function Roles({ roles, permissions }) {
                             rows={3}
                         />
                     </FormSection>
-                    <FormSection label="Permissions" error={editForm.errors.permissionIds}>
-                        <div className="space-y-2 max-h-64 overflow-y-auto border border-brand-200 rounded-btn p-3">
-                            {permissions.map(permission => (
-                                <label key={permission.id} className="flex items-center gap-2 cursor-pointer">
-                                    <Checkbox
-                                        checked={editForm.data.permissionIds?.includes(permission.id)}
-                                        onChange={(e) => {
-                                            const ids = editForm.data.permissionIds || [];
-                                            if (e.target.checked) {
-                                                editForm.setData('permissionIds', [...ids, permission.id]);
-                                            } else {
-                                                editForm.setData('permissionIds', ids.filter(id => id !== permission.id));
-                                            }
-                                        }}
-                                    />
-                                    <span className="text-sm text-brand-700">{permission.name}</span>
-                                    <span className="text-xs text-brand-400 ml-auto badge badge-neutral">{permission.module}</span>
-                                </label>
-                            ))}
-                        </div>
+                    <FormSection label="Permissions" error={editForm.errors.permissionIds} hint={`${editForm.data.permissionIds?.length || 0} selected`}>
+                        <PermissionsMatrix
+                            permissions={permissions}
+                            selectedIds={editForm.data.permissionIds}
+                            onToggle={toggleEditPermission}
+                        />
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={editForm.processing}>
-                            {editForm.processing ? 'Saving...' : 'Save Changes'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 

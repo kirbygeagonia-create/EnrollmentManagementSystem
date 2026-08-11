@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const semesterOptions = [
     { value: '', label: 'All Semesters' },
@@ -142,6 +142,8 @@ export default function Terms({ terms, years, semesters }) {
                 <PageHeader
                     title="Academic Terms"
                     subtitle="Manage semesters and school years"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,13 +210,33 @@ export default function Terms({ terms, years, semesters }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingTerm ? 'Edit Term' : 'Create Term'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingTerm ? 'Edit Term' : 'Create Term'}
+                subtitle="Define the school year, semester, and active date range."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="term-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingTerm ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="term-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">School Year <span className="text-danger-500">*</span></label>
+                        <FormSection label="School Year" error={form.errors.academicYearId} required>
                             <Select
-                                value={form.academicYearId}
+                                value={form.data.academicYearId}
                                 onChange={(e) => form.setData('academicYearId', e.target.value)}
                                 options={years.map(y => ({ value: y.academicYearId, label: y.yearLabel }))}
                                 placeholder="Select school year"
@@ -222,12 +244,10 @@ export default function Terms({ terms, years, semesters }) {
                                 error={form.errors.academicYearId}
                                 required
                             />
-                            {form.errors.academicYearId && <p className="form-error">{form.errors.academicYearId}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Semester <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Semester" error={form.errors.semester} required>
                             <Select
-                                value={form.semester}
+                                value={form.data.semester}
                                 onChange={(e) => form.setData('semester', e.target.value)}
                                 options={semesters.map(s => ({ value: s.value, label: s.value.charAt(0).toUpperCase() + s.value.slice(1) + ' Semester' }))}
                                 placeholder="Select semester"
@@ -235,38 +255,25 @@ export default function Terms({ terms, years, semesters }) {
                                 error={form.errors.semester}
                                 required
                             />
-                            {form.errors.semester && <p className="form-error">{form.errors.semester}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Start Date <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Start Date" error={form.errors.startDate} required>
                             <input
                                 type="date"
-                                value={form.startDate}
+                                value={form.data.startDate}
                                 onChange={(e) => form.setData('startDate', e.target.value)}
                                 className={`form-input ${form.errors.startDate ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.startDate && <p className="form-error">{form.errors.startDate}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">End Date <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="End Date" error={form.errors.endDate} required>
                             <input
                                 type="date"
-                                value={form.endDate}
+                                value={form.data.endDate}
                                 onChange={(e) => form.setData('endDate', e.target.value)}
                                 className={`form-input ${form.errors.endDate ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.endDate && <p className="form-error">{form.errors.endDate}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingTerm ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>

@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 export default function ClearanceRequirements({ requirements, offices }) {
     const [search, setSearch] = useState('');
@@ -75,6 +75,8 @@ export default function ClearanceRequirements({ requirements, offices }) {
                 <PageHeader
                     title="Clearance Requirements"
                     subtitle="Manage clearance requirements per office"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,12 +125,32 @@ export default function ClearanceRequirements({ requirements, offices }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title="Create Clearance Requirement">
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label className="form-label">Office <span className="text-danger-500">*</span></label>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title="Create Clearance Requirement"
+                subtitle="Select an office to add to the clearance workflow."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="clearance-req-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : 'Create'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="clearance-req-form" onSubmit={handleSubmit}>
+                    <FormSection label="Office" error={form.errors.officeId} required>
                         <Select
-                            value={form.officeId}
+                            value={form.data.officeId}
                             onChange={(e) => form.setData('officeId', e.target.value)}
                             options={offices.map(o => ({ value: o.officeId, label: o.officeName }))}
                             placeholder="Select office"
@@ -136,16 +158,7 @@ export default function ClearanceRequirements({ requirements, offices }) {
                             error={form.errors.officeId}
                             required
                         />
-                        {form.errors.officeId && <p className="form-error">{form.errors.officeId}</p>}
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : 'Create'}
-                        </button>
-                    </div>
+                    </FormSection>
                 </form>
             </Modal>
 

@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const typeOptions = [
     { value: '', label: 'All Types' },
@@ -140,6 +140,8 @@ export default function Subjects({ subjects, subjectTypes }) {
                 <PageHeader
                     title="Subjects"
                     subtitle="Manage individual course subjects"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,25 +199,43 @@ export default function Subjects({ subjects, subjectTypes }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingSubject ? 'Edit Subject' : 'Create Subject'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingSubject ? 'Edit Subject' : 'Create Subject'}
+                subtitle="Define the subject code, type, and unit breakdown."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="subject-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingSubject ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="subject-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">Subject Code <span className="text-danger-500">*</span></label>
+                        <FormSection label="Subject Code" error={form.errors.subjectCode} required>
                             <input
                                 type="text"
-                                value={form.subjectCode}
+                                value={form.data.subjectCode}
                                 onChange={(e) => form.setData('subjectCode', e.target.value.toUpperCase())}
                                 className={`form-input ${form.errors.subjectCode ? 'form-input-error' : ''}`}
                                 placeholder="e.g., IT101"
                                 required
                             />
-                            {form.errors.subjectCode && <p className="form-error">{form.errors.subjectCode}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Subject Type <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Subject Type" error={form.errors.subjectType} required>
                             <Select
-                                value={form.subjectType}
+                                value={form.data.subjectType}
                                 onChange={(e) => form.setData('subjectType', e.target.value)}
                                 options={subjectTypes.map(t => ({ value: t.value, label: t.value.charAt(0).toUpperCase() + t.value.slice(1) }))}
                                 placeholder="Select type"
@@ -223,54 +243,39 @@ export default function Subjects({ subjects, subjectTypes }) {
                                 error={form.errors.subjectType}
                                 required
                             />
-                            {form.errors.subjectType && <p className="form-error">{form.errors.subjectType}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Subject Name <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Subject Name" error={form.errors.subjectName} required>
                             <input
                                 type="text"
-                                value={form.subjectName}
+                                value={form.data.subjectName}
                                 onChange={(e) => form.setData('subjectName', e.target.value)}
                                 className={`form-input ${form.errors.subjectName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Introduction to Programming"
                                 required
                             />
-                            {form.errors.subjectName && <p className="form-error">{form.errors.subjectName}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Lecture Units <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Lecture Units" error={form.errors.lectureUnits} required>
                             <input
                                 type="number"
                                 step="0.5"
                                 min="0"
-                                value={form.lectureUnits}
+                                value={form.data.lectureUnits}
                                 onChange={(e) => form.setData('lectureUnits', parseFloat(e.target.value) || 0)}
                                 className={`form-input ${form.errors.lectureUnits ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.lectureUnits && <p className="form-error">{form.errors.lectureUnits}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Lab Units <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Lab Units" error={form.errors.labUnits} required>
                             <input
                                 type="number"
                                 step="0.5"
                                 min="0"
-                                value={form.labUnits}
+                                value={form.data.labUnits}
                                 onChange={(e) => form.setData('labUnits', parseFloat(e.target.value) || 0)}
                                 className={`form-input ${form.errors.labUnits ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.labUnits && <p className="form-error">{form.errors.labUnits}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingSubject ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>

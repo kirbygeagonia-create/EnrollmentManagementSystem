@@ -3,7 +3,6 @@ import { Head } from '@inertiajs/react';
 import { useForm } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Modal, EmptyState, FormSection } from '@/Components/ui';
-import PrimaryButton from '@/Components/PrimaryButton';
 
 export default function Settings({ settings }) {
     const [editingSetting, setEditingSetting] = useState(null);
@@ -13,13 +12,21 @@ export default function Settings({ settings }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'settingKey', label: 'Key', className: 'font-mono text-sm' },
+        { key: 'settingKey', label: 'Key', render: (row) => (
+            <span className="font-mono text-sm text-brand-800 font-medium">{row.settingKey}</span>
+        )},
         { key: 'settingValue', label: 'Value', render: (row) => (
             <div className="max-w-xs truncate" title={row.settingValue}>
-                {row.settingValue !== null && row.settingValue !== undefined ? String(row.settingValue) : <span className="text-brand-400 italic">(empty)</span>}
+                {row.settingValue !== null && row.settingValue !== undefined ? (
+                    <span className="text-brand-700">{String(row.settingValue)}</span>
+                ) : (
+                    <span className="text-brand-400 italic">(empty)</span>
+                )}
             </div>
         )},
-        { key: 'description', label: 'Description', render: (row) => row.description || '—' },
+        { key: 'description', label: 'Description', render: (row) => (
+            <span className="text-sm text-brand-500">{row.description || '—'}</span>
+        )},
     ], []);
 
     const openEditModal = (setting) => {
@@ -62,7 +69,9 @@ export default function Settings({ settings }) {
             header={
                 <PageHeader
                     title="System Settings"
-                    subtitle="Manage application configuration settings"
+                    subtitle="Manage application configuration values"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
@@ -86,14 +95,36 @@ export default function Settings({ settings }) {
             </Card>
 
             {/* Edit Modal */}
-            <Modal show={!!editingSetting} onClose={closeEditModal} title={`Edit Setting: ${editingSetting?.settingKey || ''}`} size="md">
-                <form onSubmit={handleEdit} className="space-y-4">
-                    <FormSection label="Key" className="mb-4">
+            <Modal
+                show={!!editingSetting}
+                onClose={closeEditModal}
+                title="Edit Setting"
+                subtitle={editingSetting?.settingKey || ''}
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="edit-setting-form" className="btn btn-primary" disabled={editForm.processing}>
+                            {editForm.processing ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-setting-form" onSubmit={handleEdit} className="space-y-4">
+                    <FormSection label="Key">
                         <div className="form-input bg-brand-50 text-brand-700 font-mono text-sm cursor-not-allowed" style={{ userSelect: 'all' }}>
                             {editingSetting?.settingKey}
                         </div>
                     </FormSection>
-                    <FormSection label="Description" className="mb-4">
+                    <FormSection label="Description">
                         <div className="form-input bg-brand-50 text-brand-600 cursor-not-allowed">
                             {editingSetting?.description || '—'}
                         </div>
@@ -107,14 +138,6 @@ export default function Settings({ settings }) {
                             required
                         />
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={editForm.processing}>
-                            {editForm.processing ? 'Saving...' : 'Save Changes'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
         </AuthenticatedLayout>

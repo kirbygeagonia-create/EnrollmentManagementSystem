@@ -2,8 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
-import PrimaryButton from '@/Components/PrimaryButton';
+import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge } from '@/Components/ui';
 
 export default function Permissions({ permissions }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -21,9 +20,15 @@ export default function Permissions({ permissions }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Permission Name' },
-        { key: 'module', label: 'Module' },
-        { key: 'guard_name', label: 'Guard', render: (row) => row.guard_name || 'web' },
+        { key: 'name', label: 'Permission Name', render: (row) => (
+            <span className="font-mono text-sm text-brand-800 font-medium">{row.name}</span>
+        )},
+        { key: 'module', label: 'Module', render: (row) => (
+            <Badge tone="neutral">{row.module}</Badge>
+        )},
+        { key: 'guard_name', label: 'Guard', render: (row) => (
+            <span className="text-xs text-brand-500 font-mono">{row.guard_name || 'web'}</span>
+        )},
     ], []);
 
     const handleCreate = (e) => {
@@ -98,14 +103,16 @@ export default function Permissions({ permissions }) {
             header={
                 <PageHeader
                     title="Permissions Management"
-                    subtitle="Manage system permissions"
+                    subtitle="Define the granular permissions that can be assigned to roles"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
-                        <PrimaryButton onClick={() => { createForm.reset(); setShowCreateModal(true); }}>
+                        <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                             Create Permission
-                        </PrimaryButton>
+                        </button>
                     }
                 />
             }
@@ -137,8 +144,29 @@ export default function Permissions({ permissions }) {
             </Card>
 
             {/* Create Modal */}
-            <Modal show={showCreateModal} onClose={() => { createForm.reset(); setShowCreateModal(false); }} title="Create Permission" size="md">
-                <form onSubmit={handleCreate} className="space-y-4">
+            <Modal
+                show={showCreateModal}
+                onClose={() => { createForm.reset(); setShowCreateModal(false); }}
+                title="Create Permission"
+                subtitle="Define a new permission that can be granted to roles."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => { createForm.reset(); setShowCreateModal(false); }} className="btn btn-secondary" disabled={createForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="create-perm-form" className="btn btn-primary" disabled={createForm.processing}>
+                            {createForm.processing ? 'Creating...' : 'Create Permission'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="create-perm-form" onSubmit={handleCreate} className="space-y-4">
                     <FormSection label="Permission Name" error={createForm.errors.name} required>
                         <input
                             type="text"
@@ -161,20 +189,33 @@ export default function Permissions({ permissions }) {
                             placeholder="e.g., users, admissions, registrar"
                         />
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={() => { createForm.reset(); setShowCreateModal(false); }} className="btn btn-secondary" disabled={createForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={createForm.processing}>
-                            {createForm.processing ? 'Creating...' : 'Create Permission'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 
             {/* Edit Modal */}
-            <Modal show={!!editingPermission} onClose={closeEditModal} title="Edit Permission" size="md">
-                <form onSubmit={handleEdit} className="space-y-4">
+            <Modal
+                show={!!editingPermission}
+                onClose={closeEditModal}
+                title="Edit Permission"
+                subtitle={editingPermission?.name || ''}
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="edit-perm-form" className="btn btn-primary" disabled={editForm.processing}>
+                            {editForm.processing ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-perm-form" onSubmit={handleEdit} className="space-y-4">
                     <FormSection label="Permission Name" error={editForm.errors.name} required>
                         <input
                             type="text"
@@ -195,14 +236,6 @@ export default function Permissions({ permissions }) {
                             maxLength={100}
                         />
                     </FormSection>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-brand-100">
-                        <button type="button" onClick={closeEditModal} className="btn btn-secondary" disabled={editForm.processing}>
-                            Cancel
-                        </button>
-                        <PrimaryButton type="submit" disabled={editForm.processing}>
-                            {editForm.processing ? 'Saving...' : 'Save Changes'}
-                        </PrimaryButton>
-                    </div>
                 </form>
             </Modal>
 

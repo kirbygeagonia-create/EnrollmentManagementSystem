@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
 
 export default function Offices({ offices }) {
     const [search, setSearch] = useState('');
@@ -101,6 +101,8 @@ export default function Offices({ offices }) {
                 <PageHeader
                     title="Offices"
                     subtitle="Manage administrative offices"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,30 +151,39 @@ export default function Offices({ offices }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingOffice ? 'Edit Office' : 'Create Office'}>
-                <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Office Name <span className="text-danger-500">*</span></label>
-                            <input
-                                type="text"
-                                value={form.officeName}
-                                onChange={(e) => form.setData('officeName', e.target.value)}
-                                className={`form-input ${form.errors.officeName ? 'form-input-error' : ''}`}
-                                placeholder="e.g., Registrar's Office, Accounting Office"
-                                required
-                            />
-                            {form.errors.officeName && <p className="form-error">{form.errors.officeName}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingOffice ? 'Edit Office' : 'Create Office'}
+                subtitle="Enter the administrative office name."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
                         <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
                             Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
+                        <button type="submit" form="office-form" className="btn btn-primary" disabled={form.processing}>
                             {form.processing ? 'Saving...' : (editingOffice ? 'Update' : 'Create')}
                         </button>
                     </div>
+                }
+            >
+                <form id="office-form" onSubmit={handleSubmit}>
+                    <FormSection label="Office Name" error={form.errors.officeName} required>
+                        <input
+                            type="text"
+                            value={form.data.officeName}
+                            onChange={(e) => form.setData('officeName', e.target.value)}
+                            className={`form-input ${form.errors.officeName ? 'form-input-error' : ''}`}
+                            placeholder="e.g., Registrar's Office, Accounting Office"
+                            required
+                        />
+                    </FormSection>
                 </form>
             </Modal>
 

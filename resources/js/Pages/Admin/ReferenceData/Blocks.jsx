@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 export default function Blocks({ blocks, courses, terms }) {
     const [search, setSearch] = useState('');
@@ -114,6 +114,8 @@ export default function Blocks({ blocks, courses, terms }) {
                 <PageHeader
                     title="Blocks"
                     subtitle="Manage student block sections"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,13 +164,33 @@ export default function Blocks({ blocks, courses, terms }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingBlock ? 'Edit Block' : 'Create Block'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingBlock ? 'Edit Block' : 'Create Block'}
+                subtitle="Assign a course, term, year level, and max capacity."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="block-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingBlock ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="block-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">Course <span className="text-danger-500">*</span></label>
+                        <FormSection label="Course" error={form.errors.courseId} required>
                             <Select
-                                value={form.courseId}
+                                value={form.data.courseId}
                                 onChange={(e) => form.setData('courseId', e.target.value)}
                                 options={courses.map(c => ({ value: c.courseId, label: c.courseName }))}
                                 placeholder="Select course"
@@ -176,12 +198,10 @@ export default function Blocks({ blocks, courses, terms }) {
                                 error={form.errors.courseId}
                                 required
                             />
-                            {form.errors.courseId && <p className="form-error">{form.errors.courseId}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Term <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Term" error={form.errors.termId} required>
                             <Select
-                                value={form.termId}
+                                value={form.data.termId}
                                 onChange={(e) => form.setData('termId', e.target.value)}
                                 options={terms.map(t => ({ value: t.termId, label: `${t.academicYear?.yearLabel} ${t.semester}` }))}
                                 placeholder="Select term"
@@ -189,12 +209,10 @@ export default function Blocks({ blocks, courses, terms }) {
                                 error={form.errors.termId}
                                 required
                             />
-                            {form.errors.termId && <p className="form-error">{form.errors.termId}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Year Level <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Year Level" error={form.errors.yearLevel} required>
                             <Select
-                                value={form.yearLevel}
+                                value={form.data.yearLevel}
                                 onChange={(e) => form.setData('yearLevel', parseInt(e.target.value))}
                                 options={[
                                     { value: 1, label: '1st Year' },
@@ -208,40 +226,27 @@ export default function Blocks({ blocks, courses, terms }) {
                                 error={form.errors.yearLevel}
                                 required
                             />
-                            {form.errors.yearLevel && <p className="form-error">{form.errors.yearLevel}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Max Students <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Max Students" error={form.errors.maxStudents} required>
                             <input
                                 type="number"
                                 min="1"
-                                value={form.maxStudents}
+                                value={form.data.maxStudents}
                                 onChange={(e) => form.setData('maxStudents', parseInt(e.target.value) || 1)}
                                 className={`form-input ${form.errors.maxStudents ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.maxStudents && <p className="form-error">{form.errors.maxStudents}</p>}
-                        </div>
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Block Name <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Block Name" error={form.errors.blockName} required>
                             <input
                                 type="text"
-                                value={form.blockName}
+                                value={form.data.blockName}
                                 onChange={(e) => form.setData('blockName', e.target.value)}
                                 className={`form-input ${form.errors.blockName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., A, B, C, Section 1"
                                 required
                             />
-                            {form.errors.blockName && <p className="form-error">{form.errors.blockName}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingBlock ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>

@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
 const unitBasisOptions = [
     { value: '', label: 'All Bases' },
@@ -137,6 +137,8 @@ export default function FeeTypes({ feeTypes, unitBases }) {
                 <PageHeader
                     title="Fee Types"
                     subtitle="Manage tuition and miscellaneous fees"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,38 +205,54 @@ export default function FeeTypes({ feeTypes, unitBases }) {
                 )}
             </Card>
 
-            <Modal show={showModal} onClose={closeModal} title={editingFeeType ? 'Edit Fee Type' : 'Create Fee Type'}>
-                <form onSubmit={handleSubmit}>
+            <Modal
+                show={showModal}
+                onClose={closeModal}
+                title={editingFeeType ? 'Edit Fee Type' : 'Create Fee Type'}
+                subtitle="Set the fee name, default amount, and unit basis."
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                }
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="fee-type-form" className="btn btn-primary" disabled={form.processing}>
+                            {form.processing ? 'Saving...' : (editingFeeType ? 'Update' : 'Create')}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="fee-type-form" onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="form-group md:col-span-2">
-                            <label className="form-label">Fee Name <span className="text-danger-500">*</span></label>
+                        <FormSection label="Fee Name" error={form.errors.feeName} required>
                             <input
                                 type="text"
-                                value={form.feeName}
+                                value={form.data.feeName}
                                 onChange={(e) => form.setData('feeName', e.target.value)}
                                 className={`form-input ${form.errors.feeName ? 'form-input-error' : ''}`}
                                 placeholder="e.g., Tuition Fee, Laboratory Fee"
                                 required
                             />
-                            {form.errors.feeName && <p className="form-error">{form.errors.feeName}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Default Amount <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Default Amount" error={form.errors.defaultAmount} required>
                             <input
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                value={form.defaultAmount}
+                                value={form.data.defaultAmount}
                                 onChange={(e) => form.setData('defaultAmount', parseFloat(e.target.value) || 0)}
                                 className={`form-input ${form.errors.defaultAmount ? 'form-input-error' : ''}`}
                                 required
                             />
-                            {form.errors.defaultAmount && <p className="form-error">{form.errors.defaultAmount}</p>}
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Unit Basis <span className="text-danger-500">*</span></label>
+                        </FormSection>
+                        <FormSection label="Unit Basis" error={form.errors.unitBasis} required>
                             <Select
-                                value={form.unitBasis}
+                                value={form.data.unitBasis}
                                 onChange={(e) => form.setData('unitBasis', e.target.value)}
                                 options={unitBases.map(u => ({ value: u.value, label: u.value === 'perUnit' ? 'Per Unit' : 'Flat Rate' }))}
                                 placeholder="Select unit basis"
@@ -242,16 +260,7 @@ export default function FeeTypes({ feeTypes, unitBases }) {
                                 error={form.errors.unitBasis}
                                 required
                             />
-                            {form.errors.unitBasis && <p className="form-error">{form.errors.unitBasis}</p>}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button type="button" onClick={closeModal} className="btn btn-secondary" disabled={form.processing}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : (editingFeeType ? 'Update' : 'Create')}
-                        </button>
+                        </FormSection>
                     </div>
                 </form>
             </Modal>
