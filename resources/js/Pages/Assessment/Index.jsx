@@ -1,37 +1,62 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
+const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Assessment status (the workflow state of the assessment record itself).
 const assessmentStatusToneMap = {
     assessed: 'assessed',
     pending: 'pending',
 };
 
+// Balance status derived from remaining vs total — uses the real badge tones.
+const balanceToneFor = (balance, total) => {
+    if (Number(balance) <= 0) return 'paid';
+    if (Number(balance) < Number(total)) return 'partial';
+    return 'danger';
+};
+
 export default function Index({ assessments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
+
+    // Aggregate fee summary across the current page of assessments.
+    const summary = useMemo(() => {
+        const rows = assessments?.data || [];
+        const total = rows.reduce((s, r) => s + Number(r.totalAssessedAmount || 0), 0);
+        const balance = rows.reduce((s, r) => s + Number(r.remainingBalance || 0), 0);
+        const assessedCount = rows.filter((r) => r.status === 'assessed').length;
+        const partialCount = rows.filter((r) => {
+            const b = Number(r.remainingBalance || 0);
+            const t = Number(r.totalAssessedAmount || 0);
+            return b > 0 && b < t;
+        }).length;
+        const settledCount = rows.filter((r) => Number(r.remainingBalance || 0) <= 0).length;
+        return { total, balance, assessedCount, partialCount, settledCount, count: rows.length };
+    }, [assessments]);
 
     const columns = useMemo(() => [
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
         { key: 'studentName', label: 'Student Name' },
         { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.name || '—' },
-        { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => `₱${Number(row.totalAssessedAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` },
+        { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
+            <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
+        )},
         { key: 'remainingBalance', label: 'Remaining Balance', render: (row) => {
             const balance = Number(row.remainingBalance || 0);
             const total = Number(row.totalAssessedAmount || 0);
-            let tone = 'unpaid';
-            if (balance <= 0) tone = 'paid';
-            else if (balance < total) tone = 'partial';
+            const tone = balanceToneFor(balance, total);
             return (
                 <Badge tone={tone}>
-                    ₱{balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    {peso(balance)}
                 </Badge>
             );
         }},
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={assessmentStatusToneMap[row.status] || 'neutral'}>
-                {row.status?.charAt(0).toUpperCase() + row.status?.slice(1)}
+                {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : '—'}
             </Badge>
         )},
     ], []);
@@ -63,11 +88,57 @@ export default function Index({ assessments, filters = {} }) {
             header={
                 <PageHeader
                     title="Assessment Queue"
-                    subtitle="Manage student fee assessments"
+                    subtitle="Compute and finalize student fee assessments"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT Logo"
                 />
             }
         >
             <Head title="Assessment Queue" />
+
+            {/* Fee Summary StatCards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                    label="Total Assessed (page)"
+                    value={peso(summary.total)}
+                    iconBg="seait"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m0 0h-6m6 0V7m-6 10H9a2 2 0 01-2-2V5a2 2 0 012-2h6a2 2 0 012 2v2M9 7a2 2 0 01-2 2v6a2 2 0 002 2h6a2 2 0 002-2V9a2 2 0 00-2-2M9 7v10" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Outstanding Balance"
+                    value={peso(summary.balance)}
+                    iconBg="danger"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Assessed"
+                    value={summary.assessedCount}
+                    iconBg="accent"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Fully Settled"
+                    value={summary.settledCount}
+                    iconBg="success"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    }
+                />
+            </div>
 
             {/* Filter Bar */}
             <FilterBar onSubmit={handleFilter}>
