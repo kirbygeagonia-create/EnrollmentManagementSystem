@@ -1,24 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { usePage } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
-import { Card, StatCard, Badge } from '@/Components/ui';
+import { Head, usePage, Link } from '@inertiajs/react';
+import { PageHeader, Card, StatCard, Badge } from '@/Components/ui';
 import { useState, useEffect } from 'react';
-
-const quickLinks = [
-    { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
-    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [7] },
-    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4] },
-    { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [3] },
-    { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
-    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
-    { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
-    { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
-    { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
-    { name: 'ID Office', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
-    { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
-    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
-];
 
 function AdmissionIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
@@ -56,6 +39,21 @@ function DatabaseIcon({ className }) {
 function UsersIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
 }
+
+const quickLinks = [
+    { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
+    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [7] },
+    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4] },
+    { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [3] },
+    { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
+    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
+    { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
+    { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
+    { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
+    { name: 'ID Office', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
+    { name: 'Reference Data', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
+    { name: 'User Management', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
+];
 
 export default function Dashboard() {
     const { user } = usePage().props.auth;
@@ -102,9 +100,7 @@ export default function Dashboard() {
         if (!link.roles.includes(user?.role)) return false;
         if (link.offices && link.offices.length > 0) {
             if (user?.role === 'admin') return true;
-            // Dean sees Admission, Exam, Evaluation modules (offices 4, 6, 7)
             if (user?.role === 'dean') return link.offices.some(o => [4, 6, 7].includes(o));
-            // ProgramHead sees Admission + Evaluation (offices 4, 6)
             if (user?.role === 'programHead') return link.offices.some(o => [4, 6].includes(o));
             return link.offices.includes(user?.officeId);
         }
@@ -119,119 +115,123 @@ export default function Dashboard() {
     return (
         <AuthenticatedLayout
             header={
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h2 className="text-2xl font-semibold text-brand-900">{greeting}, {user?.name || 'User'}</h2>
-                        <p className="text-brand-500 mt-1">Welcome to the SEAIT Enrollment Management System</p>
-                    </div>
-                </div>
+                <PageHeader
+                    title={`${greeting}, ${user?.name || 'User'}`}
+                    subtitle="Welcome to the SEAIT Enrollment Management System"
+                    logo="/images/logos/seait-logo.png"
+                    logoAlt="SEAIT logo"
+                />
             }
         >
             <Head title="Dashboard" />
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard
-                    label="Total Admissions"
-                    value={stats.totalAdmissions || '—'}
-                    icon={<AdmissionIcon className="h-5 w-5" />}
-                    iconBg="seait"
-                    trend={stats.admissionsTrend}
-                    trendUp={stats.admissionsTrendUp}
-                />
-                <StatCard
-                    label="Pending Evaluations"
-                    value={stats.pendingEvaluations || '—'}
-                    icon={<EvaluationIcon className="h-5 w-5" />}
-                    iconBg="warning"
-                    trend={stats.evaluationsTrend}
-                    trendUp={stats.evaluationsTrendUp}
-                />
-                <StatCard
-                    label="Enrolled Students"
-                    value={stats.enrolledStudents || '—'}
-                    icon={<RegistrarIcon className="h-5 w-5" />}
-                    iconBg="success"
-                    trend={stats.enrolledTrend}
-                    trendUp={stats.enrolledTrendUp}
-                />
-                <StatCard
-                    label="Revenue (This Month)"
-                    value={stats.monthlyRevenue ? `₱${Number(stats.monthlyRevenue).toLocaleString()}` : '—'}
-                    icon={<AccountingIcon className="h-5 w-5" />}
-                    iconBg="accent"
-                    trend={stats.revenueTrend}
-                    trendUp={stats.revenueTrendUp}
-                />
-            </div>
+            <div className="space-y-6">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard
+                        label="Total Admissions"
+                        value={stats.totalAdmissions || '—'}
+                        icon={<AdmissionIcon className="h-5 w-5" />}
+                        iconBg="seait"
+                        trend={stats.admissionsTrend}
+                        trendUp={stats.admissionsTrendUp}
+                    />
+                    <StatCard
+                        label="Pending Evaluations"
+                        value={stats.pendingEvaluations || '—'}
+                        icon={<EvaluationIcon className="h-5 w-5" />}
+                        iconBg="warning"
+                        trend={stats.evaluationsTrend}
+                        trendUp={stats.evaluationsTrendUp}
+                    />
+                    <StatCard
+                        label="Enrolled Students"
+                        value={stats.enrolledStudents || '—'}
+                        icon={<RegistrarIcon className="h-5 w-5" />}
+                        iconBg="success"
+                        trend={stats.enrolledTrend}
+                        trendUp={stats.enrolledTrendUp}
+                    />
+                    <StatCard
+                        label="Revenue (This Month)"
+                        value={stats.monthlyRevenue ? `₱${Number(stats.monthlyRevenue).toLocaleString()}` : '—'}
+                        icon={<AccountingIcon className="h-5 w-5" />}
+                        iconBg="accent"
+                        trend={stats.revenueTrend}
+                        trendUp={stats.revenueTrendUp}
+                    />
+                </div>
 
-            {/* Quick Links */}
-            <Card title="Quick Access" subtitle="Navigate to frequently used modules">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                    {accessibleLinks.map((link) => (
-                        <Link
-                            key={link.route}
-                            href={route(link.route)}
-                            className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 group"
-                        >
-                            <div className="flex flex-col items-center text-center">
-                                <div className="h-12 w-12 rounded-lg bg-seait-100 flex items-center justify-center text-seait-600 group-hover:bg-seait-200 group-hover:scale-105 transition-all duration-200">
-                                    <link.icon className="h-6 w-6" />
+                {/* Quick Links */}
+                <Card title="Quick Access" subtitle="Navigate to frequently used modules">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                        {accessibleLinks.map((link) => (
+                            <Link
+                                key={link.route}
+                                href={route(link.route)}
+                                className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 group"
+                            >
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="h-12 w-12 rounded-lg bg-seait-100 flex items-center justify-center text-seait-600 group-hover:bg-seait-200 group-hover:scale-105 transition-all duration-200">
+                                        <link.icon className="h-6 w-6" />
+                                    </div>
+                                    <span className="mt-3 text-sm font-medium text-brand-900 group-hover:text-seait-600 transition-colors">
+                                        {link.name}
+                                    </span>
                                 </div>
-                                <span className="mt-3 text-sm font-medium text-brand-900 group-hover:text-seait-600 transition-colors">
-                                    {link.name}
-                                </span>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-            </Card>
-
-            {/* Live Office Queues (polled) */}
-            <Card title="Live Office Queues" subtitle="Pending work per office — refreshes every 30 seconds" className="mt-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {visibleQueues.map((q) => (
-                        <Link
-                            key={q.key}
-                            href={route(q.route)}
-                            className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200"
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-brand-700">{q.label}</span>
-                                <Badge tone={queueCounts[q.key] > 0 ? 'warning' : 'success'}>
-                                    {queueCounts[q.key] > 0 ? 'Incoming' : 'Clear'}
-                                </Badge>
-                            </div>
-                            <p className="mt-2 text-3xl font-bold text-brand-900">
-                                {queueCounts[q.key] !== undefined ? Number(queueCounts[q.key]).toLocaleString() : '—'}
-                            </p>
-                            <p className="text-xs text-brand-500 mt-1">
-                                {queueCounts[q.key] > 0 ? 'Waiting' : 'No pending work'}
-                            </p>
-                        </Link>
-                    ))}
-                </div>
-            </Card>
-
-            {/* Recent Activity / Notifications placeholder */}
-            {user?.role === 'admin' || user?.role === 'dean' ? (
-                <Card title="System Overview" subtitle="Administrative summary" className="mt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="p-4 bg-brand-50 rounded-btn">
-                            <p className="text-sm text-brand-500">Total Staff</p>
-                            <p className="text-2xl font-bold text-brand-900">{stats.totalStaff || '—'}</p>
-                        </div>
-                        <div className="p-4 bg-brand-50 rounded-btn">
-                            <p className="text-sm text-brand-500">Active Terms</p>
-                            <p className="text-2xl font-bold text-brand-900">{stats.activeTerms || '—'}</p>
-                        </div>
-                        <div className="p-4 bg-brand-50 rounded-btn">
-                            <p className="text-sm text-brand-500">Courses Offered</p>
-                            <p className="text-2xl font-bold text-brand-900">{stats.totalCourses || '—'}</p>
-                        </div>
+                            </Link>
+                        ))}
                     </div>
                 </Card>
-            ) : null}
+
+                {/* Live Office Queues (polled) */}
+                {visibleQueues.length > 0 && (
+                    <Card title="Live Office Queues" subtitle="Pending work per office — refreshes every 30 seconds">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {visibleQueues.map((q) => (
+                                <Link
+                                    key={q.key}
+                                    href={route(q.route)}
+                                    className="card p-4 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-brand-700">{q.label}</span>
+                                        <Badge tone={queueCounts[q.key] > 0 ? 'warning' : 'success'}>
+                                            {queueCounts[q.key] > 0 ? 'Incoming' : 'Clear'}
+                                        </Badge>
+                                    </div>
+                                    <p className="mt-2 text-3xl font-bold text-brand-900">
+                                        {queueCounts[q.key] !== undefined ? Number(queueCounts[q.key]).toLocaleString() : '—'}
+                                    </p>
+                                    <p className="text-xs text-brand-500 mt-1">
+                                        {queueCounts[q.key] > 0 ? 'Waiting' : 'No pending work'}
+                                    </p>
+                                </Link>
+                            ))}
+                        </div>
+                    </Card>
+                )}
+
+                {/* System Overview (admin/dean only) */}
+                {user?.role === 'admin' || user?.role === 'dean' ? (
+                    <Card title="System Overview" subtitle="Administrative summary">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="p-4 bg-brand-50 rounded-card">
+                                <p className="text-sm text-brand-500">Total Staff</p>
+                                <p className="text-2xl font-bold text-brand-900 mt-1">{stats.totalStaff || '—'}</p>
+                            </div>
+                            <div className="p-4 bg-brand-50 rounded-card">
+                                <p className="text-sm text-brand-500">Active Terms</p>
+                                <p className="text-2xl font-bold text-brand-900 mt-1">{stats.activeTerms || '—'}</p>
+                            </div>
+                            <div className="p-4 bg-brand-50 rounded-card">
+                                <p className="text-sm text-brand-500">Courses Offered</p>
+                                <p className="text-2xl font-bold text-brand-900 mt-1">{stats.totalCourses || '—'}</p>
+                            </div>
+                        </div>
+                    </Card>
+                ) : null}
+            </div>
         </AuthenticatedLayout>
     );
 }

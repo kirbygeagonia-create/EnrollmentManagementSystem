@@ -1,10 +1,7 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
 import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
+import { Card, FormSection } from '@/Components/ui';
 
 export default function UpdatePasswordForm({ className = '' }) {
     const passwordInput = useRef();
@@ -45,26 +42,10 @@ export default function UpdatePasswordForm({ className = '' }) {
     };
 
     return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-600">
-                    Ensure your account is using a long, random password to stay
-                    secure.
-                </p>
-            </header>
-
-            <form onSubmit={updatePassword} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel
-                        htmlFor="current_password"
-                        value="Current Password"
-                    />
-
-                    <TextInput
+        <Card title="Update Password" subtitle="Ensure your account is using a long, random password to stay secure" className={className}>
+            <form onSubmit={updatePassword} className="space-y-6">
+                <FormSection label="Current Password" required>
+                    <input
                         id="current_password"
                         ref={currentPasswordInput}
                         value={data.current_password}
@@ -72,57 +53,49 @@ export default function UpdatePasswordForm({ className = '' }) {
                             setData('current_password', e.target.value)
                         }
                         type="password"
-                        className="mt-1 block w-full"
+                        className="form-input"
                         autoComplete="current-password"
                     />
+                    {errors.current_password && (
+                        <p className="form-error">{errors.current_password}</p>
+                    )}
+                </FormSection>
 
-                    <InputError
-                        message={errors.current_password}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div>
-                    <InputLabel htmlFor="password" value="New Password" />
-
-                    <TextInput
+                <FormSection label="New Password" required>
+                    <input
                         id="password"
                         ref={passwordInput}
                         value={data.password}
                         onChange={(e) => setData('password', e.target.value)}
                         type="password"
-                        className="mt-1 block w-full"
+                        className="form-input"
                         autoComplete="new-password"
                     />
+                    {errors.password && (
+                        <p className="form-error">{errors.password}</p>
+                    )}
+                </FormSection>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
+                <FormSection label="Confirm Password" required>
+                    <input
                         id="password_confirmation"
                         value={data.password_confirmation}
                         onChange={(e) =>
                             setData('password_confirmation', e.target.value)
                         }
                         type="password"
-                        className="mt-1 block w-full"
+                        className="form-input"
                         autoComplete="new-password"
                     />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
+                    {errors.password_confirmation && (
+                        <p className="form-error">{errors.password_confirmation}</p>
+                    )}
+                </FormSection>
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                    <button type="submit" className="btn btn-primary" disabled={processing}>
+                        Save
+                    </button>
 
                     <Transition
                         show={recentlySuccessful}
@@ -131,12 +104,15 @@ export default function UpdatePasswordForm({ className = '' }) {
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-success-700 flex items-center gap-1">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
                             Saved.
                         </p>
                     </Transition>
                 </div>
             </form>
-        </section>
+        </Card>
     );
 }
