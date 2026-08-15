@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -52,9 +52,12 @@ export default function Index({ enrollments, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('evaluation.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -76,10 +79,12 @@ export default function Index({ enrollments, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Evaluation Queue"
-                    subtitle="Manage student enrollment evaluations"
+                    title="Academic Department Evaluation Desk"
+                    subtitle="Capture student demographic profiles (BR32), evaluate transfer credits, and propose curriculum subject loads"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Academic Evaluation"
+                    phaseBadge="Phase 2 · Department Evaluation"
+                    officeBadge="Office 4 · Academic Evaluation Desk"
                 />
             }
         >

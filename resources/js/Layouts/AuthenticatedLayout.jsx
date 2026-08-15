@@ -129,15 +129,6 @@ function StudentIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>;
 }
 
-// Pretty role labels for badges
-const roleLabels = {
-    admin: 'Administrator',
-    dean: 'Dean',
-    officeHead: 'Office Head',
-    programHead: 'Program Head',
-    staff: 'Staff',
-};
-
 export default function AuthenticatedLayout({ header, children }) {
     const { user } = usePage().props.auth;
     const { url } = usePage();
@@ -220,14 +211,6 @@ export default function AuthenticatedLayout({ header, children }) {
         });
     });
 
-    const roleBadgeClasses = {
-        admin: 'role-badge role-badge-admin',
-        dean: 'role-badge role-badge-dean',
-        officeHead: 'role-badge role-badge-officehead',
-        programHead: 'role-badge role-badge-programhead',
-        staff: 'role-badge role-badge-staff',
-    };
-
     const getInitials = (name) => {
         return name
             .split(' ')
@@ -297,20 +280,20 @@ export default function AuthenticatedLayout({ header, children }) {
             >
                 <div className="flex flex-col h-full">
                     {/* Logo / Wordmark */}
-                    <div className="px-4 py-4 border-b border-navy-800">
+                    <div className="px-4 py-4 border-b border-white/10">
                         <Link href={route('dashboard')} className="flex items-center gap-3 group">
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15 overflow-hidden transition-transform duration-200 group-hover:scale-105">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 overflow-hidden transition-transform duration-200 group-hover:scale-105">
                                 <ApplicationLogo className="h-9 w-9 object-contain" />
                             </span>
                             <span className="flex flex-col leading-tight">
                                 <span className="font-heading font-bold text-white text-lg tracking-wide">SEAIT</span>
-                                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-seait-300/80">Enrollment Management</span>
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-seait-400">Enrollment System</span>
                             </span>
                         </Link>
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-4" aria-label="Main navigation">
+                    <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1" aria-label="Main navigation">
                         {filteredSections.map((section, sectionIndex) => {
                             // Filter items for this user
                             const visibleItems = section.items.filter(item => {
@@ -327,7 +310,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             return (
                                 <div key={sectionIndex} className="nav-section">
                                     <p className="nav-section-label">{section.label}</p>
-                                    <ul className="space-y-1" role="list">
+                                    <ul className="space-y-0.5" role="list">
                                         {visibleItems.map((item, itemIndex) => {
                                             const routePath = route(item.route).split('?')[0];
                                             const isActive = url.startsWith(routePath);
@@ -338,8 +321,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                                         active={isActive}
                                                         className={`nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'}`}
                                                     >
-                                                        <item.icon className={`nav-item-icon ${isActive ? 'text-seait-400' : ''}`} />
-                                                        <span>{item.name}</span>
+                                                        <span className="flex items-center gap-3">
+                                                            <item.icon className="nav-item-icon" />
+                                                            <span>{item.name}</span>
+                                                        </span>
                                                     </NavLink>
                                                 </li>
                                             );
@@ -351,8 +336,8 @@ export default function AuthenticatedLayout({ header, children }) {
                     </nav>
 
                     {/* Footer */}
-                    <div className="px-4 py-3 border-t border-navy-800">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-navy-500 text-center font-medium">
+                    <div className="px-4 py-3 border-t border-white/10">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500 text-center font-semibold">
                             SEAIT · Enrollment Management
                         </p>
                     </div>
@@ -467,50 +452,75 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
 
                             {/* User Dropdown */}
+                            {/* User Dropdown */}
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button
                                         type="button"
-                                        className="user-menu-trigger"
+                                        className="user-menu-trigger group flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
                                         onClick={() => setShowingUserMenu(!showingUserMenu)}
                                         aria-expanded={showingUserMenu}
                                         aria-haspopup="true"
                                     >
-                                        <div className="user-avatar ring-2 ring-seait-200/60">
+                                        <div className="user-avatar ring-2 ring-seait-300 shadow-xs flex-shrink-0">
                                             {getInitials(user?.name || 'User')}
                                         </div>
-                                        <span className="hidden sm:block font-medium">{user?.name}</span>
-                                        <svg className="h-4 w-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="hidden sm:flex flex-col text-left leading-tight min-w-0">
+                                            <span className="font-semibold text-brand-900 text-sm truncate max-w-[140px] lg:max-w-[180px]">
+                                                {user?.name}
+                                            </span>
+                                            <span className="text-[11px] font-medium text-seait-700 truncate max-w-[140px] lg:max-w-[180px]">
+                                                {user?.positionTitle || user?.office?.officeName || 'Staff'}
+                                            </span>
+                                        </div>
+                                        <svg className="h-4 w-4 text-brand-400 group-hover:text-brand-600 transition-colors ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </button>
                                 </Dropdown.Trigger>
 
-                                <Dropdown.Content align="right" width="48" contentClasses="py-1 bg-white rounded-card shadow-dropdown border border-brand-200">
-                                    <div className="px-4 py-3 border-b border-brand-100">
-                                        <div className="flex items-center gap-3">
-                                            <div className="user-avatar ring-2 ring-seait-200/60">
+                                <Dropdown.Content align="right" width="64" contentClasses="py-2 bg-white rounded-card shadow-dropdown border border-brand-200 divide-y divide-brand-100">
+                                    <div className="px-4 py-3 bg-gradient-to-br from-brand-50/60 to-white">
+                                        <div className="flex items-start gap-3">
+                                            <div className="user-avatar ring-2 ring-seait-400 shadow-sm flex-shrink-0">
                                                 {getInitials(user?.name || 'User')}
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-brand-900 truncate">{user?.name}</p>
-                                                <p className="text-xs text-brand-500 truncate">{user?.email}</p>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold text-brand-900 truncate">{user?.name}</p>
+                                                <p className="text-xs font-semibold text-seait-700 mt-0.5">{user?.positionTitle || 'Staff'}</p>
+                                                {user?.office?.officeName && (
+                                                    <p className="text-[11px] text-brand-500 mt-0.5 truncate flex items-center gap-1">
+                                                        <svg className="h-3 w-3 text-brand-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                        </svg>
+                                                        {user.office.officeName}
+                                                    </p>
+                                                )}
+                                                <p className="text-[11px] text-brand-400 mt-0.5 truncate">{user?.email}</p>
                                             </div>
                                         </div>
-                                        <span className={`${roleBadgeClasses[user?.role] || roleBadgeClasses.staff} mt-2.5`} style={{ textTransform: 'capitalize' }}>
-                                            {roleLabels[user?.role] || user?.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
-                                        </span>
                                     </div>
-                                    <Dropdown.Link href={route('profile.edit')}>
-                                        Profile
-                                    </Dropdown.Link>
-                                    <Dropdown.Link
-                                        href={route('logout')}
-                                        method="post"
-                                        as="button"
-                                    >
-                                        Log Out
-                                    </Dropdown.Link>
+                                    <div className="py-1">
+                                        <Dropdown.Link href={route('profile.edit')} className="flex items-center gap-2 text-xs font-medium text-brand-700">
+                                            <svg className="h-4 w-4 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            My Profile & Password
+                                        </Dropdown.Link>
+                                    </div>
+                                    <div className="py-1">
+                                        <Dropdown.Link
+                                            href={route('logout')}
+                                            method="post"
+                                            as="button"
+                                            className="flex items-center gap-2 text-xs font-medium text-danger-600 hover:text-danger-700 hover:bg-danger-50"
+                                        >
+                                            <svg className="h-4 w-4 text-danger-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            Sign Out
+                                        </Dropdown.Link>
+                                    </div>
                                 </Dropdown.Content>
                             </Dropdown>
                         </div>

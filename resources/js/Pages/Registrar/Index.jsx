@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -38,9 +37,12 @@ export default function Index({ enrollments, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('registrar.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -66,10 +68,12 @@ export default function Index({ enrollments, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Registrar Approval Queue"
-                    subtitle="Review and approve enrollments pending registrar validation"
+                    title="Office of the Registrar — Approval Terminal"
+                    subtitle="Validate upstream clearance, accounting payment, and academic evaluation to officially finalize student enrollment"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="Office of the Registrar Seal"
+                    phaseBadge="Phase 5 · Registrar Central Desk"
+                    officeBadge="Office 1 · Office of the Registrar"
                 />
             }
         >

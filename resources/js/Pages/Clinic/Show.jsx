@@ -223,10 +223,12 @@ export default function Show({ enrollment, clinicRecord }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Clinic Assessment"
+                    title="Student Health Assessment"
                     subtitle={`Phase 7 — ${getStudentName()} (${student?.schoolIdNumber})`}
                     logo="/images/logos/clinic.jpg"
-                    logoAlt="Clinic Office"
+                    logoAlt="SEAIT School Clinic"
+                    phaseBadge="Phase 7 · Clinic Examination"
+                    officeBadge="Office 11 · School Clinic"
                     actions={
                         <Link
                             href={route('clinic.index')}

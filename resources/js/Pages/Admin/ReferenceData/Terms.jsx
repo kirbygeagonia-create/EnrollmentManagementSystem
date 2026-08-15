@@ -50,11 +50,14 @@ export default function Terms({ terms, years, semesters }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (semester) params.set('semester', semester);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.terms.index'), {
+            search: search || undefined,
+            semester: semester || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -72,11 +72,14 @@ export default function Index({ exams, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (stage) params.set('stage', stage);
-        if (type) params.set('type', type);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('exam.index'), {
+            search: search || undefined,
+            stage: stage || undefined,
+            type: type || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -97,10 +100,12 @@ export default function Index({ exams, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Entrance Exams"
-                    subtitle="Record and manage exam results"
+                    title="Guidance Services & Testing Center"
+                    subtitle="Administer and record 2-stage entrance exam results (General Guidance & Academic Dept) and retention gates"
                     logo="/images/logos/guidance-office.jpg"
-                    logoAlt="Guidance Office"
+                    logoAlt="SEAIT Guidance Services & Testing Center"
+                    phaseBadge="Phase 0.5 & Retention"
+                    officeBadge="Office 4 · Guidance & Testing Desk"
                     actions={
                         <Link href={route('exam.create')} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +203,7 @@ export default function Index({ exams, filters = {} }) {
                         title="No exam records found"
                         message={search || stage || type ? 'Try adjusting your filters to find matching records.' : 'No exam results have been recorded yet.'}
                         actionLabel={!search && !stage && !type ? 'Record First Exam' : undefined}
-                        onAction={!search && !stage && !type ? () => window.location.href = route('exam.create') : undefined}
+                        onAction={!search && !stage && !type ? () => router.visit(route('exam.create')) : undefined}
                         icon={
                             <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

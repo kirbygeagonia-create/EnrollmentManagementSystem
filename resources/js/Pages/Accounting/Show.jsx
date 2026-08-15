@@ -130,10 +130,12 @@ export default function Show({ assessment, paymentModes }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Payment Recording"
-                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'}`}
+                    title="Payment & Official Receipt Recording"
+                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'} (${enrollment?.term?.name || 'Current Term'})`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Accounting Office"
+                    phaseBadge="Phase 4 · Payment Processing"
+                    officeBadge="Office 2 · Cashier Terminal"
                 />
             }
         >

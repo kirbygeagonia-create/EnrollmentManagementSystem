@@ -47,11 +47,14 @@ export default function FeeTypes({ feeTypes, unitBases }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (unitBasis) params.set('unitBasis', unitBasis);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.fee-types.index'), {
+            search: search || undefined,
+            unitBasis: unitBasis || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

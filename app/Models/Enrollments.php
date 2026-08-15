@@ -117,7 +117,7 @@ class Enrollments extends Model
     /**
      * @return HasMany<Enrolledsubjects, $this>
      */
-    public function enrolledsubjects(): HasMany
+    public function enrolledSubjects(): HasMany
     {
         return $this->hasMany(Enrolledsubjects::class, 'enrollmentId');
     }

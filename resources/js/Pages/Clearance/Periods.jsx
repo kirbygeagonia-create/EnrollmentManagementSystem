@@ -133,10 +133,12 @@ export default function Periods({ periods }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Clearance Periods"
-                    subtitle="Open and close clearance windows for each academic term"
-                    logo="/images/logos/scholarship.jpg"
-                    logoAlt="Clearance Office"
+                    title="Clearance Windows & Term Periods"
+                    subtitle="Open and close clearance processing windows for each academic semester"
+                    logo="/images/logos/safety-and-security.jpg"
+                    logoAlt="Safety and Security Office (Clearance Periods)"
+                    phaseBadge="Phase 1 · Clearance Setup"
+                    officeBadge="Office 6 · Safety & Security"
                     actions={
                         <button
                             type="button"

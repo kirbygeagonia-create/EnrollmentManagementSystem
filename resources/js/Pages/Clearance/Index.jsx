@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, ConfirmDialog } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -78,11 +78,14 @@ export default function Index({ clearances, periods, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (periodId) params.set('periodId', periodId);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('clearance.index'), {
+            search: search || undefined,
+            periodId: periodId || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openConfirm = (approval, action) => {
@@ -151,10 +154,12 @@ export default function Index({ clearances, periods, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Clearance Management"
-                    subtitle="Track per-student requirement approvals and issue clearance slips"
-                    logo="/images/logos/scholarship.jpg"
-                    logoAlt="Clearance Office"
+                    title="Student Clearance & Obligations Terminal"
+                    subtitle="Track multi-office obligation sign-offs (Accounting, Library, Clinic, Guidance, Dept) and issue official clearance slips"
+                    logo="/images/logos/safety-and-security.jpg"
+                    logoAlt="Safety and Security Office (Clearance)"
+                    phaseBadge="Phase 1 · Clearance Terminal"
+                    officeBadge="Office 6 · Safety & Security"
                 />
             }
         >

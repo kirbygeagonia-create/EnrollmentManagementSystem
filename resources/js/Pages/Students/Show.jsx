@@ -215,13 +215,17 @@ export default function Show({ student }) {
             header={
                 <PageHeader
                     title={studentName}
-                    subtitle={student.schoolIdNumber ? `School ID: ${student.schoolIdNumber}` : 'Student 360'}
+                    subtitle={student.schoolIdNumber ? `School ID: ${student.schoolIdNumber} · Complete 8-Phase Enrollment Record` : 'Student 360 Record'}
+                    logo={identityLogo}
+                    logoAlt="Institutional Record"
+                    phaseBadge="Central 360"
+                    officeBadge="Unified Academic History"
                     actions={
-                        <Link href={route('students.index')} className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900">
+                        <Link href={route('students.index')} className="btn btn-secondary btn-sm">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7 7-7m9 14l-7-7 7-7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
-                            Back to Search
+                            Back to Directory
                         </Link>
                     }
                 />

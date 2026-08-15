@@ -16,6 +16,10 @@ class Clearanceapprovals extends Model
 
     protected $fillable = ['studentClearanceId', 'clearanceRequirementId', 'status', 'approvedBy', 'approvalDate', 'remarks'];
 
+    protected $attributes = [
+        'remarks' => '',
+    ];
+
     protected function casts(): array
     {
         return [

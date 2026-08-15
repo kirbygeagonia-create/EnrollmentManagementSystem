@@ -28,9 +28,12 @@ export default function Blocks({ blocks, courses, terms }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.blocks.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

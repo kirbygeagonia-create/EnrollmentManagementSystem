@@ -42,10 +42,12 @@ export default function DailyReport({ payments, summary, date }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Daily Collection Report"
-                    subtitle={`Report for ${formattedDate}`}
+                    title="Daily Collection & Cashier Report"
+                    subtitle={`Collection audit for ${formattedDate}`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Accounting Office"
+                    phaseBadge="Phase 4 · Financial Audit"
+                    officeBadge="Office 2 · Cashier Terminal"
                     actions={
                         <button
                             onClick={() => window.print()}

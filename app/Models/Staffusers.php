@@ -32,6 +32,11 @@ class Staffusers extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'name',
+        'positionTitle',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -56,6 +61,41 @@ class Staffusers extends Authenticatable
         $middle = $this->middleName ? ' '.mb_substr($this->middleName, 0, 1).'.' : '';
 
         return trim($this->firstName.$middle.' '.$this->lastName);
+    }
+
+    /**
+     * Authentic institutional position title based on role, office, and academic unit.
+     */
+    public function getPositionTitleAttribute(): string
+    {
+        $officeName = $this->office ? $this->office->officeName : '';
+        $unitName = $this->unit ? $this->unit->unitName : '';
+        $roleValue = $this->role->value;
+
+        if ($roleValue === 'admin') {
+            return 'Lead System Administrator';
+        }
+
+        if ($roleValue === 'dean') {
+            return $unitName ? "Dean, {$unitName}" : ($officeName ? "Dean, {$officeName}" : 'College Dean');
+        }
+
+        if ($roleValue === 'programHead') {
+            return $unitName ? "Program Head, {$unitName}" : 'Academic Program Head';
+        }
+
+        return match ($this->officeId) {
+            1 => $roleValue === 'officeHead' ? 'University Registrar' : 'Registrar Records Officer',
+            2 => $roleValue === 'officeHead' ? 'Chief Cashier & Accounting Head' : 'Cashier / Accounting Officer',
+            3 => $roleValue === 'officeHead' ? 'Scholarship & Financial Aid Director' : 'Scholarship Coordinator',
+            4 => $roleValue === 'officeHead' ? 'Head Guidance Counselor' : 'Guidance Testing Officer',
+            5 => 'Blocking & Scheduling Coordinator',
+            6 => 'Security & Clearance Officer',
+            11 => $roleValue === 'officeHead' ? 'Chief Medical Officer' : 'College Nurse / Health Officer',
+            22 => 'ID Processing & Validation Officer',
+            17, 18, 19, 20, 21 => 'Department Evaluator',
+            default => $roleValue === 'officeHead' ? "Head, {$officeName}" : ($officeName ? "Staff, {$officeName}" : 'Staff Officer'),
+        };
     }
 
     /**

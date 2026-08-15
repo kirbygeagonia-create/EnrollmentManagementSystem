@@ -31,10 +31,13 @@ export default function Rooms({ rooms }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.rooms.index'), {
+            search: search || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

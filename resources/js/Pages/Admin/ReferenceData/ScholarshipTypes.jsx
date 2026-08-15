@@ -40,10 +40,13 @@ export default function ScholarshipTypes({ types, coverageTypes }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (coverage) params.set('coverage', coverage);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.scholarship-types.index'), {
+            search: search || undefined,
+            coverage: coverage || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

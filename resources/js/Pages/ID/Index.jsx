@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -76,9 +76,12 @@ export default function Index({ enrollments, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('id.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -100,10 +103,12 @@ export default function Index({ enrollments, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="ID Requests"
-                    subtitle="Manage student ID requests and cards (Phase 8)"
-                    logo="/images/logos/safety-and-security.jpg"
-                    logoAlt="Safety and Security Office (ID Validation)"
+                    title="Student ID Processing & Validation"
+                    subtitle="Issue, validate, and track student ID cards — photo capture, QR code generation, and GZEL intake sync"
+                    logo="/images/logos/gzel-id-validation.jpg"
+                    logoAlt="GZEL ID Validation Office"
+                    phaseBadge="Phase 8 · ID Issuance"
+                    officeBadge="Office 22 · ID Processing Desk"
                 />
             }
         >

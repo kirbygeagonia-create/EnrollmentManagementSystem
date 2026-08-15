@@ -27,9 +27,12 @@ export default function Curriculums({ curriculums, courses, majors }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.curriculums.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

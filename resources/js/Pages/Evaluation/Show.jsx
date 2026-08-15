@@ -208,14 +208,62 @@ export default function Show({ enrollment, curriculumSubjects }) {
 
     const banner = statusBannerMap[enrollment.enrollmentStatus] || statusBannerMap.pending;
 
+    const collegeInfo = useMemo(() => {
+        const code = (enrollment.course?.courseCode || enrollment.course?.code || '').toUpperCase();
+        const name = (enrollment.course?.courseName || enrollment.course?.name || '').toUpperCase();
+
+        if (code.includes('IT') || code.includes('CS') || name.includes('INFORMATION') || name.includes('COMPUTER')) {
+            return {
+                logo: '/images/logos/college-of-information-and-communication-technology.jpg',
+                collegeName: 'College of Information & Communications Technology',
+            };
+        }
+        if (code.includes('AGRI') || code.includes('BSA') || name.includes('AGRICULTURE') || name.includes('FISHERIES')) {
+            return {
+                logo: '/images/logos/college-of-agriculture-and-fisheries.jpg',
+                collegeName: 'College of Agriculture & Fisheries',
+            };
+        }
+        if (code.includes('CRIM') || name.includes('CRIMINOLOGY') || name.includes('JUSTICE')) {
+            return {
+                logo: '/images/logos/college-of-criminal-justice-education.jpg',
+                collegeName: 'College of Criminal Justice Education',
+            };
+        }
+        if (code.includes('BA') || code.includes('HM') || code.includes('TM') || name.includes('BUSINESS') || name.includes('TOURISM') || name.includes('HOSPITALITY')) {
+            return {
+                logo: '/images/logos/college-of-business-and-good-governance.jpg',
+                collegeName: 'College of Business & Good Governance',
+            };
+        }
+        if (code.includes('ED') || name.includes('TEACHER') || name.includes('EDUCATION')) {
+            return {
+                logo: '/images/logos/college-of-teacher-education.jpg',
+                collegeName: 'College of Teacher Education',
+            };
+        }
+        if (code.includes('CE') || name.includes('ENGINEERING') || name.includes('CIVIL')) {
+            return {
+                logo: '/images/logos/department-of-civil-engineering.jpg',
+                collegeName: 'Department of Civil Engineering',
+            };
+        }
+        return {
+            logo: '/images/logos/seait-logo.png',
+            collegeName: 'Academic Department Evaluation Desk',
+        };
+    }, [enrollment.course]);
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Evaluation Details"
-                    subtitle={`${student?.firstName} ${student?.lastName} — ${enrollment.course?.name || '—'}`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    title={`Academic Evaluation — ${collegeInfo.collegeName}`}
+                    subtitle={`${student?.firstName} ${student?.lastName} — ${enrollment.course?.name || '—'} (${enrollment.term?.name || 'Current Term'})`}
+                    logo={collegeInfo.logo}
+                    logoAlt={collegeInfo.collegeName}
+                    phaseBadge="Phase 2 · Department Evaluation"
+                    officeBadge="Office 4 · Academic Evaluation"
                 />
             }
         >

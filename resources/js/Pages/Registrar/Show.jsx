@@ -82,10 +82,12 @@ export default function Show({ enrollment, checklist, allValid }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Enrollment Review"
+                    title="Registrar Enrollment Finalization"
                     subtitle={`${studentName} — ${enrollment.course?.courseName || '—'}`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="Office of the Registrar Seal"
+                    phaseBadge="Phase 5 · Final Approval"
+                    officeBadge="Office 1 · Office of the Registrar"
                     actions={
                         <Link
                             href={route('registrar.index')}

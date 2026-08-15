@@ -237,7 +237,8 @@ class AdmissionController extends Controller
             ->where('requirementId', $requirement->requirementId)
             ->firstOrFail();
 
-        $path = $request->file('file')->store('admission-documents', 's3');
+        $disk = config('filesystems.default', 'public');
+        $path = $request->file('file')->store('admission-documents', $disk);
 
         Documents::create([
             'submissionId' => $submission->submissionId,

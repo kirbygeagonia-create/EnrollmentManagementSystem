@@ -88,8 +88,10 @@ class AccountingController extends Controller
             'paymentStatus' => PaymentStatus::Paid,
         ]);
 
-        // Recalculate remaining balance
-        $totalPaid = $assessment->payments()->sum('amount') + $validated['amount'];
+        // Recalculate remaining balance (payment already saved above, so sum includes it)
+        $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
+            ->where('paymentStatus', PaymentStatus::Paid)
+            ->sum('amount');
         $newBalance = max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid);
 
         $assessment->update([

@@ -42,11 +42,11 @@ function UsersIcon({ className }) {
 
 const quickLinks = [
     { name: 'Admissions', route: 'admission.index', icon: AdmissionIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6] },
-    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [7] },
-    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4] },
+    { name: 'Entrance Exam', route: 'exam.index', icon: ExamIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4, 7] },
+    { name: 'Evaluation', route: 'evaluation.index', icon: EvaluationIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [4, 5] },
     { name: 'Assessment', route: 'assessment.index', icon: AssessmentIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [3] },
     { name: 'Accounting', route: 'accounting.index', icon: AccountingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [2] },
-    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [8] },
+    { name: 'Clearance', route: 'clearance.index', icon: ClearanceIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [6, 8] },
     { name: 'Blocking', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
     { name: 'Registrar', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
     { name: 'Clinic', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
@@ -76,14 +76,14 @@ export default function Dashboard() {
 
     const queueItems = [
         { key: 'admission', label: 'Admission', route: 'admission.index', offices: [6] },
-        { key: 'evaluation', label: 'Evaluation', route: 'evaluation.index', offices: [4] },
+        { key: 'evaluation', label: 'Evaluation', route: 'evaluation.index', offices: [4, 5] },
         { key: 'assessment', label: 'Assessment', route: 'assessment.index', offices: [3] },
         { key: 'accounting', label: 'Accounting', route: 'accounting.index', offices: [2] },
         { key: 'registrar', label: 'Registrar', route: 'registrar.index', offices: [1] },
         { key: 'blocking', label: 'Blocking', route: 'blocking.index', offices: [5] },
         { key: 'clinic', label: 'Clinic', route: 'clinic.index', offices: [11] },
         { key: 'id', label: 'ID Office', route: 'id.index', offices: [22] },
-        { key: 'clearance', label: 'Clearance', route: 'clearance.index', offices: [8] },
+        { key: 'clearance', label: 'Clearance', route: 'clearance.index', offices: [6, 8] },
     ];
 
     const canSeeQueue = (offices) => {

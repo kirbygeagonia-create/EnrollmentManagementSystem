@@ -77,14 +77,18 @@ class EvaluationController extends Controller
         ]);
 
         $curriculum = Curriculums::where('courseId', $enrollment->courseId)
-            ->where('majorId', $enrollment->majorId)
+            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
             ->latest('effectiveYear')
-            ->first();
+            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+
+        $semester = $enrollment->term?->semester instanceof \BackedEnum
+            ? $enrollment->term->semester->value
+            : '1st';
 
         $curriculumSubjects = $curriculum ? Curriculumsubjects::with('subject', 'prerequisiteSubject')
             ->where('curriculumId', $curriculum->curriculumId)
             ->where('yearLevel', $enrollment->yearLevel)
-            ->where('semesterOffered', $enrollment->term->semester)
+            ->where('semesterOffered', $semester)
             ->get() : collect();
 
         return Inertia::render('Evaluation/Show', [
@@ -209,14 +213,18 @@ class EvaluationController extends Controller
 
         // Load curriculum subjects for this enrollment's year level and term
         $curriculum = Curriculums::where('courseId', $enrollment->courseId)
-            ->where('majorId', $enrollment->majorId)
+            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
             ->latest('effectiveYear')
-            ->first();
+            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+
+        $semesterVal = $enrollment->term?->semester instanceof \BackedEnum
+            ? $enrollment->term->semester->value
+            : '1st';
 
         $curriculumSubjects = $curriculum ? Curriculumsubjects::with('subject')
             ->where('curriculumId', $curriculum->curriculumId)
             ->where('yearLevel', $enrollment->yearLevel)
-            ->where('semesterOffered', $enrollment->term->semester)
+            ->where('semesterOffered', $semesterVal)
             ->get() : collect();
 
         // Elective group validation

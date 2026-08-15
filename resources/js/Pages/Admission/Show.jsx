@@ -127,10 +127,12 @@ export default function Show({ admission, requirements }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Admission Details"
-                    subtitle={`${student?.firstName} ${student?.lastName} — ${admission.course?.courseName || '—'}`}
+                    title="Applicant Admission & Requirement Verification"
+                    subtitle={`${student?.firstName} ${student?.lastName} — ${admission.course?.courseName || '—'} (${admission.term?.termName || 'Current Term'})`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Admissions Office"
+                    phaseBadge="Phase 0 · Document Verification"
+                    officeBadge="Office 6 · Admission Desk"
                 />
             }
         >

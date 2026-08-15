@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Offices;
 use App\Models\Staffusers;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -179,7 +178,7 @@ class RbacSeeder extends Seeder
         $this->command->info('Created '.count($createdPermissions).' permissions across '.count($permissions).' modules.');
 
         // ===========================================
-        // 2. CREATE ROLES AND ASSIGN PERMISSIONS
+        // 2. CREATE ALL 13 DESK ROLES AND ASSIGN PERMISSIONS
         // ===========================================
 
         // SysAdmin - ALL permissions
@@ -188,63 +187,147 @@ class RbacSeeder extends Seeder
             ['description' => 'System Administrator with full access to all modules']
         );
         $sysAdmin->syncPermissions(array_keys($createdPermissions));
-        $this->command->info('Role "SysAdmin" created with '.$sysAdmin->permissions->count().' permissions.');
 
-        // Admin - ALL permissions (mirror of SysAdmin; role enum 'admin' maps here)
+        // Admin - ALL permissions
         $admin = Role::firstOrCreate(
             ['name' => 'Admin', 'guard_name' => 'web'],
             ['description' => 'Administrator with full access to all modules']
         );
         $admin->syncPermissions(array_keys($createdPermissions));
-        $this->command->info('Role "Admin" created with '.$admin->permissions->count().' permissions.');
 
-        // Dean - specific permissions
+        // AdmissionOfficer - Phase 0
+        $admissionOfficer = Role::firstOrCreate(
+            ['name' => 'AdmissionOfficer', 'guard_name' => 'web'],
+            ['description' => 'Admission Officer with intake, requirement verification, and qualification permissions']
+        );
+        $admissionOfficer->syncPermissions([
+            'admission.view', 'admission.create', 'admission.update', 'admission.approve', 'admission.reject',
+            'admission.requirements.submit', 'admission.requirements.verify', 'dashboard.view', 'user.view',
+        ]);
+
+        // GuidanceStaff - Phase 0.5 & Retention
+        $guidanceStaff = Role::firstOrCreate(
+            ['name' => 'GuidanceStaff', 'guard_name' => 'web'],
+            ['description' => 'Guidance counselor and entrance/retention exam scoring staff']
+        );
+        $guidanceStaff->syncPermissions([
+            'exam.view', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
+            'dashboard.view', 'user.view',
+        ]);
+
+        // DeptEvaluator - Phase 2
+        $deptEvaluator = Role::firstOrCreate(
+            ['name' => 'DeptEvaluator', 'guard_name' => 'web'],
+            ['description' => 'Academic department evaluator for profile capture, curriculum subject proposals, and transfer credits']
+        );
+        $deptEvaluator->syncPermissions([
+            'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
+            'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
+            'evaluation.sign', 'exam.view', 'admission.view', 'dashboard.view', 'user.view', 'enrollment.subjects.confirm',
+        ]);
+
+        // Dean - Phase 2 & Academic Department Head
         $dean = Role::firstOrCreate(
             ['name' => 'Dean', 'guard_name' => 'web'],
-            ['description' => 'Dean with access to admission, evaluation, exam, refdata, user view, dashboard, enrollment confirmation']
+            ['description' => 'College Dean with evaluation sign-off, curriculum review, and enrollment confirmation']
         );
-        $deanPerms = [
+        $dean->syncPermissions([
             'admission.view', 'admission.create', 'admission.update', 'admission.approve', 'admission.reject',
             'admission.requirements.submit', 'admission.requirements.verify',
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'evaluation.sign.dean',
-            'exam.view',
-            'refdata.view',
-            'user.view',
-            'dashboard.view',
-            'enrollment.subjects.confirm',
-        ];
-        $dean->syncPermissions($deanPerms);
-        $this->command->info('Role "Dean" created with '.$dean->permissions->count().' permissions.');
+            'exam.view', 'refdata.view', 'user.view', 'dashboard.view', 'enrollment.subjects.confirm',
+        ]);
 
-        // ProgramHead - specific permissions
+        // ProgramHead - Phase 2
         $programHead = Role::firstOrCreate(
             ['name' => 'ProgramHead', 'guard_name' => 'web'],
-            ['description' => 'Program Head with access to admission view, evaluation, exam view, dashboard, enrollment confirmation']
+            ['description' => 'Program Head with evaluation, subject proposal, and confirmation permissions']
         );
-        $programHeadPerms = [
-            'admission.view',
-            'evaluation.view', 'evaluation.create', 'evaluation.credits.process',
-            'evaluation.subjects.propose', 'evaluation.sign',
-            'exam.view',
-            'dashboard.view',
-            'enrollment.subjects.confirm',
-        ];
-        $programHead->syncPermissions($programHeadPerms);
-        $this->command->info('Role "ProgramHead" created with '.$programHead->permissions->count().' permissions.');
+        $programHead->syncPermissions([
+            'admission.view', 'evaluation.view', 'evaluation.create', 'evaluation.credits.process',
+            'evaluation.subjects.propose', 'evaluation.sign', 'exam.view', 'dashboard.view', 'enrollment.subjects.confirm',
+        ]);
 
-        // OfficeHead - all view permissions + module action permissions
+        // ScholarshipOfficer - Phase 3
+        $scholarshipOfficer = Role::firstOrCreate(
+            ['name' => 'ScholarshipOfficer', 'guard_name' => 'web'],
+            ['description' => 'Scholarship & Assessment officer for grant verification and fee computation']
+        );
+        $scholarshipOfficer->syncPermissions([
+            'assessment.view', 'assessment.compute', 'assessment.scholarships.apply', 'assessment.charges.adjust',
+            'assessment.finalize', 'dashboard.view', 'user.view',
+        ]);
+
+        // AccountingStaff - Phase 4
+        $accountingStaff = Role::firstOrCreate(
+            ['name' => 'AccountingStaff', 'guard_name' => 'web'],
+            ['description' => 'Cashier and accounting staff for payment collection, OR recording, and daily collection reports']
+        );
+        $accountingStaff->syncPermissions([
+            'payment.view', 'payment.record', 'payment.void', 'payment.report.daily',
+            'assessment.view', 'dashboard.view', 'user.view',
+        ]);
+
+        // RegistrarDesk - Phase 1
+        $registrarDesk = Role::firstOrCreate(
+            ['name' => 'RegistrarDesk', 'guard_name' => 'web'],
+            ['description' => 'Registrar desk staff for clearance receipt recording and student verification']
+        );
+        $registrarDesk->syncPermissions([
+            'clearance.view', 'clearance.receipt.record', 'clearance.slip.generate', 'dashboard.view', 'user.view',
+        ]);
+
+        // RegistrarApprover - Phase 5
+        $registrarApprover = Role::firstOrCreate(
+            ['name' => 'RegistrarApprover', 'guard_name' => 'web'],
+            ['description' => 'Registrar officer for final enrollment approval, subject confirmation, certificate and class card printing']
+        );
+        $registrarApprover->syncPermissions([
+            'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+            'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'dashboard.view', 'user.view',
+        ]);
+
+        // BlockingCoordinator - Phase 6
+        $blockingCoordinator = Role::firstOrCreate(
+            ['name' => 'BlockingCoordinator', 'guard_name' => 'web'],
+            ['description' => 'Blocking coordinator for block section assignment, schedule management, and capacity verification']
+        );
+        $blockingCoordinator->syncPermissions([
+            'block.view', 'block.manage', 'block.assign', 'block.schedules.manage', 'block.capacity.check',
+            'print.blockSchedule', 'dashboard.view', 'user.view',
+        ]);
+
+        // ClinicStaff - Phase 7
+        $clinicStaff = Role::firstOrCreate(
+            ['name' => 'ClinicStaff', 'guard_name' => 'web'],
+            ['description' => 'School clinic health assessment and PhilHealth registration staff']
+        );
+        $clinicStaff->syncPermissions([
+            'clinic.view', 'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
+            'dashboard.view', 'user.view',
+        ]);
+
+        // IdOfficer - Phase 8
+        $idOfficer = Role::firstOrCreate(
+            ['name' => 'IdOfficer', 'guard_name' => 'web'],
+            ['description' => 'ID Office staff for ID requests, photo validation, QR generation, and card release']
+        );
+        $idOfficer->syncPermissions([
+            'id.view', 'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign', 'id.reissue', 'id.cancel',
+            'dashboard.view', 'user.view',
+        ]);
+
+        // OfficeHead - all view permissions + module action permissions (excluding admin-only)
         $officeHead = Role::firstOrCreate(
             ['name' => 'OfficeHead', 'guard_name' => 'web'],
             ['description' => 'Office Head with all view permissions and full module action permissions']
         );
-        $officeHeadPerms = [
-            // All view permissions
+        $officeHead->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'enrollment.approve', 'block.view',
             'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
-            // Module action permissions
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
@@ -254,67 +337,100 @@ class RbacSeeder extends Seeder
             'assessment.compute', 'assessment.finalize',
             'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
-            'admission.create', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
-            'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
-        ];
-        $officeHead->syncPermissions($officeHeadPerms);
-        $this->command->info('Role "OfficeHead" created with '.$officeHead->permissions->count().' permissions.');
+            'admission.create', 'admission.update', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
+            'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+        ]);
 
-        // Staff - view permissions only
+        // Staff - view permissions
         $staff = Role::firstOrCreate(
             ['name' => 'Staff', 'guard_name' => 'web'],
             ['description' => 'Staff with view-only access across all modules']
         );
-        $staffPerms = [
+        $staff->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'block.view', 'clinic.view',
             'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
-        ];
-        $staff->syncPermissions($staffPerms);
-        $this->command->info('Role "Staff" created with '.$staff->permissions->count().' permissions.');
+        ]);
+
+        $this->command->info('Created all 13 functional desk roles with module permissions.');
 
         // ===========================================
-        // 3. ASSIGN SysAdmin/Admin ROLES TO ADMIN USERS
+        // 3. ASSIGN REALISTIC DESK ROLES TO STAFF USERS
         // ===========================================
-        $adminUsers = Staffusers::where('role', 'admin')->get();
-        foreach ($adminUsers as $user) {
-            // Assign both SysAdmin and Admin roles (SysAdmin triggers Gate::before)
-            $user->assignRole('SysAdmin');
-            $user->assignRole('Admin');
-            $this->command->info("Assigned SysAdmin and Admin roles to user: {$user->username} (ID: {$user->userId})");
+        $roleAssignments = [
+            // Registrar Office (Office 1)
+            1 => ['RegistrarApprover', 'OfficeHead'],
+            22 => ['RegistrarDesk', 'Staff'],
+
+            // Accounting (Office 2)
+            2 => ['AccountingStaff', 'OfficeHead'],
+            23 => ['AccountingStaff'],
+
+            // Scholarship (Office 3)
+            3 => ['ScholarshipOfficer', 'OfficeHead'],
+            24 => ['ScholarshipOfficer'],
+
+            // Guidance & Testing (Office 4)
+            4 => ['GuidanceStaff', 'OfficeHead'],
+            25 => ['GuidanceStaff'],
+
+            // Blocking & Scheduling (Office 5)
+            5 => ['BlockingCoordinator'],
+            26 => ['BlockingCoordinator', 'OfficeHead'],
+
+            // Admission & Safety (Office 6)
+            6 => ['AdmissionOfficer', 'OfficeHead'],
+            27 => ['AdmissionOfficer'],
+
+            // Clinic (Office 11)
+            11 => ['ClinicStaff'],
+            32 => ['ClinicStaff', 'OfficeHead'],
+
+            // ID Office (Office 22)
+            35 => ['IdOfficer'],
+
+            // Deans and Department Evaluators (Colleges)
+            7 => ['Dean', 'DeptEvaluator'],
+            17 => ['Dean', 'DeptEvaluator'],
+            18 => ['Dean', 'DeptEvaluator'],
+            19 => ['ProgramHead', 'DeptEvaluator'],
+            20 => ['Dean', 'DeptEvaluator'],
+            21 => ['Dean', 'DeptEvaluator'],
+            36 => ['Dean', 'DeptEvaluator'],
+            39 => ['ProgramHead', 'DeptEvaluator'],
+
+            // SysAdmin / Admin
+            8 => ['SysAdmin', 'Admin'],
+            15 => ['SysAdmin', 'Admin'],
+            30 => ['SysAdmin', 'Admin'],
+            34 => ['SysAdmin', 'Admin'],
+            38 => ['SysAdmin', 'Admin'],
+        ];
+
+        foreach ($roleAssignments as $userId => $rolesToAssign) {
+            $user = Staffusers::find($userId);
+            if ($user) {
+                $user->syncRoles($rolesToAssign);
+                $this->command->info("User #{$userId} ({$user->name}) synced with roles: ".implode(', ', $rolesToAssign));
+            }
         }
 
-        // ===========================================
-        // 4. CREATE MISSING OFFICES
-        // ===========================================
-        $offices = [
-            1 => 'System Administration', // Keep existing
-            2 => 'Accounting Office',
-            3 => 'Assessment Office',
-            4 => 'Department Evaluation',
-            5 => 'Blocking and Scheduling',
-            6 => 'Admission Office',
-            7 => 'Guidance / Entrance Exam',
-            8 => 'Clearance Office',
-            11 => 'Clinic',
-            22 => 'ID Office',
-        ];
-
-        foreach ($offices as $officeId => $officeName) {
-            $office = Offices::firstOrCreate(
-                ['officeId' => $officeId],
-                ['officeName' => $officeName]
-            );
-            $this->command->info("Office ensured: ID={$office->officeId}, Name={$office->officeName}");
+        // Catch-all: ensure every other staff user has at least Staff role
+        foreach (Staffusers::all() as $user) {
+            if ($user->roles->isEmpty()) {
+                if ($user->role?->value === 'admin') {
+                    $user->assignRole(['SysAdmin', 'Admin']);
+                } elseif ($user->role?->value === 'dean') {
+                    $user->assignRole(['Dean', 'DeptEvaluator']);
+                } elseif ($user->role?->value === 'programHead') {
+                    $user->assignRole(['ProgramHead', 'DeptEvaluator']);
+                } elseif ($user->role?->value === 'officeHead') {
+                    $user->assignRole(['OfficeHead']);
+                } else {
+                    $user->assignRole(['Staff']);
+                }
+            }
         }
-
-        // ===========================================
-        // 5. POPULATE role_permissions PIVOT FOR UI DISPLAY
-        // ===========================================
-        // The custom pivot table 'role_permissions' is used by UserManagementController
-        // Spatie's syncPermissions already handles role_has_permissions (which maps to role_permissions per config)
-        // So this is already done via the syncPermissions calls above.
-        $this->command->info('Role-permission pivot (role_permissions) populated via Spatie syncPermissions.');
 
         $this->command->info('RbacSeeder completed successfully!');
     }

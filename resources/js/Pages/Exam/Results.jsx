@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -72,20 +72,25 @@ export default function Results({ exams, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (stage) params.set('stage', stage);
-        if (result) params.set('result', result);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('exam.results'), {
+            stage: stage || undefined,
+            result: result || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Exam Results"
-                    subtitle="Pass/fail lists for entrance and retention exams"
+                    title="Exam Results & Verification Matrix"
+                    subtitle="Pass/fail status lists and qualification records for entrance and retention exams"
                     logo="/images/logos/guidance-office.jpg"
-                    logoAlt="Guidance Office"
+                    logoAlt="SEAIT Guidance Services & Testing Center"
+                    phaseBadge="Phase 0.5 & Retention"
+                    officeBadge="Office 4 · Guidance & Testing Desk"
                 />
             }
         >

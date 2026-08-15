@@ -142,10 +142,12 @@ export default function Show({ assessment, scholarshipTypes }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Assessment Details"
-                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'}`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    title="Student Fee Assessment & Scholarship Coverage"
+                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'} (${enrollment?.term?.name || 'Current Term'})`}
+                    logo="/images/logos/scholarship.jpg"
+                    logoAlt="SEAIT Scholarship & Financial Aid Office"
+                    phaseBadge="Phase 3 · Fee Assessment"
+                    officeBadge="Office 3 · Scholarship Desk"
                 />
             }
         >

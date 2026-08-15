@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, StatCard } from '@/Components/ui';
 
@@ -95,12 +95,15 @@ export default function AuditLogs({ logs, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (action) params.set('action', action);
-        if (entityTable) params.set('entityTable', entityTable);
-        if (dateFrom) params.set('dateFrom', dateFrom);
-        if (dateTo) params.set('dateTo', dateTo);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.audit-logs.index'), {
+            action: action || undefined,
+            entityTable: entityTable || undefined,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const entityTableOptions = useMemo(() => {

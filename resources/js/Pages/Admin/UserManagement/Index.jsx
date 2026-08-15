@@ -69,27 +69,43 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Name', render: (row) => (
+        { key: 'name', label: 'Staff Member & Position', render: (row) => (
             <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-seait-100 text-seait-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                <div className="h-9 w-9 rounded-full bg-seait-100 text-seait-700 ring-1 ring-seait-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {row.firstName?.[0]?.toUpperCase()}{row.lastName?.[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                    <div className="font-medium text-brand-900 truncate">
+                    <div className="font-semibold text-brand-900 truncate">
                         {row.firstName} {row.middleName ? row.middleName[0] + '. ' : ''}{row.lastName}
                     </div>
-                    {row.email && <div className="text-xs text-brand-500 truncate">{row.email}</div>}
+                    <div className="text-xs font-medium text-seait-700 truncate">
+                        {row.positionTitle || 'Staff Member'}
+                    </div>
+                    {row.email && <div className="text-[11px] text-brand-400 truncate">{row.email}</div>}
                 </div>
             </div>
         )},
         { key: 'username', label: 'Username', className: 'font-mono text-sm text-brand-600' },
-        { key: 'office', label: 'Office', render: (row) => row.office?.officeName || '—' },
-        { key: 'role', label: 'Role', render: (row) => {
+        { key: 'office', label: 'Office / Department', render: (row) => (
+            <div>
+                <div className="font-medium text-brand-800 text-sm">{row.office?.officeName || '—'}</div>
+                {row.unit?.unitName && <div className="text-[11px] text-brand-500">{row.unit.unitName}</div>}
+            </div>
+        )},
+        { key: 'role', label: 'System Roles', render: (row) => {
             const roleKey = row.role ? row.role.replace(/([A-Z])/g, '-$1').toLowerCase() : 'staff';
+            const spatieRoles = row.roles || [];
             return (
-                <span className={`role-badge ${roleBadgeMap[roleKey] || 'role-badge-staff'}`}>
-                    {row.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
-                </span>
+                <div className="flex flex-wrap items-center gap-1">
+                    <span className={`role-badge ${roleBadgeMap[roleKey] || 'role-badge-staff'}`}>
+                        {row.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
+                    </span>
+                    {spatieRoles.map(r => (
+                        <span key={r.id || r.name} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand-100 text-brand-700">
+                            {r.name}
+                        </span>
+                    ))}
+                </div>
             );
         }},
         { key: 'status', label: 'Status', render: (row) => (
@@ -101,11 +117,14 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (officeId) params.set('officeId', officeId);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.users.index'), {
+            search: search || undefined,
+            officeId: officeId || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {
@@ -261,10 +280,12 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="User Management"
-                    subtitle="Manage staff users, roles, and permissions across the system"
+                    title="User Management & RBAC Administration"
+                    subtitle="Manage staff accounts, institutional office assignments, position titles, and Spatie granular permission roles"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Administrative Seal"
+                    phaseBadge="System Administration"
+                    officeBadge="Access Control"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

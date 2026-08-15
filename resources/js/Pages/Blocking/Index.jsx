@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -23,6 +23,15 @@ const BlockIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
 );
+
+const getYearSuffix = (year) => {
+    switch (year) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+    }
+};
 
 export default function Index({ blocks, courses, terms, filters = {} }) {
     const [search, setSearch] = useState('');
@@ -58,8 +67,8 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
             const yearLabel = row.term.academicYear?.yearLabel || '';
             return `${semester} ${yearLabel}`.trim();
         }},
-        { key: 'yearLevel', label: 'Year Level', render: (row) => `${row.yearLevel}${getYearSuffix(row.yearLevel)}` },
-        { key: 'capacity', label: 'Enrolled / Capacity', render: (row) => {
+        { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `${row.yearLevel}${getYearSuffix(row.yearLevel)} Year` : '—' },
+        { key: 'capacity', label: 'Capacity', render: (row) => {
             const enrolled = row.enrolled_subjects_count ?? 0;
             const capacity = row.maxStudents;
             return `${enrolled} / ${capacity}`;
@@ -79,12 +88,15 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (courseId) params.set('courseId', courseId);
-        if (termId) params.set('termId', termId);
-        if (yearLevel) params.set('yearLevel', yearLevel);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('blocking.index'), {
+            search: search || undefined,
+            courseId: courseId || undefined,
+            termId: termId || undefined,
+            yearLevel: yearLevel || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -122,10 +134,12 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Blocking"
-                    subtitle="Manage block sections and schedules"
+                    title="Academic Blocking & Schedule Allocation"
+                    subtitle="Manage block sections, monitor class capacity limits, and assign student subject schedules"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Scheduling Office"
+                    phaseBadge="Phase 6 · Section Blocking"
+                    officeBadge="Office 5 · Scheduling Desk"
                     actions={
                         <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,11 +333,4 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
             </Modal>
         </AuthenticatedLayout>
     );
-}
-
-function getYearSuffix(year) {
-    if (year === 1) return 'st';
-    if (year === 2) return 'nd';
-    if (year === 3) return 'rd';
-    return 'th';
 }

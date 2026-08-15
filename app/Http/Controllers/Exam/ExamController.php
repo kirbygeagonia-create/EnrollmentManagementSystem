@@ -70,6 +70,10 @@ class ExamController extends Controller
     {
         $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
 
+        if (! $request->filled('courseId') || ! $request->filled('termId')) {
+            return response()->json(['students' => []]);
+        }
+
         $request->validate([
             'courseId' => 'required|exists:courses,courseId',
             'termId' => 'required|exists:academicterms,termId',

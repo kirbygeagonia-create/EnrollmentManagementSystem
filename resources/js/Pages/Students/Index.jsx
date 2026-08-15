@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -57,10 +57,13 @@ export default function Index({ students, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('students.index'), {
+            search: search || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -83,10 +86,12 @@ export default function Index({ students, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Student 360"
-                    subtitle="Search any student to see their full enrollment trail"
+                    title="Student 360 Institutional Directory"
+                    subtitle="Centralized student records, holistic profile search, and end-to-end lifecycle tracking across all 8 phases"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT logo"
+                    logoAlt="SEAIT Institutional Crest"
+                    phaseBadge="Central Data Hub"
+                    officeBadge="All Offices · Central 360"
                 />
             }
         >

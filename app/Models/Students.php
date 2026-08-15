@@ -64,7 +64,7 @@ class Students extends Model
     /**
      * @return HasMany<Examresults, $this>
      */
-    public function examresults(): HasMany
+    public function examResults(): HasMany
     {
         return $this->hasMany(Examresults::class, 'studentId');
     }
@@ -80,9 +80,25 @@ class Students extends Model
     /**
      * @return HasMany<Studentclearances, $this>
      */
-    public function studentclearances(): HasMany
+    public function clearances(): HasMany
     {
         return $this->hasMany(Studentclearances::class, 'studentId');
+    }
+
+    /**
+     * @return HasMany<Studentclearances, $this>
+     */
+    public function studentclearances(): HasMany
+    {
+        return $this->clearances();
+    }
+
+    /**
+     * @return HasMany<Studenteducationalbackgrounds, $this>
+     */
+    public function educationalBackgrounds(): HasMany
+    {
+        return $this->hasMany(Studenteducationalbackgrounds::class, 'studentId');
     }
 
     /**
@@ -90,7 +106,7 @@ class Students extends Model
      */
     public function studenteducationalbackgrounds(): HasMany
     {
-        return $this->hasMany(Studenteducationalbackgrounds::class, 'studentId');
+        return $this->educationalBackgrounds();
     }
 
     /**
@@ -104,9 +120,25 @@ class Students extends Model
     /**
      * @return HasMany<Studentscholarships, $this>
      */
-    public function studentscholarships(): HasMany
+    public function scholarships(): HasMany
     {
         return $this->hasMany(Studentscholarships::class, 'studentId');
+    }
+
+    /**
+     * @return HasMany<Studentscholarships, $this>
+     */
+    public function studentscholarships(): HasMany
+    {
+        return $this->scholarships();
+    }
+
+    /**
+     * @return HasMany<Transferacademicrecords, $this>
+     */
+    public function transferRecords(): HasMany
+    {
+        return $this->hasMany(Transferacademicrecords::class, 'studentId');
     }
 
     /**
@@ -114,6 +146,6 @@ class Students extends Model
      */
     public function transferacademicrecords(): HasMany
     {
-        return $this->hasMany(Transferacademicrecords::class, 'studentId');
+        return $this->transferRecords();
     }
 }

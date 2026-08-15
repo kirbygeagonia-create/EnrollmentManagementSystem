@@ -81,9 +81,9 @@ Route::middleware('auth')->group(function () {
 
     /* ==================== Accounting ==================== */
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
+    Route::get('/accounting/daily-report', [AccountingController::class, 'dailyReport'])->name('accounting.daily-report');
     Route::get('/accounting/{assessment}', [AccountingController::class, 'show'])->name('accounting.show');
     Route::post('/accounting/{assessment}/payment', [AccountingController::class, 'record'])->name('accounting.payment.record');
-    Route::get('/accounting/daily-report', [AccountingController::class, 'dailyReport'])->name('accounting.daily-report');
     Route::post('/accounting/payments/{payment}/void', [AccountingController::class, 'void'])->name('accounting.payment.void');
 
     /* ==================== Clearance ==================== */

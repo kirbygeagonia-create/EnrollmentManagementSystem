@@ -396,18 +396,18 @@ class PermissionMatrixTest extends TestCase
                 "OfficeHead should have {$perm} per RbacSeeder");
         }
 
-        // OfficeHead action permissions (per RbacSeeder L245-256)
+        // OfficeHead action permissions (per RbacSeeder)
         $actionPerms = [
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
-            'clinic.record', 'clinic.update', 'clinic.sign',
-            'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign',
+            'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
+            'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign', 'id.reissue', 'id.cancel',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
             'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
-            'admission.create', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
+            'admission.create', 'admission.update', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
             'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
         ];
         foreach ($actionPerms as $perm) {

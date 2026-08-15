@@ -76,14 +76,18 @@ class ClearancePolicy
             return false;
         }
 
-        // Clearance must be pending and all approvals completed
-        if ($clearance->overallStatus !== ClearanceOverallStatus::Pending) {
+        // Clearance must not already be received and must not be rejected or incomplete
+        if ($clearance->receivedDate !== null) {
+            return false;
+        }
+
+        if (in_array($clearance->overallStatus, [ClearanceOverallStatus::Rejected, ClearanceOverallStatus::Incomplete])) {
             return false;
         }
 
         $pendingApprovals = $clearance->clearanceapprovals()
-            ->where('status', '!=', ClearanceApprovalStatus::Approved)
-            ->where('status', '!=', ClearanceApprovalStatus::Waived)
+            ->where('status', '!=', ClearanceApprovalStatus::Approved->value)
+            ->where('status', '!=', ClearanceApprovalStatus::Waived->value)
             ->count();
 
         return $pendingApprovals === 0;

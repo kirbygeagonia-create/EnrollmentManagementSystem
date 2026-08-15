@@ -47,10 +47,13 @@ export default function Subjects({ subjects, subjectTypes }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (type) params.set('type', type);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.subjects.index'), {
+            search: search || undefined,
+            type: type || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

@@ -163,10 +163,12 @@ export default function Show({ enrollment, idRequest, studentId }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="ID Request & Card"
+                    title="Student ID Production & QR Barcode Validation"
                     subtitle={`Phase 8 — ${getStudentName()} (${student?.schoolIdNumber})`}
-                    logo="/images/logos/safety-and-security.jpg"
-                    logoAlt="Safety and Security Office (ID Validation)"
+                    logo="/images/logos/gzel-id-validation.jpg"
+                    logoAlt="GZEL ID Validation Office"
+                    phaseBadge="Phase 8 · ID Issuance"
+                    officeBadge="Office 22 · ID Processing Desk"
                     actions={
                         <Link
                             href={route('id.index')}

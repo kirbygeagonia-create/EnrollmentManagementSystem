@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -60,9 +59,12 @@ export default function Index({ assessments, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('accounting.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -84,10 +86,12 @@ export default function Index({ assessments, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Accounting"
-                    subtitle="Collect student payments and track outstanding balances"
+                    title="Accounting & Cashier Terminal"
+                    subtitle="Collect enrollment fee payments, generate Official Receipts (OR), and monitor account balances"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Accounting Office"
+                    phaseBadge="Phase 4 · Cashier Desk"
+                    officeBadge="Office 2 · Accounting Department"
                 />
             }
         >

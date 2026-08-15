@@ -57,11 +57,14 @@ export default function AdmissionRequirements({ requirements, appliesTo }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (appliesToFilter) params.set('appliesTo', appliesToFilter);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admin.admission-requirements.index'), {
+            search: search || undefined,
+            appliesTo: appliesToFilter || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const openCreateModal = () => {

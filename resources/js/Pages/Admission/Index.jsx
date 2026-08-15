@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -47,10 +47,13 @@ export default function Index({ admissions, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (status) params.set('status', status);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('admission.index'), {
+            search: search || undefined,
+            status: status || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -81,10 +84,12 @@ export default function Index({ admissions, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Admissions"
-                    subtitle="Manage student admission applications"
+                    title="Admissions & Application Intake"
+                    subtitle="Register first-year and transferee applicants, verify submitted physical documents, and gate admission approval"
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Admissions Office"
+                    phaseBadge="Phase 0 · Admissions Desk"
+                    officeBadge="Office 6 · Admission Office"
                     actions={
                         <Link href={route('admission.create')} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,7 +199,7 @@ export default function Index({ admissions, filters = {} }) {
                             title="No admissions found"
                             message={search || status ? 'Try adjusting your filters to find matching records.' : 'No admission applications have been submitted yet.'}
                             actionLabel={!search && !status ? 'Create First Admission' : undefined}
-                            onAction={!search && !status ? () => window.location.href = route('admission.create') : undefined}
+                            onAction={!search && !status ? () => router.visit(route('admission.create')) : undefined}
                         />
                     )}
                 </Card>

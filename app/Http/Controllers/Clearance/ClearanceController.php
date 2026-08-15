@@ -141,6 +141,7 @@ class ClearanceController extends Controller
                     'studentClearanceId' => $clearance->studentClearanceId,
                     'clearanceRequirementId' => $req->clearanceRequirementId,
                     'status' => ClearanceApprovalStatus::Pending,
+                    'remarks' => '',
                 ]);
             }
         } else {
@@ -184,17 +185,17 @@ class ClearanceController extends Controller
             'status' => $validated['status'],
             'approvedBy' => Auth::user()->userId,
             'approvalDate' => now(),
-            'remarks' => $validated['remarks'],
+            'remarks' => $validated['remarks'] ?? '',
         ]);
 
         // Update overall clearance status
         $clearance = $approval->studentClearance;
         $pendingCount = $clearance->approvals()
-            ->where('status', ClearanceApprovalStatus::Pending)
+            ->where('status', ClearanceApprovalStatus::Pending->value)
             ->count();
 
         $rejectedCount = $clearance->approvals()
-            ->where('status', ClearanceApprovalStatus::Rejected)
+            ->where('status', ClearanceApprovalStatus::Rejected->value)
             ->count();
 
         if ($rejectedCount > 0) {
@@ -257,17 +258,17 @@ class ClearanceController extends Controller
     {
         $this->authorize('view', $clearance);
 
-        $clearance->load(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office']);
+        $clearance->load(['student.enrollments', 'clearancePeriod.term.academicYear', 'approvals.requirement.office']);
 
         // Log print (BR: every print inserts a documentprintlog row)
-        $enrollmentId = $clearance->student->enrollments->first()?->enrollmentId;
+        $enrollmentId = $clearance->student?->enrollments?->first()?->enrollmentId;
         Documentprintlog::create([
             'enrollmentId' => $enrollmentId,
             'documentType' => DocumentType::ClearanceSlip,
             'printedDate' => now(),
             'printedBy' => Auth::user()->userId,
-            'documentNumber' => Documentprintlog::where('enrollmentId', $enrollmentId)
-                ->where('documentType', DocumentType::ClearanceSlip)
+            'documentNumber' => Documentprintlog::where('documentType', DocumentType::ClearanceSlip)
+                ->when($enrollmentId, fn ($q) => $q->where('enrollmentId', $enrollmentId), fn ($q) => $q->whereNull('enrollmentId'))
                 ->count() + 1,
         ]);
 

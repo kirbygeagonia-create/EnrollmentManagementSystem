@@ -7,6 +7,7 @@ use App\Enums\ApplicantType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Admissions extends Model
 {
@@ -86,13 +87,22 @@ class Admissions extends Model
     }
 
     /**
-     * Exam results for this admission's student, scoped to the admission's term.
+     * Exam results for this admission's student.
      *
      * @return HasMany<Examresults, $this>
      */
-    public function examresults(): HasMany
+    public function examResults(): HasMany
     {
-        return $this->hasMany(Examresults::class, 'studentId', 'studentId')
-            ->whereColumn('examresults.termId', 'admissions.termId');
+        return $this->hasMany(Examresults::class, 'studentId', 'studentId');
+    }
+
+    /**
+     * All uploaded documents across requirement submissions for this admission.
+     *
+     * @return HasManyThrough<Documents, Studentrequirementsubmissions, $this>
+     */
+    public function documents(): HasManyThrough
+    {
+        return $this->hasManyThrough(Documents::class, Studentrequirementsubmissions::class, 'admissionId', 'submissionId');
     }
 }

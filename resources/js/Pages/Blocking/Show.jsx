@@ -337,10 +337,12 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title={`Block: ${block.blockName}`}
+                    title={`Block Section: ${block.blockName}`}
                     subtitle={`${block.course?.courseName} - ${block.term?.semester?.value || block.term?.semester} ${block.term?.academicYear?.yearLabel || ''} ${block.yearLevel}${getYearSuffix(block.yearLevel)}`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
+                    logoAlt="SEAIT Scheduling Office"
+                    phaseBadge="Phase 6 · Section Scheduling"
+                    officeBadge="Office 5 · Scheduling Desk"
                     actions={
                         <div className="flex items-center gap-2">
                             <Link

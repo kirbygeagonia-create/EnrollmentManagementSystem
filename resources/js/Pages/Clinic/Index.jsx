@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
@@ -32,9 +32,12 @@ export default function Index({ enrollments, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        router.get(route('clinic.index'), {
+            search: search || undefined,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const renderActions = (row) => (
@@ -56,10 +59,12 @@ export default function Index({ enrollments, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Clinic Records"
-                    subtitle="Manage student clinic assessments (Phase 7)"
+                    title="School Clinic & Health Assessment"
+                    subtitle="Record physical examinations, biometric vitals, and PhilHealth registrations"
                     logo="/images/logos/clinic.jpg"
-                    logoAlt="Clinic Office"
+                    logoAlt="SEAIT School Clinic"
+                    phaseBadge="Phase 7 · Clinic Desk"
+                    officeBadge="Office 11 · School Clinic"
                 />
             }
         >
