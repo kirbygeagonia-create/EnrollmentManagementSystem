@@ -8,7 +8,7 @@
       "model": "cloudflare-workers-ai/@cf/zai-org/glm-4.7-flash"
     },
     "librarian": {
-      "model": "cloudflare-workers-ai/@cf/zai-org/glm-4.7-flash"
+      "model": "nvidia/llama-3.3-nemotron-super-49b-v1"
     }
   },
   "permission": {
