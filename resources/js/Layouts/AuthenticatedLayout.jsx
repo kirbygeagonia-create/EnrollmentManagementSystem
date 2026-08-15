@@ -1,6 +1,7 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
+import { Toast } from '@/Components/ui';
 import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
@@ -530,6 +531,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     {children}
                 </main>
             </div>
+
+            {/* Flash toast notifications (success/warning/error from server) */}
+            <Toast />
         </div>
     );
 }
