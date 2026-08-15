@@ -102,8 +102,8 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="ID Requests"
                     subtitle="Manage student ID requests and cards (Phase 8)"
-                    logo="/images/logos/gzel-id-validation.jpg"
-                    logoAlt="ID Office"
+                    logo="/images/logos/safety-and-security.jpg"
+                    logoAlt="Safety and Security Office (ID Validation)"
                 />
             }
         >

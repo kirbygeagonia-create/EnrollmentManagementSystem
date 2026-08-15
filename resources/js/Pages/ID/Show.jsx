@@ -165,8 +165,8 @@ export default function Show({ enrollment, idRequest, studentId }) {
                 <PageHeader
                     title="ID Request & Card"
                     subtitle={`Phase 8 — ${getStudentName()} (${student?.schoolIdNumber})`}
-                    logo="/images/logos/gzel-id-validation.jpg"
-                    logoAlt="ID Office"
+                    logo="/images/logos/safety-and-security.jpg"
+                    logoAlt="Safety and Security Office (ID Validation)"
                     actions={
                         <Link
                             href={route('id.index')}
