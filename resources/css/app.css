@@ -490,7 +490,7 @@
     }
 
     .nav-section-label {
-        @apply text-xs font-semibold uppercase tracking-wider text-navy-500 mb-2 px-2;
+        @apply text-xs font-semibold uppercase tracking-wider text-navy-300 mb-2 px-2;
     }
 
     .nav-item {
@@ -507,7 +507,7 @@
     }
 
     .nav-item-inactive {
-        @apply text-navy-300 hover:bg-navy-800 hover:text-white;
+        @apply text-navy-200 hover:bg-navy-800 hover:text-white;
     }
 
     .nav-item-icon {
