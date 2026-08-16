@@ -6,6 +6,9 @@
   "agent": {
     "designer": {
       "model": "cloudflare-workers-ai/@cf/zai-org/glm-4.7-flash"
+    },
+    "librarian": {
+      "model": "cloudflare-workers-ai/@cf/zai-org/glm-4.7-flash"
     }
   },
   "permission": {
