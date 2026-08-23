@@ -58,4 +58,38 @@ class StudentController extends Controller
             'student' => $student,
         ]);
     }
+
+    /**
+     * Quick search JSON endpoint for global command palette.
+     */
+    public function search(Request $request)
+    {
+        $search = $request->query('query', '');
+        if (strlen($search) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $students = Students::with(['enrollments.course', 'enrollments.term'])
+            ->where(function ($sq) use ($search) {
+                $sq->where('lastName', 'like', "%{$search}%")
+                    ->orWhere('firstName', 'like', "%{$search}%")
+                    ->orWhere('middleName', 'like', "%{$search}%")
+                    ->orWhere('schoolIdNumber', 'like', "%{$search}%");
+            })
+            ->limit(10)
+            ->get()
+            ->map(function ($s) {
+                $latestEnrollment = $s->enrollments->sortByDesc('enrollmentId')->first();
+                return [
+                    'studentId' => $s->studentId,
+                    'schoolIdNumber' => $s->schoolIdNumber,
+                    'fullName' => "{$s->lastName}, {$s->firstName} " . ($s->middleName ? "{$s->middleName[0]}." : ''),
+                    'course' => $latestEnrollment?->course?->courseCode ?? 'N/A',
+                    'status' => $latestEnrollment?->enrollmentStatus?->value ?? $s->status,
+                    'url' => route('students.show', $s->studentId),
+                ];
+            });
+
+        return response()->json(['results' => $students]);
+    }
 }

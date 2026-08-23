@@ -1,8 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Select, StatCard } from '@/Components/ui';
+import { Head, useForm, router } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Badge, ConfirmDialog, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-import { useForm, router } from '@inertiajs/react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -17,9 +16,10 @@ const paymentStatusToneMap = {
 const paymentModeToneMap = {
     cash: 'info',
     online: 'accent',
+    check: 'neutral',
 };
 
-export default function Show({ assessment, paymentModes }) {
+export default function Show({ assessment }) {
     const [showVoidConfirm, setShowVoidConfirm] = useState(false);
     const [paymentToVoid, setPaymentToVoid] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,66 +29,21 @@ export default function Show({ assessment, paymentModes }) {
     const charges = assessment.charges || [];
     const payments = assessment.payments || [];
 
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => p.paymentStatus === 'paid' || p.paymentStatus === 'completed' ? sum + Number(p.amount || 0) : sum, 0);
     const totalAssessed = Number(assessment.totalAssessedAmount || 0);
     const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
     const totalWaived = Number(assessment.totalWaived || 0);
-    const remainingBalance = Number(assessment.remainingBalance || 0);
-    const outstanding = Math.max(0, remainingBalance - totalPaid);
-
-    // Status banner — fully paid / partial / unpaid.
-    const statusBanner = (() => {
-        if (outstanding <= 0 && charges.length > 0) {
-            return { tone: 'success', label: 'Fully Paid', message: 'All charges have been settled. The enrollment is ready to advance to the next workflow step.' };
-        }
-        if (totalPaid > 0) {
-            return { tone: 'partial', label: 'Partially Paid', message: 'A partial payment has been recorded. Collect the remaining balance to complete this assessment.' };
-        }
-        return { tone: 'danger', label: 'Unpaid', message: 'No payments have been recorded yet. Collect the full balance to advance the enrollment.' };
-    })();
+    const netAssessed = Math.max(0, totalAssessed - totalScholarship - totalWaived);
+    const outstanding = Math.max(0, netAssessed - totalPaid);
 
     const studentName = student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : '—';
-
-    const chargeColumns = useMemo(() => [
-        { key: 'feeType.feeName', label: 'Fee Type', render: (row) => row.feeType?.feeName || '—' },
-        { key: 'amount', label: 'Amount', render: (row) => peso(row.amount) },
-        { key: 'waivedAmount', label: 'Waived', render: (row) => (
-            <span className={Number(row.waivedAmount || 0) > 0 ? 'text-info-600 font-medium' : 'text-brand-400'}>
-                {peso(row.waivedAmount)}
-            </span>
-        )},
-        { key: 'netAmount', label: 'Net Amount', render: (row) => (
-            <span className="font-semibold text-brand-900">{peso(Number(row.amount || 0) - Number(row.waivedAmount || 0))}</span>
-        )},
-    ], []);
-
-    const paymentColumns = useMemo(() => [
-        { key: 'paymentDate', label: 'Date', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-PH') : '—' },
-        { key: 'orNumber', label: 'OR Number', render: (row) => (
-            <span className="font-mono text-sm">{row.orNumber || '—'}</span>
-        )},
-        { key: 'amount', label: 'Amount', render: (row) => (
-            <span className="font-semibold text-brand-900">{peso(row.amount)}</span>
-        )},
-        { key: 'paymentMode', label: 'Mode', render: (row) => (
-            <Badge tone={paymentModeToneMap[row.paymentMode] || 'neutral'}>
-                {row.paymentMode ? row.paymentMode.charAt(0).toUpperCase() + row.paymentMode.slice(1) : '—'}
-            </Badge>
-        )},
-        { key: 'paymentStatus', label: 'Status', render: (row) => (
-            <Badge tone={paymentStatusToneMap[row.paymentStatus] || 'neutral'}>
-                {row.paymentStatus ? row.paymentStatus.charAt(0).toUpperCase() + row.paymentStatus.slice(1) : '—'}
-            </Badge>
-        )},
-        { key: 'processedBy', label: 'Processed By', render: (row) => row.processedBy?.name || '—' },
-    ], []);
 
     // Record Payment Form
     const { data, setData, post, errors, reset } = useForm({
         orNumber: '',
-        amount: '',
+        amount: outstanding > 0 ? outstanding.toString() : '',
         paymentMode: 'cash',
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: '',
     });
 
     const handleRecordPayment = (e) => {
@@ -101,6 +56,10 @@ export default function Show({ assessment, paymentModes }) {
             },
             onError: () => setIsSubmitting(false),
         });
+    };
+
+    const setQuickAmount = (val) => {
+        setData('amount', val.toString());
     };
 
     const handleVoidPayment = (payment) => {
@@ -121,87 +80,58 @@ export default function Show({ assessment, paymentModes }) {
         });
     };
 
-    const paymentModeOptions = paymentModes.map(mode => ({
-        value: mode.value,
-        label: mode.value.charAt(0).toUpperCase() + mode.value.slice(1),
-    }));
+    const chargeColumns = useMemo(() => [
+        { key: 'feeType.feeName', label: 'Fee Item', render: (row) => <span className="font-semibold text-slate-800">{row.feeType?.feeName || '—'}</span> },
+        { key: 'amount', label: 'Assessed', render: (row) => peso(row.amount) },
+        { key: 'waivedAmount', label: 'Waived/Grant', render: (row) => (
+            <span className={Number(row.waivedAmount || 0) > 0 ? 'text-emerald-600 font-medium' : 'text-slate-400'}>
+                {peso(row.waivedAmount)}
+            </span>
+        )},
+        { key: 'netAmount', label: 'Net Payable', render: (row) => (
+            <span className="font-bold text-slate-900">{peso(Number(row.amount || 0) - Number(row.waivedAmount || 0))}</span>
+        )},
+    ], []);
+
+    const paymentColumns = useMemo(() => [
+        { key: 'paymentDate', label: 'Date', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'orNumber', label: 'Official Receipt (OR)', render: (row) => (
+            <span className="font-mono text-xs font-bold text-seait-700 bg-seait-50 px-2 py-0.5 rounded border border-seait-200">
+                {row.orNumber || '—'}
+            </span>
+        )},
+        { key: 'amount', label: 'Amount Paid', render: (row) => (
+            <span className="font-bold text-emerald-700">{peso(row.amount)}</span>
+        )},
+        { key: 'paymentMode', label: 'Mode', render: (row) => (
+            <Badge tone={paymentModeToneMap[row.paymentMode] || 'neutral'}>
+                {row.paymentMode ? row.paymentMode.toUpperCase() : '—'}
+            </Badge>
+        )},
+        { key: 'paymentStatus', label: 'Status', render: (row) => (
+            <Badge tone={paymentStatusToneMap[row.paymentStatus] || 'neutral'}>
+                {row.paymentStatus ? row.paymentStatus.charAt(0).toUpperCase() + row.paymentStatus.slice(1) : '—'}
+            </Badge>
+        )},
+        { key: 'processedBy', label: 'Cashier In-Charge', render: (row) => row.processedBy?.name || 'Cashier Desk' },
+    ], []);
 
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Payment & Official Receipt Recording"
-                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'} (${enrollment?.term?.name || 'Current Term'})`}
+                    title="Cashier Terminal & Payment Desk"
+                    subtitle={`${studentName} • ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.semester?.value || enrollment?.term?.semester || 'Current Term'})`}
                     logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Accounting Office"
-                    phaseBadge="Phase 4 · Payment Processing"
+                    logoAlt="SEAIT Cashier Office"
+                    phaseBadge="Phase 4 · Cashier Collections"
                     officeBadge="Office 2 · Cashier Terminal"
                 />
             }
         >
-            <Head title="Payment Recording" />
+            <Head title="Cashier Terminal" />
 
-            {/* Status Banner */}
-            <div className={`rounded-card border p-4 mb-6 flex items-start gap-3 ${
-                statusBanner.tone === 'success' ? 'bg-success-50 border-success-200' :
-                statusBanner.tone === 'partial' ? 'bg-warning-50 border-warning-200' :
-                'bg-danger-50 border-danger-200'
-            }`}>
-                <span className={`flex-shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-xl ${
-                    statusBanner.tone === 'success' ? 'bg-success-100 text-success-700' :
-                    statusBanner.tone === 'partial' ? 'bg-warning-100 text-warning-700' :
-                    'bg-danger-100 text-danger-700'
-                }`}>
-                    {statusBanner.tone === 'success' ? (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    ) : statusBanner.tone === 'partial' ? (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
-                        </svg>
-                    )}
-                </span>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-brand-900">{statusBanner.label}</h3>
-                        <Badge tone={statusBanner.tone === 'success' ? 'paid' : statusBanner.tone === 'partial' ? 'partial' : 'danger'}>
-                            {statusBanner.label}
-                        </Badge>
-                    </div>
-                    <p className="text-sm text-brand-600 mt-1">{statusBanner.message}</p>
-                </div>
-            </div>
-
-            {/* Student + Enrollment info strip */}
-            <Card className="mb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                        <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">School ID</dt>
-                        <dd className="mt-1 font-mono text-sm text-brand-900">{student?.schoolIdNumber || '—'}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">Course</dt>
-                        <dd className="mt-1 text-sm text-brand-900">{enrollment?.course?.name || '—'}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">Term</dt>
-                        <dd className="mt-1 text-sm text-brand-900">
-                            {enrollment?.term ? `${enrollment.term.semester?.value || enrollment.term.semester} ${enrollment.term.academicYear?.yearLabel || ''}`.trim() : '—'}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">Assessment ID</dt>
-                        <dd className="mt-1 font-mono text-sm text-brand-900">#{assessment.assessmentId}</dd>
-                    </div>
-                </div>
-            </Card>
-
-            {/* Assessment Summary StatCards */}
+            {/* Quick Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
                     label="Total Assessed"
@@ -214,7 +144,17 @@ export default function Show({ assessment, paymentModes }) {
                     }
                 />
                 <StatCard
-                    label="Total Paid"
+                    label="Total Grants / Waived"
+                    value={peso(totalScholarship + totalWaived)}
+                    iconBg="info"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Total Paid To Date"
                     value={peso(totalPaid)}
                     iconBg="success"
                     icon={
@@ -224,131 +164,251 @@ export default function Show({ assessment, paymentModes }) {
                     }
                 />
                 <StatCard
-                    label="Waived / Scholarship"
-                    value={peso(Number(totalWaived) + Number(totalScholarship))}
-                    iconBg="info"
-                    icon={
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                        </svg>
-                    }
-                />
-                <StatCard
                     label="Outstanding Balance"
                     value={peso(outstanding)}
-                    iconBg="danger"
+                    iconBg={outstanding > 0 ? "danger" : "success"}
                     icon={
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1" />
                         </svg>
                     }
                 />
             </div>
 
-            {/* Charges Breakdown */}
-            <Card title="Charges Breakdown" subtitle="Individual fee items" className="mb-6">
-                {charges.length > 0 ? (
-                    <DataTable
-                        columns={chargeColumns}
-                        rows={charges.map((charge) => ({
-                            ...charge,
-                            chargeId: charge.chargeId,
-                            amount: charge.amount,
-                            waivedAmount: charge.waivedAmount || 0,
-                        }))}
-                        emptyMessage="No charges found"
-                    />
-                ) : (
-                    <p className="text-brand-500 text-center py-8">No charges recorded.</p>
-                )}
-            </Card>
-
-            {/* Record Payment Form */}
-            <Card title="Record Payment" subtitle="Enter payment details to collect a new payment" className="mb-6">
-                <form onSubmit={handleRecordPayment} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <FormSection label="OR Number" required error={errors.orNumber}>
-                            <input
-                                type="text"
-                                value={data.orNumber}
-                                onChange={(e) => setData('orNumber', e.target.value)}
-                                className={`form-input ${errors.orNumber ? 'form-input-error' : ''}`}
-                                required
-                                placeholder="Enter OR number"
-                            />
-                        </FormSection>
-                        <FormSection label="Amount" required error={errors.amount}>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                value={data.amount}
-                                onChange={(e) => setData('amount', e.target.value)}
-                                className={`form-input ${errors.amount ? 'form-input-error' : ''}`}
-                                required
-                                placeholder="0.00"
-                            />
-                        </FormSection>
-                        <FormSection label="Payment Mode" required error={errors.paymentMode}>
-                            <Select
-                                value={data.paymentMode}
-                                onChange={(e) => setData('paymentMode', e.target.value)}
-                                options={paymentModeOptions}
-                                placeholder="Select mode"
-                                className={`form-input ${errors.paymentMode ? 'form-input-error' : ''}`}
-                                required
-                            />
-                        </FormSection>
-                        <FormSection label="Payment Date" required error={errors.paymentDate}>
-                            <input
-                                type="date"
-                                value={data.paymentDate}
-                                onChange={(e) => setData('paymentDate', e.target.value)}
-                                className={`form-input ${errors.paymentDate ? 'form-input-error' : ''}`}
-                                required
-                            />
-                        </FormSection>
-                    </div>
-                    <div className="flex justify-end mt-4">
-                        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1" />
-                            </svg>
-                            {isSubmitting ? 'Recording...' : 'Record Payment'}
-                        </button>
-                    </div>
-                </form>
-            </Card>
-
-            {/* Payment History */}
-            <Card title="Payment History" subtitle="Recorded payments for this assessment" className="mb-6">
-                {payments.length > 0 ? (
-                    <DataTable
-                        columns={paymentColumns}
-                        rows={payments}
-                        children={(row) => (
-                            <div className="flex items-center gap-2">
-                                {row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? (
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
-                                        onClick={() => handleVoidPayment(row)}
-                                        disabled={isSubmitting}
-                                    >
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        <span className="hidden sm:inline">Void</span>
-                                    </button>
-                                ) : null}
+            {/* Split Screen POS Terminal View */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                {/* Left Side: Fee Ledger & Student Info */}
+                <div className="lg:col-span-7 space-y-6">
+                    {/* Student Card */}
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-seait-500" />
+                                Student Enrollment Summary
+                            </h3>
+                            <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border">
+                                Assessment #{assessment.assessmentId}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                            <div>
+                                <span className="text-slate-400 font-semibold block">Student ID Number</span>
+                                <span className="font-mono font-bold text-slate-800 text-sm">{student?.schoolIdNumber || '—'}</span>
                             </div>
+                            <div>
+                                <span className="text-slate-400 font-semibold block">Full Name</span>
+                                <span className="font-bold text-slate-800 text-sm">{studentName}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400 font-semibold block">Academic Course</span>
+                                <span className="font-bold text-slate-800">{enrollment?.course?.courseCode || '—'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Fee Ledger Table */}
+                    <Card title="Itemized Fee Charges Breakdown" subtitle="Detailed billing line items and fee allocations">
+                        {charges.length > 0 ? (
+                            <DataTable
+                                columns={chargeColumns}
+                                rows={charges}
+                                emptyMessage="No charges found"
+                            />
+                        ) : (
+                            <p className="text-slate-400 text-center py-6 text-xs">No charges recorded.</p>
                         )}
-                        emptyMessage="No payments recorded"
-                    />
-                ) : (
-                    <p className="text-brand-500 text-center py-8">No payments recorded yet.</p>
-                )}
-            </Card>
+                    </Card>
+
+                    {/* Recorded Payments History */}
+                    <Card title="Transaction History (Official Receipts)" subtitle="Previous payments logged under this enrollment">
+                        {payments.length > 0 ? (
+                            <DataTable
+                                columns={paymentColumns}
+                                rows={payments}
+                                children={(row) => (
+                                    <div className="flex items-center gap-2">
+                                        {row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? (
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
+                                                onClick={() => handleVoidPayment(row)}
+                                                disabled={isSubmitting}
+                                            >
+                                                Void
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                )}
+                                emptyMessage="No payments recorded"
+                            />
+                        ) : (
+                            <p className="text-slate-400 text-center py-6 text-xs">No payments recorded yet.</p>
+                        )}
+                    </Card>
+                </div>
+
+                {/* Right Side: Point-of-Sale (POS) Terminal & Receipt Preview */}
+                <div className="lg:col-span-5 space-y-6">
+                    {/* POS Payment Form */}
+                    <div className="bg-gradient-to-br from-slate-900 to-navy-950 text-white rounded-2xl p-6 border border-slate-800 shadow-xl">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-5">
+                            <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                                    ₱
+                                </div>
+                                <h3 className="font-heading font-bold text-white text-base">Collect Payment</h3>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                                Cashier Active
+                            </span>
+                        </div>
+
+                        <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+                            {/* OR Number */}
+                            <div>
+                                <label className="block text-slate-300 font-semibold mb-1">
+                                    Official Receipt (OR) Number <span className="text-rose-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={data.orNumber}
+                                    onChange={(e) => setData('orNumber', e.target.value)}
+                                    className="w-full rounded-xl bg-slate-800/90 border border-slate-700 text-white font-mono text-sm px-3.5 py-2.5 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                                    required
+                                    placeholder="OR-123456"
+                                />
+                                {errors.orNumber && <p className="text-rose-400 text-xs mt-1">{errors.orNumber}</p>}
+                            </div>
+
+                            {/* Payment Amount & Presets */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-slate-300 font-semibold">
+                                        Amount to Pay (PHP) <span className="text-rose-400">*</span>
+                                    </label>
+                                    {outstanding > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickAmount(outstanding)}
+                                            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                        >
+                                            Full Balance ({peso(outstanding)})
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-base">₱</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        value={data.amount}
+                                        onChange={(e) => setData('amount', e.target.value)}
+                                        className="w-full rounded-xl bg-slate-800/90 border border-slate-700 text-white font-bold text-lg pl-8 pr-4 py-2 focus:ring-2 focus:ring-emerald-400 focus:outline-none font-mono"
+                                        required
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                {errors.amount && <p className="text-rose-400 text-xs mt-1">{errors.amount}</p>}
+
+                                {/* Quick Cash Keypad Buttons */}
+                                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                                    {[100, 500, 1000, 2000].map((preset) => (
+                                        <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() => setQuickAmount(preset)}
+                                            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-mono text-xs transition-colors"
+                                        >
+                                            +{peso(preset)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Payment Mode & Date */}
+                            <div className="grid grid-cols-2 gap-3 pt-1">
+                                <div>
+                                    <label className="block text-slate-300 font-semibold mb-1">
+                                        Payment Method <span className="text-rose-400">*</span>
+                                    </label>
+                                    <select
+                                        value={data.paymentMode}
+                                        onChange={(e) => setData('paymentMode', e.target.value)}
+                                        className="w-full rounded-xl bg-slate-800/90 border border-slate-700 text-white text-xs px-3 py-2 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                                        required
+                                    >
+                                        <option value="cash">Cash Payment</option>
+                                        <option value="online">Online / G-Cash</option>
+                                        <option value="check">Bank Check</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-slate-300 font-semibold mb-1">
+                                        Transaction Date <span className="text-rose-400">*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={data.paymentDate}
+                                        onChange={(e) => setData('paymentDate', e.target.value)}
+                                        className="w-full rounded-xl bg-slate-800/90 border border-slate-700 text-white text-xs px-3 py-2 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <div className="pt-3">
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-heading font-bold text-sm shadow-lg hover:shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    {isSubmitting ? 'Recording Receipt...' : 'Record Payment & Issue OR'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Live Receipt Paper Preview Mockup */}
+                    <div className="bg-amber-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-5 shadow-xs text-slate-800 font-mono text-xs relative">
+                        <div className="text-center border-b border-amber-200 pb-3 mb-3">
+                            <p className="font-bold uppercase tracking-widest text-sm text-slate-900">SEAIT CASHIER</p>
+                            <p className="text-[10px] text-slate-600">OFFICIAL RECEIPT PREVIEW</p>
+                            <p className="text-[10px] font-bold text-seait-700 mt-1">{data.orNumber || 'OR-PENDING'}</p>
+                        </div>
+                        <div className="space-y-1.5 text-[11px]">
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Student:</span>
+                                <span className="font-bold truncate max-w-[180px]">{studentName}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">School ID:</span>
+                                <span>{student?.schoolIdNumber || '—'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Method:</span>
+                                <span className="uppercase font-semibold">{data.paymentMode}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Date:</span>
+                                <span>{data.paymentDate}</span>
+                            </div>
+                            <div className="border-t border-amber-200 pt-2 mt-2 flex justify-between font-bold text-sm text-slate-900">
+                                <span>TENDERED:</span>
+                                <span className="text-emerald-700 font-mono">{peso(data.amount || 0)}</span>
+                            </div>
+                        </div>
+                        <p className="text-[9px] text-center text-slate-400 mt-3 uppercase tracking-wider">
+                            *** Valid Official Institutional Receipt ***
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             {/* Void Payment Confirm Dialog */}
             <ConfirmDialog

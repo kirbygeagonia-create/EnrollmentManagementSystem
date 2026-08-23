@@ -19,7 +19,11 @@ class AdminAccessSmokeTest extends TestCase
             'database.connections.mysql.username' => 'root',
             'database.connections.mysql.password' => '',
         ]);
-        DB::purge('mysql');
+        try {
+            DB::connection('mysql')->getPdo();
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('MySQL database is not reachable.');
+        }
 
         $admin = Staffusers::where('username', 'staff8')->firstOrFail();
 

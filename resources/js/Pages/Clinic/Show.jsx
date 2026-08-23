@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, Modal, ConfirmDialog } from '@/Components/ui';
-import { useState } from 'react';
+import { PageHeader, Badge, FormSection, Modal, ConfirmDialog, StatCard } from '@/Components/ui';
+import { useState, useMemo } from 'react';
 
 export default function Show({ enrollment, clinicRecord }) {
     const [showRecordModal, setShowRecordModal] = useState(false);
@@ -9,8 +9,6 @@ export default function Show({ enrollment, clinicRecord }) {
     const [showReopenConfirm, setShowReopenConfirm] = useState(false);
 
     const student = enrollment.student;
-    const course = enrollment.course;
-    const term = enrollment.term;
 
     // Form for creating/updating clinic record
     const recordForm = useForm({
@@ -87,29 +85,29 @@ export default function Show({ enrollment, clinicRecord }) {
         return parts.join(', ');
     };
 
-    const statusToneMap = {
-        pending: 'warning',
-        completed: 'success',
-        reopened: 'info',
-    };
+    // Calculate BMI
+    const bmiData = useMemo(() => {
+        const h = Number(clinicRecord?.heightCm || recordForm.data.heightCm || 0);
+        const w = Number(clinicRecord?.weightKg || recordForm.data.weightKg || 0);
+        if (h <= 0 || w <= 0) return { val: '—', label: 'Not calculated', tone: 'neutral' };
 
-    const statusLabelMap = {
-        pending: 'Pending',
-        completed: 'Completed',
-        reopened: 'Reopened',
-    };
+        const hm = h / 100;
+        const bmi = (w / (hm * hm)).toFixed(1);
 
-    const recordModalIcon = (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-    );
+        if (bmi < 18.5) return { val: bmi, label: 'Underweight', tone: 'warning' };
+        if (bmi <= 24.9) return { val: bmi, label: 'Normal / Healthy', tone: 'success' };
+        if (bmi <= 29.9) return { val: bmi, label: 'Overweight', tone: 'warning' };
+        return { val: bmi, label: 'Obese Range', tone: 'danger' };
+    }, [clinicRecord, recordForm.data.heightCm, recordForm.data.weightKg]);
 
     const renderRecordForm = () => (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6 text-xs">
             {/* Vitals Section */}
             <div>
-                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">Vitals</h4>
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                    Physical Vitals Examination
+                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormSection label="Height (cm)" required>
                         <input
@@ -165,78 +163,75 @@ export default function Show({ enrollment, clinicRecord }) {
             </div>
 
             {/* PhilHealth Section */}
-            <div>
-                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">PhilHealth Registration</h4>
+            <div className="pt-2 border-t border-slate-100">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    PhilHealth Coverage
+                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormSection label="PhilHealth Number">
+                    <FormSection label="PhilHealth Identification No. (PIN)">
                         <input
                             type="text"
                             maxLength={50}
                             value={recordForm.data.philhealthNumber}
                             onChange={(e) => recordForm.setData('philhealthNumber', e.target.value)}
-                            className="form-input"
-                            placeholder="Optional"
+                            className="form-input font-mono"
+                            placeholder="XX-XXXXXXXXX-X"
                         />
                     </FormSection>
-                    <FormSection label="PhilHealth Registered">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                    <FormSection label="Registration Status">
+                        <label className="flex items-center gap-2 cursor-pointer pt-2">
                             <input
                                 type="checkbox"
                                 checked={recordForm.data.philhealthRegistered}
                                 onChange={(e) => recordForm.setData('philhealthRegistered', e.target.checked)}
-                                className="form-checkbox"
+                                className="form-checkbox h-4 w-4 text-emerald-600 rounded"
                             />
-                            <span className="text-sm text-brand-700">Registered</span>
+                            <span className="text-xs font-semibold text-slate-800">Confirmed Registered Member</span>
                         </label>
                     </FormSection>
                 </div>
             </div>
 
             {/* Clinical Notes Section */}
-            <div>
-                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">Clinical Notes</h4>
-                <div className="space-y-4">
-                    <FormSection label="Assessment Notes">
+            <div className="pt-2 border-t border-slate-100">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-3">Medical Diagnosis & Clinical Notes</h4>
+                <div className="space-y-3">
+                    <FormSection label="Assessment Notes & Observations">
                         <textarea
                             value={recordForm.data.assessmentNotes}
                             onChange={(e) => recordForm.setData('assessmentNotes', e.target.value)}
                             className="form-input"
                             rows={3}
-                            placeholder="General assessment notes..."
+                            placeholder="General physical observations and notes..."
                         />
                     </FormSection>
-                    <FormSection label="Findings">
+                    <FormSection label="Clinical Findings & Recommendations">
                         <textarea
                             value={recordForm.data.findings}
                             onChange={(e) => recordForm.setData('findings', e.target.value)}
                             className="form-input"
                             rows={3}
-                            placeholder="Clinical findings..."
+                            placeholder="Medical recommendations or clearance notes..."
                         />
                     </FormSection>
                 </div>
             </div>
-        </form>
+        </div>
     );
 
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Student Health Assessment"
+                    title="Student Health Assessment & Clinical Chart"
                     subtitle={`Phase 7 — ${getStudentName()} (${student?.schoolIdNumber})`}
                     logo="/images/logos/clinic.jpg"
                     logoAlt="SEAIT School Clinic"
                     phaseBadge="Phase 7 · Clinic Examination"
                     officeBadge="Office 11 · School Clinic"
                     actions={
-                        <Link
-                            href={route('clinic.index')}
-                            className="btn btn-secondary btn-sm"
-                        >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
+                        <Link href={route('clinic.index')} className="btn btn-secondary btn-sm">
                             Back to Queue
                         </Link>
                     }
@@ -245,180 +240,192 @@ export default function Show({ enrollment, clinicRecord }) {
         >
             <Head title={`Clinic — ${getStudentName()}`} />
 
-            {/* Student Info Card */}
-            <Card title="Student Information" className="mb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <p className="text-sm text-brand-500">School ID</p>
-                        <p className="font-mono text-lg font-medium text-brand-900">{student?.schoolIdNumber || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Name</p>
-                        <p className="font-medium text-brand-900">{getStudentName()}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Course</p>
-                        <p className="font-medium text-brand-900">{course?.name || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Term</p>
-                        <p className="font-medium text-brand-900">{term?.name || '—'}</p>
+            {/* Quick Vitals Dials Banner */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                    label="Height & Weight"
+                    value={clinicRecord ? `${clinicRecord.heightCm} cm / ${clinicRecord.weightKg} kg` : '—'}
+                    iconBg="rose"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Calculated BMI"
+                    value={bmiData.val}
+                    iconBg={bmiData.tone === 'success' ? 'success' : bmiData.tone === 'warning' ? 'warning' : 'neutral'}
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Blood Pressure (BP)"
+                    value={clinicRecord?.bloodPressure || '—'}
+                    iconBg="danger"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="PhilHealth Status"
+                    value={clinicRecord?.philhealthRegistered ? 'Registered' : 'Not Registered'}
+                    iconBg={clinicRecord?.philhealthRegistered ? 'success' : 'warning'}
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    }
+                />
+            </div>
+
+            {/* Split Screen Medical Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                {/* Left: Student Clinical Profile */}
+                <div className="lg:col-span-8 space-y-6">
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+                            <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                                Physical Examination & Medical History
+                            </h3>
+                            {clinicRecord && (
+                                <Badge tone={clinicRecord.status === 'completed' ? 'success' : 'pending'}>
+                                    {clinicRecord.status?.toUpperCase()}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {clinicRecord ? (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Height</span>
+                                        <span className="font-bold text-slate-800 text-sm">{clinicRecord.heightCm} cm</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Weight</span>
+                                        <span className="font-bold text-slate-800 text-sm">{clinicRecord.weightKg} kg</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Blood Pressure</span>
+                                        <span className="font-bold text-slate-800 text-sm">{clinicRecord.bloodPressure}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">BMI Classification</span>
+                                        <span className="font-bold text-rose-700 text-sm">{bmiData.label}</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">Observations & Notes</h4>
+                                    <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed min-h-[60px]">
+                                        {clinicRecord.assessmentNotes || 'No notes logged.'}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">Clinical Findings & Clearance</h4>
+                                    <div className="p-4 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed min-h-[60px]">
+                                        {clinicRecord.findings || 'No findings logged.'}
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="text-xs text-slate-400">
+                                        Examined on <span className="font-semibold text-slate-700">{formatDate(clinicRecord.assessmentDate)}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {clinicRecord.status !== 'completed' ? (
+                                            <button onClick={handleOpenUpdate} className="btn btn-primary btn-sm">
+                                                Update Medical Chart
+                                            </button>
+                                        ) : (
+                                            <button onClick={() => setShowReopenConfirm(true)} className="btn btn-secondary btn-sm">
+                                                Reopen Chart for Editing
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <div className="h-16 w-16 rounded-full bg-rose-50 text-rose-500 mx-auto flex items-center justify-center mb-3">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="font-bold text-slate-900 text-sm">No Health Assessment Recorded</h3>
+                                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-4">
+                                    Measure the student's height, weight, and blood pressure to complete Phase 7.
+                                </p>
+                                <button onClick={handleOpenRecord} className="btn btn-primary">
+                                    Perform Physical Exam
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </Card>
 
-            {/* Clinic Record Card */}
-            <Card
-                title="Clinic Assessment Record"
-                subtitle={clinicRecord ? `Recorded on ${formatDate(clinicRecord.assessmentDate)}` : 'No clinic record exists yet'}
-                actions={
-                    clinicRecord ? (
-                        <Badge tone={statusToneMap[clinicRecord.status] || 'neutral'}>
-                            {statusLabelMap[clinicRecord.status] || clinicRecord.status}
-                        </Badge>
-                    ) : null
-                }
-                className="mb-6"
-            >
-                {clinicRecord ? (
-                    <div className="space-y-6">
-                        {/* Vitals */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                                Vitals
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <FormSection label="Height (cm)">
-                                    <p className="text-brand-900">{clinicRecord.heightCm || '—'}</p>
-                                </FormSection>
-                                <FormSection label="Weight (kg)">
-                                    <p className="text-brand-900">{clinicRecord.weightKg || '—'}</p>
-                                </FormSection>
-                                <FormSection label="Blood Pressure">
-                                    <p className="text-brand-900">{clinicRecord.bloodPressure || '—'}</p>
-                                </FormSection>
-                                <FormSection label="Assessment Date">
-                                    <p className="text-brand-900">{formatDate(clinicRecord.assessmentDate)}</p>
-                                </FormSection>
+                {/* Right: PhilHealth Card & Doctor Desk Stamp */}
+                <div className="lg:col-span-4 space-y-6">
+                    {/* PhilHealth Card Mockup */}
+                    <div className="bg-gradient-to-br from-emerald-800 to-teal-950 text-white rounded-2xl p-5 border border-emerald-700 shadow-lg text-xs">
+                        <div className="flex items-center justify-between border-b border-emerald-700/60 pb-3 mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                                <span className="font-heading font-extrabold text-white text-xs uppercase tracking-wider">PhilHealth Verified</span>
                             </div>
+                            <span className="text-[10px] font-mono text-emerald-300">Republic of the Philippines</span>
                         </div>
 
-                        {/* PhilHealth Registration */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                PhilHealth Registration
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <FormSection label="PhilHealth Number">
-                                    <p className="text-brand-900 font-mono">{clinicRecord.philhealthNumber || '—'}</p>
-                                </FormSection>
-                                <FormSection label="PhilHealth Registered">
-                                    <Badge tone={clinicRecord.philhealthRegistered ? 'success' : 'warning'}>
-                                        {clinicRecord.philhealthRegistered ? 'Yes' : 'No'}
-                                    </Badge>
-                                </FormSection>
-                            </div>
+                        <div className="space-y-2 mb-4">
+                            <p className="text-[10px] text-emerald-300 uppercase tracking-wider font-semibold">Member Identification No.</p>
+                            <p className="font-mono text-base font-extrabold text-white tracking-widest">
+                                {clinicRecord?.philhealthNumber || 'NOT SUBMITTED'}
+                            </p>
                         </div>
 
-                        {/* Clinical Notes */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Clinical Notes
-                            </h4>
-                            <div className="space-y-4">
-                                <FormSection label="Assessment Notes">
-                                    <p className="text-brand-900 whitespace-pre-wrap">{clinicRecord.assessmentNotes || '—'}</p>
-                                </FormSection>
-                                <FormSection label="Findings">
-                                    <p className="text-brand-900 whitespace-pre-wrap">{clinicRecord.findings || '—'}</p>
-                                </FormSection>
+                        <div className="flex justify-between border-t border-emerald-700/60 pt-3 text-[11px] text-emerald-200">
+                            <div>
+                                <span className="text-[10px] text-emerald-400 block">Member Name</span>
+                                <span className="font-bold text-white">{getStudentName()}</span>
                             </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap gap-3 border-t border-brand-100 pt-4">
-                            {clinicRecord.status !== 'completed' && (
-                                <button
-                                    onClick={handleOpenUpdate}
-                                    className="btn btn-secondary btn-sm"
-                                >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Update Record
-                                </button>
-                            )}
-                            {clinicRecord.status === 'completed' && (
-                                <button
-                                    onClick={() => setShowReopenConfirm(true)}
-                                    className="btn btn-accent btn-sm"
-                                >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    Reopen Record
-                                </button>
-                            )}
+                            <div className="text-right">
+                                <span className="text-[10px] text-emerald-400 block">Status</span>
+                                <span className="font-bold text-emerald-300">
+                                    {clinicRecord?.philhealthRegistered ? 'Active' : 'Unconfirmed'}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                ) : (
-                    <div className="text-center py-8">
-                        <svg className="mx-auto h-12 w-12 text-brand-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L7.05 14.95a6 6 0 00-3.86.517M12 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <p className="text-brand-500 mb-4">No clinic assessment has been recorded for this student.</p>
-                        <button
-                            onClick={handleOpenRecord}
-                            className="btn btn-primary"
-                        >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Record Assessment
-                        </button>
-                    </div>
-                )}
-            </Card>
+                </div>
+            </div>
 
             {/* Record Modal */}
             <Modal
                 show={showRecordModal}
                 onClose={() => setShowRecordModal(false)}
-                title="Record Clinic Assessment"
-                subtitle="Capture vitals, PhilHealth registration, and clinical notes."
-                icon={recordModalIcon}
+                title="Record Clinic Examination"
+                subtitle="Capture vital signs, PhilHealth registration, and medical notes."
                 size="lg"
                 footer={
                     <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowRecordModal(false)}
-                            className="btn btn-secondary"
-                            disabled={recordForm.processing}
-                        >
+                        <button type="button" onClick={() => setShowRecordModal(false)} className="btn btn-secondary" disabled={recordForm.processing}>
                             Cancel
                         </button>
-                        <button
-                            type="submit"
-                            form="clinic-record-form"
-                            className="btn btn-primary"
-                            disabled={recordForm.processing}
-                        >
-                            {recordForm.processing ? 'Saving...' : 'Record Assessment'}
+                        <button type="submit" form="clinic-record-form" className="btn btn-primary" disabled={recordForm.processing}>
+                            {recordForm.processing ? 'Saving...' : 'Save & Sign Workflow'}
                         </button>
                     </div>
                 }
             >
-                <form id="clinic-record-form" onSubmit={handleSubmit} className="space-y-6">
+                <form id="clinic-record-form" onSubmit={handleSubmit}>
                     {renderRecordForm()}
                 </form>
             </Modal>
@@ -427,32 +434,21 @@ export default function Show({ enrollment, clinicRecord }) {
             <Modal
                 show={showUpdateModal}
                 onClose={() => setShowUpdateModal(false)}
-                title="Update Clinic Assessment"
-                subtitle="Revise the existing clinic record details."
-                icon={recordModalIcon}
+                title="Update Clinic Examination"
+                subtitle="Revise the existing clinical record details."
                 size="lg"
                 footer={
                     <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowUpdateModal(false)}
-                            className="btn btn-secondary"
-                            disabled={recordForm.processing}
-                        >
+                        <button type="button" onClick={() => setShowUpdateModal(false)} className="btn btn-secondary" disabled={recordForm.processing}>
                             Cancel
                         </button>
-                        <button
-                            type="submit"
-                            form="clinic-update-form"
-                            className="btn btn-primary"
-                            disabled={recordForm.processing}
-                        >
+                        <button type="submit" form="clinic-update-form" className="btn btn-primary" disabled={recordForm.processing}>
                             {recordForm.processing ? 'Saving...' : 'Update Record'}
                         </button>
                     </div>
                 }
             >
-                <form id="clinic-update-form" onSubmit={handleSubmit} className="space-y-6">
+                <form id="clinic-update-form" onSubmit={handleSubmit}>
                     {renderRecordForm()}
                 </form>
             </Modal>
@@ -463,7 +459,7 @@ export default function Show({ enrollment, clinicRecord }) {
                 onClose={() => setShowReopenConfirm(false)}
                 onConfirm={handleReopen}
                 title="Reopen Clinic Record"
-                message="This will reopen the completed clinic record for editing. The record status will change to 'Reopened'. Continue?"
+                message="This will reopen the completed clinic record for editing. Continue?"
                 confirmText="Reopen"
                 variant="warning"
             />

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, Modal, ConfirmDialog } from '@/Components/ui';
+import { PageHeader, Badge, FormSection, Modal, ConfirmDialog, StatCard } from '@/Components/ui';
 import { useState } from 'react';
 
 const bloodTypeOptions = [
@@ -16,34 +16,10 @@ const bloodTypeOptions = [
 
 const requestReasonOptions = [
     { value: 'newStudent', label: 'New Student' },
-    { value: 'shifted', label: 'Shifted' },
-    { value: 'lost', label: 'Lost' },
-    { value: 'replaced', label: 'Replaced' },
-    { value: 'renewed', label: 'Renewed' },
+    { value: 'shifted', label: 'Shifted Program' },
+    { value: 'lost', label: 'Lost Replacement' },
+    { value: 'renewed', label: 'Annual Renewal' },
 ];
-
-const idRequestStatusToneMap = {
-    pending: 'warning',
-    cardProduced: 'info',
-    validated: 'success',
-    released: 'success',
-    reissuePending: 'warning',
-    cancelled: 'danger',
-};
-
-const idValidationStatusToneMap = {
-    pendingValidation: 'warning',
-    active: 'success',
-    lost: 'danger',
-    replaced: 'info',
-};
-
-const idValidationStatusLabelMap = {
-    pendingValidation: 'Pending Validation',
-    active: 'Active',
-    lost: 'Lost',
-    replaced: 'Replaced',
-};
 
 export default function Show({ enrollment, idRequest, studentId }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -52,10 +28,10 @@ export default function Show({ enrollment, idRequest, studentId }) {
     const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
     const [showReissueModal, setShowReissueModal] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [idSide, setIdSide] = useState('front'); // 'front' | 'back'
 
     const student = enrollment.student;
     const course = enrollment.course;
-    const term = enrollment.term;
 
     // Form for creating ID request
     const createForm = useForm({
@@ -64,12 +40,12 @@ export default function Show({ enrollment, idRequest, studentId }) {
         emergencyContactNumber: '',
         bloodType: 'O+',
         cardPhotoPath: '',
-        producedByVendor: '',
+        producedByVendor: 'JZEL Printing Services',
     });
 
     // Form for producing ID card
     const produceForm = useForm({
-        qrCode: '',
+        qrCode: `SEAIT-${student?.schoolIdNumber || 'ID'}-QR`,
         securityPhotoPath: '',
     });
 
@@ -135,468 +111,398 @@ export default function Show({ enrollment, idRequest, studentId }) {
         return parts.join(', ');
     };
 
-    const getRequestReasonLabel = (value) => {
-        const opt = requestReasonOptions.find(o => o.value === value);
-        return opt ? opt.label : value;
-    };
-
     const canReissue = idRequest && ['cardProduced', 'released'].includes(idRequest.status);
     const canCancel = idRequest && ['pending', 'cardProduced'].includes(idRequest.status);
-
-    const createIcon = (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-        </svg>
-    );
-    const produceIcon = (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-        </svg>
-    );
-    const reissueIcon = (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-    );
 
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Student ID Production & QR Barcode Validation"
+                    title="Student ID Production & QR Card Center"
                     subtitle={`Phase 8 — ${getStudentName()} (${student?.schoolIdNumber})`}
                     logo="/images/logos/gzel-id-validation.jpg"
-                    logoAlt="GZEL ID Validation Office"
-                    phaseBadge="Phase 8 · ID Issuance"
+                    logoAlt="SEAIT ID Office"
+                    phaseBadge="Phase 8 · ID Production"
                     officeBadge="Office 22 · ID Processing Desk"
                     actions={
-                        <Link
-                            href={route('id.index')}
-                            className="btn btn-secondary btn-sm"
-                        >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
+                        <Link href={route('id.index')} className="btn btn-secondary btn-sm">
                             Back to Queue
                         </Link>
                     }
                 />
             }
         >
-            <Head title={`ID — ${getStudentName()}`} />
+            <Head title={`ID Center — ${getStudentName()}`} />
 
-            {/* Student Info Card */}
-            <Card title="Student Information" className="mb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <p className="text-sm text-brand-500">School ID</p>
-                        <p className="font-mono text-lg font-medium text-brand-900">{student?.schoolIdNumber || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Name</p>
-                        <p className="font-medium text-brand-900">{getStudentName()}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Course</p>
-                        <p className="font-medium text-brand-900">{course?.name || '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-brand-500">Term</p>
-                        <p className="font-medium text-brand-900">{term?.name || '—'}</p>
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <StatCard
+                    label="Request Status"
+                    value={idRequest ? idRequest.status?.toUpperCase() : 'NO REQUEST'}
+                    iconBg={idRequest?.status === 'released' ? 'success' : idRequest ? 'warning' : 'neutral'}
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Card QR Security Code"
+                    value={studentId?.qrCode || 'NOT ENCODED'}
+                    iconBg="seait"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Card Validation"
+                    value={studentId ? studentId.validationStatus?.toUpperCase() : 'PENDING'}
+                    iconBg={studentId?.validationStatus === 'active' ? 'success' : 'warning'}
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    label="Blood Type"
+                    value={idRequest?.bloodType || '—'}
+                    iconBg="danger"
+                    icon={
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L7.05 14.95a6 6 0 00-3.86.517M12 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    }
+                />
+            </div>
+
+            {/* Split Screen PVC Card Studio */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                {/* Left: Interactive PVC ID Card Mockup */}
+                <div className="lg:col-span-6 space-y-4">
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+                            <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-seait-500" />
+                                Interactive PVC Card Preview (CR80 Standard)
+                            </h3>
+                            <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setIdSide('front')}
+                                    className={`px-3 py-1 rounded-md font-bold transition-all ${
+                                        idSide === 'front' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                                    }`}
+                                >
+                                    Front Side
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIdSide('back')}
+                                    className={`px-3 py-1 rounded-md font-bold transition-all ${
+                                        idSide === 'back' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                                    }`}
+                                >
+                                    Back Side
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* The PVC Card Body */}
+                        <div className="flex justify-center p-2">
+                            {idSide === 'front' ? (
+                                /* Front Card */
+                                <div className="w-[340px] sm:w-[380px] h-[220px] sm:h-[240px] rounded-2xl bg-gradient-to-br from-[#0B1528] via-navy-900 to-[#0B1528] text-white p-5 shadow-2xl border-2 border-seait-500/40 relative overflow-hidden flex flex-col justify-between select-none">
+                                    {/* Gold Accent Corner Glow */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-seait-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center p-1 border border-white/20">
+                                                <img src="/images/logos/seait-logo.png" alt="SEAIT" className="h-full object-contain" />
+                                            </div>
+                                            <div className="leading-tight">
+                                                <p className="font-heading font-extrabold text-white text-xs tracking-wider">SEAIT COLLEGE</p>
+                                                <p className="text-[8px] text-seait-400 font-semibold tracking-widest uppercase">Student Identity Card</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-[9px] font-bold text-slate-300 bg-white/10 px-2 py-0.5 rounded border border-white/20">
+                                            2026-2027
+                                        </span>
+                                    </div>
+
+                                    {/* Center: Photo + Details */}
+                                    <div className="flex items-center gap-4 my-auto">
+                                        {/* Student Photo Mockup */}
+                                        <div className="h-24 w-20 rounded-xl bg-slate-800 border-2 border-seait-400 shadow-md flex items-center justify-center text-slate-500 font-bold text-xs overflow-hidden flex-shrink-0">
+                                            {idRequest?.cardPhotoPath ? (
+                                                <img src={idRequest.cardPhotoPath} alt="Photo" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <span className="text-center text-[10px] text-slate-400 p-1">STUDENT PHOTO</span>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[10px] text-slate-400 uppercase font-semibold">Student Name</p>
+                                            <p className="font-heading font-extrabold text-white text-sm truncate">{getStudentName()}</p>
+                                            <p className="text-[10px] text-slate-400 uppercase font-semibold mt-1">ID Number</p>
+                                            <p className="font-mono font-bold text-seait-400 text-sm tracking-wider">{student?.schoolIdNumber || '—'}</p>
+                                            <p className="text-[10px] text-slate-300 font-semibold mt-0.5 truncate">{course?.courseCode} • Year {enrollment.yearLevel}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className="border-t border-white/10 pt-1.5 flex justify-between items-center text-[9px] text-slate-400">
+                                        <span>South East Asian Institute of Technology</span>
+                                        <span className="font-bold text-seait-400">OFFICIAL ID</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Back Card */
+                                <div className="w-[340px] sm:w-[380px] h-[220px] sm:h-[240px] rounded-2xl bg-gradient-to-br from-slate-900 to-navy-950 text-white p-5 shadow-2xl border-2 border-slate-700 relative overflow-hidden flex flex-col justify-between select-none text-xs">
+                                    {/* Mag Stripe Mockup */}
+                                    <div className="w-full h-8 bg-black/80 rounded-md mb-2 flex items-center px-3 text-[9px] font-mono text-slate-500">
+                                        ||| |||| || |||||| | |||||||| ||||| |||||||
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 my-auto text-[10px]">
+                                        <div className="space-y-1">
+                                            <span className="text-slate-400 font-semibold block">Blood Type:</span>
+                                            <span className="font-bold text-rose-400 text-xs font-mono">{idRequest?.bloodType || '—'}</span>
+                                            <span className="text-slate-400 font-semibold block pt-1">Emergency Contact:</span>
+                                            <p className="font-bold text-slate-200 truncate">{idRequest?.emergencyContactName || '—'}</p>
+                                            <p className="font-mono text-slate-300">{idRequest?.emergencyContactNumber || '—'}</p>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white text-slate-900 border">
+                                            <div className="h-16 w-16 bg-slate-900 p-1 rounded flex items-center justify-center text-white font-mono text-[8px] text-center">
+                                                [ QR CODE ]
+                                                <br />
+                                                {studentId?.qrCode?.slice(-6) || 'QR-SEC'}
+                                            </div>
+                                            <span className="text-[8px] font-mono font-bold text-slate-600 mt-1 truncate max-w-[100px]">
+                                                {studentId?.qrCode || 'SCAN ME'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-[8px] text-center text-slate-500 border-t border-slate-800 pt-1">
+                                        If found, please return to SEAIT Registrar Office, Tupi, South Cotabato.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </Card>
 
-            {/* ID Request Card */}
-            <Card
-                title="ID Request"
-                subtitle={idRequest ? `Requested on ${formatDate(idRequest.requestDate)}` : 'No ID request exists yet'}
-                actions={
-                    idRequest ? (
-                        <Badge tone={idRequestStatusToneMap[idRequest.status] || 'neutral'}>
-                            {idRequest.status?.charAt(0).toUpperCase() + idRequest.status?.slice(1)}
-                        </Badge>
-                    ) : null
-                }
-                className="mb-6"
-            >
-                {idRequest ? (
-                    <>
-                        <div className="space-y-6">
-                            {/* Request Details */}
-                            <div>
-                                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                    <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    Request Details
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <FormSection label="Request Reason">
-                                        <p className="text-brand-900">{getRequestReasonLabel(idRequest.requestReason)}</p>
-                                    </FormSection>
-                                    <FormSection label="Request Date">
-                                        <p className="text-brand-900">{formatDate(idRequest.requestDate)}</p>
-                                    </FormSection>
-                                    {idRequest.is_reissue && (
-                                        <FormSection label="Reissue Reason">
-                                            <p className="text-brand-900">{idRequest.reissueReason || '—'}</p>
-                                        </FormSection>
+                {/* Right: Request Details & Production Actions */}
+                <div className="lg:col-span-6 space-y-6">
+                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+                                Vendor Production & Validation Pipeline
+                            </h3>
+                            {idRequest && (
+                                <Badge tone={idRequest.status === 'released' ? 'success' : 'pending'}>
+                                    {idRequest.status?.toUpperCase()}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {idRequest ? (
+                            <div className="space-y-5 text-xs">
+                                <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Vendor / Producer</span>
+                                        <span className="font-bold text-slate-800">{idRequest.producedByVendor || 'JZEL Printing Services'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Intake Reason</span>
+                                        <span className="font-bold text-slate-800">{idRequest.requestReason}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Emergency Contact</span>
+                                        <span className="font-bold text-slate-800">{idRequest.emergencyContactName}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 font-semibold block">Contact Number</span>
+                                        <span className="font-mono text-slate-800">{idRequest.emergencyContactNumber}</span>
+                                    </div>
+                                    {studentId?.issueDate && (
+                                        <div className="col-span-2">
+                                            <span className="text-slate-400 font-semibold block">Issued Date</span>
+                                            <span className="font-bold text-slate-800">{formatDate(studentId.issueDate)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="space-y-3 pt-2">
+                                    {!studentId && idRequest.status === 'pending' && (
+                                        <button
+                                            onClick={() => setShowProduceModal(true)}
+                                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-seait-500 to-seait-600 hover:from-seait-400 hover:to-seait-500 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Produce Physical Card (Encode QR)
+                                        </button>
+                                    )}
+
+                                    {studentId && studentId.validationStatus === 'pendingValidation' && (
+                                        <button
+                                            onClick={() => setShowValidateConfirm(true)}
+                                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Validate Card (QR Scan & Sign Step 8)
+                                        </button>
+                                    )}
+
+                                    {studentId && studentId.validationStatus === 'active' && idRequest.status !== 'released' && (
+                                        <button
+                                            onClick={() => setShowReleaseConfirm(true)}
+                                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                            </svg>
+                                            Release Physical ID Card to Student
+                                        </button>
+                                    )}
+
+                                    {canReissue && (
+                                        <button
+                                            onClick={() => setShowReissueModal(true)}
+                                            className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-heading font-bold text-xs border border-slate-300 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            Request ID Card Reissue / Replacement
+                                        </button>
+                                    )}
+
+                                    {canCancel && (
+                                        <button
+                                            onClick={() => setShowCancelConfirm(true)}
+                                            className="w-full py-2 px-4 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs border border-rose-200 transition-all"
+                                        >
+                                            Cancel ID Request
+                                        </button>
                                     )}
                                 </div>
                             </div>
-
-                            {/* Emergency & Medical */}
-                            <div>
-                                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                    <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                    Emergency & Medical
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <FormSection label="Emergency Contact Name">
-                                        <p className="text-brand-900">{idRequest.emergencyContactName || '—'}</p>
-                                    </FormSection>
-                                    <FormSection label="Emergency Contact Number">
-                                        <p className="text-brand-900">{idRequest.emergencyContactNumber || '—'}</p>
-                                    </FormSection>
-                                    <FormSection label="Blood Type">
-                                        <p className="text-brand-900 font-mono">{idRequest.bloodType || '—'}</p>
-                                    </FormSection>
-                                </div>
-                            </div>
-
-                            {/* Production Details */}
-                            <div>
-                                <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                    <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Production Details
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <FormSection label="Card Photo Path">
-                                        <p className="text-brand-900 font-mono text-sm break-all">{idRequest.cardPhotoPath || '—'}</p>
-                                    </FormSection>
-                                    <FormSection label="Produced By Vendor">
-                                        <p className="text-brand-900">{idRequest.producedByVendor || '—'}</p>
-                                    </FormSection>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex flex-wrap gap-3 border-t border-brand-100 pt-4">
-                                {!studentId && (
-                                    <button
-                                        onClick={() => setShowProduceModal(true)}
-                                        className="btn btn-primary btn-sm"
-                                        disabled={idRequest.status !== 'pending'}
-                                    >
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        Produce ID Card
-                                    </button>
-                                )}
-                                {studentId && canReissue && (
-                                    <button
-                                        onClick={() => setShowReissueModal(true)}
-                                        className="btn btn-accent btn-sm"
-                                    >
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        {idRequest.status === 'released' ? 'Request Replacement' : 'Request Reprint'}
-                                    </button>
-                                )}
-                                {canCancel && (
-                                    <button
-                                        onClick={() => setShowCancelConfirm(true)}
-                                        className="btn btn-danger btn-sm"
-                                    >
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        Cancel Request
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <div className="text-center py-8">
-                        <svg className="mx-auto h-12 w-12 text-brand-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M10 6l1.5-1.5a2 2 0 011.414-.586H16a2 2 0 012 2v2.586a2 2 0 01-.586 1.414L16 12M10 6V4a2 2 0 012-2h2a2 2 0 012 2v2" />
-                        </svg>
-                        <p className="text-brand-500 mb-4">No ID request has been created for this student.</p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="btn btn-primary"
-                        >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Create ID Request
-                        </button>
-                    </div>
-                )}
-            </Card>
-
-            {/* ID Card Card */}
-            {studentId && (
-                <Card
-                    title="ID Card"
-                    subtitle={studentId.issueDate ? `Issued on ${formatDate(studentId.issueDate)}` : ''}
-                    actions={
-                        <Badge tone={idValidationStatusToneMap[studentId.validationStatus] || 'neutral'}>
-                            {idValidationStatusLabelMap[studentId.validationStatus] || studentId.validationStatus}
-                        </Badge>
-                    }
-                    className="mb-6"
-                >
-                    <div className="space-y-6">
-                        {/* Card Details */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                </svg>
-                                Card Details
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <FormSection label="QR Code">
-                                    <p className="text-brand-900 font-mono text-sm break-all">{studentId.qrCode || '—'}</p>
-                                </FormSection>
-                                <FormSection label="Issue Date">
-                                    <p className="text-brand-900">{formatDate(studentId.issueDate)}</p>
-                                </FormSection>
-                                <FormSection label="Security Photo Path">
-                                    <p className="text-brand-900 font-mono text-sm break-all">{studentId.securityPhotoPath || '—'}</p>
-                                </FormSection>
-                            </div>
-                        </div>
-
-                        {/* Validation Details */}
-                        <div>
-                            <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Validation Details
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormSection label="Validated By">
-                                    <p className="text-brand-900">{studentId.validatedBy ? `${studentId.validatedBy}` : '—'}</p>
-                                </FormSection>
-                                <FormSection label="Validated Date">
-                                    <p className="text-brand-900">{studentId.validatedDate ? new Date(studentId.validatedDate).toLocaleString('en-PH') : '—'}</p>
-                                </FormSection>
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap gap-3 border-t border-brand-100 pt-4">
-                            {studentId.validationStatus === 'pendingValidation' && (
-                                <button
-                                    onClick={() => setShowValidateConfirm(true)}
-                                    className="btn btn-primary btn-sm"
-                                >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Validate (QR Scan)
+                        ) : (
+                            <div className="text-center py-10">
+                                <p className="text-xs text-slate-500 mb-4">No ID production request logged for this term.</p>
+                                <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
+                                    Create ID Production Request
                                 </button>
-                            )}
-                            {studentId.validationStatus === 'active' && (
-                                <button
-                                    onClick={() => setShowReleaseConfirm(true)}
-                                    className="btn btn-secondary btn-sm"
-                                >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
-                                    Release to Student
-                                </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
-                </Card>
-            )}
+                </div>
+            </div>
 
             {/* Create ID Request Modal */}
             <Modal
                 show={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
-                title="Create ID Request"
-                subtitle="Open a new ID request with emergency contact and medical details."
-                icon={createIcon}
+                title="Create ID Production Request"
+                subtitle="Open a new intake record with emergency contact and medical details."
                 size="lg"
                 footer={
                     <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowCreateModal(false)}
-                            className="btn btn-secondary"
-                            disabled={createForm.processing}
-                        >
+                        <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary" disabled={createForm.processing}>
                             Cancel
                         </button>
-                        <button
-                            type="submit"
-                            form="id-create-form"
-                            className="btn btn-primary"
-                            disabled={createForm.processing}
-                        >
+                        <button type="submit" form="id-create-form" className="btn btn-primary" disabled={createForm.processing}>
                             {createForm.processing ? 'Creating...' : 'Create Request'}
                         </button>
                     </div>
                 }
             >
-                <form id="id-create-form" onSubmit={handleCreateSubmit} className="space-y-6">
-                    {/* Request Details */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">Request Details</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormSection label="Request Reason" required>
-                                <select
-                                    value={createForm.data.requestReason}
-                                    onChange={(e) => createForm.setData('requestReason', e.target.value)}
-                                    className="form-select"
-                                    required
-                                >
-                                    {requestReasonOptions.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                                {createForm.errors.requestReason && <p className="form-error">{createForm.errors.requestReason}</p>}
-                            </FormSection>
-                            <FormSection label="Blood Type" required>
-                                <select
-                                    value={createForm.data.bloodType}
-                                    onChange={(e) => createForm.setData('bloodType', e.target.value)}
-                                    className="form-select"
-                                    required
-                                >
-                                    {bloodTypeOptions.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                                {createForm.errors.bloodType && <p className="form-error">{createForm.errors.bloodType}</p>}
-                            </FormSection>
-                        </div>
+                <form id="id-create-form" onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormSection label="Request Reason" required>
+                            <select
+                                value={createForm.data.requestReason}
+                                onChange={(e) => createForm.setData('requestReason', e.target.value)}
+                                className="form-select text-xs"
+                                required
+                            >
+                                {requestReasonOptions.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </FormSection>
+                        <FormSection label="Blood Type" required>
+                            <select
+                                value={createForm.data.bloodType}
+                                onChange={(e) => createForm.setData('bloodType', e.target.value)}
+                                className="form-select text-xs font-mono"
+                                required
+                            >
+                                {bloodTypeOptions.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </FormSection>
                     </div>
-
-                    {/* Emergency Contact */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">Emergency Contact</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormSection label="Emergency Contact Name" required>
-                                <input
-                                    type="text"
-                                    maxLength={255}
-                                    value={createForm.data.emergencyContactName}
-                                    onChange={(e) => createForm.setData('emergencyContactName', e.target.value)}
-                                    className="form-input"
-                                    placeholder="Full name"
-                                    required
-                                />
-                                {createForm.errors.emergencyContactName && <p className="form-error">{createForm.errors.emergencyContactName}</p>}
-                            </FormSection>
-                            <FormSection label="Emergency Contact Number" required>
-                                <input
-                                    type="text"
-                                    maxLength={20}
-                                    value={createForm.data.emergencyContactNumber}
-                                    onChange={(e) => createForm.setData('emergencyContactNumber', e.target.value)}
-                                    className="form-input"
-                                    placeholder="Phone number"
-                                    required
-                                />
-                                {createForm.errors.emergencyContactNumber && <p className="form-error">{createForm.errors.emergencyContactNumber}</p>}
-                            </FormSection>
-                        </div>
-                    </div>
-
-                    {/* Production (optional) */}
-                    <div>
-                        <h4 className="text-sm font-semibold text-brand-900 uppercase tracking-wide mb-3">Production (Optional)</h4>
-                        <div className="grid grid-cols-1 gap-4">
-                            <FormSection label="Card Photo Path">
-                                <input
-                                    type="text"
-                                    maxLength={500}
-                                    value={createForm.data.cardPhotoPath}
-                                    onChange={(e) => createForm.setData('cardPhotoPath', e.target.value)}
-                                    className="form-input"
-                                    placeholder="Optional: path or URL to photo"
-                                />
-                            </FormSection>
-                            <FormSection label="Produced By Vendor">
-                                <input
-                                    type="text"
-                                    maxLength={255}
-                                    value={createForm.data.producedByVendor}
-                                    onChange={(e) => createForm.setData('producedByVendor', e.target.value)}
-                                    className="form-input"
-                                    placeholder="Optional: vendor name"
-                                />
-                            </FormSection>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormSection label="Emergency Contact Name" required>
+                            <input
+                                type="text"
+                                value={createForm.data.emergencyContactName}
+                                onChange={(e) => createForm.setData('emergencyContactName', e.target.value)}
+                                className="form-input text-xs"
+                                placeholder="Full Name"
+                                required
+                            />
+                        </FormSection>
+                        <FormSection label="Emergency Contact Number" required>
+                            <input
+                                type="text"
+                                value={createForm.data.emergencyContactNumber}
+                                onChange={(e) => createForm.setData('emergencyContactNumber', e.target.value)}
+                                className="form-input text-xs"
+                                placeholder="09XX-XXX-XXXX"
+                                required
+                            />
+                        </FormSection>
                     </div>
                 </form>
             </Modal>
 
-            {/* Produce ID Card Modal */}
+            {/* Produce Modal */}
             <Modal
                 show={showProduceModal}
                 onClose={() => setShowProduceModal(false)}
-                title="Produce ID Card"
-                subtitle="Generate the physical ID card with a unique QR code."
-                icon={produceIcon}
-                size="lg"
+                title="Produce ID Card & Encode QR"
+                subtitle="Assign unique QR code to the physical PVC card."
+                size="md"
                 footer={
                     <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowProduceModal(false)}
-                            className="btn btn-secondary"
-                            disabled={produceForm.processing}
-                        >
+                        <button type="button" onClick={() => setShowProduceModal(false)} className="btn btn-secondary" disabled={produceForm.processing}>
                             Cancel
                         </button>
-                        <button
-                            type="submit"
-                            form="id-produce-form"
-                            className="btn btn-primary"
-                            disabled={produceForm.processing}
-                        >
-                            {produceForm.processing ? 'Producing...' : 'Produce Card'}
+                        <button type="submit" form="id-produce-form" className="btn btn-primary" disabled={produceForm.processing}>
+                            {produceForm.processing ? 'Encoding...' : 'Produce & Encode'}
                         </button>
                     </div>
                 }
             >
-                <form id="id-produce-form" onSubmit={handleProduceSubmit} className="space-y-4">
-                    <FormSection label="QR Code" required>
+                <form id="id-produce-form" onSubmit={handleProduceSubmit} className="space-y-4 text-xs">
+                    <FormSection label="Unique QR Code Serial" required>
                         <input
                             type="text"
-                            maxLength={100}
                             value={produceForm.data.qrCode}
                             onChange={(e) => produceForm.setData('qrCode', e.target.value)}
-                            className="form-input"
-                            placeholder="Unique QR code for the ID card"
+                            className="form-input font-mono text-xs"
                             required
-                        />
-                        {produceForm.errors.qrCode && <p className="form-error">{produceForm.errors.qrCode}</p>}
-                    </FormSection>
-                    <FormSection label="Security Photo Path">
-                        <input
-                            type="text"
-                            maxLength={500}
-                            value={produceForm.data.securityPhotoPath}
-                            onChange={(e) => produceForm.setData('securityPhotoPath', e.target.value)}
-                            className="form-input"
-                            placeholder="Optional: path or URL to security photo"
                         />
                     </FormSection>
                 </form>
@@ -606,76 +512,64 @@ export default function Show({ enrollment, idRequest, studentId }) {
             <Modal
                 show={showReissueModal}
                 onClose={() => setShowReissueModal(false)}
-                title={idRequest?.status === 'released' ? 'Request ID Replacement' : 'Request ID Reprint'}
-                subtitle="Provide a reason for the reissue request."
-                icon={reissueIcon}
-                size="lg"
+                title="Request ID Reissue / Replacement"
+                subtitle="Provide justification for replacement card."
+                size="md"
                 footer={
                     <div className="flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setShowReissueModal(false)}
-                            className="btn btn-secondary"
-                            disabled={reissueForm.processing}
-                        >
+                        <button type="button" onClick={() => setShowReissueModal(false)} className="btn btn-secondary" disabled={reissueForm.processing}>
                             Cancel
                         </button>
-                        <button
-                            type="submit"
-                            form="id-reissue-form"
-                            className="btn btn-accent"
-                            disabled={reissueForm.processing}
-                        >
-                            {reissueForm.processing ? 'Processing...' : (idRequest?.status === 'released' ? 'Request Replacement' : 'Request Reprint')}
+                        <button type="submit" form="id-reissue-form" className="btn btn-primary" disabled={reissueForm.processing}>
+                            Submit Reissue Request
                         </button>
                     </div>
                 }
             >
                 <form id="id-reissue-form" onSubmit={handleReissue}>
-                    <FormSection label="Reissue Reason" required>
+                    <FormSection label="Reason for Replacement" required>
                         <textarea
                             value={reissueForm.data.reissueReason}
                             onChange={(e) => reissueForm.setData('reissueReason', e.target.value)}
-                            className="form-input"
+                            className="form-input text-xs"
                             rows={3}
-                            placeholder="Reason for reissue (e.g., lost, damaged, name change, etc.)"
+                            placeholder="e.g., Lost physical card, damaged QR barcode..."
                             required
                         />
-                        {reissueForm.errors.reissueReason && <p className="form-error">{reissueForm.errors.reissueReason}</p>}
                     </FormSection>
                 </form>
             </Modal>
 
-            {/* Validate Confirm Dialog */}
+            {/* Validate Confirm */}
             <ConfirmDialog
                 show={showValidateConfirm}
                 onClose={() => setShowValidateConfirm(false)}
                 onConfirm={handleValidate}
-                title="Validate ID Card"
-                message="This will mark the ID card as Active (validated via QR scan). This action also signs the workflow step for ID Office. Continue?"
-                confirmText="Validate"
+                title="Validate Student ID via QR Scan"
+                message="This action activates the ID card in the school registry and signs the final workflow step (Office 22). Continue?"
+                confirmText="Validate ID"
                 variant="primary"
             />
 
-            {/* Release Confirm Dialog */}
+            {/* Release Confirm */}
             <ConfirmDialog
                 show={showReleaseConfirm}
                 onClose={() => setShowReleaseConfirm(false)}
                 onConfirm={handleRelease}
-                title="Release ID Card"
-                message="Confirm releasing this ID card to the student?"
-                confirmText="Release"
+                title="Release Physical ID Card"
+                message="Confirm that the physical PVC card is now handed over to the student."
+                confirmText="Release Card"
                 variant="primary"
             />
 
-            {/* Cancel Confirm Dialog */}
+            {/* Cancel Confirm */}
             <ConfirmDialog
                 show={showCancelConfirm}
                 onClose={() => setShowCancelConfirm(false)}
                 onConfirm={handleCancel}
                 title="Cancel ID Request"
-                message="Are you sure you want to cancel this ID request? This action cannot be undone."
-                confirmText="Cancel Request"
+                message="Are you sure you want to cancel this ID request?"
+                confirmText="Cancel"
                 variant="danger"
             />
         </AuthenticatedLayout>

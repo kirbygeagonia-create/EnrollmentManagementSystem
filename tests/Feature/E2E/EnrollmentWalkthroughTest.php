@@ -53,6 +53,12 @@ class EnrollmentWalkthroughTest extends TestCase
         ]);
         DB::purge('mysql');
 
+        try {
+            DB::connection('mysql')->getPdo();
+        } catch (\Throwable $e) {
+            $this->markTestSkipped('MySQL database is not reachable.');
+        }
+
         // The trait's transaction began on the ORIGINAL default connection;
         // re-begin it on the real MySQL connection so tests roll back cleanly.
         $this->beginDatabaseTransaction();
