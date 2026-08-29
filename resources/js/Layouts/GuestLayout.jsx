@@ -4,20 +4,20 @@ import { Link } from '@inertiajs/react';
 export default function GuestLayout({ children }) {
     return (
         <div className="relative min-h-screen overflow-hidden bg-navy-950 font-sans text-navy-100 selection:bg-seait-500 selection:text-white">
-            {/* Campus Background Image with subtle blur and low brightness */}
+            {/* Wide-Angle Campus Background Image with gentle blur and soft lighting */}
             <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105 transition-all duration-1000"
                 style={{
-                    backgroundImage: "url('/images/seait_campus_1.png')",
-                    filter: 'blur(3px) brightness(0.32) saturate(1.2)',
+                    backgroundImage: "url('/images/seait_campus_wide.jpg')",
+                    filter: 'blur(2.5px) brightness(0.42) saturate(1.15)',
                 }}
             />
 
-            {/* University Deep Navy & Warm Amber Tint Overlay */}
+            {/* University Deep Navy & Institutional Overlay */}
             <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-navy-950/90 via-navy-900/70 to-seait-950/80 backdrop-blur-[1px]"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-navy-950/85 via-navy-900/55 to-slate-950/75 backdrop-blur-[0.5px]"
             />
 
             {/* Ambient Brand Glow Accents */}
