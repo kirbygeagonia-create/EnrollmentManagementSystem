@@ -352,84 +352,62 @@ class RbacSeeder extends Seeder
             'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
         ]);
 
-        $this->command->info('Created all 13 functional desk roles with module permissions.');
+        // Instructor - Phase 2 & Advising
+        $instructor = Role::firstOrCreate(
+            ['name' => 'Instructor', 'guard_name' => 'web'],
+            ['description' => 'College Faculty Instructor with evaluation, subject proposal, and schedule viewing permissions']
+        );
+        $instructor->syncPermissions([
+            'evaluation.view', 'evaluation.create', 'evaluation.subjects.propose', 'evaluation.profile.capture',
+            'print.classCard', 'print.subjectLoad', 'block.view', 'dashboard.view', 'user.view',
+        ]);
+
+        $this->command->info('Created all 14 functional desk and faculty roles with module permissions.');
 
         // ===========================================
         // 3. ASSIGN REALISTIC DESK ROLES TO STAFF USERS
         // ===========================================
-        $roleAssignments = [
-            // Registrar Office (Office 1)
-            1 => ['RegistrarApprover', 'OfficeHead'],
-            22 => ['RegistrarDesk', 'Staff'],
-
-            // Accounting (Office 2)
-            2 => ['AccountingStaff', 'OfficeHead'],
-            23 => ['AccountingStaff'],
-
-            // Scholarship (Office 3)
-            3 => ['ScholarshipOfficer', 'OfficeHead'],
-            24 => ['ScholarshipOfficer'],
-
-            // Guidance & Testing (Office 4)
-            4 => ['GuidanceStaff', 'OfficeHead'],
-            25 => ['GuidanceStaff'],
-
-            // Blocking & Scheduling (Office 5)
-            5 => ['BlockingCoordinator'],
-            26 => ['BlockingCoordinator', 'OfficeHead'],
-
-            // Admission & Safety (Office 6)
-            6 => ['AdmissionOfficer', 'OfficeHead'],
-            27 => ['AdmissionOfficer'],
-
-            // Clinic (Office 11)
-            11 => ['ClinicStaff'],
-            32 => ['ClinicStaff', 'OfficeHead'],
-
-            // ID Office (Office 22)
-            35 => ['IdOfficer'],
-
-            // Deans and Department Evaluators (Colleges)
-            7 => ['Dean', 'DeptEvaluator'],
-            17 => ['Dean', 'DeptEvaluator'],
-            18 => ['Dean', 'DeptEvaluator'],
-            19 => ['ProgramHead', 'DeptEvaluator'],
-            20 => ['Dean', 'DeptEvaluator'],
-            21 => ['Dean', 'DeptEvaluator'],
-            36 => ['Dean', 'DeptEvaluator'],
-            39 => ['ProgramHead', 'DeptEvaluator'],
-
-            // SysAdmin / Admin
-            8 => ['SysAdmin', 'Admin'],
-            15 => ['SysAdmin', 'Admin'],
-            30 => ['SysAdmin', 'Admin'],
-            34 => ['SysAdmin', 'Admin'],
-            38 => ['SysAdmin', 'Admin'],
-        ];
-
-        foreach ($roleAssignments as $userId => $rolesToAssign) {
-            $user = Staffusers::find($userId);
-            if ($user) {
-                $user->syncRoles($rolesToAssign);
-                $this->command->info("User #{$userId} ({$user->name}) synced with roles: ".implode(', ', $rolesToAssign));
-            }
-        }
-
-        // Catch-all: ensure every other staff user has at least Staff role
         foreach (Staffusers::all() as $user) {
-            if ($user->roles->isEmpty()) {
-                if ($user->role?->value === 'admin') {
-                    $user->assignRole(['SysAdmin', 'Admin']);
-                } elseif ($user->role?->value === 'dean') {
-                    $user->assignRole(['Dean', 'DeptEvaluator']);
-                } elseif ($user->role?->value === 'programHead') {
-                    $user->assignRole(['ProgramHead', 'DeptEvaluator']);
-                } elseif ($user->role?->value === 'officeHead') {
-                    $user->assignRole(['OfficeHead']);
-                } else {
-                    $user->assignRole(['Staff']);
-                }
+            $rolesToSync = [];
+            $roleVal = $user->role?->value ?? 'staff';
+
+            if ($roleVal === 'admin') {
+                $rolesToSync = ['SysAdmin', 'Admin'];
+            } elseif ($roleVal === 'dean') {
+                $rolesToSync = ['Dean', 'DeptEvaluator'];
+            } elseif ($roleVal === 'programHead') {
+                $rolesToSync = ['ProgramHead', 'DeptEvaluator'];
+            } elseif ($roleVal === 'instructor') {
+                $rolesToSync = ['Instructor', 'DeptEvaluator'];
+            } elseif ($roleVal === 'officeHead') {
+                $rolesToSync = match ($user->officeId) {
+                    1 => ['RegistrarApprover', 'OfficeHead'],
+                    2 => ['AccountingStaff', 'OfficeHead'],
+                    3 => ['ScholarshipOfficer', 'OfficeHead'],
+                    4 => ['GuidanceStaff', 'OfficeHead'],
+                    5 => ['BlockingCoordinator', 'OfficeHead'],
+                    6 => ['AdmissionOfficer', 'OfficeHead'],
+                    7 => ['OfficeHead'],
+                    11 => ['ClinicStaff', 'OfficeHead'],
+                    22 => ['IdOfficer', 'OfficeHead'],
+                    default => ['OfficeHead'],
+                };
+            } else { // regular staff
+                $rolesToSync = match ($user->officeId) {
+                    1 => ['RegistrarDesk', 'Staff'],
+                    2 => ['AccountingStaff', 'Staff'],
+                    3 => ['ScholarshipOfficer', 'Staff'],
+                    4 => ['GuidanceStaff', 'Staff'],
+                    5 => ['BlockingCoordinator', 'Staff'],
+                    6 => ['AdmissionOfficer', 'Staff'],
+                    7 => ['Staff'],
+                    11 => ['ClinicStaff', 'Staff'],
+                    22 => ['IdOfficer', 'Staff'],
+                    default => ['Staff'],
+                };
             }
+
+            $user->syncRoles($rolesToSync);
         }
 
         $this->command->info('RbacSeeder completed successfully!');

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection } from '@/Components/ui';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -19,6 +19,7 @@ const roleBadgeMap = {
     dean: 'role-badge-dean',
     'office-head': 'role-badge-officehead',
     'program-head': 'role-badge-programhead',
+    instructor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700',
     staff: 'role-badge-staff',
 };
 
@@ -30,6 +31,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [deletingUser, setDeletingUser] = useState(null);
+    const [togglingUser, setTogglingUser] = useState(null);
     const [assigningRolesUser, setAssigningRolesUser] = useState(null);
 
     const createForm = useForm({
@@ -210,7 +212,14 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     };
 
     const handleToggleStatus = (user) => {
-        router.post(route('admin.users.status.toggle', { user: user.userId }));
+        setTogglingUser(user);
+    };
+
+    const confirmToggleStatus = () => {
+        if (!togglingUser) return;
+        router.post(route('admin.users.status.toggle', { user: togglingUser.userId }), {}, {
+            onFinish: () => setTogglingUser(null),
+        });
     };
 
     const renderActions = (row) => (
@@ -379,23 +388,33 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
             >
                 <form id="create-user-form" onSubmit={handleCreate} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormSection label="Office" error={createForm.errors.officeId} required>
+                        <FormSection 
+                            label={['dean', 'programHead'].includes(createForm.data.role) ? "Office (N/A for Deans/PH)" : "Office"} 
+                            error={createForm.errors.officeId} 
+                            required={!['dean', 'programHead', 'instructor'].includes(createForm.data.role)}
+                        >
                             <Select
-                                value={createForm.data.officeId}
+                                value={['dean', 'programHead'].includes(createForm.data.role) ? '' : createForm.data.officeId}
                                 onChange={(e) => createForm.setData('officeId', e.target.value)}
                                 options={officeOptions.filter(o => o.value)}
-                                placeholder="Select Office"
+                                placeholder={['dean', 'programHead'].includes(createForm.data.role) ? "Not Applicable (Academic Unit Only)" : "Select Office"}
                                 className="form-input"
-                                required
+                                disabled={['dean', 'programHead'].includes(createForm.data.role)}
+                                required={!['dean', 'programHead', 'instructor'].includes(createForm.data.role)}
                             />
                         </FormSection>
-                        <FormSection label="Unit" error={createForm.errors.unitId}>
+                        <FormSection 
+                            label={['dean', 'programHead', 'instructor'].includes(createForm.data.role) ? "Academic College / Unit *" : "Academic Unit (Optional)"} 
+                            error={createForm.errors.unitId}
+                            required={['dean', 'programHead', 'instructor'].includes(createForm.data.role)}
+                        >
                             <Select
                                 value={createForm.data.unitId}
                                 onChange={(e) => createForm.setData('unitId', e.target.value)}
                                 options={[{ value: '', label: 'None' }, ...units.map(u => ({ value: u.unitId, label: u.unitName }))]}
-                                placeholder="Select Unit"
+                                placeholder="Select Academic Unit / College"
                                 className="form-input"
+                                required={['dean', 'programHead', 'instructor'].includes(createForm.data.role)}
                             />
                         </FormSection>
                         <FormSection label="Employee No." error={createForm.errors.employeeNo} required>
@@ -534,23 +553,33 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
             >
                 <form id="edit-user-form" onSubmit={handleEdit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormSection label="Office" error={editForm.errors.officeId} required>
+                        <FormSection 
+                            label={['dean', 'programHead'].includes(editForm.data.role) ? "Office (N/A for Deans/PH)" : "Office"} 
+                            error={editForm.errors.officeId} 
+                            required={!['dean', 'programHead', 'instructor'].includes(editForm.data.role)}
+                        >
                             <Select
-                                value={editForm.data.officeId}
+                                value={['dean', 'programHead'].includes(editForm.data.role) ? '' : (editForm.data.officeId || '')}
                                 onChange={(e) => editForm.setData('officeId', e.target.value)}
                                 options={officeOptions.filter(o => o.value)}
-                                placeholder="Select Office"
+                                placeholder={['dean', 'programHead'].includes(editForm.data.role) ? "Not Applicable (Academic Unit Only)" : "Select Office"}
                                 className="form-input"
-                                required
+                                disabled={['dean', 'programHead'].includes(editForm.data.role)}
+                                required={!['dean', 'programHead', 'instructor'].includes(editForm.data.role)}
                             />
                         </FormSection>
-                        <FormSection label="Unit" error={editForm.errors.unitId}>
+                        <FormSection 
+                            label={['dean', 'programHead', 'instructor'].includes(editForm.data.role) ? "Academic College / Unit *" : "Academic Unit (Optional)"} 
+                            error={editForm.errors.unitId}
+                            required={['dean', 'programHead', 'instructor'].includes(editForm.data.role)}
+                        >
                             <Select
-                                value={editForm.data.unitId}
+                                value={editForm.data.unitId || ''}
                                 onChange={(e) => editForm.setData('unitId', e.target.value)}
                                 options={[{ value: '', label: 'None' }, ...units.map(u => ({ value: u.unitId, label: u.unitName }))]}
-                                placeholder="Select Unit"
+                                placeholder="Select Academic Unit / College"
                                 className="form-input"
+                                required={['dean', 'programHead', 'instructor'].includes(editForm.data.role)}
                             />
                         </FormSection>
                         <FormSection label="Employee No." error={editForm.errors.employeeNo} required>
@@ -718,15 +747,64 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                 </form>
             </Modal>
 
-            {/* Delete Confirm Dialog */}
-            <ConfirmDialog
+            {/* Status Toggle Cause & Effect Modal */}
+            <CauseEffectModal
+                show={!!togglingUser}
+                onClose={() => setTogglingUser(null)}
+                onConfirm={confirmToggleStatus}
+                title={togglingUser?.status === 'active' ? 'Deactivate Staff Account' : 'Reactivate Staff Account'}
+                subtitle="System Security & Access Permission Control"
+                tone={togglingUser?.status === 'active' ? 'danger' : 'success'}
+                entityContext={{
+                    label: 'Staff Account',
+                    value: `${togglingUser?.firstName} ${togglingUser?.lastName} (${togglingUser?.username})`,
+                    badge: togglingUser?.role?.toUpperCase() || 'STAFF',
+                }}
+                cause={
+                    togglingUser?.status === 'active'
+                        ? `Deactivating ${togglingUser?.firstName} ${togglingUser?.lastName} will immediately suspend their system privileges.`
+                        : `Reactivating ${togglingUser?.firstName} ${togglingUser?.lastName} will restore their login access and assigned desk permissions.`
+                }
+                effects={
+                    togglingUser?.status === 'active'
+                        ? [
+                            'Immediately terminates all active sessions for this user on all campus terminals.',
+                            'Blocks login authentication and revokes access to assigned desk queues (e.g. Cashier POS, Registrar).',
+                            'Historical audit logs and signed transaction receipts previously issued by this staff member remain intact.',
+                        ]
+                        : [
+                            'Restores the staff member\'s ability to log in with their existing username and credentials.',
+                            'Re-enables access to their assigned office workflows and permissions.',
+                        ]
+                }
+                requiresAcknowledgement={togglingUser?.status === 'active'}
+                acknowledgementText="I confirm that this staff account should be deactivated and denied system access."
+                confirmText={togglingUser?.status === 'active' ? 'Yes, Deactivate Account' : 'Yes, Reactivate Account'}
+                cancelText="Keep Current Status"
+            />
+
+            {/* Delete User Cause & Effect Modal */}
+            <CauseEffectModal
                 show={!!deletingUser}
                 onClose={() => setDeletingUser(null)}
                 onConfirm={handleDelete}
-                title="Delete Staff User"
-                message={`Are you sure you want to delete ${deletingUser ? `${deletingUser.firstName} ${deletingUser.lastName}` : 'this user'}? This action cannot be undone.`}
-                confirmText="Delete"
-                variant="danger"
+                title="Permanently Delete Staff User"
+                subtitle="User Account Removal"
+                tone="danger"
+                entityContext={{
+                    label: 'User Record',
+                    value: `${deletingUser?.firstName} ${deletingUser?.lastName} (${deletingUser?.username})`,
+                    badge: 'PERMANENT REMOVAL',
+                }}
+                cause={`Deleting this user permanently removes ${deletingUser?.firstName} ${deletingUser?.lastName} from the system database.`}
+                effects={[
+                    'Permanently removes staff credentials, role associations, and profile metadata.',
+                    'Action cannot be reversed. If this staff returns, a new account must be created.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I understand that deleting this user is permanent and cannot be undone."
+                confirmText="Yes, Permanently Delete User"
+                cancelText="Cancel, Keep User"
             />
         </AuthenticatedLayout>
     );

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, ConfirmDialog } from '@/Components/ui';
+import { PageHeader, Card, Badge, FormSection, CauseEffectModal } from '@/Components/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -48,6 +48,7 @@ const statusBannerMap = {
 };
 
 export default function Show({ admission, requirements }) {
+    const [showConfirmApprove, setShowConfirmApprove] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -99,11 +100,18 @@ export default function Show({ admission, requirements }) {
     };
 
     const handleApprove = () => {
+        setShowConfirmApprove(true);
+    };
+
+    const confirmApprove = () => {
+        setIsSubmitting(true);
         router.post(route('admission.approve', { admission: admission.admissionId }), {}, {
-            onSuccess: () => setIsSubmitting(false),
+            onSuccess: () => {
+                setShowConfirmApprove(false);
+                setIsSubmitting(false);
+            },
             onError: () => setIsSubmitting(false),
         });
-        setIsSubmitting(true);
     };
 
     const handleReject = () => {
@@ -346,15 +354,54 @@ export default function Show({ admission, requirements }) {
                     )}
                 </div>
 
-                {/* Confirm Dialog for Reject */}
-                <ConfirmDialog
+                {/* Confirm Approve Cause & Effect Modal */}
+                <CauseEffectModal
+                    show={showConfirmApprove}
+                    onClose={() => setShowConfirmApprove(false)}
+                    onConfirm={confirmApprove}
+                    title="Approve Institutional Admission"
+                    subtitle="Admissions Office (Phase 0) — Official Intake Endorsement"
+                    tone="success"
+                    entityContext={{
+                        label: 'Applicant Name',
+                        value: `${student?.lastName}, ${student?.firstName}`,
+                        badge: admission.applicantType || 'FIRST YEAR',
+                    }}
+                    cause={`Approving this application accepts ${student?.lastName}, ${student?.firstName} into institutional records.`}
+                    effects={[
+                        'Assigns an official SEAIT Student ID Number (e.g. 2026-XXXX) if not already generated.',
+                        'Locks applicant demographic profile and submitted checklist requirements.',
+                        'Queues applicant for Phase 0.5 Guidance Entrance / Retention Exam Lab.',
+                    ]}
+                    requiresAcknowledgement={false}
+                    confirmText="Yes, Approve Admission"
+                    cancelText="Keep Pending"
+                    loading={isSubmitting}
+                />
+
+                {/* Confirm Reject Cause & Effect Modal */}
+                <CauseEffectModal
                     show={showConfirmReject}
                     onClose={() => setShowConfirmReject(false)}
                     onConfirm={confirmReject}
-                    title="Reject Admission"
-                    message="This will reject the admission application. This action cannot be undone. Are you sure you want to proceed?"
-                    confirmText="Reject"
-                    variant="danger"
+                    title="Reject Admission Application"
+                    subtitle="Admissions Office Intake Disqualification"
+                    tone="danger"
+                    entityContext={{
+                        label: 'Applicant Name',
+                        value: `${student?.lastName}, ${student?.firstName}`,
+                        badge: 'REJECTION',
+                    }}
+                    cause="Rejecting this admission stops the application and denies entrance for the selected academic term."
+                    effects={[
+                        'Changes admission status to REJECTED and archives applicant profile.',
+                        'Blocks student from scheduling Guidance Entrance Exams or accessing Evaluation.',
+                        'Applicant will be required to re-apply if credentials or deficiencies are resolved.',
+                    ]}
+                    requiresAcknowledgement={true}
+                    acknowledgementText="I confirm that this applicant fails admission criteria and must be formally rejected."
+                    confirmText="Yes, Formally Reject Application"
+                    cancelText="Cancel, Keep Under Review"
                     loading={isSubmitting}
                 />
             </Card>

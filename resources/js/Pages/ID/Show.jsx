@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Badge, FormSection, Modal, ConfirmDialog, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, FormSection, Modal, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState } from 'react';
 
 const bloodTypeOptions = [
@@ -540,37 +540,76 @@ export default function Show({ enrollment, idRequest, studentId }) {
                 </form>
             </Modal>
 
-            {/* Validate Confirm */}
-            <ConfirmDialog
+            {/* Validate ID Cause & Effect Modal */}
+            <CauseEffectModal
                 show={showValidateConfirm}
                 onClose={() => setShowValidateConfirm(false)}
                 onConfirm={handleValidate}
-                title="Validate Student ID via QR Scan"
-                message="This action activates the ID card in the school registry and signs the final workflow step (Office 22). Continue?"
-                confirmText="Validate ID"
-                variant="primary"
+                title="Activate & Validate Student ID in Campus Network"
+                subtitle="QR Barcode Security & Campus Registry Activation"
+                tone="success"
+                entityContext={{
+                    label: 'Student PVC ID',
+                    value: `${student?.lastName}, ${student?.firstName}`,
+                    badge: student?.schoolIdNumber || 'ID NUMBER',
+                }}
+                cause="Validating this card activates the embedded QR code and signs the final institutional clearance gate (Office 22)."
+                effects={[
+                    'Grants official student gate entry authorization across campus turnstiles and library scanners.',
+                    'Marks the Student ID workflow phase as 100% completed in the Student 360 trail.',
+                    'Synchronizes the student digital badge with active campus services.',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Yes, Validate & Activate ID"
+                cancelText="Keep Unvalidated"
             />
 
-            {/* Release Confirm */}
-            <ConfirmDialog
+            {/* Release ID Cause & Effect Modal */}
+            <CauseEffectModal
                 show={showReleaseConfirm}
                 onClose={() => setShowReleaseConfirm(false)}
                 onConfirm={handleRelease}
-                title="Release Physical ID Card"
-                message="Confirm that the physical PVC card is now handed over to the student."
-                confirmText="Release Card"
-                variant="primary"
+                title="Handover & Release Physical PVC Card"
+                subtitle="Physical ID Card Issuance to Student"
+                tone="info"
+                entityContext={{
+                    label: 'Card Recipient',
+                    value: `${student?.lastName}, ${student?.firstName}`,
+                    badge: course?.courseCode || 'PROGRAM',
+                }}
+                cause="Certifies that the manufactured CR80 PVC card has been physically inspected and handed over to the student."
+                effects={[
+                    'Logs physical card issuance timestamp and staff custody transfer in campus records.',
+                    'Flags the physical card as in-possession by the student.',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Confirm Physical Release"
+                cancelText="Hold Card in Office"
             />
 
-            {/* Cancel Confirm */}
-            <ConfirmDialog
+            {/* Cancel ID Request Cause & Effect Modal */}
+            <CauseEffectModal
                 show={showCancelConfirm}
                 onClose={() => setShowCancelConfirm(false)}
                 onConfirm={handleCancel}
-                title="Cancel ID Request"
-                message="Are you sure you want to cancel this ID request?"
-                confirmText="Cancel"
-                variant="danger"
+                title="Cancel Student ID Production Request"
+                subtitle="ID Card Request Revocation"
+                tone="danger"
+                entityContext={{
+                    label: 'Target ID Request',
+                    value: `Request #${idRequest?.idRequestId || '—'}`,
+                    badge: student?.schoolIdNumber || 'STUDENT',
+                }}
+                cause="Cancelling this request terminates card manufacturing and removes the student from the vendor print queue."
+                effects={[
+                    'Revokes vendor production orders with JZEL Printing Services.',
+                    'Deactivates QR barcode security assignment for this enrollment cycle.',
+                    'The student will not receive a physical campus ID card until a new request is filed.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I confirm that this ID card request is being permanently cancelled."
+                confirmText="Yes, Cancel ID Request"
+                cancelText="Keep Request Active"
             />
         </AuthenticatedLayout>
     );

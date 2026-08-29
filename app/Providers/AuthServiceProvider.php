@@ -177,8 +177,12 @@ class AuthServiceProvider extends ServiceProvider
         });
         Gate::define('blocking.assignStudents', function ($user) {
             // The controller validates each enrollment's workflow step inside the
-            // assignment loop; here we only gate permission + office scope.
-            return $user->hasPermissionTo('block.assign') && $user->officeId === 5;
+            // assignment loop; here we only gate permission + office/role scope.
+            if (! $user->hasPermissionTo('block.assign')) {
+                return false;
+            }
+            return $user->hasRole(['SysAdmin', 'Admin', 'BlockingCoordinator', 'OfficeHead'])
+                || $user->officeId === 5;
         });
         Gate::define('blocking.printBlockSchedule', function ($user, $block) {
             return app(BlockingPolicy::class)->printBlockSchedule($user, $block);

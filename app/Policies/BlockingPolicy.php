@@ -41,12 +41,11 @@ class BlockingPolicy
             return false;
         }
 
-        // Must be Academic Department (officeId = 5)
-        if ($user->officeId !== 5) {
-            return false;
+        if ($user->hasRole(['SysAdmin', 'Admin', 'BlockingCoordinator', 'OfficeHead'])) {
+            return true;
         }
 
-        return true;
+        return $user->officeId === 5;
     }
 
     /**

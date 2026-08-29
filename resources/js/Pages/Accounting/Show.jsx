@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, ConfirmDialog, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -410,15 +410,30 @@ export default function Show({ assessment }) {
                 </div>
             </div>
 
-            {/* Void Payment Confirm Dialog */}
-            <ConfirmDialog
+            {/* Void Payment Cause & Effect Confirmation Modal */}
+            <CauseEffectModal
                 show={showVoidConfirm}
                 onClose={() => { setShowVoidConfirm(false); setPaymentToVoid(null); }}
                 onConfirm={confirmVoidPayment}
-                title="Void Payment"
-                message={`Are you sure you want to void payment ${paymentToVoid?.orNumber || ''} (${peso(paymentToVoid?.amount)})? This action cannot be undone.`}
-                confirmText="Void Payment"
-                variant="danger"
+                title="Void Official Payment Receipt"
+                subtitle="High-risk institutional financial reversal"
+                tone="danger"
+                entityContext={{
+                    label: 'Official Receipt (OR)',
+                    value: paymentToVoid?.orNumber || '—',
+                    badge: peso(paymentToVoid?.amount),
+                }}
+                cause={`Voiding this payment will permanently cancel Official Receipt ${paymentToVoid?.orNumber || ''} issued to ${studentName}.`}
+                effects={[
+                    `Reverses ${peso(paymentToVoid?.amount)} from today's cashier drawer and collection reconciliation total.`,
+                    `Restores ${peso(paymentToVoid?.amount)} to the student's outstanding tuition balance (${student?.schoolIdNumber || '—'}).`,
+                    'Generates an immutable audit trail entry logged under Cashier Supervisor compliance records.',
+                    'The cancelled receipt number cannot be reused or reassigned to another transaction.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I confirm that this official receipt is being voided due to an error, and I acknowledge the financial impact."
+                confirmText="Yes, Permanently Void Receipt"
+                cancelText="Keep Receipt Active"
                 loading={isSubmitting}
             />
         </AuthenticatedLayout>

@@ -90,9 +90,15 @@ class WorkflowService
             ->firstOrFail();
 
         // Check office scope (BR14)
-        if ($step->officeId !== $signedBy->officeId) {
+        $isAcademicSigner = $step->officeId === 4 && (
+            in_array($signedBy->role?->value, ['dean', 'programHead', 'instructor'])
+            || $signedBy->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator'])
+            || $signedBy->unitId !== null
+        );
+
+        if ($step->officeId !== $signedBy->officeId && ! $isAcademicSigner && ! $signedBy->hasRole(['SysAdmin', 'Admin'])) {
             throw new InvalidStateTransitionException(
-                "Staff from office {$signedBy->officeId} cannot sign step {$stepOrder} (requires office {$step->officeId})."
+                "Staff member {$signedBy->name} cannot sign step {$stepOrder} (requires office {$step->officeId})."
             );
         }
 

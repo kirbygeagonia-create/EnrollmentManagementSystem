@@ -8,5 +8,6 @@ enum StaffRole: string
     case OfficeHead = 'officeHead';
     case Dean = 'dean';
     case ProgramHead = 'programHead';
+    case Instructor = 'instructor';
     case Admin = 'admin';
 }

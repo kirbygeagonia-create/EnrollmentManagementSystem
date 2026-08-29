@@ -70,18 +70,22 @@ class Staffusers extends Authenticatable
     {
         $officeName = $this->office ? $this->office->officeName : '';
         $unitName = $this->unit ? $this->unit->unitName : '';
-        $roleValue = $this->role->value;
+        $roleValue = $this->role?->value ?? 'staff';
 
         if ($roleValue === 'admin') {
             return 'Lead System Administrator';
         }
 
         if ($roleValue === 'dean') {
-            return $unitName ? "Dean, {$unitName}" : ($officeName ? "Dean, {$officeName}" : 'College Dean');
+            return $unitName ? "Dean, {$unitName}" : 'College Dean';
         }
 
         if ($roleValue === 'programHead') {
             return $unitName ? "Program Head, {$unitName}" : 'Academic Program Head';
+        }
+
+        if ($roleValue === 'instructor') {
+            return $unitName ? "Instructor, {$unitName}" : 'College Faculty / Instructor';
         }
 
         return match ($this->officeId) {
@@ -89,12 +93,20 @@ class Staffusers extends Authenticatable
             2 => $roleValue === 'officeHead' ? 'Chief Cashier & Accounting Head' : 'Cashier / Accounting Officer',
             3 => $roleValue === 'officeHead' ? 'Scholarship & Financial Aid Director' : 'Scholarship Coordinator',
             4 => $roleValue === 'officeHead' ? 'Head Guidance Counselor' : 'Guidance Testing Officer',
-            5 => 'Blocking & Scheduling Coordinator',
-            6 => 'Security & Clearance Officer',
+            5 => $roleValue === 'officeHead' ? 'Head, Human Resources' : 'HR & Scheduling Officer',
+            6 => $roleValue === 'officeHead' ? 'Chief of Safety & Security' : 'Security & Clearance Officer',
+            7 => $roleValue === 'officeHead' ? 'Chief Librarian & LRC Head' : 'Librarian / Learning Resource Staff',
+            8 => $roleValue === 'officeHead' ? 'Head, Property Management' : 'Property & Supply Officer',
+            9 => $roleValue === 'officeHead' ? 'Director, Research & Extension' : 'Research Coordinator',
+            10 => $roleValue === 'officeHead' ? 'NSTP Director' : 'NSTP Coordinator',
             11 => $roleValue === 'officeHead' ? 'Chief Medical Officer' : 'College Nurse / Health Officer',
-            22 => 'ID Processing & Validation Officer',
-            17, 18, 19, 20, 21 => 'Department Evaluator',
-            default => $roleValue === 'officeHead' ? "Head, {$officeName}" : ($officeName ? "Staff, {$officeName}" : 'Staff Officer'),
+            12 => $roleValue === 'officeHead' ? 'Science Laboratory Head' : 'Laboratory Technician / Custodian',
+            13 => $roleValue === 'officeHead' ? 'Sports & Athletic Director' : 'Sports Development Officer',
+            14 => $roleValue === 'officeHead' ? 'SIPP Internship Director' : 'Internship Coordinator',
+            15 => $roleValue === 'officeHead' ? 'RCYC Adviser' : 'Red Cross Youth Officer',
+            16 => $roleValue === 'officeHead' ? 'Quality Assurance & Accreditation Head' : 'Accreditation Officer',
+            22 => $roleValue === 'officeHead' ? 'ID Office Supervisor' : 'ID Processing & Validation Officer',
+            default => $roleValue === 'officeHead' ? ($officeName ? "Head, {$officeName}" : 'Office Head') : ($officeName ? "Staff, {$officeName}" : ($unitName ? "Staff, {$unitName}" : 'Staff Officer')),
         };
     }
 

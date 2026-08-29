@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Badge, FormSection, Modal, ConfirmDialog, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, FormSection, Modal, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 export default function Show({ enrollment, clinicRecord }) {
@@ -453,15 +453,28 @@ export default function Show({ enrollment, clinicRecord }) {
                 </form>
             </Modal>
 
-            {/* Reopen Confirm Dialog */}
-            <ConfirmDialog
+            {/* Reopen Clinic Record Cause & Effect Modal */}
+            <CauseEffectModal
                 show={showReopenConfirm}
                 onClose={() => setShowReopenConfirm(false)}
                 onConfirm={handleReopen}
-                title="Reopen Clinic Record"
-                message="This will reopen the completed clinic record for editing. Continue?"
-                confirmText="Reopen"
-                variant="warning"
+                title="Reopen Completed Health Examination Record"
+                subtitle="School Health Clinic — Medical Chart Audit"
+                tone="warning"
+                entityContext={{
+                    label: 'Student Patient',
+                    value: `${student?.lastName}, ${student?.firstName}`,
+                    badge: student?.schoolIdNumber || 'STUDENT',
+                }}
+                cause="Reopening this record unlocks the clinical vitals, BMI assessment, and physician physical exam findings for modifications."
+                effects={[
+                    'Reverts medical clearance status from Completed back to Pending / Under Assessment.',
+                    'Permits nursing and medical staff to update height, weight, BP, and diagnostic remarks.',
+                    'Logs an administrative amendment event in the clinic health audit logs.',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Yes, Reopen Medical Record"
+                cancelText="Keep Record Finalized"
             />
         </AuthenticatedLayout>
     );

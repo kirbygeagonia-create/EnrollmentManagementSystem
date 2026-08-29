@@ -10,7 +10,7 @@ const subSystems = [
                 phase: 'Phase 0',
                 route: 'admission.index',
                 officeId: 6,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-emerald-500 to-teal-600',
                 textColor: 'text-emerald-700 bg-emerald-50 border-emerald-200',
                 description: 'Applicant intake, requirement checklist verification, and document digitization.',
@@ -25,7 +25,7 @@ const subSystems = [
                 phase: 'Phase 0.5 & Retention',
                 route: 'exam.index',
                 officeId: 7,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-indigo-500 to-purple-600',
                 textColor: 'text-indigo-700 bg-indigo-50 border-indigo-200',
                 description: 'General & department entrance exams, board course retention gating, and scorecards.',
@@ -45,7 +45,7 @@ const subSystems = [
                 phase: 'Phase 1',
                 route: 'clearance.index',
                 officeId: 8,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-amber-500 to-orange-600',
                 textColor: 'text-amber-700 bg-amber-50 border-amber-200',
                 description: 'End-of-term multi-office sign-offs, digital clearance seals, and ₱100 lost-slip handling.',
@@ -60,7 +60,7 @@ const subSystems = [
                 phase: 'Phase 2',
                 route: 'evaluation.index',
                 officeId: 4,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-blue-600 to-cyan-700',
                 textColor: 'text-blue-700 bg-blue-50 border-blue-200',
                 description: 'Interactive curriculum load builder, academic standing, transferee crediting & dean signing.',
@@ -75,7 +75,7 @@ const subSystems = [
                 phase: 'Phase 6',
                 route: 'blocking.index',
                 officeId: 5,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-cyan-600 to-teal-700',
                 textColor: 'text-cyan-700 bg-cyan-50 border-cyan-200',
                 description: 'Section capacity management, visual timetable matrix, room scheduling & conflict detection.',
@@ -95,7 +95,7 @@ const subSystems = [
                 phase: 'Phase 3',
                 route: 'assessment.index',
                 officeId: 3,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-fuchsia-600 to-purple-700',
                 textColor: 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-200',
                 description: 'Itemized tuition billing, stacked scholarship grant calculations, and charge waivers.',
@@ -110,7 +110,7 @@ const subSystems = [
                 phase: 'Phase 4',
                 route: 'accounting.index',
                 officeId: 2,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-emerald-600 to-green-700',
                 textColor: 'text-emerald-700 bg-emerald-50 border-emerald-200',
                 description: 'POS cashier terminal, unique OR numbering, partial payments, and live daily collection report.',
@@ -130,7 +130,7 @@ const subSystems = [
                 phase: 'Phase 5',
                 route: 'registrar.index',
                 officeId: 1,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-seait-600 to-amber-700',
                 textColor: 'text-seait-700 bg-seait-50 border-seait-200',
                 description: 'Pre-enrollment validation gate, official enrollment certification, and Class Card generation.',
@@ -145,7 +145,7 @@ const subSystems = [
                 phase: 'Phase 7',
                 route: 'clinic.index',
                 officeId: 11,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-rose-500 to-pink-600',
                 textColor: 'text-rose-700 bg-rose-50 border-rose-200',
                 description: 'Health assessment, vital signs, physical exam findings, and PhilHealth registration verification.',
@@ -160,7 +160,7 @@ const subSystems = [
                 phase: 'Phase 8',
                 route: 'id.index',
                 officeId: 22,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-slate-700 to-slate-900',
                 textColor: 'text-slate-700 bg-slate-100 border-slate-300',
                 description: 'JZEL vendor intake, PVC card mockup, QR security encoding, validation, and card release.',
@@ -175,7 +175,7 @@ const subSystems = [
                 phase: 'Full Lifecycle',
                 route: 'students.index',
                 officeId: null,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'],
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-seait-500 to-indigo-600',
                 textColor: 'text-seait-700 bg-seait-50 border-seait-200',
                 description: 'Complete student academic trail, 8-step workflow timeline, and demographic inspection.',
@@ -263,9 +263,11 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         if (user?.role === 'admin') return true;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
-            if (['dean', 'programHead'].includes(user?.role)) {
+            if (['dean', 'programHead', 'instructor'].includes(user?.role)) {
+                if (['evaluation.index', 'blocking.index', 'students.index'].includes(item.route)) return true;
                 if (user?.role === 'dean') return [4, 6, 7].includes(item.officeId);
                 if (user?.role === 'programHead') return [4, 6].includes(item.officeId);
+                if (user?.role === 'instructor') return [4].includes(item.officeId);
             }
             return user?.officeId === item.officeId;
         }

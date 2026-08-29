@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, ConfirmDialog, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState } from 'react';
 
 const checklistSteps = [
@@ -317,15 +317,30 @@ export default function Show({ enrollment, checklist, allValid }) {
                 </div>
             </div>
 
-            {/* Confirm Approval Dialog */}
-            <ConfirmDialog
+            {/* Official Registrar Approval Cause & Effect Modal */}
+            <CauseEffectModal
                 show={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
                 onConfirm={confirmApprove}
-                title="Official Registrar Approval"
-                message="This will officially mark the student as ENROLLED, confirm all proposed subjects, and issue the Certificate of Enrollment. Proceed?"
-                confirmText="Approve Enrollment"
-                variant="primary"
+                title="Execute Official Institutional Enrollment Approval"
+                subtitle="Office of the College Registrar — Final Enrollment Gate (Phase 5)"
+                tone="success"
+                entityContext={{
+                    label: 'Enrolling Student',
+                    value: studentName,
+                    badge: enrollment.course?.courseCode || 'PROGRAM',
+                }}
+                cause={`Approving this record officially certifies ${studentName} as a bona fide matriculated student for ${termLabel}.`}
+                effects={[
+                    'Updates enrollment status to ENROLLED and applies the institutional watermark seal to the official Certificate of Enrollment.',
+                    'Unlocks student class cards and assigns permanent seats in the official section masterlist.',
+                    'Commits student units to CHED Institutional Annual Reports and active student directory files.',
+                    'Sends automated clearance to the Student ID Processing Center (Phase 8) and School Health Clinic (Phase 7).',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Yes, Issue Official Enrollment"
+                cancelText="Return to Verification"
+                loading={form.processing}
             />
         </AuthenticatedLayout>
     );

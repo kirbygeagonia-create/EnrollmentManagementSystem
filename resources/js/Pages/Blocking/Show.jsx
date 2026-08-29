@@ -1,9 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Link, usePage } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, ConfirmDialog } from '@/Components/ui';
+import { Head, Link, usePage, router } from '@inertiajs/react';
+import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-import { router } from '@inertiajs/react';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -718,27 +716,53 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 </form>
             </Modal>
 
-            {/* Unassign Student Confirm */}
-            <ConfirmDialog
+            {/* Unassign Student Cause & Effect Modal */}
+            <CauseEffectModal
                 show={confirmUnassign.open}
                 onClose={() => setConfirmUnassign({ open: false, enrollmentId: null })}
                 onConfirm={confirmUnassignStudent}
-                title="Unassign Student"
-                message="Remove this student from the block? Their enrolled subjects will be unassigned."
-                confirmText="Unassign"
-                variant="danger"
+                title="Unassign Student from Block Section"
+                subtitle="Section Capacity & Timetable Roster Modification"
+                tone="danger"
+                entityContext={{
+                    label: 'Target Block Section',
+                    value: block.blockCode || 'BLOCK SECTION',
+                    badge: `${block.enrolledCount || 0}/${block.maxCapacity || 0} SEATS`,
+                }}
+                cause="Unassigning the student removes them from this section's cohort masterlist and releases their reserved seat."
+                effects={[
+                    'Releases 1 reserved seat in this block, increasing available section capacity.',
+                    'Vacates the student from assigned timetable schedule slots and room seatings.',
+                    'Student must be re-assigned to another block before class cards can be printed.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I confirm that this student should be removed from this section's timetable."
+                confirmText="Yes, Unassign Student"
+                cancelText="Keep Student in Block"
                 loading={submittingUnassign}
             />
 
-            {/* Delete Schedule Confirm */}
-            <ConfirmDialog
+            {/* Delete Schedule Cause & Effect Modal */}
+            <CauseEffectModal
                 show={confirmDeleteSchedule.open}
                 onClose={() => setConfirmDeleteSchedule({ open: false, scheduleId: null })}
                 onConfirm={confirmDeleteScheduleAction}
-                title="Delete Schedule"
-                message="Delete this schedule? This action cannot be undone."
-                confirmText="Delete"
-                variant="danger"
+                title="Delete Timetable Schedule Slot"
+                subtitle="Room & Faculty Schedule Deletion"
+                tone="danger"
+                entityContext={{
+                    label: 'Block Section',
+                    value: block.blockCode || 'BLOCK SECTION',
+                }}
+                cause="Deleting this timetable slot permanently removes the room and time allocation for this subject."
+                effects={[
+                    'Removes room reservation and faculty teaching assignment for this period.',
+                    'Enrolled students in this block will have an unassigned schedule slot for this subject.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I understand that deleting this schedule will remove the assigned room and class time."
+                confirmText="Yes, Permanently Delete Slot"
+                cancelText="Keep Schedule"
                 loading={submittingDeleteSchedule}
             />
         </AuthenticatedLayout>

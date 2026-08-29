@@ -3,8 +3,8 @@ import Dropdown from '@/Components/Dropdown';
 import DeskSubNav from '@/Components/navigation/DeskSubNav';
 import GlobalSearchModal from '@/Components/navigation/GlobalSearchModal';
 import MegaAppLauncher from '@/Components/navigation/MegaAppLauncher';
-import { Toast } from '@/Components/ui';
-import { Link, usePage } from '@inertiajs/react';
+import { Toast, CauseEffectModal } from '@/Components/ui';
+import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 const deskInfoMap = {
@@ -29,6 +29,8 @@ export default function AuthenticatedLayout({ header, children }) {
     const [isLauncherOpen, setIsLauncherOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [showingNotifications, setShowingNotifications] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -90,6 +92,16 @@ export default function AuthenticatedLayout({ header, children }) {
     }) || 'dashboard';
 
     const currentDesk = deskInfoMap[activeKey] || deskInfoMap.dashboard;
+
+    const handleConfirmLogout = () => {
+        setIsLoggingOut(true);
+        router.post(route('logout'), {}, {
+            onFinish: () => {
+                setIsLoggingOut(false);
+                setShowLogoutConfirm(false);
+            },
+        });
+    };
 
     const getInitials = (name) => {
         return name
@@ -278,17 +290,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </Dropdown.Link>
                                     </div>
                                     <div className="py-1">
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                            className="flex items-center gap-2 text-xs font-semibold text-danger-600 hover:text-danger-700 hover:bg-danger-50"
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowLogoutConfirm(true)}
+                                            className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-danger-600 hover:text-danger-700 hover:bg-danger-50 transition-colors"
                                         >
                                             <svg className="w-4 h-4 text-danger-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                             </svg>
                                             Sign Out
-                                        </Dropdown.Link>
+                                        </button>
                                     </div>
                                 </Dropdown.Content>
                             </Dropdown>
@@ -324,6 +335,31 @@ export default function AuthenticatedLayout({ header, children }) {
             <GlobalSearchModal
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
+            />
+
+            {/* Logout Confirmation Cause & Effect Modal */}
+            <CauseEffectModal
+                show={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleConfirmLogout}
+                title="Confirm Institutional Session Sign Out"
+                subtitle="You are about to terminate your active staff session on this terminal"
+                tone="warning"
+                entityContext={{
+                    label: 'Active Staff Account',
+                    value: user?.name || 'Staff User',
+                    badge: user?.role?.toUpperCase() || 'STAFF',
+                }}
+                cause="Signing out will end your authenticated session and return this workstation to the public login screen."
+                effects={[
+                    'Any unsaved form data, unsubmitted grade sheets, or pending fee entries will be cleared from memory.',
+                    'Your active lock on student assessment and cashier payment queues will be safely released.',
+                    'To resume processing campus records, you will need to re-authenticate with your staff credentials.',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Yes, Sign Out Now"
+                cancelText="Stay Logged In"
+                loading={isLoggingOut}
             />
 
             {/* Toast Notifications */}

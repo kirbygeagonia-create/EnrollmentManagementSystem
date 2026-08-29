@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, ConfirmDialog, Modal, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Overall clearance status → badge tone
@@ -345,29 +345,65 @@ export default function Index({ clearances, periods, filters = {} }) {
                 </form>
             </Modal>
 
-            {/* Confirm dialog for per-requirement approvals */}
-            <ConfirmDialog
+            {/* Clearance Requirement Action Cause & Effect Modal */}
+            <CauseEffectModal
                 show={!!confirmState}
                 onClose={closeConfirm}
                 onConfirm={confirmAction}
                 title={
-                    confirmState?.action === 'approved' ? 'Approve Office Obligation'
-                    : confirmState?.action === 'waived' ? 'Waive Obligation'
-                    : 'Reject Clearance Requirement'
+                    confirmState?.action === 'approved' ? 'Approve Office Clearance Obligation'
+                    : confirmState?.action === 'waived' ? 'Waive Obligation & Override Hold'
+                    : 'Flag Deficiency & Reject Requirement'
                 }
-                message={
+                subtitle="Multi-Office Institutional Obligation Verification"
+                tone={
+                    confirmState?.action === 'rejected' ? 'danger'
+                    : confirmState?.action === 'waived' ? 'warning'
+                    : 'success'
+                }
+                entityContext={{
+                    label: 'Office Requirement',
+                    value: confirmState?.approval?.requirement?.requirementName || 'Office Obligation',
+                    badge: confirmState?.approval?.requirement?.office?.officeName || 'Department',
+                }}
+                cause={
                     confirmState?.action === 'approved'
-                        ? 'This will digitally stamp and approve this office obligation for the student.'
+                        ? 'Digitally certifies that the student has fulfilled all required liabilities, returned library books, and settled organizational dues.'
                         : confirmState?.action === 'waived'
-                        ? 'This will permanently waive this requirement for this student.'
-                        : 'This will reject the requirement due to student liabilities.'
+                        ? 'Grants an administrative exception waiving this obligation for the student for the selected academic term.'
+                        : 'Rejects this clearance obligation due to unresolved liabilities, unreturned materials, or disciplinary holds.'
+                }
+                effects={
+                    confirmState?.action === 'approved'
+                        ? [
+                            'Applies the official green digital CLEARED stamp to this requirement in the matrix.',
+                            'Updates the student clearance progress counter toward 100% full institutional clearance.',
+                            'Permits the student to proceed to Phase 2 (Curriculum Evaluation) once all requirements are signed.',
+                        ]
+                        : confirmState?.action === 'waived'
+                        ? [
+                            'Bypasses the standard office sign-off without requiring physical proof of payment or return.',
+                            'Allows the student to progress in the enrollment trail under an authorized waiver.',
+                            'Logs the waiver in the compliance audit trail for end-of-term administrative auditing.',
+                        ]
+                        : [
+                            'Flags the student profile with an active deficiency hold in the campus enrollment network.',
+                            'Blocks the student from proceeding to Academic Evaluation and Registrar Certification.',
+                            'The student must settle liabilities with the originating office before the hold can be lifted.',
+                        ]
+                }
+                requiresAcknowledgement={confirmState?.action === 'waived' || confirmState?.action === 'rejected'}
+                acknowledgementText={
+                    confirmState?.action === 'waived'
+                        ? 'I confirm that I have administrative authority to waive this office obligation.'
+                        : 'I confirm that this student has active deficiencies warranting an enrollment hold.'
                 }
                 confirmText={
-                    confirmState?.action === 'approved' ? 'Approve Stamp'
-                    : confirmState?.action === 'waived' ? 'Waive Requirement'
-                    : 'Reject Requirement'
+                    confirmState?.action === 'approved' ? 'Apply Digital Stamp'
+                    : confirmState?.action === 'waived' ? 'Confirm & Apply Waiver'
+                    : 'Reject & Place Hold'
                 }
-                variant={confirmState?.action === 'rejected' ? 'danger' : confirmState?.action === 'waived' ? 'warning' : 'primary'}
+                cancelText="Keep Pending"
                 loading={approveForm.processing}
             />
         </AuthenticatedLayout>

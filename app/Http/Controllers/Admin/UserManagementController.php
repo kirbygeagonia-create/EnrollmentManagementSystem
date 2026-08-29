@@ -61,7 +61,7 @@ class UserManagementController extends Controller
         $this->authorize('create', Staffusers::class);
 
         $validated = $request->validate([
-            'officeId' => 'required|exists:offices,officeId',
+            'officeId' => 'nullable|exists:offices,officeId',
             'unitId' => 'nullable|exists:academicunits,unitId',
             'employeeNo' => 'required|string|max:50|unique:staffusers,employeeNo',
             'firstName' => 'required|string|max:100',
@@ -70,10 +70,26 @@ class UserManagementController extends Controller
             'username' => 'required|string|max:50|unique:staffusers,username',
             'email' => 'required|email|max:255|unique:staffusers,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:staff,officeHead,dean,programHead,admin',
+            'role' => 'required|in:staff,officeHead,dean,programHead,admin,instructor',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
         ]);
+
+        // Enforce organizational constraints: Deans & Program Heads belong to academic units, not admin offices
+        if (in_array($validated['role'], ['dean', 'programHead'])) {
+            $validated['officeId'] = null;
+            if (empty($validated['unitId'])) {
+                return back()->withErrors(['unitId' => 'An Academic College/Unit is required for Deans and Program Heads.']);
+            }
+        } elseif ($validated['role'] === 'instructor') {
+            if (empty($validated['unitId'])) {
+                return back()->withErrors(['unitId' => 'An Academic College/Unit is required for Instructors.']);
+            }
+        } elseif ($validated['role'] === 'officeHead') {
+            if (empty($validated['officeId'])) {
+                return back()->withErrors(['officeId' => 'An Administrative Office is required for Office Heads.']);
+            }
+        }
 
         $user = Staffusers::create([
             'officeId' => $validated['officeId'],
@@ -106,7 +122,7 @@ class UserManagementController extends Controller
         $this->authorize('update', $user);
 
         $validated = $request->validate([
-            'officeId' => 'required|exists:offices,officeId',
+            'officeId' => 'nullable|exists:offices,officeId',
             'unitId' => 'nullable|exists:academicunits,unitId',
             'employeeNo' => 'required|string|max:50|unique:staffusers,employeeNo,'.$user->userId.',userId',
             'firstName' => 'required|string|max:100',
@@ -114,10 +130,26 @@ class UserManagementController extends Controller
             'lastName' => 'required|string|max:100',
             'username' => 'required|string|max:50|unique:staffusers,username,'.$user->userId.',userId',
             'email' => 'required|email|max:255|unique:staffusers,email,'.$user->userId.',userId',
-            'role' => 'required|in:staff,officeHead,dean,programHead,admin',
+            'role' => 'required|in:staff,officeHead,dean,programHead,admin,instructor',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
         ]);
+
+        // Enforce organizational constraints: Deans & Program Heads belong to academic units, not admin offices
+        if (in_array($validated['role'], ['dean', 'programHead'])) {
+            $validated['officeId'] = null;
+            if (empty($validated['unitId'])) {
+                return back()->withErrors(['unitId' => 'An Academic College/Unit is required for Deans and Program Heads.']);
+            }
+        } elseif ($validated['role'] === 'instructor') {
+            if (empty($validated['unitId'])) {
+                return back()->withErrors(['unitId' => 'An Academic College/Unit is required for Instructors.']);
+            }
+        } elseif ($validated['role'] === 'officeHead') {
+            if (empty($validated['officeId'])) {
+                return back()->withErrors(['officeId' => 'An Administrative Office is required for Office Heads.']);
+            }
+        }
 
         $user->update($validated);
 

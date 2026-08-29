@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { PageHeader, Badge, ConfirmDialog } from '@/Components/ui';
+import { PageHeader, Badge, CauseEffectModal } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const studentTypeToneMap = {
@@ -309,15 +309,29 @@ export default function Show({ enrollment, curriculumSubjects }) {
                 </div>
             </div>
 
-            {/* Confirm Sign Dialog */}
-            <ConfirmDialog
+            {/* Sign Evaluation Cause & Effect Confirmation Modal */}
+            <CauseEffectModal
                 show={showConfirmSign}
                 onClose={() => setShowConfirmSign(false)}
                 onConfirm={handleSign}
-                title="Sign Academic Evaluation"
-                message="This will digitally sign the academic evaluation and initiate the 8-step enrollment tracking workflow. Proceed?"
-                confirmText="Sign Evaluation"
-                variant="warning"
+                title="Digitally Sign & Approve Academic Study Load"
+                subtitle="Official Dean / Program Head Academic Endorsement"
+                tone="info"
+                entityContext={{
+                    label: 'Student Study Load',
+                    value: `${student?.lastName}, ${student?.firstName} (${student?.schoolIdNumber || '—'})`,
+                    badge: `${totalAcademicUnits} Total Units`,
+                }}
+                cause={`Signing this evaluation certifies that the ${selectedCurriculumSubjects.length} prescribed subjects comply with curriculum prerequisite standards.`}
+                effects={[
+                    `Locks the approved ${totalAcademicUnits}.0 academic units (${totalLectureUnits} Lec / ${totalLabUnits} Lab) into the student's active enrollment record.`,
+                    'Immediately advances the student to Phase 3 (Scholarship & Assessment Desk) for automated tuition billing calculation.',
+                    'Any subsequent subject additions, drops, or timetable swaps will require an official Institutional Add/Drop petition.',
+                    'Logs your digital signature stamp with timestamp in the student academic history.',
+                ]}
+                requiresAcknowledgement={false}
+                confirmText="Yes, Sign & Lock Evaluation"
+                cancelText="Review Load Again"
                 loading={isSubmitting}
             />
         </AuthenticatedLayout>
