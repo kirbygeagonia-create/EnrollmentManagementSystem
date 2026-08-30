@@ -8,6 +8,7 @@ use App\Enums\DocumentType;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Enums\StudentType;
 use App\Http\Controllers\Controller;
 use App\Models\Clearanceperiods;
@@ -83,7 +84,7 @@ class RegistrarController extends Controller
             'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
             'clearance_verified' => $this->checkClearance($enrollment),
-            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === 1),
+            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
         ];
 
         $allValid = collect($checklist)->every(fn ($v) => $v);

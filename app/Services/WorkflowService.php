@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\OfficeId;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
 use App\Events\WorkflowStepSigned;
@@ -90,7 +91,7 @@ class WorkflowService
             ->firstOrFail();
 
         // Check office scope (BR14)
-        $isAcademicSigner = $step->officeId === 4 && (
+        $isAcademicSigner = $step->officeId === OfficeId::Guidance->value && (
             in_array($signedBy->role->value, ['dean', 'programHead', 'instructor'])
             || $signedBy->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator'])
             || $signedBy->unitId !== null
