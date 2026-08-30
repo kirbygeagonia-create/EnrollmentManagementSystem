@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Blocking;
 
 use App\Enums\DayOfWeek;
 use App\Enums\EnrollmentStatus;
+use App\Enums\OfficeId;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Blocks;
@@ -96,7 +97,7 @@ class BlockingController extends Controller
                     ->orderBy('stepOrder')
                     ->first();
 
-                return $nextPendingStep && $nextPendingStep->officeId === 5;
+                return $nextPendingStep && $nextPendingStep->officeId === OfficeId::Blocking->value;
             })
             ->map(function ($enrollment) {
                 return [
@@ -401,7 +402,7 @@ class BlockingController extends Controller
             }
 
             $workflow = $enrollment->enrollmentworkflow;
-            if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 5) {
+            if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
                 continue;
             }
 
@@ -413,8 +414,8 @@ class BlockingController extends Controller
                     'scheduleId' => $schedule->scheduleId,
                 ]);
 
-            // Sign the Blocking step (office 5) now that the student is assigned
-            $this->workflowService->signStepByOffice($workflow, 5, Auth::user());
+            // Sign the Blocking step now that the student is assigned
+            $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());
             $assigned++;
         }
 

@@ -42,8 +42,8 @@ class AssessmentPolicy
             return false;
         }
 
-        // Must be Accounting/Scholarship office (officeId = 2, 3)
-        return in_array($user->officeId, [2, 3]);
+        // Must be Accounting/Scholarship office
+        return in_array($user->officeId, [OfficeId::Accounting->value, OfficeId::Scholarship->value], true);
     }
 
     /**
@@ -84,7 +84,7 @@ class AssessmentPolicy
             return false;
         }
 
-        // Must be Assessment or Accounting office (officeId = 3 or 2)
-        return in_array($user->officeId, [2, 3]);
+        // Must be Assessment or Accounting office
+        return in_array($user->officeId, [OfficeId::Accounting->value, OfficeId::Scholarship->value], true);
     }
 }

@@ -64,8 +64,17 @@ class CreateAdminUser extends Command
             'password' => ['required', Password::min(8)->mixedCase()->numbers()->symbols()],
         ])->validate();
 
+        // Audit follow-up §A2: employeeNo is unique (uq_staff_employeeno), so
+        // the second-admin path must not reuse the hardcoded bootstrap number.
+        $employeeNo = 'EMP-ADMIN-001';
+        $sequence = 1;
+        while (Staffusers::where('employeeNo', $employeeNo)->exists()) {
+            $sequence++;
+            $employeeNo = 'EMP-ADMIN-'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+        }
+
         $user = Staffusers::create([
-            'employeeNo' => 'EMP-ADMIN-001',
+            'employeeNo' => $employeeNo,
             'firstName' => $firstName ?: $username,
             'middleName' => '',
             'lastName' => $lastName ?: $username,

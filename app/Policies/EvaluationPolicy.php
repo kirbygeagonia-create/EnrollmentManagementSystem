@@ -43,7 +43,13 @@ class EvaluationPolicy
         // Must be department evaluator, dean, program head, or instructor
         return $user->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator', 'Admin', 'SysAdmin'])
             || $user->unitId !== null
-            || in_array($user->officeId, [1, 4, 5, 6, 7]);
+            || in_array($user->officeId, [
+                OfficeId::Registrar->value,
+                OfficeId::Guidance->value,
+                OfficeId::Blocking->value,
+                OfficeId::Admission->value,
+                OfficeId::Academic->value,
+            ], true);
     }
 
     /**

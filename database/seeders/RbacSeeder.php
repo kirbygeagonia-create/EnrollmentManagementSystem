@@ -354,7 +354,10 @@ class RbacSeeder extends Seeder
             'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
         ]);
 
-        // Staff - view permissions
+        // Staff - view permissions.
+        // Audit follow-up §A1: audit.view is deliberately NOT granted to the
+        // base Staff role — the audit log exposes full model snapshots (incl.
+        // student PII) and would bypass the students.view scoping.
         $staff = Role::firstOrCreate(
             ['name' => 'Staff', 'guard_name' => 'web'],
             ['description' => 'Staff with view-only access across all modules']
@@ -362,7 +365,7 @@ class RbacSeeder extends Seeder
         $staff->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'block.view', 'clinic.view',
-            'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
+            'id.view', 'refdata.view', 'user.view', 'dashboard.view',
         ]);
 
         // Instructor - Phase 2 & Advising
@@ -400,7 +403,7 @@ class RbacSeeder extends Seeder
                     OfficeId::Guidance->value => ['GuidanceStaff', 'OfficeHead'],
                     OfficeId::Blocking->value => ['BlockingCoordinator', 'OfficeHead'],
                     OfficeId::Admission->value => ['AdmissionOfficer', 'OfficeHead'],
-                    7 => ['OfficeHead'],
+                    OfficeId::Academic->value => ['OfficeHead'],
                     OfficeId::Clinic->value => ['ClinicStaff', 'OfficeHead'],
                     OfficeId::IdOffice->value => ['IdOfficer', 'OfficeHead'],
                     default => ['OfficeHead'],
@@ -413,7 +416,7 @@ class RbacSeeder extends Seeder
                     OfficeId::Guidance->value => ['GuidanceStaff', 'Staff'],
                     OfficeId::Blocking->value => ['BlockingCoordinator', 'Staff'],
                     OfficeId::Admission->value => ['AdmissionOfficer', 'Staff'],
-                    7 => ['Staff'],
+                    OfficeId::Academic->value => ['Staff'],
                     OfficeId::Clinic->value => ['ClinicStaff', 'Staff'],
                     OfficeId::IdOffice->value => ['IdOfficer', 'Staff'],
                     default => ['Staff'],

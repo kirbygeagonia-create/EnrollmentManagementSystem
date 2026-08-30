@@ -72,7 +72,11 @@ class PermissionMatrixTest extends TestCase
      * Per RbacSeeder, Staff has these view permissions:
      * admission.view, exam.view, evaluation.view, assessment.view,
      * payment.view, clearance.view, block.view, clinic.view,
-     * id.view, refdata.view, user.view, audit.view, dashboard.view
+     * id.view, refdata.view, user.view, dashboard.view
+     *
+     * Audit follow-up §A1: audit.view was REMOVED from Staff — the audit log
+     * exposes full model snapshots (incl. student PII) and would otherwise
+     * bypass the students.view scoping. Staff must be denied admin.users.audit-logs.
      *
      * NOTE: registrar.index maps to EvaluationPolicy::viewAny which checks
      * 'evaluation.view' (Staff HAS this) — not enrollment.approve.
@@ -100,6 +104,8 @@ class PermissionMatrixTest extends TestCase
             ['registrar.index', 'evaluation.view', true],
             ['admin.reference-data.index', 'refdata.view', true],
             ['admin.users.index', 'user.view', true],
+            // Audit follow-up §A1: Staff no longer holds audit.view (expect 403)
+            ['admin.users.audit-logs', 'audit.view', false],
             ['dashboard', 'dashboard.view', true],
         ];
     }

@@ -35,6 +35,31 @@ class AuditLogObserver
     }
 
     /**
+     * Audit follow-up §A1: sensitive attribute keys are redacted at WRITE time
+     * (not read time) so credentials never reach the audit-log storage in the
+     * first place — regardless of who holds audit.view later. Covers password
+     * hashes, API tokens, secrets, and remember tokens on any model.
+     */
+    private const SENSITIVE_KEY_PATTERN = '/password|hash|token|secret/i';
+
+    /**
+     * Redact sensitive attribute values before JSON-encoding for storage.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function redactSensitive(array $attributes): array
+    {
+        foreach ($attributes as $key => $value) {
+            if (preg_match(self::SENSITIVE_KEY_PATTERN, (string) $key)) {
+                $attributes[$key] = '[REDACTED]';
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Log the audit entry.
      */
     private function log(string $action, Model $model): void
@@ -49,8 +74,10 @@ class AuditLogObserver
             'action' => $action,
             'entityTable' => $model->getTable(),
             'entityId' => $model->getKey(),
-            'oldValues' => $action === 'updated' ? json_encode($model->getOriginal()) : null,
-            'newValues' => json_encode($model->getAttributes()),
+            'oldValues' => $action === 'updated'
+                ? json_encode($this->redactSensitive($model->getOriginal()))
+                : null,
+            'newValues' => json_encode($this->redactSensitive($model->getAttributes())),
             'ipAddress' => Request::ip(),
             'createdAt' => now(),
         ]);

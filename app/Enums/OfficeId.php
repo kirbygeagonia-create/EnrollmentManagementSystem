@@ -19,6 +19,7 @@ enum OfficeId: int
     case Guidance = 4;
     case Blocking = 5;
     case Admission = 6;
+    case Academic = 7;
     case Clinic = 11;
     case IdOffice = 22;
 }
