@@ -6,6 +6,7 @@ use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Enums\StudentType;
 use App\Models\Clearanceperiods;
 use App\Models\Enrollments;
@@ -42,7 +43,7 @@ class RegistrarPolicy
         }
 
         // Must be Registrar office (officeId = 1)
-        if ($user->officeId !== 1) {
+        if ($user->officeId !== OfficeId::Registrar->value) {
             return false;
         }
 
@@ -148,6 +149,6 @@ class RegistrarPolicy
         }
 
         // Must be Registrar office
-        return $user->officeId === 1;
+        return $user->officeId === OfficeId::Registrar->value;
     }
 }

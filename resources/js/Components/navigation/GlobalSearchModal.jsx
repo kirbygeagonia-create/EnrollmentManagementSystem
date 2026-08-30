@@ -1,7 +1,9 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
+    const { props } = usePage();
+    const canStudentsView = props.can?.studentsView ?? false;
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
     // Debounced search
     useEffect(() => {
-        if (query.trim().length < 2) {
+        if (!canStudentsView || query.trim().length < 2) {
             return;
         }
 
@@ -36,7 +38,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
         }, 200);
 
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [canStudentsView, query]);
 
     const activeResults = query.trim().length >= 2 ? results : [];
 
@@ -109,7 +111,15 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
                 {/* Results List */}
                 <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-2">
-                    {query.trim().length < 2 ? (
+                    {!canStudentsView ? (
+                        <div className="py-12 px-6 text-center text-slate-400 dark:text-slate-500">
+                            <svg className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Student search unavailable</p>
+                            <p className="text-xs text-slate-400 mt-1">Your role does not include access to student records. Contact the System Administrator if you need it.</p>
+                        </div>
+                    ) : query.trim().length < 2 ? (
                         <div className="py-12 px-6 text-center text-slate-400 dark:text-slate-500">
                             <svg className="w-10 h-10 mx-auto mb-2 opacity-40 text-seait-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />

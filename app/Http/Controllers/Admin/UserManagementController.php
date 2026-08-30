@@ -16,6 +16,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,7 +70,8 @@ class UserManagementController extends Controller
             'lastName' => 'required|string|max:100',
             'username' => 'required|string|max:50|unique:staffusers,username',
             'email' => 'required|email|max:255|unique:staffusers,email',
-            'password' => 'required|string|min:8|confirmed',
+            // Audit (low-prio): enforce a real password policy, not just length.
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'role' => 'required|in:staff,officeHead,dean,programHead,admin,instructor',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',

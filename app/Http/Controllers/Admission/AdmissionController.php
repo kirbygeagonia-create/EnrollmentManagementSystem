@@ -229,7 +229,10 @@ class AdmissionController extends Controller
         $this->authorize('submitRequirements', $admission);
 
         $validated = $request->validate([
-            'file' => 'required|file|max:10240',
+            // Audit §3.4: mirror the frontend's accepted document types
+            // (Admission/Show.jsx restricts the picker to these extensions);
+            // backend must enforce the same allow-list.
+            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx',
             'remarks' => 'nullable|string',
         ]);
 

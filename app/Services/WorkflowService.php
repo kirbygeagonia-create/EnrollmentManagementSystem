@@ -91,7 +91,7 @@ class WorkflowService
 
         // Check office scope (BR14)
         $isAcademicSigner = $step->officeId === 4 && (
-            in_array($signedBy->role?->value, ['dean', 'programHead', 'instructor'])
+            in_array($signedBy->role->value, ['dean', 'programHead', 'instructor'])
             || $signedBy->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator'])
             || $signedBy->unitId !== null
         );

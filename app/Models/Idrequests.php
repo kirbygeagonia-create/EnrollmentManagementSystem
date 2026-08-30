@@ -14,7 +14,7 @@ class Idrequests extends Model
 
     protected $primaryKey = 'idRequestId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'producedByVendor', 'requestDate', 'status', 'reissueReason', 'is_reissue'];
 

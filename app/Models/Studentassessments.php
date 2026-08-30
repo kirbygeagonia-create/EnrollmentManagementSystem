@@ -13,7 +13,7 @@ class Studentassessments extends Model
 
     protected $primaryKey = 'assessmentId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['enrollmentId', 'totalAssessedAmount', 'totalScholarshipCoverage', 'totalWaived', 'remainingBalance', 'assessmentDate'];
 

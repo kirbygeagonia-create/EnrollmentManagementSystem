@@ -70,7 +70,7 @@ class Staffusers extends Authenticatable
     {
         $officeName = $this->office ? $this->office->officeName : '';
         $unitName = $this->unit ? $this->unit->unitName : '';
-        $roleValue = $this->role?->value ?? 'staff';
+        $roleValue = $this->role->value;
 
         if ($roleValue === 'admin') {
             return 'Lead System Administrator';

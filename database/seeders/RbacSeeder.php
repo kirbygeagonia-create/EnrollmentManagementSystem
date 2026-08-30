@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\OfficeId;
 use App\Models\Staffusers;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -162,6 +163,11 @@ class RbacSeeder extends Seeder
             'dashboard' => [
                 'dashboard.view',
             ],
+
+            // Student directory module (1) — Student 360 / global quick-search
+            'students' => [
+                'students.view',
+            ],
         ];
 
         $createdPermissions = [];
@@ -203,6 +209,7 @@ class RbacSeeder extends Seeder
         $admissionOfficer->syncPermissions([
             'admission.view', 'admission.create', 'admission.update', 'admission.approve', 'admission.reject',
             'admission.requirements.submit', 'admission.requirements.verify', 'dashboard.view', 'user.view',
+            'students.view',
         ]);
 
         // GuidanceStaff - Phase 0.5 & Retention
@@ -212,7 +219,7 @@ class RbacSeeder extends Seeder
         );
         $guidanceStaff->syncPermissions([
             'exam.view', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
-            'dashboard.view', 'user.view',
+            'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // DeptEvaluator - Phase 2
@@ -224,6 +231,7 @@ class RbacSeeder extends Seeder
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'exam.view', 'admission.view', 'dashboard.view', 'user.view', 'enrollment.subjects.confirm',
+            'students.view',
         ]);
 
         // Dean - Phase 2 & Academic Department Head
@@ -238,6 +246,7 @@ class RbacSeeder extends Seeder
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'evaluation.sign.dean',
             'exam.view', 'refdata.view', 'user.view', 'dashboard.view', 'enrollment.subjects.confirm',
+            'students.view',
         ]);
 
         // ProgramHead - Phase 2
@@ -248,6 +257,7 @@ class RbacSeeder extends Seeder
         $programHead->syncPermissions([
             'admission.view', 'evaluation.view', 'evaluation.create', 'evaluation.credits.process',
             'evaluation.subjects.propose', 'evaluation.sign', 'exam.view', 'dashboard.view', 'enrollment.subjects.confirm',
+            'students.view',
         ]);
 
         // ScholarshipOfficer - Phase 3
@@ -257,7 +267,7 @@ class RbacSeeder extends Seeder
         );
         $scholarshipOfficer->syncPermissions([
             'assessment.view', 'assessment.compute', 'assessment.scholarships.apply', 'assessment.charges.adjust',
-            'assessment.finalize', 'dashboard.view', 'user.view',
+            'assessment.finalize', 'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // AccountingStaff - Phase 4
@@ -267,7 +277,7 @@ class RbacSeeder extends Seeder
         );
         $accountingStaff->syncPermissions([
             'payment.view', 'payment.record', 'payment.void', 'payment.report.daily',
-            'assessment.view', 'dashboard.view', 'user.view',
+            'assessment.view', 'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // RegistrarDesk - Phase 1
@@ -277,6 +287,7 @@ class RbacSeeder extends Seeder
         );
         $registrarDesk->syncPermissions([
             'clearance.view', 'clearance.receipt.record', 'clearance.slip.generate', 'dashboard.view', 'user.view',
+            'students.view',
         ]);
 
         // RegistrarApprover - Phase 5
@@ -287,6 +298,7 @@ class RbacSeeder extends Seeder
         $registrarApprover->syncPermissions([
             'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
             'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'dashboard.view', 'user.view',
+            'students.view',
         ]);
 
         // BlockingCoordinator - Phase 6
@@ -296,7 +308,7 @@ class RbacSeeder extends Seeder
         );
         $blockingCoordinator->syncPermissions([
             'block.view', 'block.manage', 'block.assign', 'block.schedules.manage', 'block.capacity.check',
-            'print.blockSchedule', 'dashboard.view', 'user.view',
+            'print.blockSchedule', 'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // ClinicStaff - Phase 7
@@ -306,7 +318,7 @@ class RbacSeeder extends Seeder
         );
         $clinicStaff->syncPermissions([
             'clinic.view', 'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'dashboard.view', 'user.view',
+            'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // IdOfficer - Phase 8
@@ -316,7 +328,7 @@ class RbacSeeder extends Seeder
         );
         $idOfficer->syncPermissions([
             'id.view', 'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign', 'id.reissue', 'id.cancel',
-            'dashboard.view', 'user.view',
+            'dashboard.view', 'user.view', 'students.view',
         ]);
 
         // OfficeHead - all view permissions + module action permissions (excluding admin-only)
@@ -328,6 +340,7 @@ class RbacSeeder extends Seeder
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'enrollment.approve', 'block.view',
             'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
+            'students.view',
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
@@ -381,28 +394,28 @@ class RbacSeeder extends Seeder
                 $rolesToSync = ['Instructor', 'DeptEvaluator'];
             } elseif ($roleVal === 'officeHead') {
                 $rolesToSync = match ($user->officeId) {
-                    1 => ['RegistrarApprover', 'OfficeHead'],
-                    2 => ['AccountingStaff', 'OfficeHead'],
-                    3 => ['ScholarshipOfficer', 'OfficeHead'],
-                    4 => ['GuidanceStaff', 'OfficeHead'],
-                    5 => ['BlockingCoordinator', 'OfficeHead'],
-                    6 => ['AdmissionOfficer', 'OfficeHead'],
+                    OfficeId::Registrar->value => ['RegistrarApprover', 'OfficeHead'],
+                    OfficeId::Accounting->value => ['AccountingStaff', 'OfficeHead'],
+                    OfficeId::Scholarship->value => ['ScholarshipOfficer', 'OfficeHead'],
+                    OfficeId::Guidance->value => ['GuidanceStaff', 'OfficeHead'],
+                    OfficeId::Blocking->value => ['BlockingCoordinator', 'OfficeHead'],
+                    OfficeId::Admission->value => ['AdmissionOfficer', 'OfficeHead'],
                     7 => ['OfficeHead'],
-                    11 => ['ClinicStaff', 'OfficeHead'],
-                    22 => ['IdOfficer', 'OfficeHead'],
+                    OfficeId::Clinic->value => ['ClinicStaff', 'OfficeHead'],
+                    OfficeId::IdOffice->value => ['IdOfficer', 'OfficeHead'],
                     default => ['OfficeHead'],
                 };
             } else { // regular staff
                 $rolesToSync = match ($user->officeId) {
-                    1 => ['RegistrarDesk', 'Staff'],
-                    2 => ['AccountingStaff', 'Staff'],
-                    3 => ['ScholarshipOfficer', 'Staff'],
-                    4 => ['GuidanceStaff', 'Staff'],
-                    5 => ['BlockingCoordinator', 'Staff'],
-                    6 => ['AdmissionOfficer', 'Staff'],
+                    OfficeId::Registrar->value => ['RegistrarDesk', 'Staff'],
+                    OfficeId::Accounting->value => ['AccountingStaff', 'Staff'],
+                    OfficeId::Scholarship->value => ['ScholarshipOfficer', 'Staff'],
+                    OfficeId::Guidance->value => ['GuidanceStaff', 'Staff'],
+                    OfficeId::Blocking->value => ['BlockingCoordinator', 'Staff'],
+                    OfficeId::Admission->value => ['AdmissionOfficer', 'Staff'],
                     7 => ['Staff'],
-                    11 => ['ClinicStaff', 'Staff'],
-                    22 => ['IdOfficer', 'Staff'],
+                    OfficeId::Clinic->value => ['ClinicStaff', 'Staff'],
+                    OfficeId::IdOffice->value => ['IdOfficer', 'Staff'],
                     default => ['Staff'],
                 };
             }

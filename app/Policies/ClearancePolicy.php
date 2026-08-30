@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\ClearanceApprovalStatus;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
+use App\Enums\OfficeId;
 use App\Models\Clearanceapprovals;
 use App\Models\Clearanceperiods;
 use App\Models\Staffusers;
@@ -72,7 +73,7 @@ class ClearancePolicy
         }
 
         // Only Registrar desk staff (officeId = 1) can record receipt
-        if ($user->officeId !== 1) {
+        if ($user->officeId !== OfficeId::Registrar->value) {
             return false;
         }
 
@@ -123,7 +124,7 @@ class ClearancePolicy
         }
 
         // Must be Accounting office (officeId = 2)
-        if ($user->officeId !== 2) {
+        if ($user->officeId !== OfficeId::Accounting->value) {
             return false;
         }
 

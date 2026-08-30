@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\ClinicRecordStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\OfficeId;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
@@ -39,7 +40,7 @@ class ClinicPolicy
         }
 
         // Must be Clinic office (officeId = 11)
-        if ($user->officeId !== 11) {
+        if ($user->officeId !== OfficeId::Clinic->value) {
             return false;
         }
 
@@ -50,7 +51,7 @@ class ClinicPolicy
 
         // Check workflow step for Clinic (office 11) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 11) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::Clinic->value) {
             return false;
         }
 
@@ -73,7 +74,7 @@ class ClinicPolicy
         }
 
         // Must be Clinic office
-        if ($user->officeId !== 11) {
+        if ($user->officeId !== OfficeId::Clinic->value) {
             return false;
         }
 
@@ -91,7 +92,7 @@ class ClinicPolicy
         }
 
         // Must be Clinic office
-        if ($user->officeId !== 11) {
+        if ($user->officeId !== OfficeId::Clinic->value) {
             return false;
         }
 
@@ -109,6 +110,6 @@ class ClinicPolicy
         }
 
         // Must be Clinic office
-        return $user->officeId === 11;
+        return $user->officeId === OfficeId::Clinic->value;
     }
 }

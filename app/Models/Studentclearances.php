@@ -13,7 +13,7 @@ class Studentclearances extends Model
 
     protected $primaryKey = 'studentClearanceId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['studentId', 'clearancePeriodId', 'overallStatus', 'extendedDeadline', 'receivedBy', 'receivedDate'];
 

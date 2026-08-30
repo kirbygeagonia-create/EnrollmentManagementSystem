@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Enums\StudentType;
 use App\Models\Courses;
 use App\Models\Enrollments;
@@ -123,6 +124,6 @@ class EvaluationPolicy
         }
 
         // Must be Registrar office (officeId = 1)
-        return $user->officeId === 1;
+        return $user->officeId === OfficeId::Registrar->value;
     }
 }

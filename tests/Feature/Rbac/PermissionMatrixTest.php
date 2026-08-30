@@ -76,6 +76,10 @@ class PermissionMatrixTest extends TestCase
      *
      * NOTE: registrar.index maps to EvaluationPolicy::viewAny which checks
      * 'evaluation.view' (Staff HAS this) — not enrollment.approve.
+     *
+     * Audit §2.2: students.index is gated by StudentPolicy (students.view),
+     * which Staff does NOT have — bare Staff and Instructor roles are
+     * excluded from the student directory by design.
      */
     public static function viewRoutesProvider(): array
     {
@@ -90,6 +94,8 @@ class PermissionMatrixTest extends TestCase
             ['blocking.index', 'block.view', true],
             ['clinic.index', 'clinic.view', true],
             ['id.index', 'id.view', true],
+            // students.index — Staff does NOT have students.view (expect 403)
+            ['students.index', 'students.view', false],
             // registrar.index → EvaluationPolicy::viewAny → evaluation.view (Staff HAS it)
             ['registrar.index', 'evaluation.view', true],
             ['admin.reference-data.index', 'refdata.view', true],

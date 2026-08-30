@@ -75,15 +75,15 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
 
-        $request->validate([
+        // Audit §4.5: create() must consume the validated array — never the
+        // raw $request->all() — so the safe field list cannot silently drift.
+        Courses::create($request->validate([
             'unitId' => 'required|exists:academicunits,unitId',
             'courseName' => 'required|string|max:255',
             'courseCode' => 'required|string|max:50|unique:courses,courseCode',
             'requiresEntranceExam' => 'boolean',
             'requiresRetentionExam' => 'boolean',
-        ]);
-
-        Courses::create($request->all());
+        ]));
 
         return back()->with('success', 'Course created.');
     }

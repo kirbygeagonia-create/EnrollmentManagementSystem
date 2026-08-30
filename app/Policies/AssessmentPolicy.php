@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\OfficeId;
 use App\Models\Charges;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
@@ -56,7 +57,7 @@ class AssessmentPolicy
         }
 
         // Must be Scholarship office (officeId = 3)
-        return $user->officeId === 3;
+        return $user->officeId === OfficeId::Scholarship->value;
     }
 
     /**
@@ -69,7 +70,7 @@ class AssessmentPolicy
         }
 
         // Must be Accounting office (officeId = 2)
-        return $user->officeId === 2;
+        return $user->officeId === OfficeId::Accounting->value;
     }
 
     /**

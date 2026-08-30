@@ -17,7 +17,7 @@ class Enrollments extends Model
 
     protected $primaryKey = 'enrollmentId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
 

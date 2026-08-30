@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\Offices;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,33 +9,22 @@ class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
+    public function test_registration_route_is_disabled(): void
     {
-        parent::setUp();
+        // Audit §2.1: public self-registration must not exist. Staff accounts
+        // are created exclusively via Admin → User Management.
+        $this->get('/register')->assertNotFound();
 
-        // Controller defaults new accounts to officeId 1 (Registrar).
-        Offices::create(['officeName' => 'Registrar']);
-    }
-
-    public function test_registration_screen_can_be_rendered(): void
-    {
-        $response = $this->get('/register');
-
-        $response->assertStatus(200);
-    }
-
-    public function test_new_users_can_register(): void
-    {
-        $response = $this->post('/register', [
+        $this->post('/register', [
             'firstName' => 'Test',
             'lastName' => 'User',
             'username' => 'testuser',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ]);
+        ])->assertNotFound();
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $this->assertGuest();
+        $this->assertDatabaseCount('staffusers', 0);
     }
 }

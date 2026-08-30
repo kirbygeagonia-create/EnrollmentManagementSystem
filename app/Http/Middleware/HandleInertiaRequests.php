@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Students;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -33,6 +34,11 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user() ? $request->user()->loadMissing(['office', 'unit', 'roles']) : null,
+            ],
+            // Frontend authorization flags — keeps the UI from offering
+            // links/routes the current user cannot actually use (audit §2.2).
+            'can' => [
+                'studentsView' => $request->user()?->can('viewAny', Students::class) ?? false,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

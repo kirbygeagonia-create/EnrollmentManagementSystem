@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
+use App\Enums\OfficeId;
 use App\Models\Academicterms;
 use App\Models\Admissionrequirements;
 use App\Models\Admissions;
@@ -42,6 +43,7 @@ use App\Policies\IDPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\ReferenceDataPolicy;
 use App\Policies\RegistrarPolicy;
+use App\Policies\StudentPolicy;
 use App\Policies\UserManagementPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
@@ -77,6 +79,7 @@ class AuthServiceProvider extends ServiceProvider
         Blocks::class => ReferenceDataPolicy::class,
         Admissionrequirements::class => ReferenceDataPolicy::class,
         Clearancerequirements::class => ReferenceDataPolicy::class,
+        Students::class => StudentPolicy::class,
         // User-management auxiliary models
         Roles::class => UserManagementPolicy::class,
         Permissions::class => UserManagementPolicy::class,
@@ -176,13 +179,24 @@ class AuthServiceProvider extends ServiceProvider
             return app(BlockingPolicy::class)->manageSchedules($user);
         });
         Gate::define('blocking.assignStudents', function ($user) {
-            // The controller validates each enrollment's workflow step inside the
-            // assignment loop; here we only gate permission + office/role scope.
             if (! $user->hasPermissionTo('block.assign')) {
                 return false;
             }
-            return $user->hasRole(['SysAdmin', 'Admin', 'BlockingCoordinator', 'OfficeHead'])
-                || $user->officeId === 5;
+
+            // SysAdmin/Admin act globally; everyone else must belong to the
+            // Blocking & Scheduling office (OfficeId::Blocking). An OfficeHead
+            // from any other office previously slipped through this gate and
+            // died with a 500 inside WorkflowService's office-scope check
+            // instead of a clean 403.
+            if ($user->hasRole(['SysAdmin', 'Admin'])) {
+                return true;
+            }
+
+            if ($user->officeId !== OfficeId::Blocking->value) {
+                return false;
+            }
+
+            return $user->hasRole(['BlockingCoordinator', 'OfficeHead']);
         });
         Gate::define('blocking.printBlockSchedule', function ($user, $block) {
             return app(BlockingPolicy::class)->printBlockSchedule($user, $block);

@@ -15,7 +15,7 @@ class Students extends Model
 
     protected $primaryKey = 'studentId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix', 'gender', 'birthdate', 'birthplace', 'citizenship', 'civilStatus', 'religionId', 'contactNumber', 'telephoneNumber', 'semestersCompleted', 'yearsInInstitution', 'email', 'username', 'passwordHash', 'status'];
 

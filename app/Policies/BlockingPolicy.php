@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficeId;
 use App\Models\Blocks;
 use App\Models\Staffusers;
 
@@ -41,11 +42,19 @@ class BlockingPolicy
             return false;
         }
 
-        if ($user->hasRole(['SysAdmin', 'Admin', 'BlockingCoordinator', 'OfficeHead'])) {
+        // SysAdmin/Admin act globally; everyone else must belong to the
+        // Blocking & Scheduling office. An OfficeHead from another office
+        // previously passed this gate and failed later inside
+        // WorkflowService with a 500 instead of a clean 403.
+        if ($user->hasRole(['SysAdmin', 'Admin'])) {
             return true;
         }
 
-        return $user->officeId === 5;
+        if ($user->officeId !== OfficeId::Blocking->value) {
+            return false;
+        }
+
+        return $user->hasRole(['BlockingCoordinator', 'OfficeHead']);
     }
 
     /**

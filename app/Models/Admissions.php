@@ -15,7 +15,7 @@ class Admissions extends Model
 
     protected $primaryKey = 'admissionId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['studentId', 'termId', 'courseId', 'applicantType', 'admissionStatus', 'evaluatedBy', 'evaluatedDate'];
 

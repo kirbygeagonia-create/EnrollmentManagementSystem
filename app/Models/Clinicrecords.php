@@ -12,7 +12,7 @@ class Clinicrecords extends Model
 
     protected $primaryKey = 'clinicRecordId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['enrollmentId', 'heightCm', 'weightKg', 'bloodPressure', 'philhealthNumber', 'philhealthRegistered', 'assessmentNotes', 'findings', 'clinicStaffId', 'assessmentDate', 'status'];
 

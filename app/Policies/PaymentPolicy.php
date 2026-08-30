@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficeId;
 use App\Enums\PaymentStatus;
 use App\Models\Payments;
 use App\Models\Staffusers;
@@ -37,7 +38,7 @@ class PaymentPolicy
         }
 
         // Must be Accounting office (officeId = 2)
-        if ($user->officeId !== 2) {
+        if ($user->officeId !== OfficeId::Accounting->value) {
             return false;
         }
 
@@ -59,7 +60,7 @@ class PaymentPolicy
         }
 
         // Must be Accounting office (officeId = 2)
-        if ($user->officeId !== 2) {
+        if ($user->officeId !== OfficeId::Accounting->value) {
             return false;
         }
 
@@ -73,6 +74,6 @@ class PaymentPolicy
     public function dailyReport(Staffusers $user): bool
     {
         return $user->hasPermissionTo('payment.report.daily')
-            && $user->officeId === 2;
+            && $user->officeId === OfficeId::Accounting->value;
     }
 }

@@ -9,8 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('staffusers', function (Blueprint $table) {
+            // Nullable officeId + role enum incl. 'instructor' reflect the
+            // realigned org structure (2026_08_24 realign migration, which
+            // only executes raw ALTERs on MySQL; audit §3.2).
             $table->integer('userId')->autoIncrement();
-            $table->integer('officeId');
+            $table->integer('officeId')->nullable();
             $table->integer('unitId')->nullable();
             $table->string('employeeNo', 150);
             $table->string('firstName', 150);
@@ -19,7 +22,7 @@ return new class extends Migration
             $table->string('username', 150);
             $table->string('passwordHash', 150);
             $table->string('remember_token', 100)->nullable();
-            $table->enum('role', ['staff', 'officeHead', 'dean', 'programHead', 'admin']);
+            $table->enum('role', ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor']);
             $table->string('email', 150);
             $table->string('contactNo', 20);
             $table->enum('status', ['active', 'inactive']);

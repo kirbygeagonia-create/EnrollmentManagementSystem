@@ -13,7 +13,7 @@ class Payments extends Model
 
     protected $primaryKey = 'paymentId';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = ['enrollmentId', 'orNumber', 'amount', 'paymentDate', 'paymentMode', 'processedBy', 'paymentStatus'];
 

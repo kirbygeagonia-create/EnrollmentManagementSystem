@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\Students;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StudentController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Search students by name or school ID number.
      */
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', Students::class);
+
         $query = Students::query()
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('lastName', 'like', "%{$search}%")
@@ -35,6 +40,8 @@ class StudentController extends Controller
      */
     public function show(Students $student): Response
     {
+        $this->authorize('view', $student);
+
         $student->load([
             'religion',
             'addresses',
@@ -64,6 +71,8 @@ class StudentController extends Controller
      */
     public function search(Request $request)
     {
+        $this->authorize('quickSearch', Students::class);
+
         $search = $request->query('query', '');
         if (strlen($search) < 2) {
             return response()->json(['results' => []]);
@@ -80,12 +89,13 @@ class StudentController extends Controller
             ->get()
             ->map(function ($s) {
                 $latestEnrollment = $s->enrollments->sortByDesc('enrollmentId')->first();
+
                 return [
                     'studentId' => $s->studentId,
                     'schoolIdNumber' => $s->schoolIdNumber,
-                    'fullName' => "{$s->lastName}, {$s->firstName} " . ($s->middleName ? "{$s->middleName[0]}." : ''),
-                    'course' => $latestEnrollment?->course?->courseCode ?? 'N/A',
-                    'status' => $latestEnrollment?->enrollmentStatus?->value ?? $s->status,
+                    'fullName' => "{$s->lastName}, {$s->firstName} ".($s->middleName ? "{$s->middleName[0]}." : ''),
+                    'course' => $latestEnrollment?->course->courseCode ?? 'N/A',
+                    'status' => $latestEnrollment?->enrollmentStatus->value ?? $s->status,
                     'url' => route('students.show', $s->studentId),
                 ];
             });

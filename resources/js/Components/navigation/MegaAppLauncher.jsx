@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 
 const subSystems = [
@@ -242,6 +242,8 @@ const subSystems = [
 ];
 
 export default function MegaAppLauncher({ isOpen, onClose, user }) {
+    const { props } = usePage();
+    const canStudentsView = props.can?.studentsView ?? false;
     const [filterQuery, setFilterQuery] = useState('');
     const inputRef = useRef(null);
 
@@ -261,6 +263,8 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
 
     const isAuthorized = (item) => {
         if (user?.role === 'admin') return true;
+        // Student 360 requires the students.view permission (audit §2.2)
+        if (item.route === 'students.index' && !canStudentsView) return false;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
             if (['dean', 'programHead', 'instructor'].includes(user?.role)) {

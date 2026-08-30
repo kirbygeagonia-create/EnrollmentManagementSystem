@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\IdValidationStatus;
+use App\Enums\OfficeId;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Idrequests;
@@ -41,7 +42,7 @@ class IDPolicy
         }
 
         // Must be ID Office (officeId = 22)
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -52,7 +53,7 @@ class IDPolicy
 
         // Check workflow step for ID Office (office 22) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== 22) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -75,7 +76,7 @@ class IDPolicy
         }
 
         // Must be ID Office
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -93,7 +94,7 @@ class IDPolicy
         }
 
         // Must be ID Office
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -119,7 +120,7 @@ class IDPolicy
         }
 
         // Must be ID Office
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -138,7 +139,7 @@ class IDPolicy
         }
 
         // Must be ID Office
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -157,7 +158,7 @@ class IDPolicy
         }
 
         // Must be ID Office
-        if ($user->officeId !== 22) {
+        if ($user->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -175,6 +176,6 @@ class IDPolicy
         }
 
         // Must be ID Office
-        return $user->officeId === 22;
+        return $user->officeId === OfficeId::IdOffice->value;
     }
 }
