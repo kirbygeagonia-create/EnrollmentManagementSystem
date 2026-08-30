@@ -19,23 +19,10 @@ return new class extends Migration
             return;
         }
 
-        $subjectFks = [
-            'fk_creditedsubjects_creditedtosubjectid' => 'creditedsubjects',
-            'fk_curriculumsubjects_prerequisitesubjectid' => 'curriculumsubjects',
-            'fk_curriculumsubjects_subjectid' => 'curriculumsubjects',
-            'fk_enrolledsubjects_subjectid' => 'enrolledsubjects',
-            'fk_schedules_subjectid' => 'schedules',
-        ];
-        $transferFks = [
-            'fk_creditedsubjects_transferrecordid' => 'creditedsubjects',
-        ];
-
-        foreach ($subjectFks as $fk => $table) {
-            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$fk}`");
-        }
-        foreach ($transferFks as $fk => $table) {
-            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$fk}`");
-        }
+        $this->dropForeignKeysReferencing(
+            ['creditedsubjects', 'curriculumsubjects', 'enrolledsubjects', 'schedules'],
+            ['subjects', 'transferacademicrecords']
+        );
 
         DB::statement('ALTER TABLE `workflowsteps` MODIFY `workflowStepId` INT NOT NULL AUTO_INCREMENT');
         DB::statement('ALTER TABLE `transferacademicrecords` MODIFY `transferRecordId` INT NOT NULL AUTO_INCREMENT');
@@ -56,23 +43,10 @@ return new class extends Migration
             return;
         }
 
-        $subjectFks = [
-            'fk_creditedsubjects_creditedtosubjectid' => 'creditedsubjects',
-            'fk_curriculumsubjects_prerequisitesubjectid' => 'curriculumsubjects',
-            'fk_curriculumsubjects_subjectid' => 'curriculumsubjects',
-            'fk_enrolledsubjects_subjectid' => 'enrolledsubjects',
-            'fk_schedules_subjectid' => 'schedules',
-        ];
-        $transferFks = [
-            'fk_creditedsubjects_transferrecordid' => 'creditedsubjects',
-        ];
-
-        foreach ($subjectFks as $fk => $table) {
-            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$fk}`");
-        }
-        foreach ($transferFks as $fk => $table) {
-            DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$fk}`");
-        }
+        $this->dropForeignKeysReferencing(
+            ['creditedsubjects', 'curriculumsubjects', 'enrolledsubjects', 'schedules'],
+            ['subjects', 'transferacademicrecords']
+        );
 
         DB::statement('ALTER TABLE `workflowsteps` MODIFY `workflowStepId` INT NOT NULL');
         DB::statement('ALTER TABLE `transferacademicrecords` MODIFY `transferRecordId` INT NOT NULL');
@@ -85,5 +59,35 @@ return new class extends Migration
         DB::statement('ALTER TABLE `enrolledsubjects` ADD CONSTRAINT `fk_enrolledsubjects_subjectid` FOREIGN KEY (`subjectId`) REFERENCES `subjects` (`subjectId`)');
         DB::statement('ALTER TABLE `schedules` ADD CONSTRAINT `fk_schedules_subjectid` FOREIGN KEY (`subjectId`) REFERENCES `subjects` (`subjectId`)');
         DB::statement('ALTER TABLE `creditedsubjects` ADD CONSTRAINT `fk_creditedsubjects_transferrecordid` FOREIGN KEY (`transferRecordId`) REFERENCES `transferacademicrecords` (`transferRecordId`)');
+    }
+
+    /**
+     * Drop foreign keys that reference the given tables, using their actual
+     * constraint names so this runs identically on fresh (Laravel-generated
+     * `_foreign`) and legacy (hand-authored `fk_...`) schemas. Only the FKs
+     * touching the columns this migration modifies are dropped; every other
+     * FK is left untouched.
+     */
+    private function dropForeignKeysReferencing(array $tables, array $referencedTables): void
+    {
+        $database = DB::connection()->getDatabaseName();
+        $placeholders = implode(', ', array_fill(0, count($referencedTables), '?'));
+
+        foreach ($tables as $table) {
+            $constraints = DB::select(
+                "SELECT constraint_name AS constraint_name
+                 FROM information_schema.key_column_usage
+                 WHERE constraint_schema = ? AND table_name = ?
+                   AND referenced_table_name IN ({$placeholders})
+                 GROUP BY constraint_name,
+                          constraint_schema,
+                          referenced_table_name",
+                array_merge([$database, $table], $referencedTables)
+            );
+
+            foreach ($constraints as $row) {
+                DB::statement("ALTER TABLE `{$table}` DROP FOREIGN KEY `{$row->constraint_name}`");
+            }
+        }
     }
 };

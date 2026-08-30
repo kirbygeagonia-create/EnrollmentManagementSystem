@@ -27,7 +27,9 @@ jobs:
           php artisan key:generate
 
       - name: Run migrations
-        run: php artisan migrate --force
+        run: |
+          php -r "touch('database/database.sqlite');"
+          php artisan migrate --force
 
       - name: Pint (code style)
         run: vendor/bin/pint --test
@@ -35,8 +37,26 @@ jobs:
       - name: PHPStan (static analysis)
         run: vendor/bin/phpstan analyse --no-progress
 
-      - name: Pest (test suite)
-        run: php artisan test
+      - name: Pest (test suite, collect JUnit)
+        run: php artisan test --log-junit junit.xml || true
+
+      - name: Report test failures (annotations) and fail
+        run: |
+          php -r '
+            $f = "junit.xml";
+            if (! file_exists($f)) { echo "::error title=junit::junit.xml missing"; exit(1); }
+            $x = simplexml_load_file($f);
+            $node = $x->xpath("//testcase[failure | error]");
+            if (! $node) { echo "no testcase failures found in junit\n"; exit(0); }
+            foreach ($node as $tc) {
+              $msg = (string) ($tc->failure ?? $tc->error);
+              $msg = str_replace(["\r", "\n"], " ", substr(trim($msg), 0, 800));
+              $name = (string) $tc["name"];
+              $cls  = (string) $tc["class"];
+              echo "::error title={$cls}::{$name}: {$msg}\n";
+            }
+            exit(1);
+          '
 
   backend-mysql:
     name: Backend (Pest) — MySQL 8
@@ -66,7 +86,7 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Run test suite against MySQL (audit §3.2)
+      - name: Run test suite against MySQL (audit §3.2, collect JUnit)
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
@@ -74,7 +94,25 @@ jobs:
           DB_DATABASE: ems_test
           DB_USERNAME: root
           DB_PASSWORD: root
-        run: php artisan test
+        run: php artisan test --log-junit junit.xml || true
+
+      - name: Report test failures (annotations) and fail
+        run: |
+          php -r '
+            $f = "junit.xml";
+            if (! file_exists($f)) { echo "::error title=junit::junit.xml missing"; exit(1); }
+            $x = simplexml_load_file($f);
+            $node = $x->xpath("//testcase[failure | error]");
+            if (! $node) { echo "no testcase failures found in junit\n"; exit(0); }
+            foreach ($node as $tc) {
+              $msg = (string) ($tc->failure ?? $tc->error);
+              $msg = str_replace(["\r", "\n"], " ", substr(trim($msg), 0, 800));
+              $name = (string) $tc["name"];
+              $cls  = (string) $tc["class"];
+              echo "::error title={$cls}::{$name}: {$msg}\n";
+            }
+            exit(1);
+          '
 
   frontend:
     name: Frontend (ESLint + Vite build)
