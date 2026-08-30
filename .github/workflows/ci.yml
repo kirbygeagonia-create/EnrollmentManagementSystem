@@ -86,6 +86,11 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
       - name: Run test suite against MySQL (audit §3.2, collect JUnit)
         env:
           DB_CONNECTION: mysql

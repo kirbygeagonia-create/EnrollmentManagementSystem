@@ -13,7 +13,7 @@ class Academicyears extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['yearLabel', 'startDate', 'endDate'];
+    protected $fillable = ['academicYearId', 'yearLabel', 'startDate', 'endDate'];
 
     protected function casts(): array
     {

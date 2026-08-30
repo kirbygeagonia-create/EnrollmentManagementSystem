@@ -15,7 +15,7 @@ class Academicunits extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['unitName', 'unitType', 'parentUnitId'];
+    protected $fillable = ['unitId', 'unitName', 'unitType', 'parentUnitId'];
 
     protected function casts(): array
     {

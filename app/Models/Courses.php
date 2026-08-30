@@ -14,7 +14,7 @@ class Courses extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresRetentionExam'];
+    protected $fillable = ['courseId', 'unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresRetentionExam'];
 
     protected function casts(): array
     {

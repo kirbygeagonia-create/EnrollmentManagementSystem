@@ -13,7 +13,7 @@ class Religions extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['religionName'];
+    protected $fillable = ['religionId', 'religionName'];
 
     /**
      * @return HasMany<Students, $this>

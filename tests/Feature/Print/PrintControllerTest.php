@@ -89,8 +89,13 @@ class PrintControllerTest extends TestCase
             Offices::firstOrCreate(['officeId' => $id], ['officeName' => $name]);
         }
 
-        // Religion (required for students)
-        DB::table('religions')->insertGetId([
+        // Religion (required for students).
+        // Pin religionId to 1 on MySQL: RefreshDatabase rolls each test back but
+        // AUTO_INCREMENT keeps climbing, so an unpinned insert lands on a new id
+        // while Students fixture rows hard-code religionId 1 (SQLite does not
+        // enforce FKs, so this only ever breaks on the MySQL CI job).
+        DB::table('religions')->insert([
+            'religionId' => 1,
             'religionName' => 'Roman Catholic',
         ]);
 

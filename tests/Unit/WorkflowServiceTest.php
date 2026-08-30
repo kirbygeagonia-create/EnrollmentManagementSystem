@@ -55,12 +55,14 @@ class WorkflowServiceTest extends TestCase
         $this->clinicStaff = Staffusers::factory()->create(['officeId' => 11]);
         $this->idStaff = Staffusers::factory()->create(['officeId' => 22]);
 
-        Religions::create(['religionName' => 'Roman Catholic']);
+        Religions::create(['religionId' => 1, 'religionName' => 'Roman Catholic']);
         Academicunits::create([
+            'unitId' => 1,
             'unitName' => 'College of Computing',
             'unitType' => 'college',
         ]);
         Academicyears::create([
+            'academicYearId' => 1,
             'yearLabel' => '2026-2027',
             'startDate' => '2026-06-01',
             'endDate' => '2027-03-31',
@@ -89,6 +91,7 @@ class WorkflowServiceTest extends TestCase
         ]);
 
         $course = Courses::create([
+            'courseId' => 1,
             'unitId' => 1,
             'courseName' => 'BS Computer Science',
             'courseCode' => 'BSCS',
@@ -97,6 +100,7 @@ class WorkflowServiceTest extends TestCase
         ]);
 
         $term = Academicterms::create([
+            'termId' => 1,
             'academicYearId' => 1,
             'semester' => '1st',
             'startDate' => '2026-06-01',

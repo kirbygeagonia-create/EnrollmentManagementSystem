@@ -15,7 +15,7 @@ class Academicterms extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['academicYearId', 'semester', 'startDate', 'endDate'];
+    protected $fillable = ['termId', 'academicYearId', 'semester', 'startDate', 'endDate'];
 
     protected function casts(): array
     {
