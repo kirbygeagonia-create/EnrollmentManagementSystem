@@ -620,13 +620,15 @@ class IDControllerTest extends TestCase
             'validationStatus' => IdValidationStatus::PendingValidation,
         ]);
 
-        // Try to validate — WorkflowService::signStepByOffice should throw
-        // InvalidStateTransitionException because Clinic step (office 11) is not completed
-        $response = $this->post(route('id.validate', $studentId));
+        // Try to validate — WorkflowService::signStepByOffice throws
+        // InvalidStateTransitionException because Clinic step (office 11) is not
+        // completed. The global exception renderer converts it to a friendly
+        // redirect-back with a flash error (not a raw 500).
+        $response = $this->from(route('id.index'))
+            ->post(route('id.validate', $studentId));
 
-        // The exception is not caught in the controller, so it bubbles up as 500.
-        // We assert the actual behavior: 500 error response.
-        $response->assertStatus(500);
+        $response->assertRedirect(route('id.index'));
+        $response->assertSessionHas('error');
 
         // Verify the step was NOT signed (remains pending)
         $workflow = $enrollment->fresh()->enrollmentworkflow;

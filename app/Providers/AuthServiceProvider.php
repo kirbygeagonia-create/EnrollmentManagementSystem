@@ -145,7 +145,13 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('clinic.view', function ($user) {
             return $user->hasPermissionTo('clinic.view');
         });
-        Gate::define('clinic.record', function ($user, $enrollment) {
+        // NOTE: the ability is intentionally named `clinic.recordAssessment`,
+        // NOT `clinic.record`. Spatie's Gate::before auto-grants any gate whose
+        // name matches a permission the user holds — OfficeHead holds the
+        // `clinic.record` permission, which would bypass ClinicPolicy::record's
+        // office-11 scoping and let ANY office head record clinic assessments.
+        // Same collision-avoidance pattern as id.validateCard / id.releaseCard.
+        Gate::define('clinic.recordAssessment', function ($user, $enrollment) {
             return app(ClinicPolicy::class)->record($user, $enrollment);
         });
 

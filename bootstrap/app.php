@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\InvalidStateTransitionException;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -35,4 +36,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Domain workflow exceptions (EnrollmentStateMachine / WorkflowService)
+        // surface as friendly, actionable feedback instead of a raw 500 page.
+        // Custom renderables take precedence over the debug/Ignition view, so
+        // users get guided feedback in every environment. The exception is
+        // still reported to the log for auditing.
+        $exceptions->render(function (InvalidStateTransitionException $e, Request $request) {
+            $friendly = 'This action can\'t be completed because the record isn\'t at the '
+                .'expected stage of the enrollment workflow — it may have already been '
+                .'processed by another office. Refresh the record and try again. '
+                .'If the problem persists, contact the Registrar.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $friendly], 422);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', $friendly);
+        });
     })->create();

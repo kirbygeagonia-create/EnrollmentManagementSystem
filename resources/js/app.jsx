@@ -32,9 +32,10 @@ createInertiaApp({
 });
 
 // ── Global Inertia Error Listener ──────────────────────────────────
-// Intercept navigation errors (500, 503, etc.) and show a branded
-// error page instead of the default browser error or white screen.
+// On a non-recoverable server response (500, 503, ...) navigate to the
+// server's branded error page instead of failing silently — the previous
+// behavior only logged to the console, so users saw nothing at all.
 router.on('invalid', (event) => {
-    event.preventDefault();
     console.error('[Inertia] Invalid response received', event.detail.response);
+    window.location.href = event.detail.response?.url ?? window.location.href;
 });

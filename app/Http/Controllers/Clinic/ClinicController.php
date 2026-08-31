@@ -71,7 +71,9 @@ class ClinicController extends Controller
      */
     public function record(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('clinic.record', $enrollment);
+        // Ability name avoids the Spatie permission-name collision — see the
+        // gate definition in AuthServiceProvider (office-11 scoping must run).
+        $this->authorize('clinic.recordAssessment', $enrollment);
 
         $validated = $request->validate([
             'heightCm' => 'required|numeric|min:0|max:300',

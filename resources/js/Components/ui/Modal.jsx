@@ -1,4 +1,4 @@
-import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
 
 /**
  * Modal
@@ -51,7 +51,7 @@ export default function Modal({
     return (
         <Transition show={show} leave="duration-200">
             <Dialog as="div" id="modal" className="fixed inset-0 z-50 flex items-center overflow-y-auto px-4 py-6" onClose={close}>
-                <Transition
+                <TransitionChild
                     enter="ease-out duration-300"
                     enterFrom="opacity-0"
                     enterTo="opacity-100"
@@ -60,9 +60,9 @@ export default function Modal({
                     leaveTo="opacity-0"
                 >
                     <div className="modal-overlay" />
-                </Transition>
+                </TransitionChild>
 
-                <Transition
+                <TransitionChild
                     enter="ease-out duration-300"
                     enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     enterTo="opacity-100 translate-y-0 sm:scale-100"
@@ -122,7 +122,7 @@ export default function Modal({
                             </div>
                         )}
                     </DialogPanel>
-                </Transition>
+                </TransitionChild>
             </Dialog>
         </Transition>
     );

@@ -7,7 +7,6 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\UnitType;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
-use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
@@ -427,14 +426,14 @@ class ClinicControllerTest extends TestCase
     }
 
     #[Test]
-    public function test_record_updates_existing_clinic_record(): void
+    public function test_record_on_completed_clinic_record_is_denied(): void
     {
         $clinicStaff = $this->staffForOffice(11);
         $this->actingAs($clinicStaff);
 
         $enrollment = $this->createEnrollment();
 
-        // First record
+        // First record — creates the row and marks it Completed.
         $payload1 = [
             'heightCm' => 165,
             'weightKg' => 60,
@@ -447,7 +446,8 @@ class ClinicControllerTest extends TestCase
         ];
         $this->post(route('clinic.record', $enrollment), $payload1)->assertSessionHasNoErrors();
 
-        // Second record (updateOrCreate should update the same row)
+        // Second record attempt — ClinicPolicy::record denies re-recording a
+        // COMPLETED record (immutability; the reopen flow must be used instead).
         $payload2 = [
             'heightCm' => 170,
             'weightKg' => 65,
@@ -458,21 +458,14 @@ class ClinicControllerTest extends TestCase
             'findings' => 'Slight hypertension',
             'assessmentDate' => now()->toDateString(),
         ];
-        $response = $this->post(route('clinic.record', $enrollment), $payload2);
-        $response->assertSessionHasNoErrors();
+        $this->post(route('clinic.record', $enrollment), $payload2)->assertForbidden();
 
-        // Verify only ONE clinic record exists
+        // Still exactly ONE record, with the ORIGINAL (immutable) values.
         $this->assertEquals(1, Clinicrecords::where('enrollmentId', $enrollment->enrollmentId)->count());
-
-        // Verify values updated
         $record = Clinicrecords::where('enrollmentId', $enrollment->enrollmentId)->first();
-        $this->assertEquals(170.00, $record->heightCm);
-        $this->assertEquals(65.00, $record->weightKg);
-        $this->assertEquals('118/78', $record->bloodPressure);
-        $this->assertEquals('PH-002', $record->philhealthNumber);
-        $this->assertFalse($record->philhealthRegistered);
-        $this->assertEquals('Updated assessment', $record->assessmentNotes);
-        $this->assertEquals('Slight hypertension', $record->findings);
+        $this->assertEquals(165.00, $record->heightCm);
+        $this->assertEquals('PH-001', $record->philhealthNumber);
+        $this->assertEquals('Initial assessment', $record->assessmentNotes);
     }
 
     #[Test]
@@ -497,13 +490,11 @@ class ClinicControllerTest extends TestCase
     #[Test]
     public function test_unauthorized_staff_cannot_record(): void
     {
-        // Staff from office 4 (Department Evaluation) - not Clinic office
-        // OfficeHead role has clinic.record permission, but ClinicPolicy::record checks officeId === 11
-        // However, the controller authorizes against Enrollment (EvaluationPolicy) which doesn't have clinic.record method
-        // The gate 'clinic.record' calls ClinicPolicy::record but Laravel's policy resolution for Enrollment takes precedence
-        // Since EvaluationPolicy has no clinic.record method, authorize() should deny with 403
-        // BUT due to a known issue in the codebase, the authorize check passes and WorkflowService throws 500
-        // This test documents the current behavior (500) with a comment about expected behavior (403)
+        // Staff from office 4 (Department Evaluation) - not Clinic office.
+        // OfficeHead role holds the `clinic.record` PERMISSION, but the gate
+        // ability is `clinic.recordAssessment` (collision-avoidance naming,
+        // see AuthServiceProvider) so Spatie cannot bypass ClinicPolicy::
+        // record's office-11 scoping. Expected: 403 from the policy check.
         $unauthorizedStaff = $this->staffForOffice(4);
         $this->actingAs($unauthorizedStaff);
 
@@ -522,10 +513,11 @@ class ClinicControllerTest extends TestCase
 
         $response = $this->post(route('clinic.record', $enrollment), $payload);
 
-        // Current behavior: 500 because authorize check passes (policy resolution bug)
-        // Expected behavior: 403 because ClinicPolicy::record denies officeId !== 11
-        $response->assertStatus(500);
-        // $response->assertForbidden(); // Uncomment when the authorize bug is fixed
+        // Office-4 staff must be denied by ClinicPolicy::record (office scope).
+        $response->assertForbidden();
+
+        // No clinic record may have been created by the unauthorized user.
+        $this->assertNull(Clinicrecords::where('enrollmentId', $enrollment->enrollmentId)->first());
     }
 
     #[Test]
@@ -578,13 +570,17 @@ class ClinicControllerTest extends TestCase
             'assessmentDate' => now()->toDateString(),
         ];
 
-        // The controller calls WorkflowService::signStepByOffice which throws
-        // InvalidStateTransitionException because the previous step (Blocking, office 5)
-        // is not completed. We catch the exception from the response.
-        $response = $this->post(route('clinic.record', $enrollment), $payload);
+        // The controller's gate (`clinic.recordAssessment`) now correctly runs
+        // ClinicPolicy::record, whose workflow check denies recording while the
+        // Blocking step (office 5) is still pending → 403 before any workflow
+        // mutation is attempted.
+        $response = $this->from(route('clinic.index'))
+            ->post(route('clinic.record', $enrollment), $payload);
 
-        // Exception bubbles up as 500 (no exception handler for InvalidStateTransitionException)
-        $response->assertStatus(500);
+        $response->assertForbidden();
+
+        // No clinic record may exist, and the Blocking step must remain unsigned.
+        $this->assertNull(Clinicrecords::where('enrollmentId', $enrollment->enrollmentId)->first());
     }
 
     #[Test]
