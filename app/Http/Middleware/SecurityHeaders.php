@@ -24,6 +24,21 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+        // Audit §4.3: baseline Content-Security-Policy header
+        $cspDirectives = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.bunny.net https://fonts.gstatic.com data:",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' ws: wss: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*",
+            "frame-ancestors 'none'",
+            "form-action 'self'",
+            "base-uri 'self'",
+            "object-src 'none'",
+        ];
+        $response->headers->set('Content-Security-Policy', implode('; ', $cspDirectives));
+
         if ($request->isSecure()) {
             $response->headers->set(
                 'Strict-Transport-Security',

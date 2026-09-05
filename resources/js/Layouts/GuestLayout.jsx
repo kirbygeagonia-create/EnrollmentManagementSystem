@@ -4,13 +4,13 @@ import { Link } from '@inertiajs/react';
 export default function GuestLayout({ children }) {
     return (
         <div className="relative min-h-screen overflow-hidden bg-navy-950 font-sans text-navy-100 selection:bg-seait-500 selection:text-white">
-            {/* Wide-Angle Campus Background Image with gentle blur and soft lighting */}
+            {/* Real SEAIT Campus Photo — front facade with arch and Mt. Matutum backdrop */}
             <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105 transition-all duration-1000"
                 style={{
-                    backgroundImage: "url('/images/seait_campus_wide.jpg')",
-                    filter: 'blur(2.5px) brightness(0.42) saturate(1.15)',
+                    backgroundImage: "url('/images/seait_front_facade.jpg')",
+                    filter: 'blur(2px) brightness(0.38) saturate(1.2)',
                 }}
             />
 
