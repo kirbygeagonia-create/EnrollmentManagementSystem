@@ -104,9 +104,10 @@ export default function Index({ admissions, filters = {} }) {
             <Head title="Admissions" />
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                     <StatCard
+                        compact
                         label="Total Applications"
                         value={stats.total}
                         iconBg="seait"
@@ -119,6 +120,7 @@ export default function Index({ admissions, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '60ms' }}>
                     <StatCard
+                        compact
                         label="Pending Review"
                         value={stats.pending}
                         iconBg="warning"
@@ -131,6 +133,7 @@ export default function Index({ admissions, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
                     <StatCard
+                        compact
                         label="Approved"
                         value={stats.approved}
                         iconBg="success"
@@ -143,6 +146,7 @@ export default function Index({ admissions, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
                     <StatCard
+                        compact
                         label="Rejected"
                         value={stats.rejected}
                         iconBg="danger"

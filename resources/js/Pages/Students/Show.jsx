@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { PageHeader, Card, Badge, StepProgress, EmptyState, StatCard, FormSection } from '@/Components/ui';
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 const stepStatusTone = {
     completed: 'success',
@@ -185,6 +185,8 @@ function EnrollmentCard({ enrollment }) {
 }
 
 export default function Show({ student }) {
+    const [activeTab, setActiveTab] = useState('enrollments');
+
     const studentName = useMemo(
         () => `${student.lastName}, ${student.firstName}${student.middleName ? ` ${student.middleName.charAt(0)}.` : ''}${student.suffix ? ` ${student.suffix}` : ''}`.trim(),
         [student]
@@ -298,6 +300,7 @@ export default function Show({ student }) {
                 {/* Status Overview StatCards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
+                        compact
                         label="Enrollment Status"
                         value={formatStatus(latestStatus)}
                         icon={
@@ -308,6 +311,7 @@ export default function Show({ student }) {
                         iconBg="seait"
                     />
                     <StatCard
+                        compact
                         label="Clearance Status"
                         value={formatStatus(clearanceStatus)}
                         icon={
@@ -318,6 +322,7 @@ export default function Show({ student }) {
                         iconBg="warning"
                     />
                     <StatCard
+                        compact
                         label="Total Assessed"
                         value={totalAssessed > 0 ? `₱${totalAssessed.toLocaleString('en-PH')}` : '—'}
                         icon={
@@ -328,103 +333,206 @@ export default function Show({ student }) {
                         iconBg="accent"
                     />
                     <StatCard
+                        compact
                         label="Scholarship"
                         value={formatStatus(scholarshipStatus)}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                             </svg>
                         }
                         iconBg="success"
                     />
                 </div>
 
-                {/* Admissions */}
-                <Card title="Admissions" subtitle="Admission applications on record">
-                    {student.admissions?.length ? (
-                        <div className="space-y-3">
-                            {student.admissions.map((ad) => (
-                                <div key={ad.admissionId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
-                                    <div>
-                                        <p className="font-medium text-brand-900">{ad.course?.courseName || '—'}</p>
-                                        <p className="text-brand-500 mt-0.5">
-                                            {ad.applicantType || '—'} · {ad.submittedDate ? new Date(ad.submittedDate).toLocaleDateString('en-PH') : ''}
-                                        </p>
-                                    </div>
-                                    <Badge tone={ad.admissionStatus || 'neutral'}>
-                                        {formatStatus(ad.admissionStatus)}
-                                    </Badge>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <EmptyState title="No admissions" message="No admission records for this student." />
-                    )}
-                </Card>
+                {/* Modern Segmented Navigation Tabs */}
+                <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('enrollments')}
+                        className={`px-4 py-2 rounded-xl font-heading font-semibold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'enrollments'
+                                ? 'bg-seait-600 text-white shadow-md shadow-seait-600/20'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        <span>Enrollment Workflows</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'enrollments' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {enrollments.length}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('admissions')}
+                        className={`px-4 py-2 rounded-xl font-heading font-semibold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'admissions'
+                                ? 'bg-seait-600 text-white shadow-md shadow-seait-600/20'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        <span>Admissions & Exams</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'admissions' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {(student.admissions?.length || 0) + (student.examresults?.length || 0)}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('clearances')}
+                        className={`px-4 py-2 rounded-xl font-heading font-semibold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'clearances'
+                                ? 'bg-seait-600 text-white shadow-md shadow-seait-600/20'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        <span>Clearances & Scholarships</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'clearances' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {(student.studentclearances?.length || 0) + (student.studentscholarships?.length || 0)}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('credentials')}
+                        className={`px-4 py-2 rounded-xl font-heading font-semibold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'credentials'
+                                ? 'bg-seait-600 text-white shadow-md shadow-seait-600/20'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        <span>Student IDs</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'credentials' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {student.studentids?.length || 0}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('all')}
+                        className={`ml-auto px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            activeTab === 'all'
+                                ? 'bg-slate-800 text-white'
+                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                        }`}
+                    >
+                        View All Records
+                    </button>
+                </div>
 
-                {/* Enrollment Workflows */}
-                <Card title="Enrollment Workflows" subtitle="Enrollment history with workflow progress">
-                    {enrollments.length ? (
-                        <div>
-                            {enrollments.map((enrollment) => (
-                                <EnrollmentCard key={enrollment.enrollmentId} enrollment={enrollment} />
-                            ))}
-                        </div>
-                    ) : (
-                        <EmptyState title="No enrollments" message="No enrollment records for this student." />
-                    )}
-                </Card>
-
-                {/* Clearances */}
-                <Card title="Clearances" subtitle="Clearance periods and overall status">
-                    {student.studentclearances?.length ? (
-                        <div className="space-y-3">
-                            {student.studentclearances.map((sc) => (
-                                <div key={sc.studentClearanceId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
-                                    <div>
-                                        <p className="font-medium text-brand-900">
-                                            {sc.clearancePeriod?.periodName || `Period #${sc.clearancePeriodId || ''}`}
-                                        </p>
-                                        <p className="text-brand-500 mt-0.5">
-                                            {sc.receivedDate ? `Received ${new Date(sc.receivedDate).toLocaleDateString('en-PH')}` : 'Not yet received'}
-                                        </p>
-                                    </div>
-                                    <Badge tone={clearanceStatusToneMap[sc.overallStatus] || sc.overallStatus || 'neutral'}>
-                                        {formatStatus(sc.overallStatus)}
-                                    </Badge>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <EmptyState title="No clearances" message="No clearance records for this student." />
-                    )}
-                </Card>
-
-                {/* Exam Results */}
-                {student.examresults?.length > 0 && (
-                    <Card title="Exam Results" subtitle="Entrance and qualifying exam outcomes">
-                        <div className="space-y-3">
-                            {student.examresults.map((er) => (
-                                <div key={er.examId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
-                                    <div>
-                                        <p className="font-medium text-brand-900">
-                                            {er.examStage} · {er.examType}
-                                        </p>
-                                        <p className="text-brand-500 mt-0.5">{er.examDate ? new Date(er.examDate).toLocaleDateString('en-PH') : ''}</p>
-                                    </div>
-                                    <Badge tone={er.examResult === 'pass' ? 'success' : er.examResult === 'fail' ? 'danger' : 'neutral'}>
-                                        {er.examResult?.toUpperCase() || '—'}
-                                    </Badge>
-                                </div>
-                            ))}
-                        </div>
+                {/* Tab Content: Enrollment Workflows */}
+                {(activeTab === 'enrollments' || activeTab === 'all') && (
+                    <Card title="Enrollment Workflows" subtitle="Enrollment history with multi-office workflow progress">
+                        {enrollments.length ? (
+                            <div>
+                                {enrollments.map((enrollment) => (
+                                    <EnrollmentCard key={enrollment.enrollmentId} enrollment={enrollment} />
+                                ))}
+                            </div>
+                        ) : (
+                            <EmptyState title="No enrollments" message="No enrollment records for this student." />
+                        )}
                     </Card>
                 )}
 
-                {/* IDs & Scholarships */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card title="IDs" subtitle="Issued student identification">
+                {/* Tab Content: Admissions & Exams */}
+                {(activeTab === 'admissions' || activeTab === 'all') && (
+                    <div className="space-y-6">
+                        {/* Admissions */}
+                        <Card title="Admissions Intake" subtitle="Admission applications and entry status">
+                            {student.admissions?.length ? (
+                                <div className="space-y-3">
+                                    {student.admissions.map((ad) => (
+                                        <div key={ad.admissionId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                            <div>
+                                                <p className="font-medium text-brand-900">{ad.course?.courseName || '—'}</p>
+                                                <p className="text-brand-500 mt-0.5">
+                                                    {ad.applicantType || '—'} · {ad.submittedDate ? new Date(ad.submittedDate).toLocaleDateString('en-PH') : ''}
+                                                </p>
+                                            </div>
+                                            <Badge tone={ad.admissionStatus || 'neutral'}>
+                                                {formatStatus(ad.admissionStatus)}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <EmptyState title="No admissions" message="No admission records for this student." />
+                            )}
+                        </Card>
+
+                        {/* Exam Results */}
+                        {student.examresults?.length > 0 && (
+                            <Card title="Exam Results & Retention Scores" subtitle="Entrance and qualifying exam outcomes">
+                                <div className="space-y-3">
+                                    {student.examresults.map((er) => (
+                                        <div key={er.examId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                            <div>
+                                                <p className="font-medium text-brand-900">
+                                                    {er.examStage} · {er.examType}
+                                                </p>
+                                                <p className="text-brand-500 mt-0.5">{er.examDate ? new Date(er.examDate).toLocaleDateString('en-PH') : ''}</p>
+                                            </div>
+                                            <Badge tone={er.examResult === 'pass' ? 'success' : er.examResult === 'fail' ? 'danger' : 'neutral'}>
+                                                {er.examResult?.toUpperCase() || '—'}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+                    </div>
+                )}
+
+                {/* Tab Content: Clearances & Scholarships */}
+                {(activeTab === 'clearances' || activeTab === 'all') && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Clearances */}
+                        <Card title="Clearance History" subtitle="Clearance periods and sign-off status">
+                            {student.studentclearances?.length ? (
+                                <div className="space-y-3">
+                                    {student.studentclearances.map((sc) => (
+                                        <div key={sc.studentClearanceId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                            <div>
+                                                <p className="font-medium text-brand-900">
+                                                    {sc.clearancePeriod?.periodName || `Period #${sc.clearancePeriodId || ''}`}
+                                                </p>
+                                                <p className="text-brand-500 mt-0.5">
+                                                    {sc.receivedDate ? `Received ${new Date(sc.receivedDate).toLocaleDateString('en-PH')}` : 'Not yet received'}
+                                                </p>
+                                            </div>
+                                            <Badge tone={clearanceStatusToneMap[sc.overallStatus] || sc.overallStatus || 'neutral'}>
+                                                {formatStatus(sc.overallStatus)}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <EmptyState title="No clearances" message="No clearance records for this student." />
+                            )}
+                        </Card>
+
+                        {/* Scholarships */}
+                        <Card title="Scholarship Records" subtitle="Awarded institutional grants and discounts">
+                            {student.studentscholarships?.length ? (
+                                <div className="space-y-3">
+                                    {student.studentscholarships.map((ss) => (
+                                        <div key={ss.studentScholarshipId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                            <p className="font-medium text-brand-900">
+                                                {ss.scholarshipType?.scholarshipName || `Scholarship #${ss.scholarshipTypeId}`}
+                                            </p>
+                                            <Badge tone={scholarshipStatusToneMap[ss.status] || 'neutral'}>
+                                                {formatStatus(ss.status)}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <EmptyState title="No scholarships" message="No scholarship records for this student." />
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {/* Tab Content: Credentials & IDs */}
+                {(activeTab === 'credentials' || activeTab === 'all') && (
+                    <Card title="Student Identification Cards" subtitle="Issued physical & digital student credentials">
                         {student.studentids?.length ? (
                             <div className="space-y-3">
                                 {student.studentids.map((id) => (
@@ -442,26 +550,7 @@ export default function Show({ student }) {
                             <EmptyState title="No IDs" message="No ID records for this student." />
                         )}
                     </Card>
-
-                    <Card title="Scholarships" subtitle="Awarded scholarship records">
-                        {student.studentscholarships?.length ? (
-                            <div className="space-y-3">
-                                {student.studentscholarships.map((ss) => (
-                                    <div key={ss.studentScholarshipId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
-                                        <p className="font-medium text-brand-900">
-                                            {ss.scholarshipType?.scholarshipName || `Scholarship #${ss.scholarshipTypeId}`}
-                                        </p>
-                                        <Badge tone={scholarshipStatusToneMap[ss.status] || 'neutral'}>
-                                            {formatStatus(ss.status)}
-                                        </Badge>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <EmptyState title="No scholarships" message="No scholarship records for this student." />
-                        )}
-                    </Card>
-                </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

@@ -51,6 +51,7 @@ export default function Show({ admission, requirements }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [infoTab, setInfoTab] = useState('demographics');
 
     const student = admission.student;
     const addresses = student?.addresses || [];
@@ -146,8 +147,8 @@ export default function Show({ admission, requirements }) {
         >
             <Head title="Admission Details" />
 
-            {/* Status Banner */}
-            <div className={`mb-6 rounded-card border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${banner.wrap}`}>
+            {/* Status Banner with Quick Decision Actions */}
+            <div className={`mb-6 rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm ${banner.wrap}`}>
                 <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center justify-center h-10 w-10 rounded-xl ${banner.chip}`}>
                         {admission.admissionStatus === 'approved' ? (
@@ -159,200 +160,239 @@ export default function Show({ admission, requirements }) {
                         )}
                     </span>
                     <div>
-                        <p className="font-semibold text-brand-900">{banner.title}</p>
-                        <p className="text-sm text-brand-600">{banner.desc}</p>
+                        <p className="font-semibold text-brand-900 text-base">{banner.title}</p>
+                        <p className="text-xs text-brand-600">{banner.desc}</p>
                     </div>
                 </div>
-                <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
-                    {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
-                </Badge>
-            </div>
 
-            {/* Student Profile Card */}
-            <Card title="Student Profile" subtitle="Demographic and academic information" className="mb-6">
-                <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                    <FormSection label="School ID">
-                        <dd className="text-brand-900 font-mono">{student?.schoolIdNumber || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Full Name">
-                        <dd className="text-brand-900">
-                            {student?.lastName}, {student?.firstName} {student?.middleName ? student.middleName.charAt(0) + '.' : ''} {student?.suffix || ''}
-                        </dd>
-                    </FormSection>
-                    <FormSection label="Applicant Type">
-                        <dd>
-                            <Badge tone={applicantTypeToneMap[admission.applicantType] || 'neutral'}>
-                                {admission.applicantType?.replace(/([A-Z])/g, ' $1') || '—'}
-                            </Badge>
-                        </dd>
-                    </FormSection>
-                    <FormSection label="Course">
-                        <dd className="text-brand-900">{admission.course?.courseName || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Term">
-                        <dd className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.year || ''}</dd>
-                    </FormSection>
-                    <FormSection label="Admission Status">
-                        <dd>
-                            <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
-                                {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
-                            </Badge>
-                        </dd>
-                    </FormSection>
-                    <FormSection label="Gender">
-                        <dd className="text-brand-900">{student?.gender?.charAt(0).toUpperCase() + student?.gender?.slice(1) || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Birthdate">
-                        <dd className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Birthplace">
-                        <dd className="text-brand-900">{student?.birthplace || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Citizenship">
-                        <dd className="text-brand-900">{student?.citizenship || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Civil Status">
-                        <dd className="text-brand-900">{student?.civilStatus?.charAt(0).toUpperCase() + student?.civilStatus?.slice(1) || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Religion">
-                        <dd className="text-brand-900">{student?.religion?.religionName || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Contact Number">
-                        <dd className="text-brand-900">{student?.contactNumber || '—'}</dd>
-                    </FormSection>
-                    <FormSection label="Email">
-                        <dd className="text-brand-900">{student?.email || '—'}</dd>
-                    </FormSection>
-                </dl>
-
-                {/* Addresses */}
-                <div className="mt-6 pt-6 border-t border-brand-100">
-                    <h4 className="font-medium text-brand-900 mb-3">Addresses</h4>
-                    <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormSection label="Home Address">
-                            <dd className="text-brand-600">{formatAddress(homeAddress)}</dd>
-                        </FormSection>
-                        <FormSection label="Current Address">
-                            <dd className="text-brand-600">{formatAddress(currentAddress)}</dd>
-                        </FormSection>
-                        <FormSection label="Permanent Address">
-                            <dd className="text-brand-600">{formatAddress(permanentAddress)}</dd>
-                        </FormSection>
-                    </dl>
-                </div>
-
-                {/* Guardians */}
-                {guardians.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-brand-100">
-                        <h4 className="font-medium text-brand-900 mb-3">Guardians</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {guardians.map((guardian, idx) => (
-                                <div key={idx} className="border border-brand-200 rounded-card p-4">
-                                    <p className="font-medium text-brand-900">{guardian.fullName}</p>
-                                    <p className="text-sm text-brand-600">{guardian.relationship?.charAt(0).toUpperCase() + guardian.relationship?.slice(1)}</p>
-                                    <p className="text-sm text-brand-600">{guardian.contactNumber}</p>
-                                    {guardian.email && <p className="text-sm text-brand-600">{guardian.email}</p>}
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {guardian.isEmergencyContact && <span className="badge badge-info">Emergency Contact</span>}
-                                        {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning">Authorized Representative</span>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </Card>
-
-            {/* Requirements */}
-            <Card title="Requirements" subtitle="Document submissions and verification status" className="mb-6">
-                {requirements.length > 0 ? (
-                    <ul className="space-y-3">
-                        {requirements.map((req) => {
-                            const submission = requirementSubmissions.find(s => s.requirementId === req.requirementId);
-                            const status = submission?.submissionStatus || 'pending';
-                            const hasDocument = submission?.documents && submission.documents.length > 0;
-
-                            return (
-                                <li key={req.requirementId} className="border border-brand-200 rounded-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                    <div className="flex-1">
-                                        <p className="font-medium text-brand-900">{req.requirementName}</p>
-                                        <p className="text-sm text-brand-500">
-                                            {req.appliesTo === 'all' ? 'Applies to all applicant types' : `Applies to: ${req.appliesTo}`}
-                                            {req.isRequired && ' • Required'}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Badge tone={submissionStatusToneMap[status] || 'neutral'}>
-                                            {status?.charAt(0).toUpperCase() + status?.slice(1)}
-                                        </Badge>
-                                        {hasDocument && (
-                                            <span className="badge badge-info text-xs">Document uploaded</span>
-                                        )}
-                                        {status === 'pending' && (
-                                            <button
-                                                onClick={() => handleSubmitRequirement(req.requirementId)}
-                                                disabled={isSubmitting}
-                                                className="btn btn-primary btn-sm"
-                                            >
-                                                Submit
-                                            </button>
-                                        )}
-                                        {(status === 'submitted' || status === 'incomplete') && (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleVerifyRequirement(req.requirementId, true)}
-                                                    disabled={isSubmitting}
-                                                    className="btn btn-primary btn-sm"
-                                                >
-                                                    Verify
-                                                </button>
-                                                <button
-                                                    onClick={() => handleVerifyRequirement(req.requirementId, false)}
-                                                    disabled={isSubmitting}
-                                                    className="btn btn-danger btn-sm"
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                ) : (
-                    <p className="text-brand-500 text-center py-8">No requirements configured for this applicant type.</p>
-                )}
-            </Card>
-
-            {/* Actions */}
-            <Card title="Actions" className="mb-6">
-                <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     {admission.admissionStatus === 'pending' && (
                         <>
                             <button
+                                type="button"
                                 onClick={handleApprove}
                                 disabled={isSubmitting}
-                                className="btn btn-primary"
+                                className="btn btn-primary btn-sm flex items-center gap-1.5 shadow-sm"
                             >
-                                {isSubmitting ? 'Approving...' : 'Approve Admission'}
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                                {isSubmitting ? 'Processing...' : 'Approve Admission'}
                             </button>
                             <button
+                                type="button"
                                 onClick={handleReject}
                                 disabled={isSubmitting}
-                                className="btn btn-danger"
+                                className="btn btn-danger btn-sm flex items-center gap-1.5"
                             >
-                                {isSubmitting ? 'Rejecting...' : 'Reject Admission'}
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                {isSubmitting ? 'Processing...' : 'Reject'}
                             </button>
                         </>
                     )}
-                    {admission.admissionStatus === 'approved' && (
-                        <span className="badge badge-success self-center">Admission approved</span>
+                    <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
+                        {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
+                    </Badge>
+                </div>
+            </div>
+
+            {/* 2-Column High-Efficiency Workstation Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                {/* Left Column (7 cols): Student Profile Dossier with Tab switcher */}
+                <div className="lg:col-span-7 space-y-4">
+                    {/* Tab Switcher for Student Profile */}
+                    <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <button
+                            type="button"
+                            onClick={() => setInfoTab('demographics')}
+                            className={`px-3.5 py-1.5 rounded-xl font-heading font-semibold text-xs transition-all ${
+                                infoTab === 'demographics'
+                                    ? 'bg-seait-600 text-white shadow-sm'
+                                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
+                        >
+                            Demographic & Academic
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setInfoTab('guardians')}
+                            className={`px-3.5 py-1.5 rounded-xl font-heading font-semibold text-xs transition-all ${
+                                infoTab === 'guardians'
+                                    ? 'bg-seait-600 text-white shadow-sm'
+                                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
+                        >
+                            Addresses & Guardians
+                        </button>
+                    </div>
+
+                    {infoTab === 'demographics' && (
+                        <Card title="Candidate Academic & Personal Profile" subtitle="Intake registration details on file">
+                            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-xs">
+                                <FormSection label="School ID">
+                                    <dd className="text-brand-900 font-mono font-bold text-sm">{student?.schoolIdNumber || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Full Name">
+                                    <dd className="text-brand-900 font-semibold text-sm">
+                                        {student?.lastName}, {student?.firstName} {student?.middleName ? student.middleName.charAt(0) + '.' : ''} {student?.suffix || ''}
+                                    </dd>
+                                </FormSection>
+                                <FormSection label="Applicant Type">
+                                    <dd>
+                                        <Badge tone={applicantTypeToneMap[admission.applicantType] || 'neutral'}>
+                                            {admission.applicantType?.replace(/([A-Z])/g, ' $1') || '—'}
+                                        </Badge>
+                                    </dd>
+                                </FormSection>
+                                <FormSection label="Course / Program">
+                                    <dd className="text-brand-900 font-medium">{admission.course?.courseName || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Term">
+                                    <dd className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.year || ''}</dd>
+                                </FormSection>
+                                <FormSection label="Gender">
+                                    <dd className="text-brand-900 capitalize">{student?.gender || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Birthdate">
+                                    <dd className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Birthplace">
+                                    <dd className="text-brand-900">{student?.birthplace || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Citizenship">
+                                    <dd className="text-brand-900">{student?.citizenship || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Civil Status">
+                                    <dd className="text-brand-900 capitalize">{student?.civilStatus || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Religion">
+                                    <dd className="text-brand-900">{student?.religion?.religionName || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Contact Number">
+                                    <dd className="text-brand-900 font-mono">{student?.contactNumber || '—'}</dd>
+                                </FormSection>
+                                <FormSection label="Email">
+                                    <dd className="text-brand-900 truncate font-mono">{student?.email || '—'}</dd>
+                                </FormSection>
+                            </dl>
+                        </Card>
                     )}
-                    {admission.admissionStatus === 'rejected' && (
-                        <span className="badge badge-danger self-center">Admission rejected</span>
+
+                    {infoTab === 'guardians' && (
+                        <div className="space-y-4">
+                            <Card title="Registered Addresses" subtitle="Residential geographic contact">
+                                <dl className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                    <FormSection label="Home Address">
+                                        <dd className="text-brand-700">{formatAddress(homeAddress)}</dd>
+                                    </FormSection>
+                                    <FormSection label="Current Address">
+                                        <dd className="text-brand-700">{formatAddress(currentAddress)}</dd>
+                                    </FormSection>
+                                    <FormSection label="Permanent Address">
+                                        <dd className="text-brand-700">{formatAddress(permanentAddress)}</dd>
+                                    </FormSection>
+                                </dl>
+                            </Card>
+
+                            {guardians.length > 0 && (
+                                <Card title="Guardians & Emergency Contacts" subtitle="Authorized representatives">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                        {guardians.map((guardian, idx) => (
+                                            <div key={idx} className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                                                <p className="font-semibold text-brand-900">{guardian.fullName}</p>
+                                                <p className="text-slate-500 capitalize">{guardian.relationship}</p>
+                                                <p className="text-slate-600 font-mono mt-1">{guardian.contactNumber}</p>
+                                                {guardian.email && <p className="text-slate-500 truncate">{guardian.email}</p>}
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {guardian.isEmergencyContact && <span className="badge badge-info text-[10px]">Emergency</span>}
+                                                    {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning text-[10px]">Authorized</span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            )}
+                        </div>
                     )}
                 </div>
+
+                {/* Right Column (5 cols): Requirements Verification Station */}
+                <div className="lg:col-span-5 space-y-4">
+                    <Card title="Admission Requirements Verification" subtitle="Physical & digital document checklist">
+                        {requirements.length > 0 ? (
+                            <ul className="space-y-3">
+                                {requirements.map((req) => {
+                                    const submission = requirementSubmissions.find(s => s.requirementId === req.requirementId);
+                                    const status = submission?.submissionStatus || 'pending';
+                                    const hasDocument = submission?.documents && submission.documents.length > 0;
+
+                                    return (
+                                        <li key={req.requirementId} className="border border-slate-200 rounded-xl p-3.5 bg-white shadow-2xs flex flex-col gap-2.5">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <p className="font-semibold text-brand-900 text-xs">{req.requirementName}</p>
+                                                    <p className="text-[11px] text-slate-500">
+                                                        {req.appliesTo === 'all' ? 'All applicants' : req.appliesTo}
+                                                        {req.isRequired && ' • Required'}
+                                                    </p>
+                                                </div>
+                                                <Badge tone={submissionStatusToneMap[status] || 'neutral'}>
+                                                    {status?.charAt(0).toUpperCase() + status?.slice(1)}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                                                {hasDocument ? (
+                                                    <span className="badge badge-info text-[10px]">Document attached</span>
+                                                ) : (
+                                                    <span className="text-[11px] text-slate-400">No file attached</span>
+                                                )}
+
+                                                <div className="flex items-center gap-1.5">
+                                                    {status === 'pending' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSubmitRequirement(req.requirementId)}
+                                                            disabled={isSubmitting}
+                                                            className="btn btn-secondary btn-sm text-xs py-1 px-2.5"
+                                                        >
+                                                            Upload File
+                                                        </button>
+                                                    )}
+                                                    {(status === 'submitted' || status === 'incomplete') && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleVerifyRequirement(req.requirementId, true)}
+                                                                disabled={isSubmitting}
+                                                                className="btn btn-primary btn-sm text-xs py-1 px-2.5"
+                                                            >
+                                                                Verify
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleVerifyRequirement(req.requirementId, false)}
+                                                                disabled={isSubmitting}
+                                                                className="btn btn-danger btn-sm text-xs py-1 px-2"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <p className="text-slate-400 text-center py-6 text-xs">No requirements configured for this applicant type.</p>
+                        )}
+                    </Card>
+                </div>
+            </div>
 
                 {/* Confirm Approve Cause & Effect Modal */}
                 <CauseEffectModal
@@ -404,7 +444,6 @@ export default function Show({ admission, requirements }) {
                     cancelText="Cancel, Keep Under Review"
                     loading={isSubmitting}
                 />
-            </Card>
         </AuthenticatedLayout>
     );
 }

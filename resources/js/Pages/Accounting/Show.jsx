@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -39,6 +40,7 @@ export default function Show({ assessment }) {
     const studentName = student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : '—';
 
     // Record Payment Form
+    const { formProps } = useFormKeyboardNav();
     const { data, setData, post, errors, reset } = useForm({
         orNumber: '',
         amount: outstanding > 0 ? outstanding.toString() : '',
@@ -134,41 +136,45 @@ export default function Show({ assessment }) {
             {/* Quick Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
+                    compact
                     label="Total Assessed"
                     value={peso(totalAssessed)}
                     iconBg="seait"
                     icon={
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m0 0h-6m6 0V7" />
                         </svg>
                     }
                 />
                 <StatCard
+                    compact
                     label="Total Grants / Waived"
                     value={peso(totalScholarship + totalWaived)}
                     iconBg="info"
                     icon={
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
                         </svg>
                     }
                 />
                 <StatCard
+                    compact
                     label="Total Paid To Date"
                     value={peso(totalPaid)}
                     iconBg="success"
                     icon={
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
                     }
                 />
                 <StatCard
+                    compact
                     label="Outstanding Balance"
                     value={peso(outstanding)}
                     iconBg={outstanding > 0 ? "danger" : "success"}
                     icon={
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1" />
                         </svg>
                     }
@@ -263,7 +269,15 @@ export default function Show({ assessment }) {
                             </span>
                         </div>
 
-                        <form onSubmit={handleRecordPayment} className="space-y-4 text-xs">
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 mb-3">
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-[10px]">Enter ↵</kbd> next field</span>
+                            </span>
+                            <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-[10px]">Ctrl+Enter</kbd> submit OR</span>
+                        </div>
+
+                        <form onSubmit={handleRecordPayment} {...formProps} className="space-y-4 text-xs">
                             {/* OR Number */}
                             <div>
                                 <label className="block text-slate-300 font-semibold mb-1">

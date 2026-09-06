@@ -118,7 +118,7 @@ export default function AuthenticatedLayout({ header, children }) {
         <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col">
             {/* Top Tier: Executive Global Command Console */}
             <header className="sticky top-0 z-40 bg-[#0B1528] text-white border-b border-slate-800 shadow-md no-print">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16 gap-3 sm:gap-6">
                         {/* Left: Brand + Mega-App Launcher */}
                         <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
@@ -143,7 +143,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             <button
                                 type="button"
                                 onClick={() => setIsLauncherOpen(true)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 hover:text-white transition-all duration-150 shadow-2xs group"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 hover:text-white transition-all duration-150 shadow-sm group"
                                 aria-label="Open Campus Sub-Systems"
                             >
                                 <svg className="w-4 h-4 text-seait-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,15 +313,15 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Optional Header Banner */}
             {header && (
-                <div className="bg-white border-b border-slate-200/80 shadow-2xs no-print">
-                    <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+                <div className="bg-white border-b border-slate-200/80 shadow-sm no-print">
+                    <div className="mx-auto max-w-[1600px] w-full px-4 py-3 sm:px-6 lg:px-8">
                         {header}
                     </div>
                 </div>
             )}
 
             {/* Main Content Area - Full-Width Canvas */}
-            <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+            <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-5">
                 {children}
             </main>
 

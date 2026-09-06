@@ -124,8 +124,8 @@ export default function DeskSubNav() {
     }
 
     return (
-        <div className="bg-white/80 backdrop-blur border-b border-slate-200 shadow-2xs no-print">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="bg-white/80 backdrop-blur border-b border-slate-200 shadow-sm no-print">
+            <div className="mx-auto max-w-[1600px] w-full px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between overflow-x-auto scrollbar-thin py-1.5 gap-4">
                     {/* Tabs */}
                     <nav className="flex items-center gap-1 sm:gap-2 min-w-max" aria-label="Sub-navigation">

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { PageHeader, Card, FormSection, Select, StepProgress } from '@/Components/ui';
 import { useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
+import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
 const applicantTypeOptions = [
     { value: 'firstYear', label: 'First Year' },
@@ -176,6 +177,11 @@ export default function Create({ courses, terms, religions }) {
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
+    const { formProps } = useFormKeyboardNav({
+        onSubmit: handleSubmit,
+        autoFocusFirst: true,
+    });
+
     return (
         <AuthenticatedLayout
             header={
@@ -190,7 +196,7 @@ export default function Create({ courses, terms, religions }) {
             <Head title="New Admission" />
 
             {/* Section Progress Navigator */}
-            <Card className="mb-6">
+            <Card className="mb-4 sm:mb-5">
                 <StepProgress steps={sectionSteps} />
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                     {sectionSteps.map((step) => (
@@ -206,7 +212,23 @@ export default function Create({ courses, terms, religions }) {
                 </div>
             </Card>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Rapid Data Entry Keyboard Navigation Banner */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-xs text-slate-700 shadow-sm mb-4 gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="h-2 w-2 rounded-full bg-seait-500 animate-pulse" />
+                    <span className="font-bold text-slate-900">Rapid Data Entry:</span>
+                    <span>Press <span className="kbd-badge"><kbd>Enter ↵</kbd> next field</span></span>
+                    <span className="text-slate-400 hidden sm:inline">·</span>
+                    <span className="hidden sm:inline"><span className="kbd-badge"><kbd>Shift+Enter</kbd> previous</span></span>
+                    <span className="text-slate-400 hidden md:inline">·</span>
+                    <span className="hidden md:inline"><span className="kbd-badge"><kbd>Ctrl+Enter</kbd> submit</span></span>
+                </div>
+                <span className="text-[11px] font-bold text-seait-700 uppercase tracking-wider hidden lg:inline">
+                    Auto-Advances Cursor
+                </span>
+            </div>
+
+            <form {...formProps} onSubmit={handleSubmit} className="space-y-6">
                 {/* Student Information */}
                 <div id="section-student" className="scroll-mt-24">
                     <Card title="Student Information" subtitle="Personal and demographic details">
