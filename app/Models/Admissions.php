@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AdmissionStatus;
 use App\Enums\ApplicantType;
+use App\Enums\ApplicationMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,12 +18,13 @@ class Admissions extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'termId', 'courseId', 'applicantType', 'admissionStatus', 'evaluatedBy', 'evaluatedDate'];
+    protected $fillable = ['studentId', 'termId', 'courseId', 'applicantType', 'applicationMode', 'admissionStatus', 'evaluatedBy', 'evaluatedDate'];
 
     protected function casts(): array
     {
         return [
             'applicantType' => ApplicantType::class,
+            'applicationMode' => ApplicationMode::class,
             'admissionStatus' => AdmissionStatus::class,
             'evaluatedDate' => 'date',
         ];
