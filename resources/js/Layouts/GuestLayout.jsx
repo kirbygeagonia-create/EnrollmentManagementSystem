@@ -10,7 +10,7 @@ export default function GuestLayout({ children }) {
                 className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat transform scale-105 transition-all duration-1000"
                 style={{
                     backgroundImage: "url('/images/seait_front_facade.jpg')",
-                    filter: 'blur(2px) brightness(0.38) saturate(1.2)',
+                    filter: 'blur(1.5px) brightness(0.40) saturate(1.15)',
                 }}
             />
 
@@ -34,16 +34,7 @@ export default function GuestLayout({ children }) {
                 className="pointer-events-none absolute -bottom-32 left-1/4 h-[22rem] w-[22rem] rounded-full bg-navy-700/40 blur-[100px]"
             />
 
-            {/* Subtle Texture Grid Overlay for Depth */}
-            <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 opacity-[0.03]"
-                style={{
-                    backgroundImage:
-                        'linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)',
-                    backgroundSize: '48px 48px',
-                }}
-            />
+
 
             <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6 z-10">
                 {/* Brand header with seal and university identity */}
