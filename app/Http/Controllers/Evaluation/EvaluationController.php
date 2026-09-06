@@ -24,6 +24,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -146,44 +147,46 @@ class EvaluationController extends Controller
             'formIssuedDate' => 'required|date',
         ]);
 
-        $student = $enrollment->student;
-        $student->update([
-            'lastName' => $validated['lastName'],
-            'firstName' => $validated['firstName'],
-            'middleName' => $validated['middleName'],
-            'suffix' => $validated['suffix'],
-            'gender' => $validated['gender'],
-            'birthdate' => $validated['birthdate'],
-            'birthplace' => $validated['birthplace'],
-            'citizenship' => $validated['citizenship'],
-            'religionId' => $validated['religionId'],
-            'civilStatus' => $validated['civilStatus'],
-            'contactNumber' => $validated['contactNumber'],
-            'telephoneNumber' => $validated['telephoneNumber'],
-            'email' => $validated['email'],
-            'semestersCompleted' => $validated['semestersCompleted'],
-            'yearsInInstitution' => $validated['yearsInInstitution'],
-        ]);
+        DB::transaction(function () use ($enrollment, $validated) {
+            $student = $enrollment->student;
+            $student->update([
+                'lastName' => $validated['lastName'],
+                'firstName' => $validated['firstName'],
+                'middleName' => $validated['middleName'],
+                'suffix' => $validated['suffix'],
+                'gender' => $validated['gender'],
+                'birthdate' => $validated['birthdate'],
+                'birthplace' => $validated['birthplace'],
+                'citizenship' => $validated['citizenship'],
+                'religionId' => $validated['religionId'],
+                'civilStatus' => $validated['civilStatus'],
+                'contactNumber' => $validated['contactNumber'],
+                'telephoneNumber' => $validated['telephoneNumber'],
+                'email' => $validated['email'],
+                'semestersCompleted' => $validated['semestersCompleted'],
+                'yearsInInstitution' => $validated['yearsInInstitution'],
+            ]);
 
-        // Update addresses (home, current, permanent)
-        foreach ($validated['addresses'] as $addr) {
-            Addresses::updateOrCreate(
-                ['studentId' => $student->studentId, 'addressType' => $addr['addressType']],
-                array_merge($addr, ['studentId' => $student->studentId])
-            );
-        }
+            // Update addresses (home, current, permanent)
+            foreach ($validated['addresses'] as $addr) {
+                Addresses::updateOrCreate(
+                    ['studentId' => $student->studentId, 'addressType' => $addr['addressType']],
+                    array_merge($addr, ['studentId' => $student->studentId])
+                );
+            }
 
-        // Update guardians
-        $student->guardians()->delete();
-        foreach ($validated['guardians'] as $guardian) {
-            Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
-        }
+            // Update guardians
+            $student->guardians()->delete();
+            foreach ($validated['guardians'] as $guardian) {
+                Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
+            }
 
-        $enrollment->update([
-            'academicStanding' => $validated['academicStanding'],
-            'formIssuedDate' => $validated['formIssuedDate'],
-            'evaluatedBy' => Auth::user()->userId,
-        ]);
+            $enrollment->update([
+                'academicStanding' => $validated['academicStanding'],
+                'formIssuedDate' => $validated['formIssuedDate'],
+                'evaluatedBy' => Auth::user()->userId,
+            ]);
+        });
 
         return back()->with('success', 'Profile captured successfully.');
     }
@@ -255,23 +258,25 @@ class EvaluationController extends Controller
             ]);
         }
 
-        // Clear existing proposed subjects
-        $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
+        DB::transaction(function () use ($enrollment, $validated) {
+            // Clear existing proposed subjects
+            $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
 
-        foreach ($validated['subjects'] as $subj) {
-            $attemptInfo = EnrollmentService::determineAttemptNumber($enrollment->enrollmentId, $subj['subjectId']);
+            foreach ($validated['subjects'] as $subj) {
+                $attemptInfo = EnrollmentService::determineAttemptNumber($enrollment->enrollmentId, $subj['subjectId']);
 
-            Enrolledsubjects::create([
-                'enrollmentId' => $enrollment->enrollmentId,
-                'subjectId' => $subj['subjectId'],
-                'status' => EnrolledSubjectStatus::Proposed,
-                'attempt_number' => $attemptInfo['attempt'],
-                'original_enrolled_subject_id' => $attemptInfo['originalId'],
-            ]);
-        }
+                Enrolledsubjects::create([
+                    'enrollmentId' => $enrollment->enrollmentId,
+                    'subjectId' => $subj['subjectId'],
+                    'status' => EnrolledSubjectStatus::Proposed,
+                    'attempt_number' => $attemptInfo['attempt'],
+                    'original_enrolled_subject_id' => $attemptInfo['originalId'],
+                ]);
+            }
 
-        // Transition enrollment to evaluated
-        $this->stateMachine->transition($enrollment, EnrollmentStatus::Evaluated, Auth::user(), 'Subject load proposed by evaluator');
+            // Transition enrollment to evaluated
+            $this->stateMachine->transition($enrollment, EnrollmentStatus::Evaluated, Auth::user(), 'Subject load proposed by evaluator');
+        });
 
         return back()->with('success', 'Subject load proposed. Enrollment moved to evaluated status.');
     }
@@ -294,30 +299,32 @@ class EvaluationController extends Controller
             'credits.*.remarks' => 'nullable|string',
         ]);
 
-        foreach ($validated['credits'] as $credit) {
-            $institution = Educationalinstitutions::firstOrCreate(
-                ['institutionName' => $credit['institutionName']],
-                ['institutionType' => $credit['institutionType']]
-            );
+        DB::transaction(function () use ($enrollment, $validated) {
+            foreach ($validated['credits'] as $credit) {
+                $institution = Educationalinstitutions::firstOrCreate(
+                    ['institutionName' => $credit['institutionName']],
+                    ['institutionType' => $credit['institutionType']]
+                );
 
-            $transferRecord = Transferacademicrecords::create([
-                'studentId' => $enrollment->studentId,
-                'institutionId' => $institution->institutionId,
-                'subjectNameAtOldSchool' => $credit['previousSubjectName'],
-                'unitsAtOldSchool' => $credit['creditedUnits'],
-                'gradeAtOldSchool' => $credit['grade'],
-                'passResult' => 'passed',
-            ]);
+                $transferRecord = Transferacademicrecords::create([
+                    'studentId' => $enrollment->studentId,
+                    'institutionId' => $institution->institutionId,
+                    'subjectNameAtOldSchool' => $credit['previousSubjectName'],
+                    'unitsAtOldSchool' => $credit['creditedUnits'],
+                    'gradeAtOldSchool' => $credit['grade'],
+                    'passResult' => 'passed',
+                ]);
 
-            Creditedsubjects::create([
-                'enrollmentId' => $enrollment->enrollmentId,
-                'transferRecordId' => $transferRecord->transferRecordId,
-                'previousSubjectName' => $credit['previousSubjectName'],
-                'creditedToSubjectId' => $credit['creditedToSubjectId'],
-                'creditedUnits' => $credit['creditedUnits'],
-                'remarks' => $credit['remarks'],
-            ]);
-        }
+                Creditedsubjects::create([
+                    'enrollmentId' => $enrollment->enrollmentId,
+                    'transferRecordId' => $transferRecord->transferRecordId,
+                    'previousSubjectName' => $credit['previousSubjectName'],
+                    'creditedToSubjectId' => $credit['creditedToSubjectId'],
+                    'creditedUnits' => $credit['creditedUnits'],
+                    'remarks' => $credit['remarks'],
+                ]);
+            }
+        });
 
         return back()->with('success', 'Credits processed successfully.');
     }
@@ -329,18 +336,20 @@ class EvaluationController extends Controller
     {
         $this->authorize('sign', $enrollment);
 
-        $enrollment->update([
-            'formSignedDate' => now(),
-        ]);
+        DB::transaction(function () use ($enrollment) {
+            $enrollment->update([
+                'formSignedDate' => now(),
+            ]);
 
-        // Create workflow if not exists
-        if (! $enrollment->enrollmentworkflow) {
-            $this->workflowService->createWorkflow($enrollment);
-        }
+            // Create workflow if not exists
+            if (! $enrollment->enrollmentworkflow) {
+                $this->workflowService->createWorkflow($enrollment);
+            }
 
-        // Sign the Department Evaluation step (office 4) — the evaluator signs here
-        $enrollment->load('enrollmentworkflow');
-        $this->workflowService->signStepByOffice($enrollment->enrollmentworkflow, 4, Auth::user());
+            // Sign the Department Evaluation step (office 4) — the evaluator signs here
+            $enrollment->load('enrollmentworkflow');
+            $this->workflowService->signStepByOffice($enrollment->enrollmentworkflow, 4, Auth::user());
+        });
 
         return back()->with('success', 'Evaluation signed. Workflow created.');
     }

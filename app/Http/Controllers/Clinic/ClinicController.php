@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,19 +87,21 @@ class ClinicController extends Controller
             'assessmentDate' => 'required|date',
         ]);
 
-        $clinicRecord = Clinicrecords::updateOrCreate(
-            ['enrollmentId' => $enrollment->enrollmentId],
-            array_merge($validated, [
-                'clinicStaffId' => Auth::user()->userId,
-                'status' => ClinicRecordStatus::Completed,
-            ])
-        );
+        DB::transaction(function () use ($enrollment, $validated) {
+            $clinicRecord = Clinicrecords::updateOrCreate(
+                ['enrollmentId' => $enrollment->enrollmentId],
+                array_merge($validated, [
+                    'clinicStaffId' => Auth::user()->userId,
+                    'status' => ClinicRecordStatus::Completed,
+                ])
+            );
 
-        // Sign workflow step 7 (Clinic)
-        $workflow = $enrollment->enrollmentworkflow;
-        if ($workflow) {
-            $this->workflowService->signStepByOffice($workflow, 11, Auth::user());
-        }
+            // Sign workflow step 7 (Clinic)
+            $workflow = $enrollment->enrollmentworkflow;
+            if ($workflow) {
+                $this->workflowService->signStepByOffice($workflow, 11, Auth::user());
+            }
+        });
 
         return redirect()->route('clinic.index')->with('success', 'Clinic assessment recorded.');
     }
@@ -133,9 +136,11 @@ class ClinicController extends Controller
     {
         $this->authorize('reopen', $clinic);
 
-        $clinic->update([
-            'status' => ClinicRecordStatus::Reopened,
-        ]);
+        DB::transaction(function () use ($clinic) {
+            $clinic->update([
+                'status' => ClinicRecordStatus::Reopened,
+            ]);
+        });
 
         return back()->with('success', 'Clinic record reopened for editing.');
     }

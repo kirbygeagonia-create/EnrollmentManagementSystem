@@ -14,6 +14,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -117,16 +118,18 @@ class IDController extends Controller
             'securityPhotoPath' => 'nullable|string|max:500',
         ]);
 
-        $studentId = Studentids::create([
-            'studentId' => $idRequest->enrollment->studentId,
-            'idRequestId' => $idRequest->idRequestId,
-            'qrCode' => $validated['qrCode'],
-            'issueDate' => now(),
-            'validationStatus' => IdValidationStatus::PendingValidation,
-            'securityPhotoPath' => $validated['securityPhotoPath'] ?? null,
-        ]);
+        DB::transaction(function () use ($idRequest, $validated) {
+            $studentId = Studentids::create([
+                'studentId' => $idRequest->enrollment->studentId,
+                'idRequestId' => $idRequest->idRequestId,
+                'qrCode' => $validated['qrCode'],
+                'issueDate' => now(),
+                'validationStatus' => IdValidationStatus::PendingValidation,
+                'securityPhotoPath' => $validated['securityPhotoPath'] ?? null,
+            ]);
 
-        $idRequest->update(['status' => IdRequestStatus::CardProduced]);
+            $idRequest->update(['status' => IdRequestStatus::CardProduced]);
+        });
 
         return back()->with('success', 'ID card produced.');
     }
@@ -138,23 +141,25 @@ class IDController extends Controller
     {
         $this->authorize('id.validateCard', $studentId);
 
-        $studentId->update([
-            'validationStatus' => IdValidationStatus::Active,
-            'validatedBy' => Auth::user()->userId,
-            'validatedDate' => now(),
-        ]);
+        DB::transaction(function () use ($studentId) {
+            $studentId->update([
+                'validationStatus' => IdValidationStatus::Active,
+                'validatedBy' => Auth::user()->userId,
+                'validatedDate' => now(),
+            ]);
 
-        // Update ID request status to Validated
-        $idRequest = $studentId->idRequest;
-        if ($idRequest) {
-            $idRequest->update(['status' => IdRequestStatus::Validated]);
-        }
+            // Update ID request status to Validated
+            $idRequest = $studentId->idRequest;
+            if ($idRequest) {
+                $idRequest->update(['status' => IdRequestStatus::Validated]);
+            }
 
-        // Sign workflow step 8 (ID Office)
-        $workflow = $studentId->idRequest?->enrollment?->enrollmentworkflow;
-        if ($workflow) {
-            $this->workflowService->signStepByOffice($workflow, 22, Auth::user());
-        }
+            // Sign workflow step 8 (ID Office)
+            $workflow = $studentId->idRequest?->enrollment?->enrollmentworkflow;
+            if ($workflow) {
+                $this->workflowService->signStepByOffice($workflow, 22, Auth::user());
+            }
+        });
 
         return back()->with('success', 'ID validated successfully.');
     }
@@ -166,15 +171,17 @@ class IDController extends Controller
     {
         $this->authorize('id.releaseCard', $studentId);
 
-        $studentId->update([
-            'validationStatus' => IdValidationStatus::Active,
-        ]);
+        DB::transaction(function () use ($studentId) {
+            $studentId->update([
+                'validationStatus' => IdValidationStatus::Active,
+            ]);
 
-        // Update ID request status to Released
-        $idRequest = $studentId->idRequest;
-        if ($idRequest) {
-            $idRequest->update(['status' => IdRequestStatus::Released]);
-        }
+            // Update ID request status to Released
+            $idRequest = $studentId->idRequest;
+            if ($idRequest) {
+                $idRequest->update(['status' => IdRequestStatus::Released]);
+            }
+        });
 
         return back()->with('success', 'ID released to student.');
     }

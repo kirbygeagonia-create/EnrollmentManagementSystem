@@ -19,6 +19,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -117,80 +118,82 @@ class AdmissionController extends Controller
             'educationalBackgrounds.*.honorsCertifications' => 'nullable|string|max:500',
         ]);
 
-        $student = Students::create([
-            'schoolIdNumber' => $validated['schoolIdNumber'],
-            'lastName' => $validated['lastName'],
-            'firstName' => $validated['firstName'],
-            'middleName' => $validated['middleName'],
-            'suffix' => $validated['suffix'],
-            'gender' => $validated['gender'],
-            'birthdate' => $validated['birthdate'],
-            'birthplace' => $validated['birthplace'],
-            'citizenship' => $validated['citizenship'],
-            'religionId' => $validated['religionId'],
-            'civilStatus' => $validated['civilStatus'],
-            'contactNumber' => $validated['contactNumber'],
-            'telephoneNumber' => $validated['telephoneNumber'],
-            'email' => $validated['email'],
-            'username' => $validated['username'],
-            'passwordHash' => bcrypt($validated['password']),
-            'status' => 'active',
-            'semestersCompleted' => 0,
-            'yearsInInstitution' => 0,
-        ]);
+        DB::transaction(function () use ($validated) {
+            $student = Students::create([
+                'schoolIdNumber' => $validated['schoolIdNumber'],
+                'lastName' => $validated['lastName'],
+                'firstName' => $validated['firstName'],
+                'middleName' => $validated['middleName'],
+                'suffix' => $validated['suffix'],
+                'gender' => $validated['gender'],
+                'birthdate' => $validated['birthdate'],
+                'birthplace' => $validated['birthplace'],
+                'citizenship' => $validated['citizenship'],
+                'religionId' => $validated['religionId'],
+                'civilStatus' => $validated['civilStatus'],
+                'contactNumber' => $validated['contactNumber'],
+                'telephoneNumber' => $validated['telephoneNumber'],
+                'email' => $validated['email'],
+                'username' => $validated['username'],
+                'passwordHash' => bcrypt($validated['password']),
+                'status' => 'active',
+                'semestersCompleted' => 0,
+                'yearsInInstitution' => 0,
+            ]);
 
-        foreach ($validated['addresses'] as $addr) {
-            Addresses::create(array_merge($addr, ['studentId' => $student->studentId]));
-        }
+            foreach ($validated['addresses'] as $addr) {
+                Addresses::create(array_merge($addr, ['studentId' => $student->studentId]));
+            }
 
-        foreach ($validated['guardians'] as $guardian) {
-            Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
-        }
+            foreach ($validated['guardians'] as $guardian) {
+                Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
+            }
 
-        if (! empty($validated['educationalBackgrounds'])) {
-            foreach ($validated['educationalBackgrounds'] as $bg) {
-                $institution = Educationalinstitutions::firstOrCreate(
-                    ['institutionName' => $bg['institutionName']],
-                    [
-                        'institutionType' => $bg['institutionType'],
-                        'cityMunicipality' => $bg['cityMunicipality'],
-                        'province' => $bg['province'],
-                    ]
-                );
-                Studenteducationalbackgrounds::create([
-                    'studentId' => $student->studentId,
-                    'institutionId' => $institution->institutionId,
-                    'levelCompleted' => $bg['levelCompleted'],
-                    'strandTrack' => $bg['strandTrack'] ?? '',
-                    'yearCompleted' => $bg['yearCompleted'],
-                    'honorsCertifications' => $bg['honorsCertifications'] ?? '',
-                    'supportingDocumentPath' => $bg['supportingDocumentPath'] ?? '',
+            if (! empty($validated['educationalBackgrounds'])) {
+                foreach ($validated['educationalBackgrounds'] as $bg) {
+                    $institution = Educationalinstitutions::firstOrCreate(
+                        ['institutionName' => $bg['institutionName']],
+                        [
+                            'institutionType' => $bg['institutionType'],
+                            'cityMunicipality' => $bg['cityMunicipality'],
+                            'province' => $bg['province'],
+                        ]
+                    );
+                    Studenteducationalbackgrounds::create([
+                        'studentId' => $student->studentId,
+                        'institutionId' => $institution->institutionId,
+                        'levelCompleted' => $bg['levelCompleted'],
+                        'strandTrack' => $bg['strandTrack'] ?? '',
+                        'yearCompleted' => $bg['yearCompleted'],
+                        'honorsCertifications' => $bg['honorsCertifications'] ?? '',
+                        'supportingDocumentPath' => $bg['supportingDocumentPath'] ?? '',
+                    ]);
+                }
+            }
+
+            $admission = Admissions::create([
+                'studentId' => $student->studentId,
+                'courseId' => $validated['courseId'],
+                'termId' => $validated['termId'],
+                'applicantType' => $validated['applicantType'],
+                'admissionStatus' => 'pending',
+            ]);
+
+            // Create requirement submissions
+            $requirements = Admissionrequirements::where('appliesTo', $validated['applicantType'])
+                ->orWhere('appliesTo', 'all')
+                ->get();
+
+            foreach ($requirements as $req) {
+                Studentrequirementsubmissions::create([
+                    'admissionId' => $admission->admissionId,
+                    'requirementId' => $req->requirementId,
+                    'submissionStatus' => 'pending',
+                    'submittedDate' => now(),
+                    'remarks' => '',
                 ]);
             }
-        }
-
-        $admission = Admissions::create([
-            'studentId' => $student->studentId,
-            'courseId' => $validated['courseId'],
-            'termId' => $validated['termId'],
-            'applicantType' => $validated['applicantType'],
-            'admissionStatus' => 'pending',
-        ]);
-
-        // Create requirement submissions
-        $requirements = Admissionrequirements::where('appliesTo', $validated['applicantType'])
-            ->orWhere('appliesTo', 'all')
-            ->get();
-
-        foreach ($requirements as $req) {
-            Studentrequirementsubmissions::create([
-                'admissionId' => $admission->admissionId,
-                'requirementId' => $req->requirementId,
-                'submissionStatus' => 'pending',
-                'submittedDate' => now(),
-                'remarks' => '',
-            ]);
-        }
+        });
 
         return redirect()->route('admission.index')->with('success', 'Applicant registered successfully.');
     }
@@ -243,18 +246,20 @@ class AdmissionController extends Controller
         $disk = config('filesystems.default', 'public');
         $path = $request->file('file')->store('admission-documents', $disk);
 
-        Documents::create([
-            'submissionId' => $submission->submissionId,
-            'fileUrl' => $path,
-            'fileType' => $request->file('file')->getMimeType(),
-            'uploadedDate' => now(),
-        ]);
+        DB::transaction(function () use ($submission, $path, $request, $validated) {
+            Documents::create([
+                'submissionId' => $submission->submissionId,
+                'fileUrl' => $path,
+                'fileType' => $request->file('file')->getMimeType(),
+                'uploadedDate' => now(),
+            ]);
 
-        $submission->update([
-            'submissionStatus' => 'submitted',
-            'submittedDate' => now(),
-            'remarks' => $validated['remarks'],
-        ]);
+            $submission->update([
+                'submissionStatus' => 'submitted',
+                'submittedDate' => now(),
+                'remarks' => $validated['remarks'],
+            ]);
+        });
 
         return back()->with('success', 'Document submitted successfully.');
     }
@@ -270,10 +275,12 @@ class AdmissionController extends Controller
             ->where('requirementId', $requirement->requirementId)
             ->firstOrFail();
 
-        $submission->update([
-            'submissionStatus' => $request->boolean('approved') ? 'verified' : 'rejected',
-            'remarks' => $request->remarks,
-        ]);
+        DB::transaction(function () use ($submission, $request) {
+            $submission->update([
+                'submissionStatus' => $request->boolean('approved') ? 'verified' : 'rejected',
+                'remarks' => $request->remarks,
+            ]);
+        });
 
         return back()->with('success', 'Requirement verified.');
     }
@@ -285,11 +292,13 @@ class AdmissionController extends Controller
     {
         $this->authorize('approve', $admission);
 
-        $admission->update([
-            'admissionStatus' => 'approved',
-            'evaluatedBy' => Auth::user()->userId,
-            'evaluatedDate' => now(),
-        ]);
+        DB::transaction(function () use ($admission) {
+            $admission->update([
+                'admissionStatus' => 'approved',
+                'evaluatedBy' => Auth::user()->userId,
+                'evaluatedDate' => now(),
+            ]);
+        });
 
         return back()->with('success', 'Admission approved.');
     }
@@ -301,11 +310,13 @@ class AdmissionController extends Controller
     {
         $this->authorize('reject', $admission);
 
-        $admission->update([
-            'admissionStatus' => 'rejected',
-            'evaluatedBy' => Auth::user()->userId,
-            'evaluatedDate' => now(),
-        ]);
+        DB::transaction(function () use ($admission) {
+            $admission->update([
+                'admissionStatus' => 'rejected',
+                'evaluatedBy' => Auth::user()->userId,
+                'evaluatedDate' => now(),
+            ]);
+        });
 
         return back()->with('success', 'Admission rejected.');
     }

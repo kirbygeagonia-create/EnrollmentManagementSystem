@@ -14,6 +14,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,37 +79,39 @@ class AccountingController extends Controller
             'paymentDate' => 'required|date',
         ]);
 
-        $payment = Payments::create([
-            'enrollmentId' => $assessment->enrollmentId,
-            'orNumber' => $validated['orNumber'],
-            'amount' => $validated['amount'],
-            'paymentDate' => $validated['paymentDate'],
-            'paymentMode' => $validated['paymentMode'],
-            'processedBy' => Auth::user()->userId,
-            'paymentStatus' => PaymentStatus::Paid,
-        ]);
+        DB::transaction(function () use ($assessment, $validated) {
+            $payment = Payments::create([
+                'enrollmentId' => $assessment->enrollmentId,
+                'orNumber' => $validated['orNumber'],
+                'amount' => $validated['amount'],
+                'paymentDate' => $validated['paymentDate'],
+                'paymentMode' => $validated['paymentMode'],
+                'processedBy' => Auth::user()->userId,
+                'paymentStatus' => PaymentStatus::Paid,
+            ]);
 
-        // Recalculate remaining balance (payment already saved above, so sum includes it)
-        $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
-            ->where('paymentStatus', PaymentStatus::Paid)
-            ->sum('amount');
-        $newBalance = max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid);
+            // Recalculate remaining balance (payment already saved above, so sum includes it)
+            $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
+                ->where('paymentStatus', PaymentStatus::Paid)
+                ->sum('amount');
+            $newBalance = max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid);
 
-        $assessment->update([
-            'remainingBalance' => $newBalance,
-        ]);
+            $assessment->update([
+                'remainingBalance' => $newBalance,
+            ]);
 
-        // Transition enrollment to paid if fully paid
-        $enrollment = $assessment->enrollment;
-        if ($newBalance <= 0 && $enrollment) {
-            $this->stateMachine->transition($enrollment, EnrollmentStatus::Paid, Auth::user(), 'Full payment received');
+            // Transition enrollment to paid if fully paid
+            $enrollment = $assessment->enrollment;
+            if ($newBalance <= 0 && $enrollment) {
+                $this->stateMachine->transition($enrollment, EnrollmentStatus::Paid, Auth::user(), 'Full payment received');
 
-            // Sign workflow step 4 (Accounting Payment)
-            $workflow = $enrollment->enrollmentworkflow;
-            if ($workflow) {
-                $this->workflowService->signStepByOffice($workflow, 2, Auth::user());
+                // Sign workflow step 4 (Accounting Payment)
+                $workflow = $enrollment->enrollmentworkflow;
+                if ($workflow) {
+                    $this->workflowService->signStepByOffice($workflow, 2, Auth::user());
+                }
             }
-        }
+        });
 
         return redirect()->route('accounting.index')->with('success', 'Payment recorded successfully.');
     }
@@ -148,16 +151,18 @@ class AccountingController extends Controller
     {
         $this->authorize('void', $payment);
 
-        $payment->update(['paymentStatus' => PaymentStatus::Pending]);
+        DB::transaction(function () use ($payment) {
+            $payment->update(['paymentStatus' => PaymentStatus::Pending]);
 
-        // Recalculate assessment balance
-        $assessment = $payment->enrollment->studentassessments;
-        if ($assessment) {
-            $totalPaid = $assessment->payments()->where('paymentStatus', PaymentStatus::Paid)->sum('amount');
-            $assessment->update([
-                'remainingBalance' => max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid),
-            ]);
-        }
+            // Recalculate assessment balance
+            $assessment = $payment->enrollment->studentassessments;
+            if ($assessment) {
+                $totalPaid = $assessment->payments()->where('paymentStatus', PaymentStatus::Paid)->sum('amount');
+                $assessment->update([
+                    'remainingBalance' => max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid),
+                ]);
+            }
+        });
 
         return back()->with('success', 'Payment voided.');
     }

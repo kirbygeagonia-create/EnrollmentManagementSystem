@@ -21,6 +21,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -127,27 +128,32 @@ class ClearanceController extends Controller
             return back()->withErrors(['student' => 'Student already has a clearance for this period.']);
         }
 
-        if (! $existing) {
-            $clearance = Studentclearances::create([
-                'studentId' => $student->studentId,
-                'clearancePeriodId' => $period->clearancePeriodId,
-                'overallStatus' => ClearanceOverallStatus::Pending,
-            ]);
+        DB::transaction(function () use ($student, $period) {
+            $existing = Studentclearances::where('studentId', $student->studentId)
+                ->where('clearancePeriodId', $period->clearancePeriodId)
+                ->first();
 
-            // Create approval rows for each requirement
-            $requirements = Clearancerequirements::with('office')->get();
-            foreach ($requirements as $req) {
-                Clearanceapprovals::create([
-                    'studentClearanceId' => $clearance->studentClearanceId,
-                    'clearanceRequirementId' => $req->clearanceRequirementId,
-                    'status' => ClearanceApprovalStatus::Pending,
-                    'remarks' => '',
+            if (! $existing) {
+                $clearance = Studentclearances::create([
+                    'studentId' => $student->studentId,
+                    'clearancePeriodId' => $period->clearancePeriodId,
+                    'overallStatus' => ClearanceOverallStatus::Pending,
                 ]);
+
+                // Create approval rows for each requirement
+                $requirements = Clearancerequirements::with('office')->get();
+                foreach ($requirements as $req) {
+                    Clearanceapprovals::create([
+                        'studentClearanceId' => $clearance->studentClearanceId,
+                        'clearanceRequirementId' => $req->clearanceRequirementId,
+                        'status' => ClearanceApprovalStatus::Pending,
+                        'remarks' => '',
+                    ]);
+                }
+            } else {
+                $existing->update(['overallStatus' => ClearanceOverallStatus::Pending]);
             }
-        } else {
-            $clearance = $existing;
-            $clearance->update(['overallStatus' => ClearanceOverallStatus::Pending]);
-        }
+        });
 
         return back()->with('success', 'Clearance slip generated.');
     }
@@ -181,28 +187,30 @@ class ClearanceController extends Controller
             'remarks' => 'nullable|string',
         ]);
 
-        $approval->update([
-            'status' => $validated['status'],
-            'approvedBy' => Auth::user()->userId,
-            'approvalDate' => now(),
-            'remarks' => $validated['remarks'] ?? '',
-        ]);
+        DB::transaction(function () use ($approval, $validated) {
+            $approval->update([
+                'status' => $validated['status'],
+                'approvedBy' => Auth::user()->userId,
+                'approvalDate' => now(),
+                'remarks' => $validated['remarks'] ?? '',
+            ]);
 
-        // Update overall clearance status
-        $clearance = $approval->studentClearance;
-        $pendingCount = $clearance->approvals()
-            ->where('status', ClearanceApprovalStatus::Pending->value)
-            ->count();
+            // Update overall clearance status
+            $clearance = $approval->studentClearance;
+            $pendingCount = $clearance->approvals()
+                ->where('status', ClearanceApprovalStatus::Pending->value)
+                ->count();
 
-        $rejectedCount = $clearance->approvals()
-            ->where('status', ClearanceApprovalStatus::Rejected->value)
-            ->count();
+            $rejectedCount = $clearance->approvals()
+                ->where('status', ClearanceApprovalStatus::Rejected->value)
+                ->count();
 
-        if ($rejectedCount > 0) {
-            $clearance->update(['overallStatus' => ClearanceOverallStatus::Rejected]);
-        } elseif ($pendingCount === 0) {
-            $clearance->update(['overallStatus' => ClearanceOverallStatus::Approved]);
-        }
+            if ($rejectedCount > 0) {
+                $clearance->update(['overallStatus' => ClearanceOverallStatus::Rejected]);
+            } elseif ($pendingCount === 0) {
+                $clearance->update(['overallStatus' => ClearanceOverallStatus::Approved]);
+            }
+        });
 
         return back()->with('success', 'Requirement updated.');
     }
@@ -232,21 +240,23 @@ class ClearanceController extends Controller
             return back()->withErrors(['clearance' => 'No lost clearance to replace.']);
         }
 
-        // Record payment
-        $feeType = Feetypes::where('feeName', 'Clearance Slip Replacement')->first();
+        DB::transaction(function () use ($validated, $clearance) {
+            // Record payment
+            $feeType = Feetypes::where('feeName', 'Clearance Slip Replacement')->first();
 
-        Payments::create([
-            'enrollmentId' => null, // No enrollment for clearance replacement
-            'orNumber' => $validated['orNumber'],
-            'amount' => $feeType->defaultAmount ?? 100,
-            'paymentDate' => now(),
-            'paymentMode' => PaymentMode::Cash,
-            'processedBy' => Auth::user()->userId,
-            'paymentStatus' => PaymentStatus::Paid,
-        ]);
+            Payments::create([
+                'enrollmentId' => null, // No enrollment for clearance replacement
+                'orNumber' => $validated['orNumber'],
+                'amount' => $feeType->defaultAmount ?? 100,
+                'paymentDate' => now(),
+                'paymentMode' => PaymentMode::Cash,
+                'processedBy' => Auth::user()->userId,
+                'paymentStatus' => PaymentStatus::Paid,
+            ]);
 
-        // Reset clearance for reissue
-        $clearance->update(['overallStatus' => ClearanceOverallStatus::Pending]);
+            // Reset clearance for reissue
+            $clearance->update(['overallStatus' => ClearanceOverallStatus::Pending]);
+        });
 
         return back()->with('success', 'Lost slip replacement processed. New slip can be generated.');
     }

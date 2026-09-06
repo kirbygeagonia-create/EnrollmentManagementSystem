@@ -393,31 +393,33 @@ class BlockingController extends Controller
         }
 
         $assigned = 0;
-        foreach ($validated['enrollmentIds'] as $enrollmentId) {
-            $enrollment = Enrollments::findOrFail($enrollmentId);
+        DB::transaction(function () use ($validated, $block, $schedule, &$assigned) {
+            foreach ($validated['enrollmentIds'] as $enrollmentId) {
+                $enrollment = Enrollments::findOrFail($enrollmentId);
 
-            // Verify enrollment is enrolled and workflow at Academic Department step (office 5)
-            if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
-                continue;
+                // Verify enrollment is enrolled and workflow at Academic Department step (office 5)
+                if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
+                    continue;
+                }
+
+                $workflow = $enrollment->enrollmentworkflow;
+                if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
+                    continue;
+                }
+
+                // Assign to block and schedule
+                $enrollment->enrolledSubjects()
+                    ->where('status', '!=', 'dropped')
+                    ->update([
+                        'blockId' => $block->blockId,
+                        'scheduleId' => $schedule->scheduleId,
+                    ]);
+
+                // Sign the Blocking step now that the student is assigned
+                $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());
+                $assigned++;
             }
-
-            $workflow = $enrollment->enrollmentworkflow;
-            if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
-                continue;
-            }
-
-            // Assign to block and schedule
-            $enrollment->enrolledSubjects()
-                ->where('status', '!=', 'dropped')
-                ->update([
-                    'blockId' => $block->blockId,
-                    'scheduleId' => $schedule->scheduleId,
-                ]);
-
-            // Sign the Blocking step now that the student is assigned
-            $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());
-            $assigned++;
-        }
+        });
 
         return back()->with('success', "{$assigned} student(s) assigned to block.");
     }
@@ -435,21 +437,23 @@ class BlockingController extends Controller
         ]);
 
         $unassigned = 0;
-        foreach ($validated['enrollmentIds'] as $enrollmentId) {
-            $enrollment = Enrollments::findOrFail($enrollmentId);
+        DB::transaction(function () use ($validated, $block, &$unassigned) {
+            foreach ($validated['enrollmentIds'] as $enrollmentId) {
+                $enrollment = Enrollments::findOrFail($enrollmentId);
 
-            $updated = $enrollment->enrolledSubjects()
-                ->where('status', '!=', 'dropped')
-                ->where('blockId', $block->blockId)
-                ->update([
-                    'blockId' => null,
-                    'scheduleId' => null,
-                ]);
+                $updated = $enrollment->enrolledSubjects()
+                    ->where('status', '!=', 'dropped')
+                    ->where('blockId', $block->blockId)
+                    ->update([
+                        'blockId' => null,
+                        'scheduleId' => null,
+                    ]);
 
-            if ($updated > 0) {
-                $unassigned += $updated;
+                if ($updated > 0) {
+                    $unassigned += $updated;
+                }
             }
-        }
+        });
 
         return back()->with('success', "{$unassigned} enrollment subject(s) unassigned from block.");
     }

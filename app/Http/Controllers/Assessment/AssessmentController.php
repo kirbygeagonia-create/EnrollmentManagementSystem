@@ -19,6 +19,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -108,18 +109,22 @@ class AssessmentController extends Controller
 
         $remainingBalance = $totalAssessed - $totalScholarshipCoverage - $totalWaived;
 
-        $assessment = Studentassessments::create([
-            'enrollmentId' => $enrollment->enrollmentId,
-            'totalAssessedAmount' => $totalAssessed,
-            'totalScholarshipCoverage' => $totalScholarshipCoverage,
-            'totalWaived' => $totalWaived,
-            'remainingBalance' => max(0, $remainingBalance),
-            'assessmentDate' => now(),
-        ]);
+        $assessment = DB::transaction(function () use ($enrollment, $totalAssessed, $totalScholarshipCoverage, $totalWaived, $remainingBalance, $charges) {
+            $assessment = Studentassessments::create([
+                'enrollmentId' => $enrollment->enrollmentId,
+                'totalAssessedAmount' => $totalAssessed,
+                'totalScholarshipCoverage' => $totalScholarshipCoverage,
+                'totalWaived' => $totalWaived,
+                'remainingBalance' => max(0, $remainingBalance),
+                'assessmentDate' => now(),
+            ]);
 
-        foreach ($charges as $charge) {
-            Charges::create(array_merge($charge, ['assessmentId' => $assessment->assessmentId]));
-        }
+            foreach ($charges as $charge) {
+                Charges::create(array_merge($charge, ['assessmentId' => $assessment->assessmentId]));
+            }
+
+            return $assessment;
+        });
 
         // Transition enrollment to assessed
         // $this->stateMachine->transition($enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment computed');
@@ -192,23 +197,26 @@ class AssessmentController extends Controller
             'charges.*.waivedAmount' => 'nullable|numeric|min:0',
         ]);
 
-        foreach ($validated['charges'] as $chargeData) {
-            $charge = Charges::findOrFail($chargeData['chargeId']);
-            $charge->update([
-                'amount' => $chargeData['amount'],
-                'waivedAmount' => $chargeData['waivedAmount'] ?? 0,
+        DB::transaction(function () use ($assessment, $validated) {
+            foreach ($validated['charges'] as $chargeData) {
+                $charge = Charges::findOrFail($chargeData['chargeId']);
+                $charge->update([
+                    'amount' => $chargeData['amount'],
+                    'waivedAmount' => $chargeData['waivedAmount'] ?? 0,
+                ]);
+            }
+
+            // Recalculate assessment totals
+            $assessment->refresh();
+            $totalAssessed = $assessment->charges->sum('amount');
+            $totalWaived = $assessment->charges->sum('waivedAmount');
+
+            $assessment->update([
+                'totalAssessedAmount' => $totalAssessed,
+                'totalWaived' => $totalWaived,
+                'remainingBalance' => $totalAssessed - $assessment->totalScholarshipCoverage - $totalWaived,
             ]);
-        }
-
-        // Recalculate assessment totals
-        $totalAssessed = $assessment->charges->sum('amount');
-        $totalWaived = $assessment->charges->sum('waivedAmount');
-
-        $assessment->update([
-            'totalAssessedAmount' => $totalAssessed,
-            'totalWaived' => $totalWaived,
-            'remainingBalance' => $totalAssessed - $assessment->totalScholarshipCoverage - $totalWaived,
-        ]);
+        });
 
         return back()->with('success', 'Charges adjusted.');
     }
@@ -220,14 +228,16 @@ class AssessmentController extends Controller
     {
         $this->authorize('finalize', $assessment);
 
-        // Transition enrollment to assessed (moves it into the Accounting queue)
-        $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment finalized');
+        DB::transaction(function () use ($assessment) {
+            // Transition enrollment to assessed (moves it into the Accounting queue)
+            $this->stateMachine->transition($assessment->enrollment, EnrollmentStatus::Assessed, Auth::user(), 'Assessment finalized');
 
-        // Sign the Assessment step (office 3) — null-safe: skipped for continuing/shifter students
-        $workflow = $assessment->enrollment->enrollmentworkflow;
-        if ($workflow) {
-            $this->workflowService->signStepByOffice($workflow, 3, Auth::user());
-        }
+            // Sign the Assessment step (office 3) — null-safe: skipped for continuing/shifter students
+            $workflow = $assessment->enrollment->enrollmentworkflow;
+            if ($workflow) {
+                $this->workflowService->signStepByOffice($workflow, 3, Auth::user());
+            }
+        });
 
         return back()->with('success', 'Assessment finalized. Ready for payment.');
     }

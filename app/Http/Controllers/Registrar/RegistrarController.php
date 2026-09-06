@@ -23,6 +23,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -154,25 +155,27 @@ class RegistrarController extends Controller
             // Data already updated in evaluation phase
         }
 
-        // Confirm enrolled subjects
-        $enrollment->enrolledSubjects()
-            ->where('status', EnrolledSubjectStatus::Proposed)
-            ->update(['status' => EnrolledSubjectStatus::Confirmed]);
+        DB::transaction(function () use ($enrollment, $enrollmentType) {
+            // Confirm enrolled subjects
+            $enrollment->enrolledSubjects()
+                ->where('status', EnrolledSubjectStatus::Proposed)
+                ->update(['status' => EnrolledSubjectStatus::Confirmed]);
 
-        // Transition to enrolled
-        $this->stateMachine->transition($enrollment, EnrollmentStatus::Enrolled, Auth::user(), 'Registrar approved enrollment');
+            // Transition to enrolled
+            $this->stateMachine->transition($enrollment, EnrollmentStatus::Enrolled, Auth::user(), 'Registrar approved enrollment');
 
-        $enrollment->update([
-            'enrollmentType' => $enrollmentType,
-            'registrarProcessedBy' => Auth::user()->userId,
-            'enrolledDate' => now(),
-        ]);
+            $enrollment->update([
+                'enrollmentType' => $enrollmentType,
+                'registrarProcessedBy' => Auth::user()->userId,
+                'enrolledDate' => now(),
+            ]);
 
-        // Sign workflow step 5 (Registrar Approval)
-        $workflow = $enrollment->enrollmentworkflow;
-        if ($workflow) {
-            $this->workflowService->signStepByOffice($workflow, 1, Auth::user());
-        }
+            // Sign workflow step 5 (Registrar Approval)
+            $workflow = $enrollment->enrollmentworkflow;
+            if ($workflow) {
+                $this->workflowService->signStepByOffice($workflow, 1, Auth::user());
+            }
+        });
 
         return redirect()->route('registrar.index')->with('success', 'Enrollment approved successfully.');
     }
