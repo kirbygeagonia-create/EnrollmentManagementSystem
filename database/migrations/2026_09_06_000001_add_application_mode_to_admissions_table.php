@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('admissions', function (Blueprint $table) {
-            if (!Schema::hasColumn('admissions', 'applicationMode')) {
+            if (! Schema::hasColumn('admissions', 'applicationMode')) {
                 $table->enum('applicationMode', ['faceToFace', 'online'])
                     ->default('faceToFace')
                     ->after('applicantType');
