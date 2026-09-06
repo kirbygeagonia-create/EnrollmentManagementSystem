@@ -157,8 +157,9 @@ export default function Periods({ periods }) {
             <Head title="Clearance Periods" />
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 <StatCard
+                    compact
                     label="Open Periods"
                     value={stats.open}
                     iconBg="success"
@@ -169,6 +170,7 @@ export default function Periods({ periods }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Closed Periods"
                     value={stats.closed}
                     iconBg="neutral"
@@ -179,6 +181,7 @@ export default function Periods({ periods }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Total Periods"
                     value={stats.total}
                     iconBg="seait"

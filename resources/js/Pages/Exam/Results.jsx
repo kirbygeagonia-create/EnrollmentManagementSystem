@@ -97,8 +97,9 @@ export default function Results({ exams, filters = {} }) {
             <Head title="Exam Results" />
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                 <StatCard
+                    compact
                     label="Passed"
                     value={stats.pass}
                     iconBg="success"
@@ -109,6 +110,7 @@ export default function Results({ exams, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Failed"
                     value={stats.fail}
                     iconBg="danger"
@@ -119,6 +121,7 @@ export default function Results({ exams, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Pass Rate"
                     value={`${stats.passRate}%`}
                     iconBg="info"

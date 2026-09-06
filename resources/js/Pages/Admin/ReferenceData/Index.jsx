@@ -76,32 +76,37 @@ export default function Index({ stats = {} }) {
             <Head title="Reference Data" />
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
                 <StatCard
+                    compact
                     label="Courses"
                     value={stats.courses || 0}
                     icon={<CourseIcon className="h-5 w-5" />}
                     iconBg="brand"
                 />
                 <StatCard
+                    compact
                     label="Majors"
                     value={stats.majors || 0}
                     icon={<MajorIcon className="h-5 w-5" />}
                     iconBg="success"
                 />
                 <StatCard
+                    compact
                     label="Curriculums"
                     value={stats.curriculums || 0}
                     icon={<CurriculumIcon className="h-5 w-5" />}
                     iconBg="info"
                 />
                 <StatCard
+                    compact
                     label="Subjects"
                     value={stats.subjects || 0}
                     icon={<SubjectIcon className="h-5 w-5" />}
                     iconBg="warning"
                 />
                 <StatCard
+                    compact
                     label="Terms"
                     value={stats.terms || 0}
                     icon={<TermIcon className="h-5 w-5" />}
@@ -109,32 +114,37 @@ export default function Index({ stats = {} }) {
                 />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
                 <StatCard
+                    compact
                     label="Fee Types"
                     value={stats.feeTypes || 0}
                     icon={<FeeIcon className="h-5 w-5" />}
                     iconBg="danger"
                 />
                 <StatCard
+                    compact
                     label="Scholarships"
                     value={stats.scholarshipTypes || 0}
                     icon={<ScholarshipIcon className="h-5 w-5" />}
                     iconBg="info"
                 />
                 <StatCard
+                    compact
                     label="Offices"
                     value={stats.offices || 0}
                     icon={<OfficeIcon className="h-5 w-5" />}
                     iconBg="brand"
                 />
                 <StatCard
+                    compact
                     label="Rooms"
                     value={stats.rooms || 0}
                     icon={<RoomIcon className="h-5 w-5" />}
                     iconBg="success"
                 />
                 <StatCard
+                    compact
                     label="Blocks"
                     value={stats.blocks || 0}
                     icon={<BlockIcon className="h-5 w-5" />}

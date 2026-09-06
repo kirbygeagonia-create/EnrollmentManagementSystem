@@ -71,8 +71,9 @@ export default function Index({ enrollments, filters = {} }) {
             <Head title="Clinic Records" />
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                 <StatCard
+                    compact
                     label="Students on Page"
                     value={rows.length}
                     iconBg="brand"
@@ -83,6 +84,7 @@ export default function Index({ enrollments, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Assessments Completed"
                     value={completedCount}
                     iconBg="success"
@@ -93,6 +95,7 @@ export default function Index({ enrollments, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Pending Assessment"
                     value={pendingCount}
                     iconBg="warning"

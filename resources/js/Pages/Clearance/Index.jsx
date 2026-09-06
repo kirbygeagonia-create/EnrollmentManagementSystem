@@ -193,8 +193,9 @@ export default function Index({ clearances, periods, filters = {} }) {
             <Head title="Clearance Terminal" />
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
                 <StatCard
+                    compact
                     label="Pending Obligation"
                     value={stats.pending}
                     iconBg="warning"
@@ -205,6 +206,7 @@ export default function Index({ clearances, periods, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Fully Cleared"
                     value={stats.approved}
                     iconBg="success"
@@ -215,6 +217,7 @@ export default function Index({ clearances, periods, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="With Deficiencies"
                     value={stats.rejected}
                     iconBg="danger"
@@ -225,6 +228,7 @@ export default function Index({ clearances, periods, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Waived Obligations"
                     value={stats.waived}
                     iconBg="seait"
@@ -235,6 +239,7 @@ export default function Index({ clearances, periods, filters = {} }) {
                     }
                 />
                 <StatCard
+                    compact
                     label="Lost Slips / Incomplete"
                     value={stats.incomplete}
                     iconBg="accent"

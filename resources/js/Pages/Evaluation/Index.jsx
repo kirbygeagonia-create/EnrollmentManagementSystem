@@ -91,9 +91,10 @@ export default function Index({ enrollments, filters = {} }) {
             <Head title="Evaluation Queue" />
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                 <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                     <StatCard
+                        compact
                         label="In Queue"
                         value={stats.total}
                         iconBg="seait"
@@ -106,6 +107,7 @@ export default function Index({ enrollments, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '60ms' }}>
                     <StatCard
+                        compact
                         label="Pending Evaluation"
                         value={stats.pending}
                         iconBg="warning"
@@ -118,6 +120,7 @@ export default function Index({ enrollments, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
                     <StatCard
+                        compact
                         label="Evaluated"
                         value={stats.evaluated}
                         iconBg="success"
@@ -130,6 +133,7 @@ export default function Index({ enrollments, filters = {} }) {
                 </div>
                 <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
                     <StatCard
+                        compact
                         label="Transferees / Shifters"
                         value={stats.transferees}
                         iconBg="info"
