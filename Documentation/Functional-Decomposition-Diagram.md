@@ -3,7 +3,7 @@
 
 > **Source of truth:** generated directly from `routes/web.php`, `routes/auth.php`, and the public
 > methods of all 15 controllers (`app/Http/Controllers/**`) — every function below maps to a real,
-> permission-gated endpoint verified against commit `c8ea184`. Nothing is invented; CLI-only
+> permission-gated endpoint verified against commit `c3ef1fd`. Nothing is invented; CLI-only
 > utilities (`ems:create-admin`, `ems:benchmark`, `ems:print-fidelity`) are excluded as they are
 > not user-facing system functions.
 
@@ -62,8 +62,10 @@ screening, and ID production — with full RBAC, audit logging, and document pri
   - 1.2.1 Invalidate Session & Regenerate CSRF Token (`logout`)
   - 1.2.2 Redirect User to Login Screen
 - **1.3 Recover Forgotten Password**
-  - 1.3.1 Request Password-Reset Link (`password.email`)
-  - 1.3.2 Reset Password Using Emailed Token (`password.store`)
+  - 1.3.1 Display Password-Reset Request Form (`password.request`)
+  - 1.3.2 Request Password-Reset Link (`password.email`)
+  - 1.3.3 Display Password-Reset Form With Token (`password.reset`)
+  - 1.3.4 Reset Password Using Emailed Token (`password.store`)
 - **1.4 Re-Confirm Password for Sensitive Actions**
   - 1.4.1 Submit Password Confirmation (`password.confirm`)
 - **1.5 Manage Own Profile**
@@ -339,8 +341,10 @@ graph TD
     M1a --> M1a1["Submit Login Credentials"]
     M1a --> M1a2["Validate Credentials & Create Session"]
     M1b --> M1b1["Invalidate Session & Regenerate Token"]
-    M1c --> M1c1["Request Password-Reset Link"]
-    M1c --> M1c2["Reset Password via Token"]
+    M1c --> M1c1["Display Password-Reset Request Form"]
+    M1c --> M1c2["Request Password-Reset Link"]
+    M1c --> M1c3["Display Password-Reset Form"]
+    M1c --> M1c4["Reset Password via Token"]
     M1d --> M1d1["Submit Password Confirmation"]
     M1e --> M1e1["View Own Profile"]
     M1e --> M1e2["Update Profile Information"]
@@ -528,7 +532,9 @@ graph TD
 ---
 
 *Verified against `routes/web.php`, `routes/auth.php`, and all 15 controllers
-(232 passing tests at commit `c8ea184`). Regenerate after adding any new route.*
+(Feature suite: 209 passed, 5 skipped — MySQL E2E skips when unreachable —
+1,129 assertions at commit `c3ef1fd`). Route-coverage audit: `php fdd_audit.php`.
+Regenerate after adding any new route.*
 
 
 
