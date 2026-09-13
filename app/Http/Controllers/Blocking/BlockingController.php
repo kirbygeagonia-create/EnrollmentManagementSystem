@@ -126,7 +126,7 @@ class BlockingController extends Controller
             'available' => $available,
             'subjects' => Subjects::all(['subjectId', 'subjectCode', 'subjectName']),
             'rooms' => Rooms::all(['roomId', 'roomName', 'capacity', 'building']),
-            'instructors' => Staffusers::where('officeId', '!=', 1)->get(['userId', 'firstName', 'lastName']),
+            'instructors' => Staffusers::where('officeId', '!=', 1)->get(['userId', 'firstName', 'lastName', 'middleName', 'role', 'officeId', 'unitId']),
             'days' => collect(DayOfWeek::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
             'eligibleEnrollments' => $eligibleEnrollments,
         ]);

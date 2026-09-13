@@ -68,6 +68,14 @@ class Staffusers extends Authenticatable
      */
     public function getPositionTitleAttribute(): string
     {
+        // Null-safe: partial selects that omit `role` (e.g. the instructor
+        // dropdown on Blocking/Show) still serialize the appended attribute,
+        // and an unloaded attribute reads as null even though the column
+        // itself is non-nullable.
+        if (empty($this->getAttributes()['role'])) {
+            return $this->office ? "Staff, {$this->office->officeName}" : 'Staff Officer';
+        }
+
         $officeName = $this->office ? $this->office->officeName : '';
         $unitName = $this->unit ? $this->unit->unitName : '';
         $roleValue = $this->role->value;

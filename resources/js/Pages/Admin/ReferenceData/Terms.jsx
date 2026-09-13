@@ -17,10 +17,10 @@ const statusOptions = [
     { value: 'inactive', label: 'Inactive' },
 ];
 
-export default function Terms({ terms, years, semesters }) {
-    const [search, setSearch] = useState('');
-    const [semester, setSemester] = useState('');
-    const [status, setStatus] = useState('');
+export default function Terms({ terms, years, semesters, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [semester, setSemester] = useState(filters.semester || '');
+    const [status, setStatus] = useState(filters.status || '');
     const [showModal, setShowModal] = useState(false);
     const [editingTerm, setEditingTerm] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -50,7 +50,7 @@ export default function Terms({ terms, years, semesters }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.terms.index'), {
+        router.get(route('admin.reference-data.terms'), {
             search: search || undefined,
             semester: semester || undefined,
             status: status || undefined,

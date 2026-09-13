@@ -24,12 +24,14 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-        // Audit §4.3: baseline Content-Security-Policy header
+        // Audit §4.3: baseline Content-Security-Policy header.
+        // Fonts are self-hosted (public/fonts/) — no external font CDNs, so the
+        // app is fully offline-capable and the CSP stays closed to third parties.
         $cspDirectives = [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com",
-            "font-src 'self' https://fonts.bunny.net https://fonts.gstatic.com data:",
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self' data:",
             "img-src 'self' data: blob: https:",
             "connect-src 'self' ws: wss: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*",
             "frame-ancestors 'none'",

@@ -1,10 +1,8 @@
 import { Transition } from '@headlessui/react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { Card, FormSection } from '@/Components/ui';
 
 export default function UpdateProfileInformation({
-    mustVerifyEmail,
-    status,
     className = '',
 }) {
     const user = usePage().props.auth.user;
@@ -50,28 +48,6 @@ export default function UpdateProfileInformation({
                     />
                     {errors.email && <p className="form-error">{errors.email}</p>}
                 </FormSection>
-
-                {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="rounded-card border border-warning-200 bg-warning-50 p-4">
-                        <p className="text-sm text-brand-800">
-                            Your email address is unverified.
-                            <Link
-                                href={route('verification.send')}
-                                method="post"
-                                as="button"
-                                className="ml-1 rounded-btn text-sm font-medium text-seait-600 underline hover:text-seait-800 focus:outline-none focus:ring-2 focus:ring-seait-500 focus:ring-offset-2"
-                            >
-                                Click here to re-send the verification email.
-                            </Link>
-                        </p>
-
-                        {status === 'verification-link-sent' && (
-                            <p className="mt-2 text-sm font-medium text-success-700">
-                                A new verification link has been sent to your email address.
-                            </p>
-                        )}
-                    </div>
-                )}
 
                 <div className="flex items-center gap-4">
                     <button type="submit" className="btn btn-primary" disabled={processing}>

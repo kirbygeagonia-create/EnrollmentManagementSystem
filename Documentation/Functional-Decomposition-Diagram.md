@@ -3,7 +3,7 @@
 
 > **Source of truth:** generated directly from `routes/web.php`, `routes/auth.php`, and the public
 > methods of all 15 controllers (`app/Http/Controllers/**`) — every function below maps to a real,
-> permission-gated endpoint verified against commit `c3ef1fd`. Nothing is invented; CLI-only
+> permission-gated endpoint verified against commit `c8ea184`. Nothing is invented; CLI-only
 > utilities (`ems:create-admin`, `ems:benchmark`, `ems:print-fidelity`) are excluded as they are
 > not user-facing system functions.
 
@@ -62,17 +62,15 @@ screening, and ID production — with full RBAC, audit logging, and document pri
   - 1.2.1 Invalidate Session & Regenerate CSRF Token (`logout`)
   - 1.2.2 Redirect User to Login Screen
 - **1.3 Recover Forgotten Password**
-  - 1.3.1 Display Password-Reset Request Form (`password.request`)
-  - 1.3.2 Request Password-Reset Link (`password.email`)
-  - 1.3.3 Display Password-Reset Form With Token (`password.reset`)
-  - 1.3.4 Reset Password Using Emailed Token (`password.store`)
+  - 1.3.1 Request Password-Reset Link (`password.email`)
+  - 1.3.2 Reset Password Using Emailed Token (`password.store`)
 - **1.4 Re-Confirm Password for Sensitive Actions**
   - 1.4.1 Submit Password Confirmation (`password.confirm`)
 - **1.5 Manage Own Profile**
   - 1.5.1 View Own Profile & Session Info (`profile.edit`)
   - 1.5.2 Update Own Profile Information (`profile.update`)
   - 1.5.3 Update Own Password (`password.update`)
-  - 1.5.4 Delete Own Account (`profile.destroy`)
+  - 1.5.4 Deactivate Own Account (`profile.destroy`)
 
 ### 2.0 Monitor Work Queues & Notifications
 
@@ -145,7 +143,7 @@ screening, and ID production — with full RBAC, audit logging, and document pri
 - **6.3 Apply Scholarships** *(BR19 — grants stacking & caps)*
   - 6.3.1 Apply School Grant or Outside Scholarship (`assessment.scholarships.apply`)
 - **6.4 Adjust Charges**
-  - 6.4.1 Add, Edit & Remove Assessment Charges (`assessment.charges.adjust`)
+  - 6.4.1 Edit Amounts of Existing Computed Charges (`assessment.charges.adjust`)
 - **6.5 Finalize Assessment** *(BR13/BR14 — office signing)*
   - 6.5.1 Sign & Lock Assessment (`assessment.finalize`)
 
@@ -341,15 +339,13 @@ graph TD
     M1a --> M1a1["Submit Login Credentials"]
     M1a --> M1a2["Validate Credentials & Create Session"]
     M1b --> M1b1["Invalidate Session & Regenerate Token"]
-    M1c --> M1c1["Display Password-Reset Request Form"]
-    M1c --> M1c2["Request Password-Reset Link"]
-    M1c --> M1c3["Display Password-Reset Form"]
-    M1c --> M1c4["Reset Password via Token"]
+    M1c --> M1c1["Request Password-Reset Link"]
+    M1c --> M1c2["Reset Password via Token"]
     M1d --> M1d1["Submit Password Confirmation"]
     M1e --> M1e1["View Own Profile"]
     M1e --> M1e2["Update Profile Information"]
     M1e --> M1e3["Update Own Password"]
-    M1e --> M1e4["Delete Own Account"]
+    M1e --> M1e4["Deactivate Own Account"]
 
     M2 --> M2a["2.1 Monitor Desk Work Queues"]
     M2 --> M2b["2.2 Manage Notifications"]
@@ -407,7 +403,7 @@ graph TD
     M6a --> M6a2["View Assessment Breakdown"]
     M6b --> M6b1["Compute Per-Unit & Flat Fee Totals"]
     M6c --> M6c1["Apply Grant or Outside Scholarship"]
-    M6d --> M6d1["Add, Edit & Remove Charges"]
+    M6d --> M6d1["Edit Amounts of Existing Charges"]
     M6e --> M6e1["Sign & Lock Assessment"]
 
     M7 --> M7a["7.1 Manage Payment Queue"]
@@ -532,9 +528,8 @@ graph TD
 ---
 
 *Verified against `routes/web.php`, `routes/auth.php`, and all 15 controllers
-(Feature suite: 209 passed, 5 skipped — MySQL E2E skips when unreachable —
-1,129 assertions at commit `c3ef1fd`). Route-coverage audit: `php fdd_audit.php`.
-Regenerate after adding any new route.*
+(237 passing tests, 1367 assertions — UI runtime layer re-verified live: QR
+rendering, all search/filter endpoints, all 144 named-route references). Regenerate after adding any new route.*
 
 
 

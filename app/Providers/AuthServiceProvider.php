@@ -121,9 +121,21 @@ class AuthServiceProvider extends ServiceProvider
         // authorized against Courses + stage/type enums (BR9/BR10).
         Gate::define('exam.record', function ($user, $course, ExamStage $stage, ExamType $type) {
             // Controllers pass Courses::class (string); resolve the real course so
-            // the retention branch (requiresRetentionExam) works.
+            // the retention branch (requiresRetentionExam) works. When no course is
+            // in context (the create form before one is picked), the course-flag
+            // gate cannot apply yet — decide on the permission alone; the flag is
+            // still enforced by recordRetention/recordGeneral at submit time.
             if (is_string($course)) {
-                $course = Courses::find(request('courseId')) ?? new Courses;
+                $course = Courses::find(request('courseId'));
+                if (! $course) {
+                    return match ($stage) {
+                        ExamStage::Entrance => $user->hasPermissionTo(match ($type) {
+                            ExamType::General => 'exam.record.general',
+                            ExamType::CourseSpecific => 'exam.record.courseSpecific',
+                        }),
+                        ExamStage::Retention => $user->hasPermissionTo('exam.record.retention'),
+                    };
+                }
             }
 
             return app(ExamPolicy::class)->record($user, $course, $stage, $type);

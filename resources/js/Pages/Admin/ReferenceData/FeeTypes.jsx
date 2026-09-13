@@ -10,21 +10,14 @@ const unitBasisOptions = [
     { value: 'flat', label: 'Flat Rate' },
 ];
 
-const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-];
-
 const unitBasisToneMap = {
     perUnit: 'info',
     flat: 'warning',
 };
 
-export default function FeeTypes({ feeTypes, unitBases }) {
-    const [search, setSearch] = useState('');
-    const [unitBasis, setUnitBasis] = useState('');
-    const [status, setStatus] = useState('');
+export default function FeeTypes({ feeTypes, unitBases, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [unitBasis, setUnitBasis] = useState(filters.unitBasis || '');
     const [showModal, setShowModal] = useState(false);
     const [editingFeeType, setEditingFeeType] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -47,10 +40,9 @@ export default function FeeTypes({ feeTypes, unitBases }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.fee-types.index'), {
+        router.get(route('admin.reference-data.fee-types'), {
             search: search || undefined,
             unitBasis: unitBasis || undefined,
-            status: status || undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -174,15 +166,6 @@ export default function FeeTypes({ feeTypes, unitBases }) {
                         className="form-input"
                     />
                 </FilterBarField>
-                <FilterBarField label="Status">
-                    <Select
-                        value={status}
-                        onChange={setStatus}
-                        options={statusOptions}
-                        placeholder="All Statuses"
-                        className="form-input"
-                    />
-                </FilterBarField>
             </FilterBar>
 
             <Card>
@@ -201,9 +184,9 @@ export default function FeeTypes({ feeTypes, unitBases }) {
                 ) : (
                     <EmptyState
                         title="No fee types found"
-                        message={search || unitBasis || status ? 'Try adjusting your filters to find matching records.' : 'No fee types have been created yet.'}
-                        actionLabel={!search && !unitBasis && !status ? 'Create First Fee Type' : undefined}
-                        onAction={!search && !unitBasis && !status ? openCreateModal : undefined}
+                        message={search || unitBasis ? 'Try adjusting your filters to find matching records.' : 'No fee types have been created yet.'}
+                        actionLabel={!search && !unitBasis ? 'Create First Fee Type' : undefined}
+                        onAction={!search && !unitBasis ? openCreateModal : undefined}
                     />
                 )}
             </Card>

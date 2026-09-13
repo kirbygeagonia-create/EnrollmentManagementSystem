@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageHeader, Badge, FormSection, Modal, CauseEffectModal, StatCard } from '@/Components/ui';
 import { useState } from 'react';
+import QRCode from 'react-qr-code';
 
 const bloodTypeOptions = [
     { value: 'A+', label: 'A+' },
@@ -280,10 +281,18 @@ export default function Show({ enrollment, idRequest, studentId }) {
                                             <p className="font-mono text-slate-300">{idRequest?.emergencyContactNumber || '—'}</p>
                                         </div>
                                         <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white text-slate-900 border">
-                                            <div className="h-16 w-16 bg-slate-900 p-1 rounded flex items-center justify-center text-white font-mono text-[8px] text-center">
-                                                [ QR CODE ]
-                                                <br />
-                                                {studentId?.qrCode?.slice(-6) || 'QR-SEC'}
+                                            <div className="h-16 w-16 bg-white p-1 rounded flex items-center justify-center">
+                                                {studentId?.qrCode ? (
+                                                    <QRCode
+                                                        value={studentId.qrCode}
+                                                        size={56}
+                                                        bgColor="#ffffff"
+                                                        fgColor="#0f172a"
+                                                        level="M"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[8px] font-mono text-slate-400">PENDING</span>
+                                                )}
                                             </div>
                                             <span className="text-[8px] font-mono font-bold text-slate-600 mt-1 truncate max-w-[100px]">
                                                 {studentId?.qrCode || 'SCAN ME'}

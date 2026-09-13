@@ -27,18 +27,22 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
     const fetchStudents = useCallback(() => {
         if (form.data.courseId && form.data.termId) {
             setLoadingStudents(true);
-            router.get(route('exam.students', { courseId: form.data.courseId, termId: form.data.termId }), {
-                only: ['students'],
-                onSuccess: (page) => {
-                    setStudents(page.props.students || []);
-                    setLoadingStudents(false);
-                },
-                onError: () => setLoadingStudents(false),
+            const params = new URLSearchParams({
+                courseId: form.data.courseId,
+                termId: form.data.termId,
+                stage,
             });
+            fetch(route('exam.students') + `?${params}`)
+                .then((res) => res.json())
+                .then((data) => {
+                    setStudents(data.students || []);
+                    setLoadingStudents(false);
+                })
+                .catch(() => setLoadingStudents(false));
         } else {
             setStudents([]);
         }
-    }, [form.data.courseId, form.data.termId]);
+    }, [form.data.courseId, form.data.termId, stage]);
 
     // Fetch students when course and term change
     useEffect(() => {

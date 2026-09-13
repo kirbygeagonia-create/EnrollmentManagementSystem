@@ -4,8 +4,8 @@ import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
 
-export default function Offices({ offices }) {
-    const [search, setSearch] = useState('');
+export default function Offices({ offices, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
     const [showModal, setShowModal] = useState(false);
     const [editingOffice, setEditingOffice] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -21,7 +21,7 @@ export default function Offices({ offices }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.offices.index'), {
+        router.get(route('admin.reference-data.offices'), {
             search: search || undefined,
         }, {
             preserveState: true,

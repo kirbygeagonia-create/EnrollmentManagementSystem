@@ -4,8 +4,9 @@ import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
-export default function Majors({ majors, courses }) {
-    const [search, setSearch] = useState('');
+export default function Majors({ majors, courses, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [courseId, setCourseId] = useState(filters.courseId || '');
     const [showModal, setShowModal] = useState(false);
     const [editingMajor, setEditingMajor] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -23,8 +24,9 @@ export default function Majors({ majors, courses }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.majors.index'), {
+        router.get(route('admin.reference-data.majors'), {
             search: search || undefined,
+            courseId: courseId || undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -131,6 +133,15 @@ export default function Majors({ majors, courses }) {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search by name..."
+                        className="form-input"
+                    />
+                </FilterBarField>
+                <FilterBarField label="Course">
+                    <Select
+                        value={courseId}
+                        onChange={setCourseId}
+                        options={courses.map(c => ({ value: String(c.courseId), label: c.courseName }))}
+                        placeholder="All Courses"
                         className="form-input"
                     />
                 </FilterBarField>

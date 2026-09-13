@@ -27,10 +27,10 @@ const statusOptions = [
     { value: 'optional', label: 'Optional' },
 ];
 
-export default function AdmissionRequirements({ requirements, appliesTo }) {
-    const [search, setSearch] = useState('');
-    const [appliesToFilter, setAppliesToFilter] = useState('');
-    const [status, setStatus] = useState('');
+export default function AdmissionRequirements({ requirements, appliesTo, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [appliesToFilter, setAppliesToFilter] = useState(filters.appliesTo || '');
+    const [status, setStatus] = useState(filters.status || '');
     const [showModal, setShowModal] = useState(false);
     const [editingRequirement, setEditingRequirement] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -57,7 +57,7 @@ export default function AdmissionRequirements({ requirements, appliesTo }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.admission-requirements.index'), {
+        router.get(route('admin.reference-data.admission-requirements'), {
             search: search || undefined,
             appliesTo: appliesToFilter || undefined,
             status: status || undefined,

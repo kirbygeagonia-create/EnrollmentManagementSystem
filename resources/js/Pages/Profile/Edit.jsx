@@ -5,7 +5,7 @@ import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 
-export default function Edit({ mustVerifyEmail, status }) {
+export default function Edit() {
     return (
         <AuthenticatedLayout
             header={
@@ -20,10 +20,7 @@ export default function Edit({ mustVerifyEmail, status }) {
             <Head title="Profile" />
 
             <div className="space-y-6">
-                <UpdateProfileInformationForm
-                    mustVerifyEmail={mustVerifyEmail}
-                    status={status}
-                />
+                <UpdateProfileInformationForm />
 
                 <UpdatePasswordForm />
 

@@ -95,7 +95,7 @@ export default function AuditLogs({ logs, filters = {} }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.audit-logs.index'), {
+        router.get(route('admin.users.audit-logs'), {
             action: action || undefined,
             entityTable: entityTable || undefined,
             dateFrom: dateFrom || undefined,

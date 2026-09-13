@@ -501,7 +501,7 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
-    public function students_endpoint_validates_and_returns_enrolled_students(): void
+    public function students_endpoint_validates_and_returns_stage_appropriate_candidates(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
 
@@ -511,14 +511,33 @@ class ExamControllerTest extends TestCase
             ->assertOk()
             ->assertJson(['students' => []]);
 
-        // Enrolled student in the course/term appears in the lookup.
-        $student = $this->createStudent();
-        $this->createEnrolledEnrollment($student, $this->entranceCourseId);
+        // Entrance candidates: admitted to the course/term, not yet enrolled
+        // (the exam happens between admission and evaluation).
+        $admitted = $this->createStudent();
+        Admissions::create([
+            'studentId' => $admitted->studentId,
+            'courseId' => $this->entranceCourseId,
+            'termId' => $this->termId,
+            'applicantType' => 'firstYear',
+            'admissionStatus' => 'approved',
+        ]);
+
+        // An already-enrolled student must NOT appear as an entrance candidate.
+        $enrolled = $this->createStudent();
+        $this->createEnrolledEnrollment($enrolled, $this->retentionCourseId);
 
         $this->actingAs($guidance)
-            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId]))
+            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId, 'stage' => 'entrance']))
             ->assertOk()
-            ->assertJsonFragment(['studentId' => $student->studentId]);
+            ->assertJsonFragment(['studentId' => $admitted->studentId])
+            ->assertJsonMissing(['studentId' => $enrolled->studentId]);
+
+        // Retention candidates: students enrolled in the board (retention) course.
+        $this->actingAs($guidance)
+            ->getJson(route('exam.students', ['courseId' => $this->retentionCourseId, 'termId' => $this->termId, 'stage' => 'retention']))
+            ->assertOk()
+            ->assertJsonFragment(['studentId' => $enrolled->studentId])
+            ->assertJsonMissing(['studentId' => $admitted->studentId]);
     }
 
     #[Test]

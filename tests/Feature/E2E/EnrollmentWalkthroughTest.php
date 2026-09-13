@@ -547,7 +547,9 @@ class EnrollmentWalkthroughTest extends TestCase
         // covers firstYear/transferee) — they enter via enrollment directly.
         $student = $this->createStudent('Continuing');
 
-        // Retention exam (BSAIS requires retention exam; Guidance, office 7)
+        // Retention exam (BSBA requires retention exam; Guidance, office 7).
+        // assertRedirect confirms success — a 403 (policy denial) would fail
+        // the test instead of slipping through assertSessionHasNoErrors().
         $this->actingAs($this->staffForOffice(7))
             ->post(route('exam.retention.record'), [
                 'studentId' => $student->studentId,
@@ -556,7 +558,15 @@ class EnrollmentWalkthroughTest extends TestCase
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
-            ->assertSessionHasNoErrors();
+            ->assertRedirect(route('exam.index'))
+            ->assertSessionHas('success', 'Retention exam recorded.');
+
+        $this->assertDatabaseHas('examresults', [
+            'studentId' => $student->studentId,
+            'courseId' => 5,
+            'examStage' => 'retention',
+            'examResult' => 'pass',
+        ]);
 
         // --- Clearance (mandatory for continuing) ---
         $period = Clearanceperiods::where('periodStatus', 'open')->first();

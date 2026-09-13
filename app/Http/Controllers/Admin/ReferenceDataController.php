@@ -62,12 +62,21 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
 
-        $courses = Courses::with('unit')->orderByDesc('courseId')->paginate(20);
+        $courses = Courses::with('unit')
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('courseName', 'like', "%{$search}%")
+                    ->orWhere('courseCode', 'like', "%{$search}%");
+            }))
+            ->when($request->unit, fn ($q, $unit) => $q->where('unitId', $unit))
+            ->orderByDesc('courseId')
+            ->paginate(20)
+            ->withQueryString();
         $units = Academicunits::all(['unitId', 'unitName']);
 
         return Inertia::render('Admin/ReferenceData/Courses', [
             'courses' => $courses,
             'units' => $units,
+            'filters' => $request->only(['search', 'unit']),
         ]);
     }
 
@@ -116,12 +125,18 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageMajors', Majors::class);
 
-        $majors = Majors::with('course')->orderByDesc('majorId')->paginate(20);
+        $majors = Majors::with('course')
+            ->when($request->search, fn ($q, $search) => $q->where('majorName', 'like', "%{$search}%"))
+            ->when($request->courseId, fn ($q, $courseId) => $q->where('courseId', $courseId))
+            ->orderByDesc('majorId')
+            ->paginate(20)
+            ->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
 
         return Inertia::render('Admin/ReferenceData/Majors', [
             'majors' => $majors,
             'courses' => $courses,
+            'filters' => $request->only(['search', 'courseId']),
         ]);
     }
 
@@ -158,7 +173,14 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCurriculums', Curriculums::class);
 
-        $curriculums = Curriculums::with(['course', 'major'])->orderByDesc('curriculumId')->paginate(20);
+        $curriculums = Curriculums::with(['course', 'major'])
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('curriculumName', 'like', "%{$search}%")
+                    ->orWhereHas('course', fn ($cq) => $cq->where('courseName', 'like', "%{$search}%"));
+            }))
+            ->orderByDesc('curriculumId')
+            ->paginate(20)
+            ->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
         $majors = Majors::all(['majorId', 'majorName']);
 
@@ -166,6 +188,7 @@ class ReferenceDataController extends Controller
             'curriculums' => $curriculums,
             'courses' => $courses,
             'majors' => $majors,
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -266,11 +289,20 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageSubjects', Subjects::class);
 
-        $subjects = Subjects::orderByDesc('subjectId')->paginate(20);
+        $subjects = Subjects::query()
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('subjectName', 'like', "%{$search}%")
+                    ->orWhere('subjectCode', 'like', "%{$search}%");
+            }))
+            ->when($request->type, fn ($q, $type) => $q->where('subjectType', $type))
+            ->orderByDesc('subjectId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/Subjects', [
             'subjects' => $subjects,
             'subjectTypes' => collect(SubjectType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'filters' => $request->only(['search', 'type']),
         ]);
     }
 
@@ -316,13 +348,21 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageTerms', Academicterms::class);
 
-        $terms = Academicterms::with('academicYear')->orderByDesc('termId')->paginate(20);
+        $terms = Academicterms::with('academicYear')
+            ->when($request->semester, fn ($q, $semester) => $q->where('semester', $semester))
+            ->when($request->status === 'active', fn ($q) => $q->where('startDate', '<=', now()->toDateString())->where('endDate', '>=', now()->toDateString()))
+            ->when($request->status === 'inactive', fn ($q) => $q->where(fn ($sq) => $sq->where('startDate', '>', now()->toDateString())->orWhere('endDate', '<', now()->toDateString())))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('academicYear', fn ($yq) => $yq->where('yearLabel', 'like', "%{$search}%")))
+            ->orderByDesc('termId')
+            ->paginate(20)
+            ->withQueryString();
         $years = Academicyears::all(['academicYearId', 'yearLabel']);
 
         return Inertia::render('Admin/ReferenceData/Terms', [
             'terms' => $terms,
             'years' => $years,
             'semesters' => collect(Semester::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'filters' => $request->only(['search', 'semester', 'status']),
         ]);
     }
 
@@ -366,11 +406,17 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageFeeTypes', Feetypes::class);
 
-        $feeTypes = Feetypes::orderByDesc('feeTypeId')->paginate(20);
+        $feeTypes = Feetypes::query()
+            ->when($request->search, fn ($q, $search) => $q->where('feeName', 'like', "%{$search}%"))
+            ->when($request->unitBasis, fn ($q, $basis) => $q->where('unitBasis', $basis))
+            ->orderByDesc('feeTypeId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/FeeTypes', [
             'feeTypes' => $feeTypes,
             'unitBases' => collect(FeeUnitBasis::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'filters' => $request->only(['search', 'unitBasis']),
         ]);
     }
 
@@ -412,11 +458,17 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageScholarshipTypes', Scholarshiptypes::class);
 
-        $types = Scholarshiptypes::orderByDesc('scholarshipTypeId')->paginate(20);
+        $types = Scholarshiptypes::query()
+            ->when($request->search, fn ($q, $search) => $q->where('scholarshipName', 'like', "%{$search}%"))
+            ->when($request->coverage, fn ($q, $coverage) => $q->where('coverageType', $coverage))
+            ->orderByDesc('scholarshipTypeId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/ScholarshipTypes', [
             'types' => $types,
             'coverageTypes' => collect(CoverageType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'filters' => $request->only(['search', 'coverage']),
         ]);
     }
 
@@ -458,10 +510,15 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
 
-        $offices = Offices::orderByDesc('officeId')->paginate(20);
+        $offices = Offices::query()
+            ->when($request->search, fn ($q, $search) => $q->where('officeName', 'like', "%{$search}%"))
+            ->orderByDesc('officeId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/Offices', [
             'offices' => $offices,
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -494,10 +551,18 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageRooms', Rooms::class);
 
-        $rooms = Rooms::orderByDesc('roomId')->paginate(20);
+        $rooms = Rooms::query()
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('roomName', 'like', "%{$search}%")
+                    ->orWhere('building', 'like', "%{$search}%");
+            }))
+            ->orderByDesc('roomId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/Rooms', [
             'rooms' => $rooms,
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -538,7 +603,14 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageBlocks', Blocks::class);
 
-        $blocks = Blocks::with(['course', 'term.academicYear'])->orderByDesc('blockId')->paginate(20);
+        $blocks = Blocks::with(['course', 'term.academicYear'])
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('blockName', 'like', "%{$search}%")
+                    ->orWhereHas('course', fn ($cq) => $cq->where('courseName', 'like', "%{$search}%"));
+            }))
+            ->orderByDesc('blockId')
+            ->paginate(20)
+            ->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
         $terms = Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']);
 
@@ -546,6 +618,7 @@ class ReferenceDataController extends Controller
             'blocks' => $blocks,
             'courses' => $courses,
             'terms' => $terms,
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -587,11 +660,19 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
 
-        $requirements = Admissionrequirements::orderByDesc('requirementId')->paginate(20);
+        $requirements = Admissionrequirements::query()
+            ->when($request->search, fn ($q, $search) => $q->where('requirementName', 'like', "%{$search}%"))
+            ->when($request->appliesTo, fn ($q, $appliesTo) => $q->where('appliesTo', $appliesTo))
+            ->when($request->status === 'required', fn ($q) => $q->where('isRequired', true))
+            ->when($request->status === 'optional', fn ($q) => $q->where('isRequired', false))
+            ->orderByDesc('requirementId')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/AdmissionRequirements', [
             'requirements' => $requirements,
             'appliesTo' => collect(AppliesTo::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'filters' => $request->only(['search', 'appliesTo', 'status']),
         ]);
     }
 
@@ -632,12 +713,17 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
 
-        $requirements = Clearancerequirements::with('office')->orderByDesc('clearanceRequirementId')->paginate(20);
+        $requirements = Clearancerequirements::with('office')
+            ->when($request->search, fn ($q, $search) => $q->whereHas('office', fn ($oq) => $oq->where('officeName', 'like', "%{$search}%")))
+            ->orderByDesc('clearanceRequirementId')
+            ->paginate(20)
+            ->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
 
         return Inertia::render('Admin/ReferenceData/ClearanceRequirements', [
             'requirements' => $requirements,
             'offices' => $offices,
+            'filters' => $request->only(['search']),
         ]);
     }
 

@@ -109,7 +109,7 @@ class DevReferenceDataSeeder extends Seeder
             [2, 4, 'BSCS', 'Bachelor of Science in Computer Science', false, false],
             [3, 2, 'BSCrim', 'Bachelor of Science in Criminology', true, false],
             [4, 1, 'BSA', 'Bachelor of Science in Agriculture', false, false],
-            [5, 3, 'BSBA', 'Bachelor of Science in Business Administration', false, false],
+            [5, 3, 'BSBA', 'Bachelor of Science in Business Administration', false, true],
             [6, 6, 'BSEd', 'Bachelor of Secondary Education', false, false],
         ];
         foreach ($courses as [$id, $unitId, $code, $name, $exam, $retention]) {

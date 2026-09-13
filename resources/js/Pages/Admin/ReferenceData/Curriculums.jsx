@@ -4,8 +4,8 @@ import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
-export default function Curriculums({ curriculums, courses, majors }) {
-    const [search, setSearch] = useState('');
+export default function Curriculums({ curriculums, courses, majors, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
     const [showModal, setShowModal] = useState(false);
     const [editingCurriculum, setEditingCurriculum] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -27,7 +27,7 @@ export default function Curriculums({ curriculums, courses, majors }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.curriculums.index'), {
+        router.get(route('admin.reference-data.curriculums'), {
             search: search || undefined,
         }, {
             preserveState: true,

@@ -2,17 +2,10 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
 
-const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-];
-
-export default function Rooms({ rooms }) {
-    const [search, setSearch] = useState('');
-    const [status, setStatus] = useState('');
+export default function Rooms({ rooms, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
     const [showModal, setShowModal] = useState(false);
     const [editingRoom, setEditingRoom] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -31,9 +24,8 @@ export default function Rooms({ rooms }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.rooms.index'), {
+        router.get(route('admin.reference-data.rooms'), {
             search: search || undefined,
-            status: status || undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -140,15 +132,6 @@ export default function Rooms({ rooms }) {
                         className="form-input"
                     />
                 </FilterBarField>
-                <FilterBarField label="Status">
-                    <Select
-                        value={status}
-                        onChange={setStatus}
-                        options={statusOptions}
-                        placeholder="All Statuses"
-                        className="form-input"
-                    />
-                </FilterBarField>
             </FilterBar>
 
             <Card>
@@ -167,9 +150,9 @@ export default function Rooms({ rooms }) {
                 ) : (
                     <EmptyState
                         title="No rooms found"
-                        message={search || status ? 'Try adjusting your filters to find matching records.' : 'No rooms have been created yet.'}
-                        actionLabel={!search && !status ? 'Create First Room' : undefined}
-                        onAction={!search && !status ? openCreateModal : undefined}
+                        message={search ? 'Try adjusting your search to find matching records.' : 'No rooms have been created yet.'}
+                        actionLabel={!search ? 'Create First Room' : undefined}
+                        onAction={!search ? openCreateModal : undefined}
                     />
                 )}
             </Card>

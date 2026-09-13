@@ -48,27 +48,41 @@ class ExamController extends Controller
      */
     public function create(Request $request): Response
     {
-        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+        $stage = ExamStage::from($request->stage ?? 'entrance');
+
+        // Entrance forms are open to either exam-recording permission; the
+        // retention form requires the retention permission (BR10).
+        $this->authorize('exam.record', [Courses::class, $stage, ExamType::General]);
 
         $courseId = $request->courseId;
         $termId = $request->termId;
 
+        // Course list depends on the stage: entrance exams list entrance-exam
+        // courses, retention exams list retention-exam (board) courses.
+        $courses = $stage === ExamStage::Retention
+            ? Courses::where('requiresRetentionExam', true)
+            : Courses::where('requiresEntranceExam', true);
+
         return Inertia::render('Exam/Create', [
-            'courses' => Courses::where('requiresEntranceExam', true)->get(['courseId', 'courseName', 'courseCode']),
+            'courses' => $courses->get(['courseId', 'courseName', 'courseCode']),
             'terms' => Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']),
             'selectedCourse' => $courseId ? Courses::find($courseId) : null,
             'selectedTerm' => $termId ? Academicterms::find($termId) : null,
-            'stage' => $request->stage ?? 'entrance',
+            'stage' => $stage->value,
             'type' => $request->type ?? 'general',
         ]);
     }
 
     /**
-     * Return students enrolled in a course/term for exam recording.
+     * Return exam candidates for a course/term:
+     *  - entrance: admitted students (pending/approved admission, no enrollment yet)
+     *  - retention: continuing students enrolled in the course (prior term)
      */
     public function students(Request $request): JsonResponse
     {
-        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, ExamType::General]);
+        $stage = ExamStage::from($request->input('stage', 'entrance'));
+
+        $this->authorize('exam.record', [Courses::class, $stage, ExamType::General]);
 
         if (! $request->filled('courseId') || ! $request->filled('termId')) {
             return response()->json(['students' => []]);
@@ -79,11 +93,24 @@ class ExamController extends Controller
             'termId' => 'required|exists:academicterms,termId',
         ]);
 
-        $students = Students::whereHas('enrollments', fn ($q) => $q
-            ->where('courseId', $request->courseId)
-            ->where('termId', $request->termId)
-            ->where('enrollmentStatus', 'enrolled')
-        )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+        if ($stage === ExamStage::Retention) {
+            // Retention candidates: continuing students enrolled in the course
+            // (any term — the gate applies at the start of a new term).
+            $students = Students::whereHas('enrollments', fn ($q) => $q
+                ->where('courseId', $request->courseId)
+                ->where('enrollmentStatus', 'enrolled')
+            )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+        } else {
+            // Entrance candidates: students admitted to the course/term who have
+            // not yet enrolled (exam happens between admission and evaluation).
+            $students = Students::whereHas('admissions', fn ($q) => $q
+                ->where('courseId', $request->courseId)
+                ->where('termId', $request->termId)
+                ->whereIn('admissionStatus', ['pending', 'approved'])
+            )->whereDoesntHave('enrollments', fn ($q) => $q
+                ->where('termId', $request->termId)
+            )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+        }
 
         return response()->json(['students' => $students]);
     }

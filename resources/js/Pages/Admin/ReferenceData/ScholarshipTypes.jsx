@@ -15,9 +15,9 @@ const coverageToneMap = {
     partial: 'warning',
 };
 
-export default function ScholarshipTypes({ types, coverageTypes }) {
-    const [search, setSearch] = useState('');
-    const [coverage, setCoverage] = useState('');
+export default function ScholarshipTypes({ types, coverageTypes, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [coverage, setCoverage] = useState(filters.coverage || '');
     const [showModal, setShowModal] = useState(false);
     const [editingType, setEditingType] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -40,7 +40,7 @@ export default function ScholarshipTypes({ types, coverageTypes }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.scholarship-types.index'), {
+        router.get(route('admin.reference-data.scholarship-types'), {
             search: search || undefined,
             coverage: coverage || undefined,
         }, {

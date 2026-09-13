@@ -17,9 +17,9 @@ const typeToneMap = {
     both: 'success',
 };
 
-export default function Subjects({ subjects, subjectTypes }) {
-    const [search, setSearch] = useState('');
-    const [type, setType] = useState('');
+export default function Subjects({ subjects, subjectTypes, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [type, setType] = useState(filters.type || '');
     const [showModal, setShowModal] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -47,7 +47,7 @@ export default function Subjects({ subjects, subjectTypes }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.subjects.index'), {
+        router.get(route('admin.reference-data.subjects'), {
             search: search || undefined,
             type: type || undefined,
         }, {

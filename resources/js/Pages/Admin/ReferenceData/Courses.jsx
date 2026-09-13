@@ -4,15 +4,9 @@ import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
-const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: '1', label: 'Active' },
-    { value: '0', label: 'Inactive' },
-];
-
-export default function Courses({ courses, units }) {
-    const [search, setSearch] = useState('');
-    const [status, setStatus] = useState('');
+export default function Courses({ courses, units, filters = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [unit, setUnit] = useState(filters.unit || '');
     const [showModal, setShowModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -43,9 +37,9 @@ export default function Courses({ courses, units }) {
 
     const handleFilter = (e) => {
         e.preventDefault();
-        router.get(route('admin.courses.index'), {
+        router.get(route('admin.reference-data.courses'), {
             search: search || undefined,
-            status: status || undefined,
+            unit: unit || undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -158,12 +152,12 @@ export default function Courses({ courses, units }) {
                         className="form-input"
                     />
                 </FilterBarField>
-                <FilterBarField label="Status">
+                <FilterBarField label="Unit">
                     <Select
-                        value={status}
-                        onChange={setStatus}
-                        options={statusOptions}
-                        placeholder="All Statuses"
+                        value={unit}
+                        onChange={setUnit}
+                        options={units.map(u => ({ value: String(u.unitId), label: u.unitName }))}
+                        placeholder="All Units"
                         className="form-input"
                     />
                 </FilterBarField>
@@ -185,9 +179,9 @@ export default function Courses({ courses, units }) {
                 ) : (
                     <EmptyState
                         title="No courses found"
-                        message={search || status ? 'Try adjusting your filters to find matching records.' : 'No courses have been created yet.'}
-                        actionLabel={!search && !status ? 'Create First Course' : undefined}
-                        onAction={!search && !status ? openCreateModal : undefined}
+                        message={search || unit ? 'Try adjusting your filters to find matching records.' : 'No courses have been created yet.'}
+                        actionLabel={!search && !unit ? 'Create First Course' : undefined}
+                        onAction={!search && !unit ? openCreateModal : undefined}
                     />
                 )}
             </Card>
