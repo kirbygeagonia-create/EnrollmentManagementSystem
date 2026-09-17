@@ -22,7 +22,7 @@ class EnrollmentStateMachine
         'pending' => ['evaluated'],
         'evaluated' => ['assessed'],
         'assessed' => ['paid'],
-        'paid' => ['enrolled'],
+        'paid' => ['enrolled', 'assessed'],
         'enrolled' => ['dropped'],
         'dropped' => [],
     ];

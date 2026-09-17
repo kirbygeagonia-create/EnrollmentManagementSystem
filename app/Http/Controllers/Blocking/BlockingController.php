@@ -368,14 +368,15 @@ class BlockingController extends Controller
 
         $schedule = Schedules::findOrFail($validated['scheduleId']);
 
-        // Block capacity enforcement
+        // Block capacity enforcement (count distinct students, not subject rows)
         $currentEnrolled = Enrolledsubjects::where('blockId', $block->blockId)
             ->where('status', '!=', 'dropped')
-            ->count();
+            ->distinct('enrollmentId')
+            ->count('enrollmentId');
         $requestedCount = count($validated['enrollmentIds']);
         if ($currentEnrolled + $requestedCount > $block->maxStudents) {
             throw ValidationException::withMessages([
-                'capacity' => "Block capacity exceeded. Current: {$currentEnrolled}, Max: {$block->maxStudents}, Requested: {$requestedCount}.",
+                'capacity' => "Block capacity exceeded. Current students: {$currentEnrolled}, Max: {$block->maxStudents}, Requested: {$requestedCount}.",
             ]);
         }
 
@@ -384,10 +385,11 @@ class BlockingController extends Controller
         if ($room) {
             $roomEnrolled = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
                 ->where('status', '!=', 'dropped')
-                ->count();
+                ->distinct('enrollmentId')
+                ->count('enrollmentId');
             if ($roomEnrolled + $requestedCount > $room->capacity) {
                 throw ValidationException::withMessages([
-                    'room_capacity' => "Room capacity exceeded. Room {$room->roomName} capacity: {$room->capacity}, Current enrolled: {$roomEnrolled}, Requested: {$requestedCount}.",
+                    'room_capacity' => "Room capacity exceeded. Room {$room->roomName} capacity: {$room->capacity}, Current enrolled students: {$roomEnrolled}, Requested: {$requestedCount}.",
                 ]);
             }
         }

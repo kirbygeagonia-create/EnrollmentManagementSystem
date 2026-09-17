@@ -13,7 +13,7 @@ class Auditlogs extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['userId', 'action', 'entityTable', 'entityId', 'oldValues', 'newValues', 'ipAddress'];
+    protected $fillable = ['userId', 'action', 'entityTable', 'entityId', 'oldValues', 'newValues', 'ipAddress', 'createdAt'];
 
     protected function casts(): array
     {

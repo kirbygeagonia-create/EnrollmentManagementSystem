@@ -132,6 +132,9 @@ class ClearancePolicy
             ->where('clearancePeriodId', $period->clearancePeriodId)
             ->first();
 
-        return $clearance && $clearance->overallStatus === ClearanceOverallStatus::Incomplete;
+        return $clearance && in_array($clearance->overallStatus, [
+            ClearanceOverallStatus::Incomplete,
+            ClearanceOverallStatus::Pending,
+        ]);
     }
 }

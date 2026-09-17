@@ -236,7 +236,10 @@ class ClearanceController extends Controller
             ->where('clearancePeriodId', $period->clearancePeriodId)
             ->first();
 
-        if (! $clearance || $clearance->overallStatus !== ClearanceOverallStatus::Incomplete) {
+        if (! $clearance || ! in_array($clearance->overallStatus, [
+            ClearanceOverallStatus::Incomplete,
+            ClearanceOverallStatus::Pending,
+        ])) {
             return back()->withErrors(['clearance' => 'No lost clearance to replace.']);
         }
 

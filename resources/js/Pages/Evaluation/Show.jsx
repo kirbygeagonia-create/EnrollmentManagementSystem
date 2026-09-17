@@ -165,14 +165,28 @@ export default function Show({ enrollment, curriculumSubjects }) {
                     <button
                         type="button"
                         onClick={() => setShowConfirmSign(true)}
-                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated'}
+                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated' || !!enrollment.formSignedDate}
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Sign & Finalize Evaluation
+                        {enrollment.formSignedDate ? 'Signed & Finalized' : 'Sign & Finalize Evaluation'}
                     </button>
+
+                    {enrollment.enrollmentStatus === 'evaluated' && (
+                        <button
+                            type="button"
+                            onClick={() => router.post(route('assessment.compute', { enrollment: enrollment.enrollmentId }))}
+                            disabled={isSubmitting}
+                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Compute & Proceed to Assessment
+                        </button>
+                    )}
                 </div>
             </div>
 

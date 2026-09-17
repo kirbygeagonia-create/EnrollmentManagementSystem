@@ -50,6 +50,7 @@ const statusBannerMap = {
 export default function Show({ admission, requirements }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
+    const [rejectReqModal, setRejectReqModal] = useState({ open: false, requirementId: null, remarks: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [infoTab, setInfoTab] = useState('demographics');
 
@@ -90,14 +91,31 @@ export default function Show({ admission, requirements }) {
     };
 
     const handleVerifyRequirement = (requirementId, approved) => {
-        const remarks = approved ? '' : prompt('Please provide a reason for rejection:');
-        if (!approved && remarks === null) return;
+        if (!approved) {
+            setRejectReqModal({ open: true, requirementId, remarks: '' });
+            return;
+        }
 
-        router.post(route('admission.requirements.verify', { admission: admission.admissionId, requirement: requirementId }), { approved, remarks }, {
+        setIsSubmitting(true);
+        router.post(route('admission.requirements.verify', { admission: admission.admissionId, requirement: requirementId }), { approved: true, remarks: '' }, {
             onSuccess: () => setIsSubmitting(false),
             onError: () => setIsSubmitting(false),
         });
+    };
+
+    const confirmRejectRequirement = () => {
+        if (!rejectReqModal.requirementId) return;
         setIsSubmitting(true);
+        router.post(route('admission.requirements.verify', { admission: admission.admissionId, requirement: rejectReqModal.requirementId }), {
+            approved: false,
+            remarks: rejectReqModal.remarks || 'Requirement rejected / needs resubmission.',
+        }, {
+            onSuccess: () => {
+                setIsSubmitting(false);
+                setRejectReqModal({ open: false, requirementId: null, remarks: '' });
+            },
+            onError: () => setIsSubmitting(false),
+        });
     };
 
     const handleApprove = () => {
@@ -444,6 +462,54 @@ export default function Show({ admission, requirements }) {
                     cancelText="Cancel, Keep Under Review"
                     loading={isSubmitting}
                 />
+
+                {/* Requirement Rejection Remarks Modal */}
+                {rejectReqModal.open && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-10 w-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-heading font-bold text-slate-900 text-base">Reject Document Submission</h3>
+                                    <p className="text-xs text-slate-500">Provide reason or deficiency instructions for the applicant</p>
+                                </div>
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Rejection Remarks / Reason
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={rejectReqModal.remarks}
+                                    onChange={(e) => setRejectReqModal({ ...rejectReqModal, remarks: e.target.value })}
+                                    placeholder="e.g., Image is blurry, missing PSA official seal, or invalid document."
+                                    className="w-full text-sm rounded-xl border-slate-300 focus:border-red-500 focus:ring-red-500"
+                                />
+                            </div>
+                            <div className="flex items-center justify-end gap-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setRejectReqModal({ open: false, requirementId: null, remarks: '' })}
+                                    className="btn btn-ghost btn-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmRejectRequirement}
+                                    disabled={isSubmitting}
+                                    className="btn btn-danger btn-sm"
+                                >
+                                    Confirm Rejection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
         </AuthenticatedLayout>
     );
 }

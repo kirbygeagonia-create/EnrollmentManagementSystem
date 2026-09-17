@@ -5,20 +5,19 @@
 $php = 'C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe';
 $base = 'http://localhost:8080';
 
+$cookieJar = tempnam(sys_get_temp_dir(), 'audit_cookie_');
+
 function httpReq(string $method, string $url, array $opts = []) {
-    static $cookies = [];
+    global $cookieJar;
     $ch = curl_init($url);
     $headers = $opts['headers'] ?? [];
-    if ($cookies) {
-        $pairs = [];
-        foreach ($cookies as $k => $v) $pairs[] = $k . '=' . $v;
-        $headers[] = 'Cookie: ' . implode('; ', $pairs);
-    }
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER => true,
         CURLOPT_CUSTOMREQUEST => $method,
         CURLOPT_USERAGENT => 'curl/8.0',
+        CURLOPT_COOKIEJAR => $cookieJar,
+        CURLOPT_COOKIEFILE => $cookieJar,
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_TIMEOUT => 30,
     ]);
@@ -27,21 +26,46 @@ function httpReq(string $method, string $url, array $opts = []) {
     $resp = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err = curl_error($ch);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headerStr = substr($resp, 0, $headerSize);
+    $bodyStr = substr($resp, $headerSize);
     curl_close($ch);
-    $parts = explode("\r\n\r\n", $resp, 2);
-    preg_match_all('/Set-Cookie:\s*([^=]+)=([^;]*)/i', $parts[0], $m, PREG_SET_ORDER);
-    foreach ($m as $c) $cookies[trim($c[1])] = $c[2];
-    return [$code, $parts[1] ?? '', $cookies, $err, $parts[0] ?? ''];
+    return [$code, $bodyStr, [], $err, $headerStr];
 }
 
-// Login
-[$code, , $cookies] = httpReq('GET', "$base/login");
-$xsrf = urldecode($cookies['XSRF-TOKEN'] ?? '');
-httpReq('POST', "$base/login", [
+// Step 1: GET /login to initialize session and retrieve XSRF token
+[$code, , , , $loginHeaders] = httpReq('GET', "$base/login");
+preg_match('/Set-Cookie:\s*XSRF-TOKEN=([^;]+)/', $loginHeaders, $m);
+$xsrf = urldecode($m[1] ?? '');
+
+// Step 2: POST credentials with X-XSRF-TOKEN header
+[$loginCode, $loginBody, , , $postHeaders] = httpReq('POST', "$base/login", [
     'body' => http_build_query(['username' => 'staff8', 'password' => 'password']),
-    'headers' => ['Content-Type: application/x-www-form-urlencoded', 'X-XSRF-TOKEN: ' . $xsrf, 'Accept: text/html'],
+    'headers' => [
+        'Content-Type: application/x-www-form-urlencoded',
+        'Accept: text/html, application/json',
+        'X-XSRF-TOKEN: ' . $xsrf,
+        'Referer: ' . $base . '/login',
+    ],
 ]);
-echo "Logged in.\n";
+
+// Verify login: a 302 redirect to /dashboard means success
+if ($loginCode === 302 || $loginCode === 200) {
+    echo "Logged in (HTTP $loginCode).\n";
+} else {
+    echo "LOGIN FAILED (HTTP $loginCode).\nHeaders:\n$postHeaders\n";
+    exit(1);
+}
+
+// Verify session by visiting /dashboard
+[$dashCode] = httpReq('GET', "$base/dashboard", [
+    'headers' => ['Accept: text/html'],
+]);
+if ($dashCode === 200) {
+    echo "Session verified (dashboard HTTP 200).\n";
+} else {
+    echo "WARNING: Dashboard returned HTTP $dashCode — session may not be active.\n";
+}
 
 // Pull all named GET routes from Laravel (script writes them line by line)
 exec('"' . $php . '" ' . __DIR__ . DIRECTORY_SEPARATOR . 'list_get_routes.php', $out, $rc);

@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Assessment;
 use App\Enums\CoverageType;
 use App\Enums\EnrollmentStatus;
 use App\Enums\FeeUnitBasis;
+use App\Enums\PaymentStatus;
 use App\Enums\ScholarshipStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Charges;
 use App\Models\Enrollments;
 use App\Models\Feetypes;
+use App\Models\Payments;
 use App\Models\Scholarshiptypes;
 use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
@@ -46,8 +48,16 @@ class AssessmentController extends Controller
 
         $assessments = $query->paginate(20)->withQueryString();
 
+        $pendingEvaluations = Enrollments::with(['student', 'course', 'term', 'enrolledSubjects.subject'])
+            ->where('enrollmentStatus', EnrollmentStatus::Evaluated)
+            ->doesntHave('studentassessments')
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->orderByDesc('enrollmentId')
+            ->get();
+
         return Inertia::render('Assessment/Index', [
             'assessments' => $assessments,
+            'pendingEvaluations' => $pendingEvaluations,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -75,6 +85,12 @@ class AssessmentController extends Controller
     public function compute(Request $request, Enrollments $enrollment): RedirectResponse
     {
         $this->authorize('assessment.compute', $enrollment);
+
+        // Idempotency check: prevent duplicate assessments (DI-1)
+        $existing = Studentassessments::where('enrollmentId', $enrollment->enrollmentId)->first();
+        if ($existing) {
+            return redirect()->route('assessment.show', $existing)->with('info', 'Assessment already exists for this enrollment.');
+        }
 
         $enrolledUnits = $enrollment->enrolledSubjects()
             ->where('status', '!=', 'dropped')
@@ -175,9 +191,13 @@ class AssessmentController extends Controller
             'awardedBeforeEnrollment' => false,
         ]);
 
+        $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
+            ->where('paymentStatus', PaymentStatus::Paid)
+            ->sum('amount');
+
         $assessment->update([
             'totalScholarshipCoverage' => $newTotalCoverage,
-            'remainingBalance' => $assessment->totalAssessedAmount - $newTotalCoverage - $assessment->totalWaived,
+            'remainingBalance' => max(0, $assessment->totalAssessedAmount - $newTotalCoverage - $assessment->totalWaived - $totalPaid),
         ]);
 
         return back()->with('success', 'Scholarship applied.');
@@ -211,10 +231,14 @@ class AssessmentController extends Controller
             $totalAssessed = $assessment->charges->sum('amount');
             $totalWaived = $assessment->charges->sum('waivedAmount');
 
+            $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
+                ->where('paymentStatus', PaymentStatus::Paid)
+                ->sum('amount');
+
             $assessment->update([
                 'totalAssessedAmount' => $totalAssessed,
                 'totalWaived' => $totalWaived,
-                'remainingBalance' => $totalAssessed - $assessment->totalScholarshipCoverage - $totalWaived,
+                'remainingBalance' => max(0, $totalAssessed - $assessment->totalScholarshipCoverage - $totalWaived - $totalPaid),
             ]);
         });
 

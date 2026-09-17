@@ -67,21 +67,25 @@ class AdmissionPolicy
         }
 
         // For board courses, check entrance exam passed (BR9)
+        // General exam is always required. Course-specific exam is only
+        // required when one has actually been recorded for this applicant.
         if ($admission->course->requiresEntranceExam) {
             $generalExam = $admission->examresults()
                 ->where('examStage', 'entrance')
                 ->where('examType', 'general')
                 ->first();
 
+            if (! $generalExam || $generalExam->examResult->value !== 'pass') {
+                return false;
+            }
+
+            // Only enforce course-specific exam if one was administered
             $courseExam = $admission->examresults()
                 ->where('examStage', 'entrance')
                 ->where('examType', 'courseSpecific')
                 ->first();
 
-            if (! $generalExam || $generalExam->examResult->value !== 'pass') {
-                return false;
-            }
-            if (! $courseExam || $courseExam->examResult->value !== 'pass') {
+            if ($courseExam && $courseExam->examResult->value !== 'pass') {
                 return false;
             }
         }

@@ -9,6 +9,7 @@ use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\OfficeId;
+use App\Enums\PaymentStatus;
 use App\Enums\StudentType;
 use App\Http\Controllers\Controller;
 use App\Models\Clearanceperiods;
@@ -77,13 +78,18 @@ class RegistrarController extends Controller
             'enrollmentworkflow.workflowsteps.office',
             'enrolledSubjects.subject',
             'admission',
+            'payments',
         ]);
+
+        $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
+            || ($enrollment->studentassessments?->remainingBalance <= 0)
+            || $enrollment->payments->where('paymentStatus', PaymentStatus::Paid)->isNotEmpty();
 
         // Validation checklist
         $checklist = [
             'evaluation_signed' => (bool) $enrollment->evaluatedBy,
             'assessment_completed' => (bool) $enrollment->studentassessments,
-            'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
+            'payment_completed' => $paymentCompleted,
             'clearance_verified' => $this->checkClearance($enrollment),
             'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
         ];
@@ -130,11 +136,15 @@ class RegistrarController extends Controller
     {
         $this->authorize('registrar.approve', $enrollment);
 
+        $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
+            || ($enrollment->studentassessments?->remainingBalance <= 0)
+            || $enrollment->payments()->where('paymentStatus', PaymentStatus::Paid)->exists();
+
         // Validate prerequisites
         $checklist = [
             'evaluation_signed' => (bool) $enrollment->evaluatedBy,
             'assessment_completed' => (bool) $enrollment->studentassessments,
-            'payment_completed' => $enrollment->studentassessments?->remainingBalance <= 0,
+            'payment_completed' => $paymentCompleted,
             'clearance_verified' => $this->checkClearance($enrollment),
         ];
 

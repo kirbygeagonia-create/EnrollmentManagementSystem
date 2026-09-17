@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admission;
 
+use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Addresses;
@@ -10,6 +11,7 @@ use App\Models\Admissions;
 use App\Models\Courses;
 use App\Models\Documents;
 use App\Models\Educationalinstitutions;
+use App\Models\Enrollments;
 use App\Models\Guardians;
 use App\Models\Religions;
 use App\Models\Studenteducationalbackgrounds;
@@ -298,9 +300,26 @@ class AdmissionController extends Controller
                 'evaluatedBy' => Auth::user()->userId,
                 'evaluatedDate' => now(),
             ]);
+
+            // Ensure an Enrollment record is created for this admission (SM-1)
+            $existingEnrollment = Enrollments::where('admissionId', $admission->admissionId)->first();
+            if (! $existingEnrollment) {
+                Enrollments::create([
+                    'studentId' => $admission->studentId,
+                    'courseId' => $admission->courseId,
+                    'termId' => $admission->termId,
+                    'admissionId' => $admission->admissionId,
+                    'yearLevel' => 1,
+                    'studentType' => $admission->applicantType->value,
+                    'enrollmentType' => 'new',
+                    'academicStanding' => 'regular',
+                    'evaluatedBy' => Auth::user()->userId,
+                    'enrollmentStatus' => EnrollmentStatus::Pending,
+                ]);
+            }
         });
 
-        return back()->with('success', 'Admission approved.');
+        return back()->with('success', 'Admission approved and student moved to Evaluation queue.');
     }
 
     /**

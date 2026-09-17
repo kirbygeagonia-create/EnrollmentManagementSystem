@@ -155,9 +155,26 @@ class UserManagementController extends Controller
 
         $user->update($validated);
 
-        // Sync roles
+        // Sync roles with audit logging
         if ($request->filled('roleIds')) {
+            $oldRoles = $user->roles()->pluck('name')->toArray();
             $user->syncRoles($request->roleIds);
+            $newRoles = $user->fresh()->roles()->pluck('name')->toArray();
+
+            if ($oldRoles != $newRoles) {
+                $currentUser = Auth::user();
+                $currentUserId = $currentUser instanceof Staffusers ? $currentUser->userId : null;
+
+                Auditlogs::create([
+                    'userId' => $currentUserId,
+                    'action' => 'assigned',
+                    'entityTable' => 'staffusers',
+                    'entityId' => $user->userId,
+                    'oldValues' => ['roles' => $oldRoles],
+                    'newValues' => ['roles' => $newRoles],
+                    'ipAddress' => $request->ip(),
+                ]);
+            }
         }
 
         return back()->with('success', 'Staff user updated.');
@@ -165,6 +182,8 @@ class UserManagementController extends Controller
 
     /**
      * Delete staff user.
+     * Prevents database constraint crashes by deactivating staff members who have
+     * historical activity records (evaluations, approvals, payments, etc.).
      */
     public function destroy(Staffusers $user): RedirectResponse
     {
@@ -174,13 +193,42 @@ class UserManagementController extends Controller
             return back()->withErrors(['user' => 'Cannot delete yourself.']);
         }
 
-        $user->delete();
+        // Check if user has historical activity across foreign key relationships
+        $hasHistoricalRecords = $user->admissions()->exists()
+            || $user->auditlogs()->exists()
+            || $user->clearanceapprovals()->exists()
+            || $user->clinicrecords()->exists()
+            || $user->documentprintlog()->exists()
+            || $user->documents()->exists()
+            || $user->evaluatedEnrollments()->exists()
+            || $user->processedEnrollments()->exists()
+            || $user->enrollmentstatushistory()->exists()
+            || $user->payments()->exists()
+            || $user->schedules()->exists()
+            || $user->studentclearances()->exists()
+            || $user->studentids()->exists()
+            || $user->studentscholarships()->exists()
+            || $user->workflowsteps()->exists();
+
+        if ($hasHistoricalRecords) {
+            $user->update(['status' => StaffStatus::Inactive]);
+
+            return back()->with('success', 'Staff member has historical activity records and was deactivated instead of permanently deleted to preserve audit trails.');
+        }
+
+        try {
+            $user->delete();
+        } catch (\Throwable) {
+            $user->update(['status' => StaffStatus::Inactive]);
+
+            return back()->with('success', 'Staff member has associated institutional records and was deactivated instead of permanently deleted to preserve audit trails.');
+        }
 
         return back()->with('success', 'Staff user deleted.');
     }
 
     /**
-     * Assign roles to user.
+     * Assign roles to user with audit trail logging.
      */
     public function assignRoles(Request $request, Staffusers $user): RedirectResponse
     {
@@ -191,7 +239,24 @@ class UserManagementController extends Controller
             'roleIds.*' => 'exists:roles,id',
         ]);
 
+        $oldRoles = $user->roles()->pluck('name')->toArray();
+
         $user->syncRoles($request->roleIds);
+
+        $newRoles = $user->fresh()->roles()->pluck('name')->toArray();
+
+        $currentUser = Auth::user();
+        $currentUserId = $currentUser instanceof Staffusers ? $currentUser->userId : null;
+
+        Auditlogs::create([
+            'userId' => $currentUserId,
+            'action' => 'assigned',
+            'entityTable' => 'staffusers',
+            'entityId' => $user->userId,
+            'oldValues' => ['roles' => $oldRoles],
+            'newValues' => ['roles' => $newRoles],
+            'ipAddress' => $request->ip(),
+        ]);
 
         return back()->with('success', 'Roles assigned.');
     }

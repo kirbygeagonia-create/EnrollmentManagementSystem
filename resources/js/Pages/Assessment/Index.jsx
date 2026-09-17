@@ -18,7 +18,7 @@ const balanceToneFor = (balance, total) => {
     return 'danger';
 };
 
-export default function Index({ assessments, filters = {} }) {
+export default function Index({ assessments, pendingEvaluations = [], filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
     // Aggregate fee summary across the current page of assessments.
@@ -147,6 +147,50 @@ export default function Index({ assessments, filters = {} }) {
                     }
                 />
             </div>
+
+            {/* Pending Fee Computations Queue */}
+            {pendingEvaluations && pendingEvaluations.length > 0 && (
+                <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 mb-5 shadow-xs">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                            <h3 className="font-heading font-bold text-amber-950 text-sm">
+                                Evaluated Students Awaiting Fee Assessment ({pendingEvaluations.length})
+                            </h3>
+                        </div>
+                        <span className="text-xs text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-full font-medium">
+                            Action Required
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {pendingEvaluations.map((ev) => (
+                            <div key={ev.enrollmentId} className="bg-white p-3.5 rounded-xl border border-amber-200/80 flex items-center justify-between gap-3 shadow-xs">
+                                <div className="min-w-0">
+                                    <p className="font-heading font-bold text-slate-900 text-sm truncate">
+                                        {ev.student?.lastName}, {ev.student?.firstName}
+                                    </p>
+                                    <p className="text-xs text-slate-500 font-mono">
+                                        {ev.student?.schoolIdNumber} • {ev.course?.courseCode} (Yr {ev.yearLevel})
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                        {ev.enrolled_subjects?.length || 0} subjects proposed
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => router.post(route('assessment.compute', { enrollment: ev.enrollmentId }))}
+                                    className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-heading font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 flex-shrink-0"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    Compute Fees
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Filter Bar */}
             <FilterBar onSubmit={handleFilter}>

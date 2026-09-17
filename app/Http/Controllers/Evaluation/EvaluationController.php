@@ -250,12 +250,27 @@ class EvaluationController extends Controller
         }
 
         // Mandatory subjects validation (non-elective curriculum subjects must be proposed)
+        // Subtract subjects already credited (transferee/shifter credit transfers)
         $mandatorySubjectIds = $curriculumSubjects->where('is_elective', false)->pluck('subjectId')->toArray();
-        $missingMandatory = array_diff($mandatorySubjectIds, $subjectIds);
-        if (! empty($missingMandatory)) {
-            throw ValidationException::withMessages([
-                'subjects' => 'The following mandatory subjects are required but not in the proposal: '.implode(', ', $missingMandatory),
-            ]);
+
+        $creditedSubjectIds = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+            ->pluck('creditedToSubjectId')
+            ->toArray();
+        $mandatorySubjectIds = array_diff($mandatorySubjectIds, $creditedSubjectIds);
+
+        // Irregular, transferee, and shifter students may carry a partial
+        // subject load — only enforce mandatory-block completeness for
+        // regular students.
+        $isFlexibleStudent = $enrollment->academicStanding === AcademicStanding::Irregular
+            || in_array($enrollment->studentType->value, ['transferee', 'shifter']);
+
+        if (! $isFlexibleStudent) {
+            $missingMandatory = array_diff($mandatorySubjectIds, $subjectIds);
+            if (! empty($missingMandatory)) {
+                throw ValidationException::withMessages([
+                    'subjects' => 'The following mandatory subjects are required but not in the proposal: '.implode(', ', $missingMandatory),
+                ]);
+            }
         }
 
         DB::transaction(function () use ($enrollment, $validated) {

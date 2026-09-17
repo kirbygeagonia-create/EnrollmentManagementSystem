@@ -167,6 +167,21 @@ class EnrollmentStateMachineTest extends TestCase
     }
 
     #[Test]
+    public function it_allows_valid_transition_from_paid_to_assessed(): void
+    {
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Paid]);
+
+        $this->stateMachine->transition(
+            $this->enrollment,
+            EnrollmentStatus::Assessed,
+            $this->staff,
+            'Payment voided'
+        );
+
+        $this->assertEquals('assessed', $this->enrollment->fresh()->enrollmentStatus->value);
+    }
+
+    #[Test]
     public function it_allows_valid_transition_from_enrolled_to_dropped(): void
     {
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Enrolled]);

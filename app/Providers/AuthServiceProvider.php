@@ -106,6 +106,9 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('registrar.approve', function ($user, $enrollment) {
             return app(RegistrarPolicy::class)->approve($user, $enrollment);
         });
+        Gate::define('blocking.manageBlocks', function ($user) {
+            return app(BlockingPolicy::class)->manageBlocks($user);
+        });
         Gate::define('block.manage', function ($user) {
             return app(BlockingPolicy::class)->manageBlocks($user);
         });

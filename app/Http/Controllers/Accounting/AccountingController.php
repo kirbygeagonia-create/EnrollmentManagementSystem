@@ -155,12 +155,28 @@ class AccountingController extends Controller
             $payment->update(['paymentStatus' => PaymentStatus::Pending]);
 
             // Recalculate assessment balance
-            $assessment = $payment->enrollment->studentassessments;
+            $enrollment = $payment->enrollment;
+            $assessment = $enrollment?->studentassessments;
             if ($assessment) {
-                $totalPaid = $assessment->payments()->where('paymentStatus', PaymentStatus::Paid)->sum('amount');
+                $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
+                    ->where('paymentStatus', PaymentStatus::Paid)
+                    ->sum('amount');
+                $newBalance = max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid);
                 $assessment->update([
-                    'remainingBalance' => max(0, $assessment->totalAssessedAmount - $assessment->totalScholarshipCoverage - $assessment->totalWaived - $totalPaid),
+                    'remainingBalance' => $newBalance,
                 ]);
+
+                // If the enrollment was 'paid' but now has a positive balance,
+                // revert it to 'assessed' to prevent Registrar from approving
+                // an unpaid student.
+                if ($newBalance > 0 && $enrollment->enrollmentStatus === EnrollmentStatus::Paid) {
+                    $this->stateMachine->transition(
+                        $enrollment,
+                        EnrollmentStatus::Assessed,
+                        Auth::user(),
+                        'Payment voided — reverted to assessed (remaining balance: ₱'.number_format($newBalance, 2).')'
+                    );
+                }
             }
         });
 
