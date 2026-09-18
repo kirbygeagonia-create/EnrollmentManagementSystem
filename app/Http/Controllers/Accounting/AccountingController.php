@@ -55,7 +55,7 @@ class AccountingController extends Controller
     {
         $this->authorize('view', $assessment);
 
-        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType']);
+        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'payments.processedBy', 'enrollment.enrollmentworkflow.workflowsteps.office', 'enrollment.enrollmentworkflow.workflowsteps.signedBy']);
 
         return Inertia::render('Accounting/Show', [
             'assessment' => $assessment,
@@ -71,6 +71,16 @@ class AccountingController extends Controller
     public function record(Request $request, Studentassessments $assessment): RedirectResponse
     {
         $this->authorize('payment.record', $assessment);
+
+        // Workflow-order guard: payments are only collected for assessed enrollments.
+        // Prevents paid→paid / evaluated→paid InvalidStateTransitionException (422)
+        // when the cashier revisits a settled assessment, and blocks paying an
+        // assessment that Assessment has not finalized yet.
+        $enrollment = $assessment->enrollment;
+        if ($enrollment && $enrollment->enrollmentStatus !== EnrollmentStatus::Assessed) {
+            return redirect()->route('accounting.show', $assessment)
+                ->with('warning', "Payment can only be collected for assessed enrollments. Current status: {$enrollment->enrollmentStatus->value}.");
+        }
 
         $validated = $request->validate([
             'orNumber' => 'required|string|max:50|unique:payments,orNumber',

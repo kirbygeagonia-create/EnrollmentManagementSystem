@@ -59,7 +59,7 @@ class IDController extends Controller
     {
         $this->authorize('id.view', $enrollment);
 
-        $enrollment->load(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow.workflowsteps']);
+        $enrollment->load(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
         $idRequest = $enrollment->idrequests->first();
         // studentids is a HasOne — returns the single model directly (calling

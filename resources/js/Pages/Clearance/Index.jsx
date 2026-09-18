@@ -23,7 +23,7 @@ const approvalToneMap = {
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
 
-export default function Index({ clearances, periods, filters = {} }) {
+export default function Index({ clearances, periods, students = [], filters = {}, stats: serverStats = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [periodId, setPeriodId] = useState(filters.periodId || '');
     const [status, setStatus] = useState(filters.status || '');
@@ -31,6 +31,9 @@ export default function Index({ clearances, periods, filters = {} }) {
     const [confirmState, setConfirmState] = useState(null); // { approval, action }
     const [showLostSlipModal, setShowLostSlipModal] = useState(false);
     const [lostSlipStudent, setLostSlipStudent] = useState(null);
+    const [showGenerateModal, setShowGenerateModal] = useState(false);
+    const [receiptConfirm, setReceiptConfirm] = useState(null); // { clearance }
+    const [isReceiving, setIsReceiving] = useState(false);
 
     // Inline form for per-requirement approve/waive/reject
     const approveForm = useForm({ status: 'approved', remarks: '' });
@@ -42,6 +45,12 @@ export default function Index({ clearances, periods, filters = {} }) {
         orNumber: '',
     });
 
+    // Slip generation form (BR33: issue a slip for a student in an open period)
+    const generateForm = useForm({
+        studentId: '',
+        clearancePeriodId: '',
+    });
+
     const rows = useMemo(() => clearances?.data || [], [clearances]);
 
     // The currently selected clearance (full object incl. approvals)
@@ -50,8 +59,9 @@ export default function Index({ clearances, periods, filters = {} }) {
         [rows, selectedId],
     );
 
-    // Page-level summary tiles
-    const stats = useMemo(() => {
+    // Local page-level counts — only sees the current page of a paginated
+    // table; the backend's full-dataset `stats` prop takes precedence (m2).
+    const computedStats = useMemo(() => {
         let pending = 0;
         let approved = 0;
         let rejected = 0;
@@ -66,6 +76,8 @@ export default function Index({ clearances, periods, filters = {} }) {
         });
         return { pending, approved, rejected, waived, incomplete };
     }, [rows]);
+
+    const stats = serverStats || computedStats;
 
     const periodOptions = useMemo(() => [
         { value: '', label: 'All Periods' },
@@ -83,6 +95,12 @@ export default function Index({ clearances, periods, filters = {} }) {
         { value: 'waived', label: 'Waived' },
         { value: 'incomplete', label: 'Incomplete' },
     ], []);
+
+    // Only OPEN periods can receive new clearance slips (BR33)
+    const openPeriods = useMemo(
+        () => periods.filter((p) => p.periodStatus === 'open'),
+        [periods],
+    );
 
     const handleFilter = (e) => {
         e.preventDefault();
@@ -130,6 +148,30 @@ export default function Index({ clearances, periods, filters = {} }) {
         });
     };
 
+    // BR33: generate a new clearance slip for a student in an open period
+    const openGenerateModal = () => {
+        generateForm.reset();
+        setShowGenerateModal(true);
+    };
+
+    const handleGenerateSubmit = (e) => {
+        e.preventDefault();
+        generateForm.post(route('clearance.slip.generate'), {
+            onSuccess: () => setShowGenerateModal(false),
+        });
+    };
+
+    // BR34: Registrar receiving of a fully-stamped slip
+    const confirmReceipt = () => {
+        if (!receiptConfirm || isReceiving) return;
+        setIsReceiving(true);
+        router.post(route('clearance.receipt.record', { clearance: receiptConfirm.studentClearanceId }), {}, {
+            preserveScroll: true,
+            onSuccess: () => setReceiptConfirm(null),
+            onFinish: () => setIsReceiving(false),
+        });
+    };
+
     const columns = useMemo(() => [
         { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm font-bold', render: (row) => row.student?.schoolIdNumber || '—' },
         { key: 'student.lastName', label: 'Student Full Name', render: (row) => {
@@ -174,6 +216,16 @@ export default function Index({ clearances, periods, filters = {} }) {
             >
                 Print Slip
             </Link>
+            {row.overallStatus === 'approved' && !row.receivedDate && (
+                <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setReceiptConfirm(row)}
+                    title="BR34: Submit this fully-stamped slip for Registrar receiving"
+                >
+                    Receive Slip
+                </button>
+            )}
         </div>
     );
 
@@ -187,6 +239,18 @@ export default function Index({ clearances, periods, filters = {} }) {
                     logoAlt="Safety and Security Office (Clearance)"
                     phaseBadge="Phase 1 · Campus Clearance"
                     officeBadge="Office 8 · Multi-Office Clearance"
+                    actions={
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={openGenerateModal}
+                        >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Generate Slip
+                        </button>
+                    }
                 />
             }
         >
@@ -350,6 +414,58 @@ export default function Index({ clearances, periods, filters = {} }) {
                 </form>
             </Modal>
 
+            {/* Generate Clearance Slip Modal (BR33) */}
+            <Modal
+                show={showGenerateModal}
+                onClose={() => setShowGenerateModal(false)}
+                title="Generate Clearance Slip"
+                subtitle="BR33: Issues a new clearance slip with sign-off rows for every campus office requirement."
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => setShowGenerateModal(false)} className="btn btn-secondary" disabled={generateForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="generate-slip-form" className="btn btn-primary" disabled={generateForm.processing || !generateForm.data.studentId || !generateForm.data.clearancePeriodId}>
+                            {generateForm.processing ? 'Generating...' : 'Generate Slip'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="generate-slip-form" onSubmit={handleGenerateSubmit} className="space-y-4 text-xs">
+                    <FormSection label="Student" required error={generateForm.errors.studentId}>
+                        <select
+                            value={generateForm.data.studentId}
+                            onChange={(e) => generateForm.setData('studentId', e.target.value)}
+                            className="form-input text-xs"
+                            required
+                        >
+                            <option value="" disabled>Select student</option>
+                            {students.map(s => (
+                                <option key={s.studentId} value={s.studentId}>
+                                    {s.lastName}, {s.firstName} {s.middleName ? `${s.middleName.charAt(0)}. ` : ''}— {s.schoolIdNumber || 'No ID'}
+                                </option>
+                            ))}
+                        </select>
+                    </FormSection>
+                    <FormSection label="Clearance Period" required error={generateForm.errors.clearancePeriodId}>
+                        <select
+                            value={generateForm.data.clearancePeriodId}
+                            onChange={(e) => generateForm.setData('clearancePeriodId', e.target.value)}
+                            className="form-input text-xs"
+                            required
+                        >
+                            <option value="" disabled>Select open period</option>
+                            {openPeriods.map(p => (
+                                <option key={p.clearancePeriodId} value={p.clearancePeriodId}>
+                                    {p.term?.academicYear?.yearStart}-{p.term?.academicYear?.yearEnd} {p.term?.semester} (Open)
+                                </option>
+                            ))}
+                        </select>
+                    </FormSection>
+                </form>
+            </Modal>
+
             {/* Clearance Requirement Action Cause & Effect Modal */}
             <CauseEffectModal
                 show={!!confirmState}
@@ -410,6 +526,30 @@ export default function Index({ clearances, periods, filters = {} }) {
                 }
                 cancelText="Keep Pending"
                 loading={approveForm.processing}
+            />
+
+            {/* Registrar Desk Receipt Confirmation Modal (BR34) */}
+            <CauseEffectModal
+                show={!!receiptConfirm}
+                onClose={() => setReceiptConfirm(null)}
+                onConfirm={confirmReceipt}
+                title="Receive Completed Clearance Slip"
+                subtitle="BR34: Registrar receiving of a fully-stamped clearance slip"
+                tone="success"
+                entityContext={{
+                    label: 'Clearance Slip',
+                    value: receiptConfirm ? `${receiptConfirm.student?.lastName}, ${receiptConfirm.student?.firstName}` : '—',
+                    badge: titleCase(receiptConfirm?.overallStatus),
+                }}
+                cause="Logs the official receiving of this fully-stamped clearance slip by the Registrar's Office, closing the clearance phase of the enrollment workflow."
+                effects={[
+                    'Records the receiving clerk and the official receiving date on the clearance slip.',
+                    'Marks the slip as received and locks the multi-office sign-off matrix.',
+                    'Unlocks Phase 5 (Registrar Certification) — the Registrar can now approve official enrollment for this student.',
+                ]}
+                confirmText="Record Desk Receipt"
+                cancelText="Not Yet"
+                loading={isReceiving}
             />
         </AuthenticatedLayout>
     );

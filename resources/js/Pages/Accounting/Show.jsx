@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard } from '@/Components/ui';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
@@ -20,7 +20,41 @@ const paymentModeToneMap = {
     check: 'neutral',
 };
 
+// Flash message display component
+function FlashMessages({ flash }) {
+    if (!flash) return null;
+    return (
+        <div className="space-y-3" role="status" aria-live="polite">
+            {flash.success && (
+                <div className="p-4 bg-success-50 border border-success-200 rounded-card text-success-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{flash.success}</span>
+                </div>
+            )}
+            {flash.warning && (
+                <div className="p-4 bg-warning-50 border border-warning-200 rounded-card text-warning-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{flash.warning}</span>
+                </div>
+            )}
+            {flash.error && (
+                <div className="p-4 bg-danger-50 border border-danger-200 rounded-card text-danger-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{flash.error}</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Show({ assessment }) {
+    const { flash } = usePage().props;
     const [showVoidConfirm, setShowVoidConfirm] = useState(false);
     const [paymentToVoid, setPaymentToVoid] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,8 +68,10 @@ export default function Show({ assessment }) {
     const totalAssessed = Number(assessment.totalAssessedAmount || 0);
     const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
     const totalWaived = Number(assessment.totalWaived || 0);
-    const netAssessed = Math.max(0, totalAssessed - totalScholarship - totalWaived);
-    const outstanding = Math.max(0, netAssessed - totalPaid);
+    // Authoritative outstanding balance — the backend maintains remainingBalance
+    // (net assessed minus payments) on every record/void, so use it directly
+    // instead of recomputing from the payment list.
+    const outstanding = Math.max(0, Number(assessment.remainingBalance || 0));
 
     const studentName = student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : '—';
 
@@ -133,6 +169,8 @@ export default function Show({ assessment }) {
         >
             <Head title="Cashier Terminal" />
 
+            <FlashMessages flash={flash} />
+
             {/* Quick Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
@@ -180,6 +218,11 @@ export default function Show({ assessment }) {
                     }
                 />
             </div>
+
+            {/* Enrollment Workflow Progress */}
+            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+            </Card>
 
             {/* Split Screen POS Terminal View */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
@@ -255,6 +298,7 @@ export default function Show({ assessment }) {
 
                 {/* Right Side: Point-of-Sale (POS) Terminal & Receipt Preview */}
                 <div className="lg:col-span-5 space-y-6">
+                    {outstanding > 0 ? (<>
                     {/* POS Payment Form */}
                     <div className="bg-gradient-to-br from-slate-900 to-navy-950 text-white rounded-2xl p-6 border border-slate-800 shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-5">
@@ -324,6 +368,16 @@ export default function Show({ assessment }) {
                                     />
                                 </div>
                                 {errors.amount && <p className="text-rose-400 text-xs mt-1">{errors.amount}</p>}
+
+                                {/* Overpayment / change-due notice: the backend accepts any
+                                    amount, so a cashier tendering more than the balance (cash
+                                    rounding, preset stacking) must see the change due up front. */}
+                                {Number(data.amount || 0) > outstanding && (
+                                    <p className="text-amber-300 text-xs mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                                        ⚠ Amount exceeds the outstanding balance of {peso(outstanding)} — change due:{' '}
+                                        <span className="font-bold">{peso(Number(data.amount) - outstanding)}</span>
+                                    </p>
+                                )}
 
                                 {/* Quick Cash Keypad Buttons */}
                                 <div className="grid grid-cols-4 gap-1.5 mt-2">
@@ -421,6 +475,11 @@ export default function Show({ assessment }) {
                             *** Valid Official Institutional Receipt ***
                         </p>
                     </div>
+                    </>) : (
+                        <Card title="Payment Status" subtitle="Settlement status of this assessment">
+                            <p className="text-sm font-medium text-emerald-700 py-6 text-center">✓ Fully Paid — no further payments required. Issued receipts are listed in Transaction History.</p>
+                        </Card>
+                    )}
                 </div>
             </div>
 

@@ -69,7 +69,7 @@ class AssessmentController extends Controller
     {
         $this->authorize('view', $assessment);
 
-        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType']);
+        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType', 'payments']);
 
         return Inertia::render('Assessment/Show', [
             'assessment' => $assessment,
@@ -251,6 +251,14 @@ class AssessmentController extends Controller
     public function finalize(Studentassessments $assessment): RedirectResponse
     {
         $this->authorize('finalize', $assessment);
+
+        // Idempotency guard (mirrors compute): finalize is only valid from
+        // 'evaluated'. Re-clicking Finalize on an already-finalized assessment
+        // would otherwise hit the state machine's InvalidStateTransitionException
+        // (422) — same-state transitions have no self-loop.
+        if ($assessment->enrollment->enrollmentStatus !== EnrollmentStatus::Evaluated) {
+            return back()->with('info', 'Assessment is already finalized for this enrollment.');
+        }
 
         DB::transaction(function () use ($assessment) {
             // Transition enrollment to assessed (moves it into the Accounting queue)

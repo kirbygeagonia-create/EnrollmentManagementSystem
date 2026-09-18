@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Badge, FormSection, Modal, CauseEffectModal, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, Card, FormSection, Modal, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 export default function Show({ enrollment, clinicRecord }) {
@@ -287,6 +287,11 @@ export default function Show({ enrollment, clinicRecord }) {
                     }
                 />
             </div>
+
+            {/* Enrollment Workflow Progress */}
+            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+            </Card>
 
             {/* Split Screen Medical Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">

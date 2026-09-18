@@ -70,21 +70,6 @@ const subSystems = [
                     </svg>
                 ),
             },
-            {
-                name: 'Blocking & Timetables',
-                phase: 'Phase 6',
-                route: 'blocking.index',
-                officeId: 5,
-                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
-                color: 'from-cyan-600 to-teal-700',
-                textColor: 'text-cyan-700 bg-cyan-50 border-cyan-200',
-                description: 'Section capacity management, visual timetable matrix, room scheduling & conflict detection.',
-                icon: (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                ),
-            },
         ],
     },
     {
@@ -123,7 +108,10 @@ const subSystems = [
         ],
     },
     {
-        category: 'Official Certification & Student Services',
+        // Journey order across categories: 0 → 0.5 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8.
+        // Blocking (Phase 6) sits here after Registrar (Phase 5) so the launcher
+        // reads in enrollment-journey order, not FDD module order (m4).
+        category: 'Official Certification, Scheduling & Student Services',
         items: [
             {
                 name: 'Registrar Official Suite',
@@ -137,6 +125,21 @@ const subSystems = [
                 icon: (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                ),
+            },
+            {
+                name: 'Blocking & Timetables',
+                phase: 'Phase 6',
+                route: 'blocking.index',
+                officeId: 5,
+                roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
+                color: 'from-cyan-600 to-teal-700',
+                textColor: 'text-cyan-700 bg-cyan-50 border-cyan-200',
+                description: 'Section capacity management, visual timetable matrix, room scheduling & conflict detection.',
+                icon: (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                 ),
             },

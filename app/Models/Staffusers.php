@@ -101,8 +101,10 @@ class Staffusers extends Authenticatable
             2 => $roleValue === 'officeHead' ? 'Chief Cashier & Accounting Head' : 'Cashier / Accounting Officer',
             3 => $roleValue === 'officeHead' ? 'Scholarship & Financial Aid Director' : 'Scholarship Coordinator',
             4 => $roleValue === 'officeHead' ? 'Head Guidance Counselor' : 'Guidance Testing Officer',
-            5 => $roleValue === 'officeHead' ? 'Head, Human Resources' : 'HR & Scheduling Officer',
-            6 => $roleValue === 'officeHead' ? 'Chief of Safety & Security' : 'Security & Clearance Officer',
+            // Offices 5/6 per the canonical OfficeId enum + offices table:
+            // 5 = Blocking (timetables & section loads), 6 = Admission (m5).
+            5 => $roleValue === 'officeHead' ? 'Head, Blocking & Scheduling' : 'Blocking & Scheduling Officer',
+            6 => $roleValue === 'officeHead' ? 'Head of Admissions' : 'Admission Officer',
             7 => $roleValue === 'officeHead' ? 'Chief Librarian & LRC Head' : 'Librarian / Learning Resource Staff',
             8 => $roleValue === 'officeHead' ? 'Head, Property Management' : 'Property & Supply Officer',
             9 => $roleValue === 'officeHead' ? 'Director, Research & Extension' : 'Research Coordinator',

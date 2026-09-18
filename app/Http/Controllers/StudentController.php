@@ -54,6 +54,7 @@ class StudentController extends Controller
             'enrollments.enrollmentworkflow.workflowsteps.signedBy',
             'enrollments.payments',
             'enrollments.studentassessments',
+            'enrollments.clinicrecords',
             'enrollments.enrolledsubjects.subject',
             'studentclearances',
             'examresults',

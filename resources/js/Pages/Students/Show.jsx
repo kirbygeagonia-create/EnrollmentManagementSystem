@@ -1,13 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { PageHeader, Card, Badge, StepProgress, EmptyState, StatCard, FormSection } from '@/Components/ui';
+import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-
-const stepStatusTone = {
-    completed: 'success',
-    pending: 'pending',
-    skipped: 'neutral',
-};
 
 const studentStatusToneMap = {
     active: 'success',
@@ -72,46 +66,6 @@ function getInitials(student) {
     return (first + last).toUpperCase() || '—';
 }
 
-function WorkflowStepper({ workflow }) {
-    if (!workflow) return <p className="text-sm text-brand-500">No workflow created yet.</p>;
-
-    const steps = (workflow.workflowsteps || [])
-        .slice()
-        .sort((a, b) => a.stepOrder - b.stepOrder)
-        .map((step) => ({
-            label: step.office?.officeName || `Step ${step.stepOrder}`,
-            status: step.stepStatus === 'completed' ? 'completed'
-                : step.stepStatus === 'skipped' ? 'skipped'
-                : 'current',
-            meta: step,
-        }));
-
-    if (steps.length === 0) return <p className="text-sm text-brand-500">Workflow has no steps yet.</p>;
-
-    return (
-        <div>
-            <StepProgress steps={steps.map(({ label, status }) => ({ label, status }))} />
-            <div className="mt-5 space-y-2">
-                {steps.map(({ label, status, meta }) => (
-                    <div key={meta.stepOrder} className="flex items-center justify-between text-sm border-b border-brand-100 pb-2 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-2">
-                            <Badge tone={stepStatusTone[status]}>
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </Badge>
-                            <span className="text-brand-900 font-medium">{label}</span>
-                        </div>
-                        <div className="text-brand-500">
-                            {meta.signedBy
-                                ? `${meta.signedBy.firstName} ${meta.signedBy.lastName} — ${meta.signedDate ? new Date(meta.signedDate).toLocaleDateString('en-PH') : ''}`
-                                : 'Awaiting signature'}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
 function EnrollmentCard({ enrollment }) {
     const termLabel = enrollment.term
         ? `${enrollment.term.semester?.value || enrollment.term.semester} ${enrollment.term.academicYear?.yearLabel || ''}`.trim()
@@ -120,8 +74,8 @@ function EnrollmentCard({ enrollment }) {
     const courseName = enrollment.course?.courseName || '';
     const logo = collegeLogoFor(courseName);
 
-    const totalAssessment = enrollment.studentassessments?.totalAssessment
-        ? Number(enrollment.studentassessments.totalAssessment)
+    const totalAssessment = enrollment.studentassessments?.totalAssessedAmount
+        ? Number(enrollment.studentassessments.totalAssessedAmount)
         : null;
     const totalPaid = enrollment.payments?.length
         ? enrollment.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
@@ -197,6 +151,12 @@ export default function Show({ student }) {
         [student.enrollments]
     );
 
+    // Clinic health records (nested under each enrollment — flattened for the Health tab)
+    const clinicRecords = useMemo(
+        () => enrollments.flatMap((e) => e.clinicrecords || []),
+        [enrollments]
+    );
+
     // Derive course/college for the identity header from the most recent enrollment
     const latestEnrollment = enrollments[0];
     const primaryCourseName = latestEnrollment?.course?.courseName || '';
@@ -210,7 +170,7 @@ export default function Show({ student }) {
     const latestScholarship = student.studentscholarships?.[0];
     const scholarshipStatus = latestScholarship?.status || '—';
 
-    const totalAssessed = enrollments.reduce((sum, e) => sum + (e.studentassessments?.totalAssessment ? Number(e.studentassessments.totalAssessment) : 0), 0);
+    const totalAssessed = enrollments.reduce((sum, e) => sum + (e.studentassessments?.totalAssessedAmount ? Number(e.studentassessments.totalAssessedAmount) : 0), 0);
 
     return (
         <AuthenticatedLayout
@@ -405,6 +365,20 @@ export default function Show({ student }) {
                     </button>
                     <button
                         type="button"
+                        onClick={() => setActiveTab('clinic')}
+                        className={`px-4 py-2 rounded-xl font-heading font-semibold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'clinic'
+                                ? 'bg-seait-600 text-white shadow-md shadow-seait-600/20'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                        }`}
+                    >
+                        <span>Health & Clinic</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'clinic' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            {clinicRecords.length}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => setActiveTab('all')}
                         className={`ml-auto px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                             activeTab === 'all'
@@ -540,7 +514,7 @@ export default function Show({ student }) {
                                         <p className="font-medium text-brand-900">
                                             Issued {id.issueDate ? new Date(id.issueDate).toLocaleDateString('en-PH') : '—'}
                                         </p>
-                                        <Badge tone={id.validationStatus === 'valid' ? 'success' : 'neutral'}>
+                                        <Badge tone={id.validationStatus === 'active' ? 'success' : 'neutral'}>
                                             {id.validationStatus || '—'}
                                         </Badge>
                                     </div>
@@ -548,6 +522,36 @@ export default function Show({ student }) {
                             </div>
                         ) : (
                             <EmptyState title="No IDs" message="No ID records for this student." />
+                        )}
+                    </Card>
+                )}
+
+                {/* Tab Content: Health & Clinic */}
+                {(activeTab === 'clinic' || activeTab === 'all') && (
+                    <Card title="Clinic Health Records" subtitle="Physical exam vitals, PhilHealth registration, and clinical findings">
+                        {clinicRecords.length ? (
+                            <div className="space-y-3">
+                                {clinicRecords.map((cr) => (
+                                    <div key={cr.clinicRecordId} className="flex items-start justify-between gap-4 text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                        <div>
+                                            <p className="font-medium text-brand-900">
+                                                Examined {cr.assessmentDate ? new Date(cr.assessmentDate).toLocaleDateString('en-PH') : '—'}
+                                            </p>
+                                            <p className="text-brand-500 mt-0.5">
+                                                {cr.heightCm ? `${cr.heightCm} cm` : '—'} · {cr.weightKg ? `${cr.weightKg} kg` : '—'} · BP {cr.bloodPressure || '—'} · PhilHealth {cr.philhealthRegistered ? 'Registered' : 'Not Registered'}
+                                            </p>
+                                            {cr.findings && (
+                                                <p className="text-brand-600 text-xs mt-1 italic">{cr.findings}</p>
+                                            )}
+                                        </div>
+                                        <Badge tone={cr.status === 'completed' ? 'success' : 'pending'}>
+                                            {formatStatus(cr.status)}
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <EmptyState title="No clinic records" message="No health assessment records for this student." />
                         )}
                     </Card>
                 )}

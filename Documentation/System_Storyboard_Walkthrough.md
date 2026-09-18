@@ -361,7 +361,7 @@ sequenceDiagram
 
 ## State Machine Transition Rules
 
-The enrollment lifecycle is governed by an event-driven Finite State Machine (`EnrollmentStateMachine.php`) ensuring complete linear consistency:
+The enrollment lifecycle is governed by an event-driven Finite State Machine (`EnrollmentStateMachine.php`) ensuring consistency across the forward journey, with one sanctioned reverse path: the cashier's payment void-revert (`paid -> assessed`, applied when a voided payment leaves an outstanding balance). No other backward transitions exist.
 
 ```mermaid
 stateDiagram-v2
@@ -370,6 +370,7 @@ stateDiagram-v2
     evaluated --> assessed: Assessment & Scholarships (Phase 3)
     assessed --> paid: Accounting Cashier Payment (Phase 4)
     paid --> enrolled: Registrar Approves & Prints (Phase 5)
+    paid --> assessed: Payment Voided (balance remains)
     enrolled --> dropped: Voluntary Withdrawal / Cancellation
     dropped --> [*]
     enrolled --> [*]: Term Completion
@@ -381,6 +382,7 @@ stateDiagram-v2
 | `evaluated` | `assessed` | Assessment Office computes charges | `StudentAssessments`, `Charges` generated |
 | `assessed` | `paid` | Cashier records receipt of payment | `Payments` logged, assessment `paidAmount` updated |
 | `paid` | `enrolled` | Registrar confirms documents | `Enrollments.enrollmentStatus = 'enrolled'`, `EnrolledSubjects.status = 'confirmed'` |
+| `paid` | `assessed` | Cashier voids a payment with outstanding balance (void-revert) | `Payments.paymentStatus = 'voided'`, assessment `remainingBalance` recomputed |
 | `enrolled` | `dropped` | Registrar processes dropping form | `EnrolledSubjects.status = 'dropped'`, history logged |
 
 ---

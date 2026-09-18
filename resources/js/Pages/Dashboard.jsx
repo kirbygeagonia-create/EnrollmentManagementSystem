@@ -92,17 +92,25 @@ export default function Dashboard() {
         { key: 'blocking', label: 'Blocking Queue', route: 'blocking.index', offices: [5] },
         { key: 'clinic', label: 'Clinic Queue', route: 'clinic.index', offices: [11] },
         { key: 'id', label: 'ID Desk Queue', route: 'id.index', offices: [22] },
-        { key: 'clearance', label: 'Clearance Queue', route: 'clearance.index', offices: [6, 8] },
+        { key: 'clearance', label: 'Clearance Queue', route: 'clearance.index', offices: [6, 8], denyRoles: ['dean'] },
     ];
 
-    const canSeeQueue = (offices) => {
+    // denyRoles lets a queue card opt out for roles whose route policies would
+    // 403 on click (m3): Dean lacks clearance.view (RbacSeeder grants it only to
+    // RegistrarDesk/RegistrarApprover/OfficeHead/Staff), so the Clearance Queue
+    // must not render for deans even though office 6 falls in their office set.
+    // All other combos verify clean: every office's staff carries the base Staff
+    // role (all views), office heads carry OfficeHead, and deans/program heads
+    // hold evaluation.view for the queues they see.
+    const canSeeQueue = (q) => {
+        if (q.denyRoles?.includes(user?.role)) return false;
         if (user?.role === 'admin') return true;
-        if (user?.role === 'dean') return offices.some((o) => [4, 6, 7].includes(o));
-        if (user?.role === 'programHead') return offices.some((o) => [4, 6].includes(o));
-        return offices.includes(user?.officeId);
+        if (user?.role === 'dean') return q.offices.some((o) => [4, 6, 7].includes(o));
+        if (user?.role === 'programHead') return q.offices.some((o) => [4, 6].includes(o));
+        return q.offices.includes(user?.officeId);
     };
 
-    const visibleQueues = queueItems.filter((q) => canSeeQueue(q.offices));
+    const visibleQueues = queueItems.filter((q) => canSeeQueue(q));
 
     // Filter quick links by role and office permissions
     const accessibleLinks = useMemo(() => {

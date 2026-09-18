@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, CauseEffectModal, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
 import { useState } from 'react';
 
 const checklistSteps = [
@@ -113,6 +113,11 @@ export default function Show({ enrollment, checklist, allValid }) {
                     }
                 />
             </div>
+
+            {/* Enrollment Workflow Progress */}
+            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+            </Card>
 
             {/* Split Screen Registrar Suite */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">

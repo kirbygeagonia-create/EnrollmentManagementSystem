@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { PageHeader, Badge, FormSection, Modal, CauseEffectModal, StatCard } from '@/Components/ui';
+import { PageHeader, Badge, Card, FormSection, Modal, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
 import { useState } from 'react';
 import QRCode from 'react-qr-code';
 
@@ -182,6 +182,11 @@ export default function Show({ enrollment, idRequest, studentId }) {
                     }
                 />
             </div>
+
+            {/* Enrollment Workflow Progress */}
+            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+            </Card>
 
             {/* Split Screen PVC Card Studio */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">

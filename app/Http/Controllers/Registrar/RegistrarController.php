@@ -76,6 +76,7 @@ class RegistrarController extends Controller
             'term.academicYear',
             'studentassessments.charges.feeType',
             'enrollmentworkflow.workflowsteps.office',
+            'enrollmentworkflow.workflowsteps.signedBy',
             'enrolledSubjects.subject',
             'admission',
             'payments',
@@ -146,6 +147,11 @@ class RegistrarController extends Controller
             'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $paymentCompleted,
             'clearance_verified' => $this->checkClearance($enrollment),
+            // Fifth gate the Show page displays ("Registrar Ready"): the next
+            // pending workflow step must belong to the Registrar's office.
+            // Keeps server-side validation in lockstep with the 5-gate
+            // checklist rendered in the UI (M4) instead of validating only 4.
+            'registrar_ready' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
         ];
 
         if (collect($checklist)->contains(false)) {

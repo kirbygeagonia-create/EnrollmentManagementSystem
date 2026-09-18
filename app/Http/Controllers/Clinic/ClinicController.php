@@ -57,7 +57,7 @@ class ClinicController extends Controller
     {
         $this->authorize('clinic.view', $enrollment);
 
-        $enrollment->load(['student', 'course', 'term', 'clinicrecords', 'enrollmentworkflow.workflowsteps']);
+        $enrollment->load(['student', 'course', 'term', 'clinicrecords', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
         $clinicRecord = $enrollment->clinicrecords->first();
 

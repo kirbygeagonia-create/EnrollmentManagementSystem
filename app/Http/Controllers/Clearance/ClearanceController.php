@@ -46,10 +46,26 @@ class ClearanceController extends Controller
 
         $clearances = $query->paginate(20)->withQueryString();
 
+        // Full-dataset status counts for the summary tiles (m2): counting
+        // client-side from clearances.data understates the dataset beyond
+        // page 1. Reuses the same filters so the tiles track the list.
+        $statusCounts = (clone $query)
+            ->selectRaw('overallStatus, count(*) as aggregate')
+            ->groupBy('overallStatus')
+            ->pluck('aggregate', 'overallStatus');
+
         return Inertia::render('Clearance/Index', [
             'clearances' => $clearances,
             'periods' => $periods,
+            'students' => Students::orderBy('lastName')->orderBy('firstName')->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName']),
             'filters' => $request->only(['periodId', 'status', 'search']),
+            'stats' => [
+                'pending' => (int) ($statusCounts[ClearanceOverallStatus::Pending->value] ?? 0),
+                'approved' => (int) ($statusCounts[ClearanceOverallStatus::Approved->value] ?? 0),
+                'rejected' => (int) ($statusCounts[ClearanceOverallStatus::Rejected->value] ?? 0),
+                'waived' => (int) ($statusCounts[ClearanceOverallStatus::Waived->value] ?? 0),
+                'incomplete' => (int) ($statusCounts[ClearanceOverallStatus::Incomplete->value] ?? 0),
+            ],
         ]);
     }
 

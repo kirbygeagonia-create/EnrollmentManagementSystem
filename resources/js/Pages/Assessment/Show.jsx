@@ -27,14 +27,15 @@ export default function Show({ assessment, scholarshipTypes }) {
     const totalAssessed = Number(assessment.totalAssessedAmount || 0);
     const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
     const remainingBalance = Number(assessment.remainingBalance || 0);
-    const outstanding = Math.max(0, remainingBalance - totalPaid);
+    // Authoritative outstanding — the backend's remainingBalance already subtracts payments.
+    const outstanding = remainingBalance;
 
     // Status banner tone — assessed = accent, pending = warning, settled = success.
     const statusBanner = (() => {
         if (outstanding <= 0 && charges.length > 0) {
             return { tone: 'success', label: 'Fully Settled', message: 'All charges have been paid. This assessment is complete.' };
         }
-        if (assessment.status === 'assessed') {
+        if (enrollment?.enrollmentStatus === 'assessed') {
             return { tone: 'assessed', label: 'Assessed', message: 'Assessment finalized. Forward to Accounting for payment collection.' };
         }
         return { tone: 'pending', label: 'Pending', message: 'Assessment not yet finalized. Compute charges and finalize to proceed.' };
@@ -73,11 +74,11 @@ export default function Show({ assessment, scholarshipTypes }) {
     const paymentColumns = useMemo(() => [
         { key: 'paymentDate', label: 'Date', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-PH') : '—' },
         { key: 'amount', label: 'Amount', render: (row) => peso(row.amount) },
-        { key: 'paymentMethod', label: 'Method', render: (row) => row.paymentMethod || '—' },
-        { key: 'referenceNumber', label: 'Reference', render: (row) => row.referenceNumber || '—' },
-        { key: 'status', label: 'Status', render: (row) => (
-            <Badge tone={row.status === 'completed' ? 'paid' : row.status === 'pending' ? 'pending' : 'danger'}>
-                {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : '—'}
+        { key: 'paymentMode', label: 'Method', render: (row) => row.paymentMode || '—' },
+        { key: 'orNumber', label: 'Reference', render: (row) => row.orNumber || '—' },
+        { key: 'paymentStatus', label: 'Status', render: (row) => (
+            <Badge tone={row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? 'paid' : row.paymentStatus === 'pending' ? 'pending' : 'danger'}>
+                {row.paymentStatus ? row.paymentStatus.charAt(0).toUpperCase() + row.paymentStatus.slice(1) : '—'}
             </Badge>
         )},
     ], []);
@@ -143,7 +144,7 @@ export default function Show({ assessment, scholarshipTypes }) {
             header={
                 <PageHeader
                     title="Student Fee Assessment & Scholarship Coverage"
-                    subtitle={`${studentName} — ${enrollment?.course?.name || '—'} (${enrollment?.term?.name || 'Current Term'})`}
+                    subtitle={`${studentName} — ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.name || 'Current Term'})`}
                     logo="/images/logos/scholarship.jpg"
                     logoAlt="SEAIT Scholarship & Financial Aid Office"
                     phaseBadge="Phase 3 · Fee Assessment"
@@ -182,7 +183,7 @@ export default function Show({ assessment, scholarshipTypes }) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-brand-900">{statusBanner.label}</h3>
                         <Badge tone={statusBanner.tone === 'success' ? 'paid' : statusBanner.tone}>
-                            {assessment.status ? assessment.status.charAt(0).toUpperCase() + assessment.status.slice(1) : '—'}
+                            {enrollment?.enrollmentStatus ? enrollment.enrollmentStatus.charAt(0).toUpperCase() + enrollment.enrollmentStatus.slice(1) : '—'}
                         </Badge>
                     </div>
                     <p className="text-sm text-brand-600 mt-1">{statusBanner.message}</p>
@@ -198,7 +199,7 @@ export default function Show({ assessment, scholarshipTypes }) {
                     </div>
                     <div>
                         <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">Course</dt>
-                        <dd className="mt-1 text-sm text-brand-900">{enrollment?.course?.name || '—'}</dd>
+                        <dd className="mt-1 text-sm text-brand-900">{enrollment?.course?.courseName || '—'}</dd>
                     </div>
                     <div>
                         <dt className="text-xs font-medium text-brand-500 uppercase tracking-wider">Term</dt>
