@@ -49,7 +49,11 @@ class ClearanceController extends Controller
         // Full-dataset status counts for the summary tiles (m2): counting
         // client-side from clearances.data understates the dataset beyond
         // page 1. Reuses the same filters so the tiles track the list.
+        // reorder() strips the list's orderByDesc — under MySQL 8's default
+        // ONLY_FULL_GROUP_BY, ORDER BY on a non-grouped column with GROUP BY
+        // is a 500 (SQLite is lenient, so tests alone won't catch it).
         $statusCounts = (clone $query)
+            ->reorder()
             ->selectRaw('overallStatus, count(*) as aggregate')
             ->groupBy('overallStatus')
             ->pluck('aggregate', 'overallStatus');
