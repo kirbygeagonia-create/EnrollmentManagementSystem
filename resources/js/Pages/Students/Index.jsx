@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusOptions = [
@@ -28,11 +28,6 @@ function formatName(row) {
     return full === ',' ? '—' : full;
 }
 
-function formatStatus(status) {
-    if (!status) return '—';
-    return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
 export default function Index({ students, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
@@ -47,10 +42,10 @@ export default function Index({ students, filters = {} }) {
                 <span className="font-medium text-brand-900">{formatName(row)}</span>
             </div>
         )},
-        { key: 'gender', label: 'Gender', render: (row) => row.gender ? row.gender.charAt(0).toUpperCase() + row.gender.slice(1) : '—' },
+        { key: 'gender', label: 'Gender', render: (row) => row.gender ? formatStatusLabel(row.gender) : '—' },
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={statusToneMap[row.status] || 'neutral'}>
-                {formatStatus(row.status)}
+                {formatStatusLabel(row.status)}
             </Badge>
         )},
     ], []);
@@ -88,8 +83,6 @@ export default function Index({ students, filters = {} }) {
                 <PageHeader
                     title="Student 360 Institutional Directory"
                     subtitle="Centralized student records, holistic profile search, and end-to-end lifecycle tracking across all 8 phases"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Institutional Crest"
                     phaseBadge="Central Data Hub"
                     officeBadge="All Offices · Central 360"
                 />

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Overall clearance status → badge tone
@@ -21,7 +21,6 @@ const approvalToneMap = {
 };
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
-const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
 
 export default function Index({ clearances, periods, students = [], filters = {}, stats: serverStats = null }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -235,10 +234,8 @@ export default function Index({ clearances, periods, students = [], filters = {}
                 <PageHeader
                     title="Campus Clearance & Multi-Office Sign-off Matrix"
                     subtitle="Track multi-office obligation sign-offs (SSC, Library, Security, Scholarship, Dean) and issue official clearance slips"
-                    logo="/images/logos/safety-and-security.jpg"
-                    logoAlt="Safety and Security Office (Clearance)"
                     phaseBadge="Phase 1 · Campus Clearance"
-                    officeBadge="Office 8 · Multi-Office Clearance"
+                    officeBadge="Multi-Office Sign-off Matrix"
                     actions={
                         <button
                             type="button"

@@ -98,24 +98,30 @@ screening, and ID production — with full RBAC, audit logging, and document pri
 
 ### 4.0 Manage Entrance Examinations
 
+*The Exam module is entrance examinations only. There are two stages (BR9): the
+School Entrance Examination — Guidance-only, run before enrollment opens up to
+enrollment day — and each academic department's own course-specific exam. The
+retention exam lives in module 5.0 (Academic Evaluation, BR10).*
+
+*Note: `Courses.isBoardCourse` (if added later as an informational flag) is
+display-only — it must never gate exam requirements; the operative gates are
+`requiresRetentionExam` and the two-stage entrance flow (BR9/BR10).*
+
 - **4.1 Manage Exam Result Records**
-  - 4.1.1 View Exam Queue & Results (`exam.index`)
-  - 4.1.2 Open Exam Recording Form (`exam.create`)
+  - 4.1.1 View Exam Queue & Results (`exam.index` — BR35: desk-scoped — Guidance sees all School Entrance results; departments see their own exams plus transferred passers)
+  - 4.1.2 Open Exam Recording Form (`exam.create` — entrance stages only)
   - 4.1.3 Generate Pass/Fail Result Lists (`exam.results`)
-- **4.2 Look Up Enrolled Examinees**
-  - 4.2.1 Fetch Enrolled Students by Course & Term (`exam.students`)
-- **4.3 Record General Entrance Exam** *(BR9 — Stage 1, Guidance)*
+- **4.2 Look Up Examinees & Transferred Passers**
+  - 4.2.1 Fetch Entrance Candidates by Course & Term (`exam.students` — general: admitted applicants; course-specific: School Entrance passers transferred from Guidance)
+- **4.3 Record School Entrance Examination** *(BR9 — Stage 1, Guidance only)*
   - 4.3.1 Validate Exam Result Entry (`exam.general.record`)
-  - 4.3.2 Save General Exam Result
+  - 4.3.2 Save General Exam Result (Guidance sees all results, pass and failed)
   - 4.3.3 Auto-Reject Admission on Failed General Exam
-- **4.4 Record Course-Specific Entrance Exam** *(BR9 — Stage 2, Department)*
+- **4.4 Record Course-Specific Entrance Exam** *(BR9 — Stage 2, owning Department only)*
   - 4.4.1 Verify General Exam Was Passed First (`exam.course-specific.record`)
   - 4.4.2 Save Course-Specific Exam Result
   - 4.4.3 Auto-Approve Admission on Pass
   - 4.4.4 Auto-Reject Admission on Fail
-- **4.5 Record Retention Exam** *(BR10 — continuing board-course students)*
-  - 4.5.1 Validate Course Retention Requirement (`exam.retention.record`)
-  - 4.5.2 Save Retention Exam Result
 
 ### 5.0 Manage Department Evaluations
 
@@ -131,6 +137,9 @@ screening, and ID production — with full RBAC, audit logging, and document pri
   - 5.4.1 Record & Evaluate Credited Subjects (`evaluation.credits.process`)
 - **5.5 Sign Evaluation**
   - 5.5.1 Sign Evaluation & Advance Workflow Step (`evaluation.sign`)
+- **5.6 Record Retention Exam** *(BR10 — handled and viewed only by the owning academic department, in the Academic Evaluation area; mainly board courses)*
+  - 5.6.1 Validate Course Retention Requirement (`evaluation.retention.record`)
+  - 5.6.2 Save Retention Exam Result (re-recording corrects the existing result)
 
 ### 6.0 Manage Fee Assessments
 
@@ -227,18 +236,15 @@ screening, and ID production — with full RBAC, audit logging, and document pri
 
 - **12.1 Manage ID Request Queue**
   - 12.1.1 List ID Requests by Status (`id.index`)
-  - 12.1.2 View ID Request & Card Details (`id.show`)
+  - 12.1.2 View ID Request Details (`id.show`)
 - **12.2 Create ID Requests**
   - 12.2.1 Record New Student ID Request (`id.create`)
-- **12.3 Produce ID Cards**
-  - 12.3.1 Generate QR Code & Produce Card (`id.produce`)
-- **12.4 Validate ID Cards**
-  - 12.4.1 Validate Produced Card (`id.validate`)
+- **12.3 Attach Face Photo**
+  - 12.3.1 Capture / Upload Face Photo (`id.photo`)
+- **12.4 Validate ID Requests**
+  - 12.4.1 Validate Request & Sign Workflow Step (`id.validate`)
 - **12.5 Release ID Cards**
   - 12.5.1 Record Card Release to Student (`id.release`)
-- **12.6 Handle ID Card Issues**
-  - 12.6.1 Reissue Damaged/Lost Card (`id.reissue`)
-  - 12.6.2 Cancel ID Request (`id.cancel`)
 
 ### 13.0 Manage Student Records (Student 360°)
 
@@ -367,32 +373,32 @@ graph TD
     M3c --> M3c2["Reject Admission"]
 
     M4 --> M4a["4.1 Manage Exam Result Records"]
-    M4 --> M4b["4.2 Look Up Enrolled Examinees"]
-    M4 --> M4c["4.3 Record General Entrance Exam"]
-    M4 --> M4d["4.4 Record Course-Specific Entrance Exam"]
-    M4 --> M4e["4.5 Record Retention Exam"]
+    M4 --> M4b["4.2 Look Up Examinees & Transferred Passers"]
+    M4 --> M4c["4.3 Record School Entrance Exam — Guidance"]
+    M4 --> M4d["4.4 Record Course-Specific Exam — Department"]
     M4a --> M4a1["View Exam Queue & Results"]
     M4a --> M4a2["Generate Pass/Fail Lists"]
-    M4b --> M4b1["Fetch Enrolled Students by Course & Term"]
+    M4b --> M4b1["Fetch Candidates / Transferred Passers"]
     M4c --> M4c1["Save General Exam Result"]
     M4c --> M4c2["Auto-Reject Admission on Fail"]
     M4d --> M4d1["Verify General Exam Passed First"]
     M4d --> M4d2["Save Course-Specific Result"]
     M4d --> M4d3["Auto-Approve / Reject Admission"]
-    M4e --> M4e1["Validate Course Retention Requirement"]
-    M4e --> M4e2["Save Retention Exam Result"]
 
     M5 --> M5a["5.1 Manage Evaluation Queue"]
     M5 --> M5b["5.2 Capture Student Profile"]
     M5 --> M5c["5.3 Propose Curriculum Subjects"]
     M5 --> M5d["5.4 Process Transfer Credits"]
     M5 --> M5e["5.5 Sign Evaluation"]
+    M5 --> M5f["5.6 Record Retention Exam — Department"]
     M5a --> M5a1["List Pending Evaluations"]
     M5a --> M5a2["View Evaluation Details"]
     M5b --> M5b1["Record Complete Demographic Profile"]
     M5c --> M5c1["Propose Subjects per Curriculum"]
     M5d --> M5d1["Record & Evaluate Credited Subjects"]
     M5e --> M5e1["Sign Evaluation & Advance Workflow"]
+    M5f --> M5f1["Validate Course Retention Requirement"]
+    M5f --> M5f2["Save Retention Exam Result"]
 
     M6 --> M6a["6.1 Manage Assessment Queue"]
     M6 --> M6b["6.2 Compute Assessment Fees"]
@@ -472,18 +478,15 @@ graph TD
 
     M12 --> M12a["12.1 Manage ID Request Queue"]
     M12 --> M12b["12.2 Create ID Requests"]
-    M12 --> M12c["12.3 Produce ID Cards"]
-    M12 --> M12d["12.4 Validate ID Cards"]
+    M12 --> M12c["12.3 Attach Face Photo"]
+    M12 --> M12d["12.4 Validate ID Requests"]
     M12 --> M12e["12.5 Release ID Cards"]
-    M12 --> M12f["12.6 Handle ID Card Issues"]
     M12a --> M12a1["List ID Requests by Status"]
-    M12a --> M12a2["View Request & Card Details"]
+    M12a --> M12a2["View Request Details"]
     M12b --> M12b1["Record New ID Request"]
-    M12c --> M12c1["Generate QR Code & Produce Card"]
-    M12d --> M12d1["Validate Produced Card"]
+    M12c --> M12c1["Capture / Upload Face Photo"]
+    M12d --> M12d1["Validate Request & Sign Workflow Step"]
     M12e --> M12e1["Record Card Release"]
-    M12f --> M12f1["Reissue Damaged/Lost Card"]
-    M12f --> M12f2["Cancel ID Request"]
 
     M13 --> M13a["13.1 Quick-Search Students"]
     M13 --> M13b["13.2 Browse Student Directory"]
@@ -528,8 +531,8 @@ graph TD
 ---
 
 *Verified against `routes/web.php`, `routes/auth.php`, and all 15 controllers
-(237 passing tests, 1367 assertions — UI runtime layer re-verified live: QR
-rendering, all search/filter endpoints, all 144 named-route references). Regenerate after adding any new route.*
+(237 passing tests, 1367 assertions — UI runtime layer re-verified live: all
+search/filter endpoints, all 144 named-route references). Regenerate after adding any new route.*
 
 
 

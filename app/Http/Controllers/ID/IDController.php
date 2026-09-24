@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\ID;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\IdRequestReason;
 use App\Enums\IdRequestStatus;
-use App\Enums\IdValidationStatus;
+use App\Enums\OfficeId;
 use App\Http\Controllers\Controller;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
-use App\Models\Studentids;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -37,7 +37,7 @@ class IDController extends Controller
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
                 ->where('stepStatus', 'pending')
-                ->where('officeId', 22)
+                ->where('officeId', OfficeId::IdOffice->value)
                 ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
             )
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
@@ -52,26 +52,30 @@ class IDController extends Controller
     }
 
     /**
-     * Show ID request form.
+     * Show ID validation desk.
      * Phase 8: ID request, photo, emergency contact, blood type
      */
     public function show(Enrollments $enrollment): Response
     {
         $this->authorize('id.view', $enrollment);
 
-        $enrollment->load(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
+        $enrollment->load(['student', 'course', 'term', 'idrequests.validatedBy', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
         $idRequest = $enrollment->idrequests->first();
-        // studentids is a HasOne — returns the single model directly (calling
-        // ->first() on a model would forward to a fresh query builder and
-        // return the first row of the whole table).
-        $studentId = $idRequest?->studentids;
 
         return Inertia::render('ID/Show', [
             'enrollment' => $enrollment,
             'idRequest' => $idRequest,
-            'studentId' => $studentId,
-            'requestReasons' => collect(IdRequestStatus::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'requestReasons' => collect(IdRequestReason::cases())->map(fn ($c) => [
+                'value' => $c->value,
+                'label' => match ($c) {
+                    IdRequestReason::NewStudent => 'New Student',
+                    IdRequestReason::Shifted => 'Shifted Program',
+                    IdRequestReason::Lost => 'Lost Replacement',
+                    IdRequestReason::Replaced => 'Damaged Replacement',
+                    IdRequestReason::Renewed => 'Annual Renewal',
+                },
+            ])->values(),
         ]);
     }
 
@@ -83,12 +87,11 @@ class IDController extends Controller
         $this->authorize('id.create', $enrollment);
 
         $validated = $request->validate([
-            'requestReason' => 'required|in:newStudent,lost,renewal,shifted',
+            'requestReason' => 'required|in:newStudent,lost,replaced,renewed,shifted',
             'emergencyContactName' => 'required|string|max:255',
             'emergencyContactNumber' => 'required|string|max:20',
             'bloodType' => 'required|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
             'cardPhotoPath' => 'nullable|string|max:500',
-            'producedByVendor' => 'nullable|string|max:255',
         ]);
 
         $idRequest = Idrequests::create([
@@ -98,7 +101,6 @@ class IDController extends Controller
             'emergencyContactNumber' => $validated['emergencyContactNumber'],
             'bloodType' => $validated['bloodType'],
             'cardPhotoPath' => $validated['cardPhotoPath'] ?? null,
-            'producedByVendor' => $validated['producedByVendor'] ?? null,
             'requestDate' => now(),
             'status' => IdRequestStatus::Pending,
         ]);
@@ -107,57 +109,43 @@ class IDController extends Controller
     }
 
     /**
-     * Produce ID card.
+     * Attach the captured face photo to the ID request (validation prep).
      */
-    public function produceCard(Request $request, Idrequests $idRequest): RedirectResponse
+    public function attachPhoto(Request $request, Idrequests $idRequest): RedirectResponse
     {
-        $this->authorize('produceCard', $idRequest);
+        $this->authorize('id.photo.attach', $idRequest);
 
         $validated = $request->validate([
-            'qrCode' => 'required|string|max:100|unique:studentids,qrCode',
-            'securityPhotoPath' => 'nullable|string|max:500',
+            'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        DB::transaction(function () use ($idRequest, $validated) {
-            $studentId = Studentids::create([
-                'studentId' => $idRequest->enrollment->studentId,
-                'idRequestId' => $idRequest->idRequestId,
-                'qrCode' => $validated['qrCode'],
-                'issueDate' => now(),
-                'validationStatus' => IdValidationStatus::PendingValidation,
-                'securityPhotoPath' => $validated['securityPhotoPath'] ?? null,
-            ]);
+        $disk = config('filesystems.default', 'public');
+        $path = $request->file('photo')->store('id-photos', $disk);
 
-            $idRequest->update(['status' => IdRequestStatus::CardProduced]);
-        });
+        $idRequest->update(['cardPhotoPath' => $path]);
 
-        return back()->with('success', 'ID card produced.');
+        return back()->with('success', 'Face photo attached to the ID request.');
     }
 
     /**
-     * Validate ID (QR code scan).
+     * Validate ID: mark the request validated and sign the ID Office
+     * workflow step.
      */
-    public function validate(Request $request, Studentids $studentId): RedirectResponse
+    public function validate(Request $request, Idrequests $idRequest): RedirectResponse
     {
-        $this->authorize('id.validateCard', $studentId);
+        $this->authorize('id.validateRequest', $idRequest);
 
-        DB::transaction(function () use ($studentId) {
-            $studentId->update([
-                'validationStatus' => IdValidationStatus::Active,
+        DB::transaction(function () use ($idRequest) {
+            $idRequest->update([
+                'status' => IdRequestStatus::Validated,
                 'validatedBy' => Auth::user()->userId,
                 'validatedDate' => now(),
             ]);
 
-            // Update ID request status to Validated
-            $idRequest = $studentId->idRequest;
-            if ($idRequest) {
-                $idRequest->update(['status' => IdRequestStatus::Validated]);
-            }
-
-            // Sign workflow step 8 (ID Office)
-            $workflow = $studentId->idRequest?->enrollment?->enrollmentworkflow;
+            // Sign the ID Office workflow step
+            $workflow = $idRequest->enrollment->enrollmentworkflow;
             if ($workflow) {
-                $this->workflowService->signStepByOffice($workflow, 22, Auth::user());
+                $this->workflowService->signStepByOffice($workflow, OfficeId::IdOffice->value, Auth::user());
             }
         });
 
@@ -165,75 +153,16 @@ class IDController extends Controller
     }
 
     /**
-     * Release ID to student.
+     * Release the physical ID card to the student.
      */
-    public function release(Request $request, Studentids $studentId): RedirectResponse
+    public function release(Request $request, Idrequests $idRequest): RedirectResponse
     {
-        $this->authorize('id.releaseCard', $studentId);
-
-        DB::transaction(function () use ($studentId) {
-            $studentId->update([
-                'validationStatus' => IdValidationStatus::Active,
-            ]);
-
-            // Update ID request status to Released
-            $idRequest = $studentId->idRequest;
-            if ($idRequest) {
-                $idRequest->update(['status' => IdRequestStatus::Released]);
-            }
-        });
-
-        return back()->with('success', 'ID released to student.');
-    }
-
-    /**
-     * Reissue ID card (reprint or replacement).
-     */
-    public function reissue(Request $request, Idrequests $idRequest): RedirectResponse
-    {
-        $this->authorize('reissue', $idRequest);
-
-        $validated = $request->validate([
-            'reissueReason' => 'required|string|max:255',
-        ]);
-
-        $previousStatus = $idRequest->status;
-
-        if ($previousStatus === IdRequestStatus::CardProduced) {
-            // Reprint: keep status as cardProduced, mark as reissue
-            $idRequest->update([
-                'is_reissue' => true,
-                'reissueReason' => $validated['reissueReason'],
-                'status' => IdRequestStatus::CardProduced,
-            ]);
-            $message = 'ID card marked for reprint.';
-        } elseif ($previousStatus === IdRequestStatus::Released) {
-            // Replacement: set status to reissuePending
-            $idRequest->update([
-                'is_reissue' => true,
-                'reissueReason' => $validated['reissueReason'],
-                'status' => IdRequestStatus::ReissuePending,
-            ]);
-            $message = 'ID replacement requested. Status set to Reissue Pending.';
-        } else {
-            // Should not reach here due to policy check, but safeguard
-            return back()->withErrors(['status' => 'Cannot reissue from current status.']);
-        }
-
-        return back()->with('success', $message);
-    }
-
-    /**
-     * Cancel ID request.
-     */
-    public function cancel(Request $request, Idrequests $idRequest): RedirectResponse
-    {
-        $this->authorize('cancel', $idRequest);
+        $this->authorize('id.releaseRequest', $idRequest);
 
         $idRequest->update([
-            'status' => IdRequestStatus::Cancelled,
+            'status' => IdRequestStatus::Released,
         ]);
 
-        return back()->with('success', 'ID request cancelled.');
+        return back()->with('success', 'ID released to student.');
     }
 }

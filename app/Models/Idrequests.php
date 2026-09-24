@@ -6,7 +6,6 @@ use App\Enums\IdRequestReason;
 use App\Enums\IdRequestStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Idrequests extends Model
 {
@@ -16,7 +15,7 @@ class Idrequests extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'producedByVendor', 'requestDate', 'status', 'reissueReason', 'is_reissue'];
+    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'requestDate', 'status', 'validatedBy', 'validatedDate'];
 
     protected function casts(): array
     {
@@ -24,7 +23,7 @@ class Idrequests extends Model
             'requestReason' => IdRequestReason::class,
             'requestDate' => 'date',
             'status' => IdRequestStatus::class,
-            'is_reissue' => 'boolean',
+            'validatedDate' => 'datetime',
         ];
     }
 
@@ -37,10 +36,10 @@ class Idrequests extends Model
     }
 
     /**
-     * @return HasOne<Studentids, $this>
+     * @return BelongsTo<Staffusers, $this>
      */
-    public function studentids(): HasOne
+    public function validatedBy(): BelongsTo
     {
-        return $this->hasOne(Studentids::class, 'idRequestId');
+        return $this->belongsTo(Staffusers::class, 'validatedBy', 'userId');
     }
 }

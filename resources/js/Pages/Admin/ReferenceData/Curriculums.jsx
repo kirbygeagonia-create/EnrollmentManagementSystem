@@ -1,6 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
 
@@ -88,6 +87,18 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
 
     const renderActions = (row) => (
         <div className="flex items-center gap-2">
+            {/* Item 5: the subject picker lives on its own page — without this
+                link the row is a nav dead-end and that page is unreachable. */}
+            <Link
+                href={route('admin.reference-data.curriculum-subjects', { curriculum: row.curriculumId })}
+                className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
+                aria-label="Manage curriculum subjects"
+                title="Manage this curriculum's subjects"
+            >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+            </Link>
             <button
                 onClick={() => openEditModal(row)}
                 className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
@@ -115,8 +126,6 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
                 <PageHeader
                     title="Curriculums"
                     subtitle="Manage course curriculum structures"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

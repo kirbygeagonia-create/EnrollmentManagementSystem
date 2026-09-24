@@ -17,6 +17,7 @@ use App\Models\Payments;
 use App\Models\Settings;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
+use App\Models\Students;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,6 +32,37 @@ class DashboardController extends Controller
     {
         $currentTermId = Settings::where('settingKey', 'currentTermId')->value('settingValue');
 
+        // Item 2: the admin System Admin dashboard tab shows a per-applicant
+        // progress workflow view — recent enrollments with their 6-7 step
+        // workflow progress — instead of module link tiles. Gated to the
+        // Admin role (the tab is admin-only in the UI) AND students.view,
+        // so the payload never ships to a non-admin office head who holds
+        // students.view but cannot see the tab, and the links below always
+        // resolve (students.show requires students.view too).
+        $progressTracking = [];
+        $user = $request->user();
+        if ($user !== null && $user->role->value === 'admin' && $user->can('viewAny', Students::class)) {
+            $progressTracking = Enrollments::with(['student', 'course', 'enrollmentworkflow.workflowsteps.office'])
+                ->latest('enrollmentId')
+                ->limit(8)
+                ->get()
+                ->map(fn (Enrollments $e) => [
+                    'enrollmentId' => $e->enrollmentId,
+                    'studentId' => $e->studentId,
+                    'studentName' => $e->student
+                        ? $e->student->lastName.', '.$e->student->firstName
+                        : '—',
+                    'courseCode' => $e->course?->courseCode,
+                    'enrollmentStatus' => $e->enrollmentStatus->value,
+                    'totalSteps' => $e->enrollmentworkflow?->workflowsteps->count() ?? 0,
+                    'completedSteps' => $e->enrollmentworkflow?->workflowsteps->where('stepStatus', 'completed')->count() ?? 0,
+                    'currentOffice' => $e->enrollmentworkflow?->workflowsteps
+                        ->firstWhere('stepStatus', 'pending')?->office?->officeName,
+                ])
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Dashboard', [
             'stats' => [
                 'totalAdmissions' => Admissions::count(),
@@ -44,6 +76,7 @@ class DashboardController extends Controller
                 'activeTerms' => $currentTermId ? Academicterms::where('termId', $currentTermId)->count() : 0,
                 'totalCourses' => Courses::count(),
             ],
+            'progressTracking' => $progressTracking,
         ]);
     }
 

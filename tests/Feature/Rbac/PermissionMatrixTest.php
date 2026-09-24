@@ -49,6 +49,9 @@ class PermissionMatrixTest extends TestCase
             'OfficeHead' => 'officeHead',
             'Dean' => 'dean',
             'ProgramHead' => 'programHead',
+            // DeptEvaluator is a Spatie-only desk role (no StaffRole enum case)
+            // — the `role` column value is display-only.
+            'DeptEvaluator' => 'staff',
             'Staff' => 'staff',
         ];
 
@@ -127,6 +130,9 @@ class PermissionMatrixTest extends TestCase
             // Evaluation mutations
             ['evaluation.sign', 'evaluation.sign', ['enrollment' => 999999], 'post'],
             ['evaluation.subjects.propose', 'evaluation.subjects.propose', ['enrollment' => 999999], 'post'],
+            // Item 4 / BR10: the retention exam is recorded in the Academic
+            // Evaluation area by the owning department.
+            ['evaluation.retention.record', 'exam.record.retention', ['enrollment' => 999999], 'post'],
 
             // Assessment mutations
             ['assessment.compute', 'assessment.compute', ['enrollment' => 999999], 'post'],
@@ -146,7 +152,7 @@ class PermissionMatrixTest extends TestCase
 
             // ID mutations
             ['id.create', 'id.request.create', ['enrollment' => 999999], 'post'],
-            ['id.validate', 'id.validate', ['studentId' => 999999], 'post'],
+            ['id.validate', 'id.validate', ['idRequest' => 999999], 'post'],
         ];
     }
 
@@ -282,6 +288,34 @@ class PermissionMatrixTest extends TestCase
             "SysAdmin got 403 on {$routeName} - Gate::before not working. Params: ".json_encode($routeParams));
     }
 
+    /**
+     * Item 3 write-boundary: the Admin role is read-everywhere with NO
+     * mutation permissions (RbacSeeder), so every mutating route must deny
+     * it — exactly the Staff denial above, but for the overseer role. A 200
+     * would mean Admin bypassed the boundary.
+     */
+    #[Test]
+    #[DataProvider('mutatingRoutesProvider')]
+    public function test_admin_role_denied_mutating_routes(
+        string $routeName,
+        string $permission,
+        array $routeParams,
+        string $httpMethod
+    ): void {
+        // A pure Admin account — SysAdmin deliberately NOT assigned (that is
+        // the super-role; RbacSeeder's real admin accounts carry both, which
+        // is why this boundary is invisible in the seeded system).
+        $admin = $this->createStaffWithRole('Admin');
+
+        $this->assertFalse($admin->hasPermissionTo($permission),
+            "Admin unexpectedly has {$permission} - check RbacSeeder write-boundary");
+
+        $response = $this->actingAs($admin)->{$httpMethod}(route($routeName, $routeParams));
+
+        $this->assertNotEquals(200, $response->status(),
+            "Admin (no SysAdmin) with no {$permission} got 200 on mutating route {$routeName} - write-boundary bypassed. Params: ".json_encode($routeParams));
+    }
+
     #[Test]
     #[DataProvider('unauthenticatedRoutesProvider')]
     public function test_unauthenticated_redirected_to_login(string $routeName): void
@@ -312,7 +346,9 @@ class PermissionMatrixTest extends TestCase
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'evaluation.sign.dean',
-            'exam.view',
+            // Item 4: the owning academic department also handles the
+            // course-specific entrance exam and the retention exam (BR9/BR10).
+            'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
             'refdata.view',
             'user.view',
             'dashboard.view',
@@ -349,7 +385,9 @@ class PermissionMatrixTest extends TestCase
             'admission.view',
             'evaluation.view', 'evaluation.create', 'evaluation.credits.process',
             'evaluation.subjects.propose', 'evaluation.sign',
-            'exam.view',
+            // Item 4: the owning academic department also handles the
+            // course-specific entrance exam and the retention exam (BR9/BR10).
+            'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
             'dashboard.view',
             'enrollment.subjects.confirm',
         ];
@@ -373,19 +411,25 @@ class PermissionMatrixTest extends TestCase
     }
 
     /**
-     * Admin role mirrors SysAdmin (all permissions).
+     * Item 3 write-boundary: Admin is read-everywhere — every view permission,
+     * NO mutation permissions. Any write an Admin account makes is an
+     * oversight-role override flagged in the audit trail, not a permitted flow.
      */
     #[Test]
     public function test_admin_has_all_permissions(): void
     {
         $admin = $this->createStaffWithRole('Admin');
 
-        // Admin should have all permissions (same as SysAdmin)
-        $allPermissions = Permission::all()->pluck('name')->toArray();
+        $allPermissions = Permission::all();
 
         foreach ($allPermissions as $perm) {
-            $this->assertTrue($admin->hasPermissionTo($perm),
-                "Admin should have {$perm} (mirrors SysAdmin)");
+            if (str_ends_with($perm->name, '.view')) {
+                $this->assertTrue($admin->hasPermissionTo($perm->name),
+                    "Admin should have the view permission {$perm->name}");
+            } else {
+                $this->assertFalse($admin->hasPermissionTo($perm->name),
+                    "Admin must NOT hold the mutation permission {$perm->name}");
+            }
         }
     }
 
@@ -408,16 +452,18 @@ class PermissionMatrixTest extends TestCase
                 "OfficeHead should have {$perm} per RbacSeeder");
         }
 
-        // OfficeHead action permissions (per RbacSeeder)
+        // OfficeHead action permissions (per RbacSeeder). Item 4: exam
+        // recording is NOT a desk-head permission — the School Entrance
+        // Examination is Guidance-only, and course-specific and retention
+        // exams belong to the owning academic department.
         $actionPerms = [
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
             'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'id.request.create', 'id.card.produce', 'id.validate', 'id.release', 'id.sign', 'id.reissue', 'id.cancel',
+            'id.request.create', 'id.validate', 'id.release', 'id.sign',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
-            'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
             'admission.create', 'admission.update', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
             'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
@@ -427,16 +473,51 @@ class PermissionMatrixTest extends TestCase
                 "OfficeHead should have {$perm} per RbacSeeder");
         }
 
-        // OfficeHead does NOT have these (admin-only / refdata manage / user manage)
+        // OfficeHead does NOT have these (admin-only / refdata manage / user
+        // manage), plus the item-4 exam-recording boundary — Guidance owns the
+        // School Entrance exam, departments own course-specific and retention.
         $notOfficeHead = [
             'assessment.charges.adjust', 'payment.void',
             'refdata.courses.manage', 'refdata.majors.manage',
             'user.create', 'user.roles.assign', 'user.roles.manage',
             'block.capacity.check', 'clearance.slip.replace',
+            'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
         ];
         foreach ($notOfficeHead as $perm) {
             $this->assertFalse($officeHead->hasPermissionTo($perm),
                 "OfficeHead should NOT have {$perm} per RbacSeeder");
         }
+    }
+
+    /**
+     * Item 4 exam ownership: the DeptEvaluator role is the academic
+     * department's desk — it handles and views the course-specific entrance
+     * exam (BR9 Stage 2) and the retention exam (BR10), but never the School
+     * Entrance Examination (Guidance-only, BR9 Stage 1).
+     */
+    #[Test]
+    public function test_dept_evaluator_exam_ownership(): void
+    {
+        $deptEvaluator = $this->createStaffWithRole('DeptEvaluator');
+
+        $deptEvaluatorPermissions = [
+            'evaluation.view', 'evaluation.create',
+            'evaluation.profile.capture', 'evaluation.profile.capture.any',
+            'evaluation.subjects.propose', 'evaluation.subjects.propose.any',
+            'evaluation.credits.process', 'evaluation.sign',
+            'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
+            'admission.view', 'dashboard.view', 'user.view',
+            'enrollment.subjects.confirm', 'students.view',
+        ];
+        foreach ($deptEvaluatorPermissions as $perm) {
+            $this->assertTrue($deptEvaluator->hasPermissionTo($perm),
+                "DeptEvaluator should have {$perm} per RbacSeeder");
+        }
+
+        // The School Entrance Examination belongs to Guidance alone.
+        $this->assertFalse($deptEvaluator->hasPermissionTo('exam.record.general'),
+            'DeptEvaluator must NOT hold exam.record.general — the School Entrance Examination is Guidance-only');
+        $this->assertFalse($deptEvaluator->hasPermissionTo('exam.verify.general'),
+            'DeptEvaluator must NOT hold exam.verify.general — School Entrance verification is Guidance-only');
     }
 }

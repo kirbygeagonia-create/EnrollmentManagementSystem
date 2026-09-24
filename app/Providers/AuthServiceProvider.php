@@ -170,10 +170,10 @@ class AuthServiceProvider extends ServiceProvider
             return app(ClinicPolicy::class)->record($user, $enrollment);
         });
 
-        // ID: create acts on the enrollment; validate/release act on Studentids
-        // (which has no model-policy mapping). Note: the ability names must NOT
-        // collide with permission names — Spatie's Gate::before auto-grants any
-        // ability matching a permission the user holds, which would bypass the
+        // ID: create acts on the enrollment; validate/release/attachPhoto act
+        // on the idrequest. Note: the ability names must NOT collide with
+        // permission names — Spatie's Gate::before auto-grants any ability
+        // matching a permission the user holds, which would bypass the
         // office-22 scope check below (the permission is shared by all OfficeHeads).
         Gate::define('id.view', function ($user) {
             return $user->hasPermissionTo('id.view');
@@ -181,11 +181,14 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('id.create', function ($user, $enrollment) {
             return app(IDPolicy::class)->create($user, $enrollment);
         });
-        Gate::define('id.validateCard', function ($user, $studentId) {
-            return app(IDPolicy::class)->validate($user, $studentId);
+        Gate::define('id.photo.attach', function ($user, $idRequest) {
+            return app(IDPolicy::class)->attachPhoto($user, $idRequest);
         });
-        Gate::define('id.releaseCard', function ($user, $studentId) {
-            return app(IDPolicy::class)->release($user, $studentId);
+        Gate::define('id.validateRequest', function ($user, $idRequest) {
+            return app(IDPolicy::class)->validate($user, $idRequest);
+        });
+        Gate::define('id.releaseRequest', function ($user, $idRequest) {
+            return app(IDPolicy::class)->release($user, $idRequest);
         });
 
         // Blocking: Blocks maps to ReferenceDataPolicy (refdata manage), so all
@@ -204,12 +207,13 @@ class AuthServiceProvider extends ServiceProvider
                 return false;
             }
 
-            // SysAdmin/Admin act globally; everyone else must belong to the
-            // Blocking & Scheduling office (OfficeId::Blocking). An OfficeHead
-            // from any other office previously slipped through this gate and
-            // died with a 500 inside WorkflowService's office-scope check
-            // instead of a clean 403.
-            if ($user->hasRole(['SysAdmin', 'Admin'])) {
+            // SysAdmin acts globally (item 3 write-boundary: the Admin role is
+            // read-everywhere and must NOT bypass office scoping); everyone
+            // else must belong to the Blocking & Scheduling office
+            // (OfficeId::Blocking). An OfficeHead from any other office
+            // previously slipped through this gate and died with a 500 inside
+            // WorkflowService's office-scope check instead of a clean 403.
+            if ($user->hasRole('SysAdmin')) {
                 return true;
             }
 

@@ -265,4 +265,49 @@ class EnrollmentStateMachineTest extends TestCase
         $this->assertFalse($this->stateMachine->canTransition($this->enrollment, EnrollmentStatus::Enrolled));
         $this->assertFalse($this->stateMachine->canTransition($this->enrollment, EnrollmentStatus::Dropped));
     }
+
+    // Item 8: registrar hold — paid ⇄ returnedToEvaluation ⇄ evaluated
+
+    #[Test]
+    public function it_allows_valid_transition_from_paid_to_returned_to_evaluation(): void
+    {
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Paid]);
+
+        $this->stateMachine->transition(
+            $this->enrollment,
+            EnrollmentStatus::ReturnedToEvaluation,
+            $this->staff,
+            'Returned to Department Evaluation: subject load conflict'
+        );
+
+        $this->assertEquals('returnedToEvaluation', $this->enrollment->fresh()->enrollmentStatus->value);
+    }
+
+    #[Test]
+    public function it_allows_valid_transition_from_returned_to_evaluation_back_to_evaluated(): void
+    {
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::ReturnedToEvaluation]);
+
+        $this->stateMachine->transition(
+            $this->enrollment,
+            EnrollmentStatus::Evaluated,
+            $this->staff,
+            'Subject load re-proposed after registrar return'
+        );
+
+        $this->assertEquals('evaluated', $this->enrollment->fresh()->enrollmentStatus->value);
+    }
+
+    #[Test]
+    public function it_throws_exception_for_pending_to_returned_to_evaluation(): void
+    {
+        $this->expectException(InvalidStateTransitionException::class);
+
+        $this->stateMachine->transition(
+            $this->enrollment,
+            EnrollmentStatus::ReturnedToEvaluation,
+            $this->staff,
+            'Only paid enrollments may be returned'
+        );
+    }
 }

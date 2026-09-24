@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, FormSection, Select } from '@/Components/ui';
+import { PageHeader, Card, FormSection, Select, formatStatusLabel } from '@/Components/ui';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useEffect, useCallback } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
@@ -15,6 +15,8 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
     const [students, setStudents] = useState([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
     const { formProps } = useFormKeyboardNav();
+
+    const isCourseSpecific = type === 'courseSpecific';
 
     const form = useForm({
         studentId: '',
@@ -31,6 +33,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 courseId: form.data.courseId,
                 termId: form.data.termId,
                 stage,
+                type,
             });
             fetch(route('exam.students') + `?${params}`)
                 .then((res) => res.json())
@@ -42,7 +45,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
         } else {
             setStudents([]);
         }
-    }, [form.data.courseId, form.data.termId, stage]);
+    }, [form.data.courseId, form.data.termId, stage, type]);
 
     // Fetch students when course and term change
     useEffect(() => {
@@ -52,35 +55,25 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        let submitRoute;
-        if (stage === 'entrance' && type === 'general') {
-            submitRoute = route('exam.general.record');
-        } else if (stage === 'entrance' && type === 'courseSpecific') {
-            submitRoute = route('exam.course-specific.record');
-        } else if (stage === 'retention') {
-            submitRoute = route('exam.retention.record');
-        } else {
-            submitRoute = route('exam.general.record');
-        }
+        // Item 4: the Exam module records entrance exams only — general
+        // (Guidance, Stage 1) and course-specific (department, Stage 2).
+        // The retention exam is recorded in the Academic Evaluation area.
+        const submitRoute = isCourseSpecific
+            ? route('exam.course-specific.record')
+            : route('exam.general.record');
 
         router.post(submitRoute, form.data(), {
             onSuccess: () => form.reset('examResult'),
         });
     };
 
-    const getStageLabel = () => {
-        if (stage === 'entrance' && type === 'general') return 'General Entrance Exam';
-        if (stage === 'entrance' && type === 'courseSpecific') return 'Course-Specific Entrance Exam';
-        if (stage === 'retention') return 'Retention Exam';
-        return 'Exam';
-    };
+    const getStageLabel = () => (isCourseSpecific
+        ? 'Course-Specific Entrance Exam'
+        : 'School Entrance Examination');
 
-    const getStageDescription = () => {
-        if (stage === 'entrance' && type === 'general') return 'Record general entrance exam results (Guidance Office)';
-        if (stage === 'entrance' && type === 'courseSpecific') return 'Record course-specific entrance exam results (Department)';
-        if (stage === 'retention') return 'Record retention exam results (Board course continuing students)';
-        return 'Record exam results';
-    };
+    const getStageDescription = () => (isCourseSpecific
+        ? 'Stage 2 (BR9): score your department\'s own exam for the School Entrance passers transferred from Guidance'
+        : 'Stage 1 (BR9): record every result, pass and failed — passers are transferred to the academic departments');
 
     return (
         <AuthenticatedLayout
@@ -88,8 +81,8 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <PageHeader
                     title={getStageLabel()}
                     subtitle={getStageDescription()}
-                    logo="/images/logos/guidance-office.jpg"
-                    logoAlt="Guidance Office"
+                    phaseBadge="Phase 0.5 · BR9"
+                    officeBadge={isCourseSpecific ? 'Academic Departments' : 'Guidance & Testing Center'}
                 />
             }
         >
@@ -109,7 +102,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column (7 cols): Academic Target & Student */}
                     <div className="lg:col-span-7 space-y-4">
-                        <Card title="Target Academic Cohort & Student" subtitle="Select program, term, and candidate applicant">
+                        <Card title="Target Academic Cohort & Student" subtitle={isCourseSpecific ? 'Select program, term, and transferred passer' : 'Select program, term, and candidate applicant'}>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <FormSection label="Course / Program" required>
@@ -135,7 +128,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                     </FormSection>
                                 </div>
 
-                                <FormSection label="Candidate Student" required>
+                                <FormSection label={isCourseSpecific ? 'Transferred Passer' : 'Candidate Student'} required>
                                     {loadingStudents ? (
                                         <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50 border border-brand-100">
                                             <svg className="animate-spin h-5 w-5 text-seait-600" fill="none" viewBox="0 0 24 24">
@@ -148,8 +141,16 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                         <Select
                                             value={form.data.studentId}
                                             onChange={(value) => form.setData('studentId', value)}
-                                            options={students.map(s => ({ value: s.studentId, label: `${s.schoolIdNumber} — ${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` }))}
-                                            placeholder="Search & select candidate student..."
+                                            options={students.map(s => ({
+                                                value: s.studentId,
+                                                // Item 4 — the BR9 transfer: course-specific
+                                                // candidates show the School Entrance result
+                                                // Guidance transferred alongside the name.
+                                                label: isCourseSpecific && s.examResult
+                                                    ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — School Entrance: ${formatStatusLabel(s.examResult)}`
+                                                    : `${s.schoolIdNumber} — ${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}`,
+                                            }))}
+                                            placeholder={isCourseSpecific ? 'Search & select transferred passer...' : 'Search & select candidate student...'}
                                             required
                                         />
                                     ) : (
@@ -158,7 +159,11 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-8 0 4 4 0 008 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z" />
                                             </svg>
                                             <span className="text-slate-500 text-xs font-medium">
-                                                {form.data.courseId && form.data.termId ? 'No examinees found awaiting score entry for this cohort.' : 'Please select Course and Term above to populate students.'}
+                                                {form.data.courseId && form.data.termId
+                                                    ? (isCourseSpecific
+                                                        ? 'No School Entrance passers have been transferred to this course for this term yet.'
+                                                        : 'No examinees found awaiting score entry for this cohort.')
+                                                    : 'Please select Course and Term above to populate students.'}
                                             </span>
                                         </div>
                                     )}
@@ -173,14 +178,45 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         <Card title="Exam Assessment & Scoring" subtitle="Official score result and date of evaluation">
                             <div className="space-y-4">
                                 <FormSection label="Evaluation Result" required>
-                                    <Select
-                                        value={form.data.examResult}
-                                        onChange={(value) => form.setData('examResult', value)}
-                                        options={resultOptions}
-                                        placeholder="Select result (Pass / Fail)"
-                                        required
-                                    />
+                                    {/* Pass / Fail is a two-option choice — a radio
+                                        pair, not a dropdown (item 13): both options
+                                        stay visible and one tap records the choice. */}
+                                    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Evaluation result">
+                                        {resultOptions.map((opt) => {
+                                            const selected = form.data.examResult === opt.value;
+                                            const isPass = opt.value === 'pass';
+                                            return (
+                                                <label
+                                                    key={opt.value}
+                                                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                                                        selected
+                                                            ? (isPass
+                                                                ? 'border-success-500 bg-success-50 text-success-700 ring-2 ring-success-500/20'
+                                                                : 'border-danger-500 bg-danger-50 text-danger-700 ring-2 ring-danger-500/20')
+                                                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                                    }`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="examResult"
+                                                        value={opt.value}
+                                                        checked={selected}
+                                                        onChange={() => form.setData('examResult', opt.value)}
+                                                        className="sr-only"
+                                                    />
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        {isPass
+                                                            ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                                            : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                                                    </svg>
+                                                    {opt.label}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="mt-1.5 text-xs text-slate-400">Select Pass or Fail — this is the official result on the examinee's record.</p>
                                     {form.errors.examResult && <p className="form-error">{form.errors.examResult}</p>}
+                                    {form.errors.generalExam && <p className="form-error">{form.errors.generalExam}</p>}
                                 </FormSection>
 
                                 <FormSection label="Date of Examination" required>

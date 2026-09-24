@@ -47,7 +47,7 @@ class StudentController extends Controller
             'addresses',
             'guardians',
             'admissions',
-            'enrollments.course',
+            'enrollments.course.unit',
             'enrollments.major',
             'enrollments.term',
             'enrollments.enrollmentworkflow.workflowsteps.office',
@@ -58,7 +58,7 @@ class StudentController extends Controller
             'enrollments.enrolledsubjects.subject',
             'studentclearances',
             'examresults',
-            'studentids',
+            'idrequests',
             'studentscholarships',
         ]);
 

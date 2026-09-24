@@ -12,11 +12,11 @@ const deskConfigs = {
     },
     exam: {
         title: 'Guidance & Entrance Exam Lab',
-        phase: 'Phase 0.5 & Retention',
+        phase: 'Phase 0.5 · Entrance',
         badgeColor: 'bg-indigo-500/10 text-indigo-700 border-indigo-300',
         tabs: [
             { name: 'Exam Queue', route: 'exam.index' },
-            { name: 'Record Entrance / Retention', route: 'exam.create' },
+            { name: 'Record Entrance Exam', route: 'exam.create' },
             { name: 'Pass / Fail Results', route: 'exam.results' },
         ],
     },

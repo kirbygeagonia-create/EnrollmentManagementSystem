@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Blocking;
 
 use App\Enums\DayOfWeek;
+use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\OfficeId;
 use App\Http\Controllers\Controller;
@@ -42,7 +43,10 @@ class BlockingController extends Controller
         $this->authorize('blocking.viewAny');
 
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
-            ->withCount('enrolledSubjects')
+            // Count active (non-dropped) subject rows only — dropped rows would
+            // inflate the capacity numbers the Index table shows.
+            ->withCount(['enrolledSubjects' => fn ($q) => $q->where('status', '!=', 'dropped')])
+            ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
             ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
@@ -54,7 +58,7 @@ class BlockingController extends Controller
             'blocks' => $blocks,
             'courses' => Courses::all(['courseId', 'courseName', 'courseCode']),
             'terms' => Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']),
-            'filters' => $request->only(['courseId', 'termId', 'yearLevel']),
+            'filters' => $request->only(['search', 'courseId', 'termId', 'yearLevel']),
         ]);
     }
 
@@ -72,7 +76,11 @@ class BlockingController extends Controller
         ]);
 
         $capacity = $block->maxStudents;
-        $enrolled = $block->enrolledSubjects->count();
+        // Active (non-dropped) subject rows only — matches the capacity
+        // enforcement in assignStudents.
+        $enrolled = $block->enrolledSubjects
+            ->filter(fn ($es) => $es->status !== EnrolledSubjectStatus::Dropped)
+            ->count();
         $available = $capacity - $enrolled;
 
         // Eligible enrollments for assignment (mirrors assignStudents eligibility logic)
@@ -126,7 +134,7 @@ class BlockingController extends Controller
             'available' => $available,
             'subjects' => Subjects::all(['subjectId', 'subjectCode', 'subjectName']),
             'rooms' => Rooms::all(['roomId', 'roomName', 'capacity', 'building']),
-            'instructors' => Staffusers::where('officeId', '!=', 1)->get(['userId', 'firstName', 'lastName', 'middleName', 'role', 'officeId', 'unitId']),
+            'instructors' => Staffusers::where('officeId', '!=', OfficeId::Registrar->value)->get(['userId', 'firstName', 'lastName', 'middleName', 'role', 'officeId', 'unitId']),
             'days' => collect(DayOfWeek::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
             'eligibleEnrollments' => $eligibleEnrollments,
         ]);
@@ -185,6 +193,7 @@ class BlockingController extends Controller
     public function storeSchedule(Request $request, Blocks $block): RedirectResponse
     {
         $this->authorize('blocking.manageSchedules');
+        $this->ensureNotFinalized($block);
 
         $validated = $request->validate([
             'subjectId' => 'required|exists:subjects,subjectId',
@@ -210,14 +219,17 @@ class BlockingController extends Controller
             throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
         }
 
-        // Room capacity warning: if block's maxStudents exceeds room capacity
+        // Room capacity warning: advisory only — the hard gate is at assignment
+        // time (room_capacity), so a too-small room must not silently veto a
+        // legal schedule. Warn, and still add it.
+        $warning = null;
         $room = Rooms::find($validated['roomId']);
         if ($room && $block->maxStudents > $room->capacity) {
-            return back()->with('warning', "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}.");
+            $warning = "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}. Schedule was still added — assignments to this room will be capped.";
         }
 
         // Persist within transaction
-        return DB::transaction(function () use ($validated, $block) {
+        return DB::transaction(function () use ($validated, $block, $warning) {
             $schedule = Schedules::create([
                 'blockId' => $block->blockId,
                 'subjectId' => $validated['subjectId'],
@@ -229,7 +241,9 @@ class BlockingController extends Controller
                 Schedulemeetings::create(array_merge($meeting, ['scheduleId' => $schedule->scheduleId]));
             }
 
-            return back()->with('success', 'Schedule added.');
+            return $warning
+                ? back()->with('success', 'Schedule added.')->with('warning', $warning)
+                : back()->with('success', 'Schedule added.');
         });
     }
 
@@ -239,6 +253,7 @@ class BlockingController extends Controller
     public function updateSchedule(Request $request, Schedules $schedule): RedirectResponse
     {
         $this->authorize('blocking.manageSchedules');
+        $this->ensureNotFinalized($schedule->block);
 
         $validated = $request->validate([
             'instructorId' => 'sometimes|required|exists:staffusers,userId',
@@ -258,21 +273,24 @@ class BlockingController extends Controller
             $tempSchedule->load('meetings');
         }
 
-        $conflicts = $this->detectConflicts($tempSchedule);
+        // Exclude the schedule's own meetings: they are replaced by the
+        // proposed ones, so they must not be read as conflicts.
+        $conflicts = $this->detectConflicts($tempSchedule, $schedule->scheduleId);
         if ($conflicts->isNotEmpty()) {
             throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
         }
 
-        // Room capacity warning
+        // Room capacity warning: advisory only (see storeSchedule).
+        $warning = null;
         if (isset($validated['roomId'])) {
             $room = Rooms::find($validated['roomId']);
             $block = $schedule->block;
             if ($room && $block && $block->maxStudents > $room->capacity) {
-                return back()->with('warning', "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}.");
+                $warning = "Block maxStudents ({$block->maxStudents}) exceeds room capacity ({$room->capacity}) for room {$room->roomName}. Schedule was still updated — assignments to this room will be capped.";
             }
         }
 
-        return DB::transaction(function () use ($validated, $schedule) {
+        return DB::transaction(function () use ($validated, $schedule, $warning) {
             $schedule->update(array_intersect_key($validated, array_flip(['instructorId', 'roomId'])));
 
             if (isset($validated['meetings'])) {
@@ -282,7 +300,9 @@ class BlockingController extends Controller
                 }
             }
 
-            return back()->with('success', 'Schedule updated.');
+            return $warning
+                ? back()->with('success', 'Schedule updated.')->with('warning', $warning)
+                : back()->with('success', 'Schedule updated.');
         });
     }
 
@@ -292,6 +312,7 @@ class BlockingController extends Controller
     public function destroySchedule(Schedules $schedule): RedirectResponse
     {
         $this->authorize('blocking.manageSchedules');
+        $this->ensureNotFinalized($schedule->block);
 
         // Guard: only if no enrolledsubjects reference it (or null them out first)
         $enrolledCount = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
@@ -311,16 +332,49 @@ class BlockingController extends Controller
     }
 
     /**
+     * Finalize the block's timetable (item 9). Mirrors the assessment finalize
+     * pattern (idempotency guard): re-clicking Finalize on an already-final
+     * block returns an info flash instead of a validation error.
+     */
+    public function finalize(Blocks $block): RedirectResponse
+    {
+        $this->authorize('blocking.manageSchedules');
+
+        if ($block->scheduleStatus === 'final') {
+            return back()->with('info', 'Block schedule is already finalized.');
+        }
+
+        $block->update(['scheduleStatus' => 'final']);
+
+        return back()->with('success', 'Block schedule finalized. Timetable slots are now locked.');
+    }
+
+    /**
+     * Guard shared by every schedule mutation point (item 9): a finalized
+     * timetable can no longer be modified. Student assignment stays open.
+     */
+    private function ensureNotFinalized(?Blocks $block): void
+    {
+        if ($block && $block->scheduleStatus === 'final') {
+            throw ValidationException::withMessages([
+                'schedule' => 'This block schedule is finalized and cannot be modified.',
+            ]);
+        }
+    }
+
+    /**
      * Detect schedule conflicts (instructor/room/time overlap).
      * Two meetings overlap if same dayOfWeek AND startTime < other.endTime AND endTime > other.startTime.
      */
-    private function detectConflicts(Schedules $schedule)
+    private function detectConflicts(Schedules $schedule, ?int $exceptScheduleId = null)
     {
         $meetings = $schedule->meetings;
         $conflicts = collect();
 
         foreach ($meetings as $meeting) {
-            // Instructor conflict
+            // Instructor conflict. $exceptScheduleId drops the edited schedule's
+            // own still-present meetings — updateSchedule replaces them, so they
+            // must not be read as conflicts with the proposed times.
             $instructorConflict = Schedulemeetings::whereHas('schedule', fn ($q) => $q->where('instructorId', $schedule->instructorId))
                 ->where('dayOfWeek', $meeting->dayOfWeek)
                 ->where(function ($q) use ($meeting) {
@@ -328,6 +382,7 @@ class BlockingController extends Controller
                         ->where('endTime', '>', $meeting->startTime);
                 })
                 ->where('meetingId', '!=', $meeting->meetingId)
+                ->when($exceptScheduleId, fn ($q) => $q->where('scheduleId', '!=', $exceptScheduleId))
                 ->exists();
 
             if ($instructorConflict) {
@@ -342,6 +397,7 @@ class BlockingController extends Controller
                         ->where('endTime', '>', $meeting->startTime);
                 })
                 ->where('meetingId', '!=', $meeting->meetingId)
+                ->when($exceptScheduleId, fn ($q) => $q->where('scheduleId', '!=', $exceptScheduleId))
                 ->exists();
 
             if ($roomConflict) {
@@ -409,13 +465,22 @@ class BlockingController extends Controller
                     continue;
                 }
 
-                // Assign to block and schedule
+                // Assign to block and schedule. blockId marks block membership
+                // on every subject row; scheduleId goes ONLY to the row whose
+                // subject matches the chosen schedule — stamping every row with
+                // one scheduleId would print IT101's meeting time on the CS102
+                // row of the printed subject load.
+                // ponytail: one scheduleId per subject row — a lecture+lab
+                // subject's second meeting can't be stamped; a per-student
+                // schedule pivot is the upgrade path if that ever matters.
                 $enrollment->enrolledSubjects()
                     ->where('status', '!=', 'dropped')
-                    ->update([
-                        'blockId' => $block->blockId,
-                        'scheduleId' => $schedule->scheduleId,
-                    ]);
+                    ->update(['blockId' => $block->blockId]);
+
+                $enrollment->enrolledSubjects()
+                    ->where('status', '!=', 'dropped')
+                    ->where('subjectId', $schedule->subjectId)
+                    ->update(['scheduleId' => $schedule->scheduleId]);
 
                 // Sign the Blocking step now that the student is assigned
                 $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());

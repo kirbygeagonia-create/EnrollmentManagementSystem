@@ -226,8 +226,6 @@ export default function Show({ enrollment, clinicRecord }) {
                 <PageHeader
                     title="Student Health Assessment & Clinical Chart"
                     subtitle={`Phase 7 — ${getStudentName()} (${student?.schoolIdNumber})`}
-                    logo="/images/logos/clinic.jpg"
-                    logoAlt="SEAIT School Clinic"
                     phaseBadge="Phase 7 · Clinic Examination"
                     officeBadge="Office 11 · School Clinic"
                     actions={
@@ -289,7 +287,7 @@ export default function Show({ enrollment, clinicRecord }) {
             </div>
 
             {/* Enrollment Workflow Progress */}
-            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+            <Card title="Enrollment Workflow Progress" subtitle="The enrollment workflow form — signed offices and pending steps" className="mb-5">
                 <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
             </Card>
 

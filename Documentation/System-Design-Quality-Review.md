@@ -22,7 +22,7 @@ Following comprehensive remediation on 2026-09-15, all 4 critical blocking defec
 ### Verification & Test Suite Results
 - **Full-Page Route Audit**: **58 / 58 Routes PASS (HTTP 200 OK)**, 0 Failures, 0 Regressions.
 - **Workflow Pipeline Seeder**: `tools/seed_full_demo_pipeline.php` populated active, realistic student records across all 11 office stations.
-- **Database Backup Snapshot**: Captured in `Documentation/ems-demo-backup.sql` (523 KB).
+- **Database Backup Snapshot**: Captured in `Documentation/ems-demo-backup.sql` (262 KB UTF-8).
 
 ---
 

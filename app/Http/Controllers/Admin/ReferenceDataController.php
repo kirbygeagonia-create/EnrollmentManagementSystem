@@ -18,6 +18,7 @@ use App\Models\Clearancerequirements;
 use App\Models\Courses;
 use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
+use App\Models\Enrollments;
 use App\Models\Feetypes;
 use App\Models\Majors;
 use App\Models\Offices;
@@ -27,6 +28,7 @@ use App\Models\Subjects;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -222,6 +224,18 @@ class ReferenceDataController extends Controller
     public function destroyCurriculum(Curriculums $curriculum): RedirectResponse
     {
         $this->authorize('manageCurriculums', Curriculums::class);
+
+        // Item 7: enrollments pin curriculumId — deleting a pinned curriculum
+        // silently un-pins them, and one with subjects 500s on the RESTRICT FK.
+        // Surface both instead of letting them happen.
+        $pinnedCount = Enrollments::where('curriculumId', $curriculum->curriculumId)->count();
+        $subjectCount = Curriculumsubjects::where('curriculumId', $curriculum->curriculumId)->count();
+        if ($pinnedCount > 0 || $subjectCount > 0) {
+            throw ValidationException::withMessages([
+                'curriculum' => "Cannot delete: {$pinnedCount} enrollment(s) pin this curriculum and {$subjectCount} subject(s) are attached. Remove them first.",
+            ]);
+        }
+
         $curriculum->delete();
 
         return back()->with('success', 'Curriculum deleted.');
@@ -238,7 +252,7 @@ class ReferenceDataController extends Controller
             ->orderBy('semesterOffered')
             ->get();
 
-        $allSubjects = Subjects::all(['subjectId', 'subjectCode', 'subjectName']);
+        $allSubjects = Subjects::all(['subjectId', 'subjectCode', 'subjectName', 'subjectDesc']);
         $semesters = collect(SemesterOffered::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values();
 
         return Inertia::render('Admin/ReferenceData/CurriculumSubjects', [
@@ -257,7 +271,7 @@ class ReferenceDataController extends Controller
             'subjectId' => 'required|exists:subjects,subjectId',
             'prerequisiteSubjectId' => 'nullable|exists:subjects,subjectId',
             'yearLevel' => 'required|integer|min:1|max:5',
-            'semesterOffered' => 'required|in:1st,2nd,summer',
+            'semesterOffered' => 'required|in:1st,2nd,Summer',
         ]), ['curriculumId' => $curriculum->curriculumId]));
 
         return back()->with('success', 'Curriculum subject added.');
@@ -270,7 +284,7 @@ class ReferenceDataController extends Controller
             'subjectId' => 'required|exists:subjects,subjectId',
             'prerequisiteSubjectId' => 'nullable|exists:subjects,subjectId',
             'yearLevel' => 'required|integer|min:1|max:5',
-            'semesterOffered' => 'required|in:1st,2nd,summer',
+            'semesterOffered' => 'required|in:1st,2nd,Summer',
         ]));
 
         return back()->with('success', 'Curriculum subject updated.');
@@ -313,9 +327,10 @@ class ReferenceDataController extends Controller
         Subjects::create($request->validate([
             'subjectCode' => 'required|string|max:20|unique:subjects,subjectCode',
             'subjectName' => 'required|string|max:255',
+            'subjectDesc' => 'nullable|string|max:500',
             'lectureUnits' => 'required|numeric|min:0',
             'labUnits' => 'required|numeric|min:0',
-            'subjectType' => 'required|in:lecture,lab,lectureLab',
+            'subjectType' => 'required|in:lecture,lab,both',
         ]));
 
         return back()->with('success', 'Subject created.');
@@ -327,9 +342,10 @@ class ReferenceDataController extends Controller
         $subject->update($request->validate([
             'subjectCode' => 'required|string|max:20|unique:subjects,subjectCode,'.$subject->subjectId.',subjectId',
             'subjectName' => 'required|string|max:255',
+            'subjectDesc' => 'nullable|string|max:500',
             'lectureUnits' => 'required|numeric|min:0',
             'labUnits' => 'required|numeric|min:0',
-            'subjectType' => 'required|in:lecture,lab,lectureLab',
+            'subjectType' => 'required|in:lecture,lab,both',
         ]));
 
         return back()->with('success', 'Subject updated.');

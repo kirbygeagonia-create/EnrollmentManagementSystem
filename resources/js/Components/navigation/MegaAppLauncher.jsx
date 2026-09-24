@@ -22,13 +22,13 @@ const subSystems = [
             },
             {
                 name: 'Guidance & Exam Lab',
-                phase: 'Phase 0.5 & Retention',
+                phase: 'Phase 0.5 · Entrance',
                 route: 'exam.index',
-                officeId: 7,
+                officeId: [4, 7],
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-indigo-500 to-purple-600',
                 textColor: 'text-indigo-700 bg-indigo-50 border-indigo-200',
-                description: 'General & department entrance exams, board course retention gating, and scorecards.',
+                description: 'Two-stage entrance examinations (BR9): School Entrance scoring by Guidance, course-specific exams by the departments.',
                 icon: (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -166,7 +166,7 @@ const subSystems = [
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-slate-700 to-slate-900',
                 textColor: 'text-slate-700 bg-slate-100 border-slate-300',
-                description: 'JZEL vendor intake, PVC card mockup, QR security encoding, validation, and card release.',
+                description: 'ID request intake, face-photo capture, desk validation, and card release.',
                 icon: (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
@@ -181,7 +181,7 @@ const subSystems = [
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-seait-500 to-indigo-600',
                 textColor: 'text-seait-700 bg-seait-50 border-seait-200',
-                description: 'Complete student academic trail, 8-step workflow timeline, and demographic inspection.',
+                description: 'Complete student academic trail, 6-7 step workflow timeline, and demographic inspection.',
                 icon: (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
@@ -270,13 +270,17 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         if (item.route === 'students.index' && !canStudentsView) return false;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
+            // Item 4 — some modules serve two offices (the Exam module is
+            // Guidance's entrance scoring AND the departments' course-specific
+            // exams), so officeId accepts an array.
+            const ids = Array.isArray(item.officeId) ? item.officeId : [item.officeId];
             if (['dean', 'programHead', 'instructor'].includes(user?.role)) {
                 if (['evaluation.index', 'blocking.index', 'students.index'].includes(item.route)) return true;
-                if (user?.role === 'dean') return [4, 6, 7].includes(item.officeId);
-                if (user?.role === 'programHead') return [4, 6].includes(item.officeId);
-                if (user?.role === 'instructor') return [4].includes(item.officeId);
+                if (user?.role === 'dean') return ids.some((id) => [4, 6, 7].includes(id));
+                if (user?.role === 'programHead') return ids.some((id) => [4, 6].includes(id));
+                if (user?.role === 'instructor') return ids.some((id) => [4].includes(id));
             }
-            return user?.officeId === item.officeId;
+            return ids.includes(user?.officeId);
         }
         return true;
     };

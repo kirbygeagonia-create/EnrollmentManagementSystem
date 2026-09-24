@@ -249,11 +249,14 @@ class Staffusers extends Authenticatable
     }
 
     /**
-     * @return HasMany<Studentids, $this>
+     * ID-request rows this user validated (the validation-only ID flow tracks
+     * validations on the request itself, not on a produced card record).
+     *
+     * @return HasMany<Idrequests, $this>
      */
-    public function studentids(): HasMany
+    public function validatedIdrequests(): HasMany
     {
-        return $this->hasMany(Studentids::class, 'validatedBy');
+        return $this->hasMany(Idrequests::class, 'validatedBy', 'userId');
     }
 
     /**

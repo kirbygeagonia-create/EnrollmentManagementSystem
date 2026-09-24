@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -55,7 +55,7 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
         }},
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={assessmentStatusToneMap[row.status] || 'neutral'}>
-                {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : '—'}
+                {row.status ? formatStatusLabel(row.status) : '—'}
             </Badge>
         )},
     ], []);
@@ -91,8 +91,6 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                 <PageHeader
                     title="Scholarship & Financial Assessment Desk"
                     subtitle="Compute itemized semester fees, apply School Grants (100% Free Tuition), stack external scholarships, and determine balances"
-                    logo="/images/logos/scholarship.jpg"
-                    logoAlt="SEAIT Scholarship & Financial Aid Office"
                     phaseBadge="Phase 3 · Assessment Desk"
                     officeBadge="Office 3 · Scholarship Office"
                 />

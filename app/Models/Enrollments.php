@@ -19,7 +19,7 @@ class Enrollments extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
+    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'returnReason', 'curriculumId', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
 
     protected function casts(): array
     {
@@ -64,6 +64,16 @@ class Enrollments extends Model
     public function major(): BelongsTo
     {
         return $this->belongsTo(Majors::class, 'majorId');
+    }
+
+    /**
+     * Curriculum version this enrollment is pinned to (item 7).
+     *
+     * @return BelongsTo<Curriculums, $this>
+     */
+    public function curriculum(): BelongsTo
+    {
+        return $this->belongsTo(Curriculums::class, 'curriculumId');
     }
 
     /**

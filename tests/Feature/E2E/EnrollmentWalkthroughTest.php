@@ -66,14 +66,16 @@ class EnrollmentWalkthroughTest extends TestCase
 
     /**
      * Create a staff user in the given office with the OfficeHead role
-     * (OfficeHead carries every module action permission).
+     * (OfficeHead carries every module action permission). Item 4: exam
+     * recording left OfficeHead — pass 'DeptEvaluator' for the owning
+     * academic department's exam actions (course-specific and retention).
      */
-    private function staffForOffice(int $officeId): Staffusers
+    private function staffForOffice(int $officeId, string $role = 'OfficeHead'): Staffusers
     {
         // Use make() so we can drop remember_token (real staffusers table has no such column)
         $staff = Staffusers::factory()->make([
             'officeId' => $officeId,
-            'role' => 'officeHead',
+            'role' => $role === 'DeptEvaluator' ? 'staff' : 'officeHead',
             'employeeNo' => 'EMP-E2E-'.uniqid(), // factory's fake()->unique() collides across instances
             'username' => 'e2e_office'.$officeId.'_'.uniqid(),
             'email' => 'e2e_office'.$officeId.'_'.uniqid().'@example.com',
@@ -81,7 +83,7 @@ class EnrollmentWalkthroughTest extends TestCase
         unset($staff->remember_token);
         $staff->save();
 
-        $staff->assignRole('OfficeHead');
+        $staff->assignRole($role);
 
         return $staff;
     }
@@ -405,28 +407,17 @@ class EnrollmentWalkthroughTest extends TestCase
                 'emergencyContactName' => 'Emergency Contact',
                 'emergencyContactNumber' => '09171234569',
                 'bloodType' => 'O+',
-                'cardPhotoPath' => null,
-                'producedByVendor' => null,
             ])
             ->assertSessionHasNoErrors();
 
         $idRequest = $enrollment->fresh()->idrequests->first();
         $this->assertNotNull($idRequest, 'ID request should be created');
 
-        $this->actingAs($staff['id'])
-            ->post(route('id.produce', $idRequest), [
-                'qrCode' => 'E2E-QR-'.uniqid(),
-                'securityPhotoPath' => null,
-            ])
-            ->assertSessionHasNoErrors();
-
-        // HasOne relation — returns the single model directly (->first() on a
-        // model would forward to a fresh query and return the table's first row!)
-        $studentId = $idRequest->fresh()->studentids;
-        $this->assertNotNull($studentId, 'Student ID card should be produced');
+        // Attach the face photo (validation prerequisite)
+        $idRequest->update(['cardPhotoPath' => 'id-photos/e2e-capture.jpg']);
 
         $this->actingAs($staff['id'])
-            ->post(route('id.validate', $studentId))
+            ->post(route('id.validate', $idRequest))
             ->assertSessionHasNoErrors();
 
         return $enrollment->fresh();
@@ -439,8 +430,11 @@ class EnrollmentWalkthroughTest extends TestCase
         $admission = $this->createAdmission(['applicantType' => 'firstYear', 'courseId' => 3]);
         $this->verifyAllRequirements($admission);
 
-        // Stage 1: General entrance exam (Guidance, office 7)
-        $this->actingAs($this->staffForOffice(7))
+        // Stage 1: School Entrance exam (Guidance = office 4 per the OfficeId
+        // enum; item 4 narrowed it to GuidanceStaff). assertRedirect confirms
+        // success — a 403 (policy denial) would fail the test instead of
+        // slipping through assertSessionHasNoErrors().
+        $this->actingAs($this->staffForOffice(4, 'GuidanceStaff'))
             ->post(route('exam.general.record'), [
                 'studentId' => $admission->studentId,
                 'courseId' => $admission->courseId,
@@ -448,10 +442,12 @@ class EnrollmentWalkthroughTest extends TestCase
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
+            ->assertRedirect(route('exam.index'))
             ->assertSessionHasNoErrors();
 
-        // Stage 2: Course-specific entrance exam (Department, office 4) → auto-approves admission
-        $this->actingAs($this->staffForOffice(4))
+        // Stage 2: Course-specific entrance exam (owning department = office 7
+        // per the OfficeId enum, carrying DeptEvaluator) → auto-approves admission
+        $this->actingAs($this->staffForOffice(7, 'DeptEvaluator'))
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $admission->studentId,
                 'courseId' => $admission->courseId,
@@ -459,6 +455,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
+            ->assertRedirect(route('exam.index'))
             ->assertSessionHasNoErrors();
 
         $admission->refresh();
@@ -537,7 +534,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals(WorkflowStatus::Completed, $final->enrollmentworkflow->workflowStatus);
         $this->assertEquals(7, $final->enrollmentworkflow->workflowsteps()->where('stepStatus', 'completed')->count());
         $this->assertNotNull($final->clinicrecords->first(), 'Clinic record should exist');
-        $this->assertNotNull($final->idrequests->first()->studentids->first(), 'Student ID should be validated');
+        $this->assertEquals('validated', $final->idrequests->first()->status->value, 'ID request should be validated');
     }
 
     #[Test]
@@ -547,18 +544,23 @@ class EnrollmentWalkthroughTest extends TestCase
         // covers firstYear/transferee) — they enter via enrollment directly.
         $student = $this->createStudent('Continuing');
 
-        // Retention exam (BSBA requires retention exam; Guidance, office 7).
-        // assertRedirect confirms success — a 403 (policy denial) would fail
-        // the test instead of slipping through assertSessionHasNoErrors().
-        $this->actingAs($this->staffForOffice(7))
-            ->post(route('exam.retention.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => 5,
-                'termId' => 18,
+        // --- Evaluation (office 4) ---
+        $evaluator = $this->staffForOffice(4);
+
+        // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
+        $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', 2, $evaluator->userId);
+
+        // Retention exam (BR10): recorded in the Academic Evaluation area by
+        // the owning academic department — item 4 moved it out of the Exam
+        // module (BSBA requires the retention exam). assertRedirect confirms
+        // success — a 403 (policy denial) would fail the test instead of
+        // slipping through assertSessionHasNoErrors().
+        $this->actingAs($this->staffForOffice(7, 'DeptEvaluator'))
+            ->post(route('evaluation.retention.record', $enrollment), [
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
-            ->assertRedirect(route('exam.index'))
+            ->assertRedirect(route('evaluation.show', $enrollment->enrollmentId))
             ->assertSessionHas('success', 'Retention exam recorded.');
 
         $this->assertDatabaseHas('examresults', [
@@ -600,12 +602,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals('approved', $clearance->overallStatus->value);
         $this->assertNotNull($clearance->receivedBy, 'Desk receipt should be recorded');
 
-        // --- Evaluation (office 4) ---
-        $evaluator = $this->staffForOffice(4);
-
-        // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
-        $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', 2, $evaluator->userId);
-
+        // --- Evaluation (office 4) — profile capture on the enrollment ---
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
                 'lastName' => 'Walkthrough',

@@ -66,7 +66,11 @@ class HiddenBugsRemediationTest extends TestCase
             'role' => StaffRole::Admin,
             'officeId' => OfficeId::Registrar->value,
         ]);
-        $this->adminUser->assignRole('Admin');
+        // Item 3 write-boundary: the Admin role is read-everywhere now, so the
+        // acting account for these mutation-flow tests needs the SysAdmin
+        // super-role — the same pairing the production RbacSeeder gives
+        // admin accounts (staff8 = SysAdmin + Admin).
+        $this->adminUser->assignRole(['SysAdmin', 'Admin']);
 
         $this->boardCourse = Courses::create([
             'courseId' => 10,

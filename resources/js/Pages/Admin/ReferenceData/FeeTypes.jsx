@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
 
 const unitBasisOptions = [
     { value: '', label: 'All Bases' },
@@ -15,7 +15,7 @@ const unitBasisToneMap = {
     flat: 'warning',
 };
 
-export default function FeeTypes({ feeTypes, unitBases, filters = {} }) {
+export default function FeeTypes({ feeTypes, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [unitBasis, setUnitBasis] = useState(filters.unitBasis || '');
     const [showModal, setShowModal] = useState(false);
@@ -132,8 +132,6 @@ export default function FeeTypes({ feeTypes, unitBases, filters = {} }) {
                 <PageHeader
                     title="Fee Types"
                     subtitle="Manage tuition and miscellaneous fees"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,14 +235,16 @@ export default function FeeTypes({ feeTypes, unitBases, filters = {} }) {
                             />
                         </FormSection>
                         <FormSection label="Unit Basis" error={form.errors.unitBasis} required>
-                            <Select
+                            {/* Item 13 — two-option billing basis: radio pair, not a dropdown. */}
+                            <RadioCards
+                                name="unitBasis"
+                                label="Unit Basis"
                                 value={form.data.unitBasis}
-                                onChange={(e) => form.setData('unitBasis', e.target.value)}
-                                options={unitBases.map(u => ({ value: u.value, label: u.value === 'perUnit' ? 'Per Unit' : 'Flat Rate' }))}
-                                placeholder="Select unit basis"
-                                className="form-input"
-                                error={form.errors.unitBasis}
-                                required
+                                onChange={(v) => form.setData('unitBasis', v)}
+                                options={[
+                                    { value: 'perUnit', label: 'Per Unit' },
+                                    { value: 'flat', label: 'Flat Rate' },
+                                ]}
                             />
                         </FormSection>
                     </div>

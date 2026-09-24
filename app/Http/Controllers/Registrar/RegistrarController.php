@@ -197,6 +197,38 @@ class RegistrarController extends Controller
     }
 
     /**
+     * Return the paid enrollment back to Department Evaluation (item 8).
+     * The registrar must state why — the reason rides on the enrollment
+     * (shown to the evaluating department) and mirrors into
+     * enrollmentstatushistory via the state machine's remarks.
+     */
+    public function returnToEvaluation(Request $request, Enrollments $enrollment): RedirectResponse
+    {
+        $this->authorize('registrar.approve', $enrollment);
+
+        $validated = $request->validate([
+            'returnReason' => 'required|string|min:10|max:500',
+        ]);
+
+        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Paid) {
+            return back()->withErrors(['validation' => 'Only paid enrollments can be returned to Department Evaluation.']);
+        }
+
+        DB::transaction(function () use ($enrollment, $validated) {
+            $this->stateMachine->transition(
+                $enrollment,
+                EnrollmentStatus::ReturnedToEvaluation,
+                Auth::user(),
+                'Returned to Department Evaluation: '.$validated['returnReason']
+            );
+
+            $enrollment->update(['returnReason' => $validated['returnReason']]);
+        });
+
+        return redirect()->route('registrar.index')->with('success', 'Enrollment returned to Department Evaluation.');
+    }
+
+    /**
      * Print enrollment certificate.
      */
     public function printCertificate(Enrollments $enrollment): Response

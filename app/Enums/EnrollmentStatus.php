@@ -8,6 +8,7 @@ enum EnrollmentStatus: string
     case Evaluated = 'evaluated';
     case Assessed = 'assessed';
     case Paid = 'paid';
+    case ReturnedToEvaluation = 'returnedToEvaluation';
     case Enrolled = 'enrolled';
     case Dropped = 'dropped';
 }

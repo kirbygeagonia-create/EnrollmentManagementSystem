@@ -22,7 +22,11 @@ class EnrollmentStateMachine
         'pending' => ['evaluated'],
         'evaluated' => ['assessed'],
         'assessed' => ['paid'],
-        'paid' => ['enrolled', 'assessed'],
+        // Registrar hold (item 8): a paid enrollment can be returned to
+        // Department Evaluation with a required reason, and re-enters the
+        // pipeline through a fresh evaluation sign-off.
+        'paid' => ['enrolled', 'assessed', 'returnedToEvaluation'],
+        'returnedToEvaluation' => ['evaluated'],
         'enrolled' => ['dropped'],
         'dropped' => [],
     ];

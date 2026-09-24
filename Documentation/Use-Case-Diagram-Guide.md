@@ -165,7 +165,7 @@ When modeling enterprise ERP and Student Information Systems, use this standardi
 | **Computation** | `Compute`, `Recalculate`, `Estimate`, `Adjust` | `Math`, `Calculate`, `Count` | `Compute Itemized Tuition Fees`, `Adjust Individual Fee Charges` |
 | **Financial Execution** | `Post`, `Collect`, `Disburse`, `Void` | `Pay`, `Money`, `Bill` | `Post Student Payment Transaction`, `Void Erroneous Payment` |
 | **Academic Scheduling** | `Assign`, `Unassign`, `Schedule`, `Override` | `Set`, `Block`, `Put` | `Assign Enrolled Students to Block`, `Schedule Class Room Assignment` |
-| **Document Output** | `Generate`, `Print`, `Produce`, `Issue` | `Make`, `Export`, `Get` | `Print Certificate of Matriculation`, `Produce Physical ID Card` |
+| **Document Output** | `Generate`, `Print`, `Issue` | `Make`, `Export`, `Get` | `Print Certificate of Matriculation`, `Release ID Card` |
 | **Administrative Control**| `Configure`, `Toggle`, `Deactivate`, `Audit` | `Maintain`, `Administer`, `Do` | `Assign Spatie Security Roles`, `Audit Institutional Activity Logs` |
 
 ---
@@ -699,9 +699,9 @@ flowchart LR
 
 ---
 
-### Desk 10: Student ID Production & Validation Desk
+### Desk 10: Student ID Validation & Release Desk
 
-The Student ID Office captures photographs, generates cryptographic QR codes, validates badge credentials, and releases physical PVC smart IDs.
+The Student ID Office validates ID requests with face-photo capture, signs the final workflow step, and records release of the printed ID cards (cards are printed off-system).
 
 ```mermaid
 flowchart LR
@@ -710,37 +710,29 @@ flowchart LR
 
     subgraph SYSTEM ["Student ID Management Subsystem"]
         UC_ID01(["Initiate Student ID Request"])
-        UC_ID02(["Generate Secure QR & Print Physical ID Card"])
-        UC_ID03(["Validate Produced ID Card"])
+        UC_ID02(["Capture / Upload Face Photo"])
+        UC_ID03(["Validate ID Request"])
         UC_ID04(["Release ID Card to Student"])
-        UC_ID05(["Reissue Lost or Damaged ID Card"])
-        UC_ID06(["Cancel Duplicate ID Request"])
     end
 
     A_IDO --- UC_ID01
     A_IDO --- UC_ID02
     A_IDO --- UC_ID03
     A_IDO --- UC_ID04
-    A_IDO --- UC_ID05
-    A_IDO --- UC_ID06
 
     A_Stud --- UC_ID04
-    A_Stud --- UC_ID05
 
-    UC_ID04 -.->|"<<include>>"| UC_ID03
-    UC_ID05 -.->|"<<include>>"| UC_ID02
+    UC_ID03 -.->|"<<include>>"| UC_ID02
 ```
 
 #### Action-Verb Specifications: Student ID Desk
 
 | Use Case ID | Use Case Name (Action-Verb) | Primary Actor | Secondary Actor | Trigger / Goal | Preconditions | Postconditions |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **UC-IDM-01** | `Initiate Student ID Request` | ID Officer | Student | Student completes official enrollment | Enrollment status is `Enrolled` | ID request created in status `PendingPhoto` or `Queued` |
-| **UC-IDM-02** | `Generate Secure QR & Print Physical ID Card` | ID Officer | None | ID request validated and ready for production | Photo and student data complete | Dynamic QR code generated; PVC ID badge printed |
-| **UC-IDM-03** | `Validate Produced ID Card` | ID Officer | None | Printed card inspected for visual/QR fidelity | Card produced | Card status transitioned to `Validated`; ready for handover |
-| **UC-IDM-04** | `Release ID Card to Student` | ID Officer | Student | Student presents claim stub at ID counter | Card is in `Validated` status | Release date stamped; student signs receipt; status `Released` |
-| **UC-IDM-05** | `Reissue Lost or Damaged ID Card` | ID Officer | Student | Student submits affidavit of loss or damaged badge | Previous card released | New ID record generated with reprint sequence counter incremented |
-| **UC-IDM-06** | `Cancel Duplicate ID Request` | ID Officer | None | Duplicate request filed in error | ID request not yet produced | Request flagged `Cancelled` with officer justification |
+| **UC-IDM-01** | `Initiate Student ID Request` | ID Officer | Student | Student completes official enrollment | Enrollment status is `Enrolled` | ID request created in status `Pending` |
+| **UC-IDM-02** | `Capture / Upload Face Photo` | ID Officer | Student | ID request is pending and awaiting validation | Live camera available or photo file on hand | Face photo attached to the ID request |
+| **UC-IDM-03** | `Validate ID Request` | ID Officer | None | Request is `Pending` with the face photo attached | Photo attached; workflow at the ID Office step | Request transitioned to `Validated` with validator and timestamp; workflow step signed |
+| **UC-IDM-04** | `Release ID Card to Student` | ID Officer | Student | Student presents claim stub at ID counter | Card is in `Validated` status | Release recorded; status `Released` |
 
 ---
 
@@ -780,7 +772,7 @@ flowchart LR
 | **UC-360-02** | `Browse Student Master Directory` | Institutional Staff | None | Staff opens master directory index | Permission `students.view` | Filterable, paginated student table rendered by course, term, and year |
 | **UC-360-03** | `Inspect Unified Student 360° Timeline` | Institutional Staff | None | Staff selects specific student dossier | Target `studentId` exists | Segmented 5-tab dossier rendered with live status indicators |
 | **UC-360-04** | `Review Historical Term Assessments` | Office Head | None | Auditor verifies multi-year tuition balances | Accessing student 360 dossier | Complete breakdown of past assessments, discounts, and receipts shown |
-| **UC-360-05** | `Review Clearance & ID Issuance History` | Office Head | None | Investigating student standing or badge reissue | Accessing student 360 dossier | Historical clearance periods and ID issuance log displayed |
+| **UC-360-05** | `Review Clearance & ID Issuance History` | Office Head | None | Investigating student standing or ID release history | Accessing student 360 dossier | Historical clearance periods and ID issuance log displayed |
 
 ---
 

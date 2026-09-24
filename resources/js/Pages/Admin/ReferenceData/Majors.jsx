@@ -111,8 +111,6 @@ export default function Majors({ majors, courses, filters = {} }) {
                 <PageHeader
                     title="Majors"
                     subtitle="Manage specializations within courses"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

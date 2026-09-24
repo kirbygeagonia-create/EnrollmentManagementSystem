@@ -1,21 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection } from '@/Components/ui';
+import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { collegeLogoFor } from '@/officeBranding';
 
 const studentStatusToneMap = {
     active: 'success',
     inactive: 'neutral',
     graduated: 'info',
-    dropped: 'dropped',
-};
-
-const enrollmentStatusToneMap = {
-    pending: 'pending',
-    evaluated: 'evaluated',
-    assessed: 'assessed',
-    paid: 'paid',
-    enrolled: 'enrolled',
     dropped: 'dropped',
 };
 
@@ -33,32 +25,9 @@ const scholarshipStatusToneMap = {
     rejected: 'rejected',
 };
 
-/**
- * Map a course/college name to the matching college logo.
- * Conservative keyword matching — falls back to the school logo.
- */
-function collegeLogoFor(courseName, collegeName) {
-    const haystack = `${courseName || ''} ${collegeName || ''}`.toLowerCase();
-    const map = [
-        { keys: ['agriculture', 'fisheries', 'agri', 'fishery'], logo: 'college-of-agriculture-and-fisheries.jpg' },
-        { keys: ['business', 'good governance', 'accountancy', 'management'], logo: 'college-of-business-and-good-governance.jpg' },
-        { keys: ['criminal', 'criminology', 'justice'], logo: 'college-of-criminal-justice-education.jpg' },
-        { keys: ['information', 'communication', 'technology', 'ict', 'computer', 'programming'], logo: 'college-of-information-and-communication-technology.jpg' },
-        { keys: ['teacher', 'education', 'teaching', 'beed', 'bsed'], logo: 'college-of-teacher-education.jpg' },
-        { keys: ['civil engineering', 'engineering'], logo: 'department-of-civil-engineering.jpg' },
-    ];
-    for (const entry of map) {
-        if (entry.keys.some((k) => haystack.includes(k))) {
-            return `/images/logos/${entry.logo}`;
-        }
-    }
-    return '/images/logos/seait-logo.png';
-}
-
-function formatStatus(status) {
-    if (!status) return '—';
-    return status.charAt(0).toUpperCase() + status.slice(1);
-}
+// College identity comes from officeBranding.js, keyed to the course's
+// backend unitId — the old keyword heuristic disagreed with the same
+// logic on Evaluation/Show for identical courses.
 
 function getInitials(student) {
     const first = student?.firstName?.[0] || '';
@@ -72,7 +41,7 @@ function EnrollmentCard({ enrollment }) {
         : '—';
 
     const courseName = enrollment.course?.courseName || '';
-    const logo = collegeLogoFor(courseName);
+    const logo = collegeLogoFor(enrollment.course?.unitId);
 
     const totalAssessment = enrollment.studentassessments?.totalAssessedAmount
         ? Number(enrollment.studentassessments.totalAssessedAmount)
@@ -101,8 +70,8 @@ function EnrollmentCard({ enrollment }) {
                         </p>
                     </div>
                 </div>
-                <Badge tone={enrollmentStatusToneMap[enrollment.enrollmentStatus] || enrollment.enrollmentStatus || 'neutral'}>
-                    {formatStatus(enrollment.enrollmentStatus)}
+                <Badge tone={enrollmentStatusTone[enrollment.enrollmentStatus] || 'neutral'}>
+                    {formatStatusLabel(enrollment.enrollmentStatus)}
                 </Badge>
             </div>
 
@@ -161,7 +130,7 @@ export default function Show({ student }) {
     const latestEnrollment = enrollments[0];
     const primaryCourseName = latestEnrollment?.course?.courseName || '';
     const primaryMajorName = latestEnrollment?.major?.majorName || '';
-    const identityLogo = collegeLogoFor(primaryCourseName);
+    const identityLogo = collegeLogoFor(latestEnrollment?.course?.unitId);
 
     // Status overview for StatCards
     const latestStatus = latestEnrollment?.enrollmentStatus || student.status || '—';
@@ -177,7 +146,7 @@ export default function Show({ student }) {
             header={
                 <PageHeader
                     title={studentName}
-                    subtitle={student.schoolIdNumber ? `School ID: ${student.schoolIdNumber} · Complete 8-Phase Enrollment Record` : 'Student 360 Record'}
+                    subtitle={student.schoolIdNumber ? `School ID: ${student.schoolIdNumber} · Complete Enrollment Record` : 'Student 360 Record'}
                     logo={identityLogo}
                     logoAlt="Institutional Record"
                     phaseBadge="Central 360"
@@ -240,7 +209,7 @@ export default function Show({ student }) {
                             </FormSection>
                             <FormSection label="Status">
                                 <Badge tone={studentStatusToneMap[student.status] || 'neutral'}>
-                                    {formatStatus(student.status)}
+                                    {formatStatusLabel(student.status)}
                                 </Badge>
                             </FormSection>
                         </div>
@@ -262,7 +231,7 @@ export default function Show({ student }) {
                     <StatCard
                         compact
                         label="Enrollment Status"
-                        value={formatStatus(latestStatus)}
+                        value={formatStatusLabel(latestStatus)}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -273,7 +242,7 @@ export default function Show({ student }) {
                     <StatCard
                         compact
                         label="Clearance Status"
-                        value={formatStatus(clearanceStatus)}
+                        value={formatStatusLabel(clearanceStatus)}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -295,7 +264,7 @@ export default function Show({ student }) {
                     <StatCard
                         compact
                         label="Scholarship"
-                        value={formatStatus(scholarshipStatus)}
+                        value={formatStatusLabel(scholarshipStatus)}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
@@ -358,9 +327,9 @@ export default function Show({ student }) {
                                 : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                         }`}
                     >
-                        <span>Student IDs</span>
+                        <span>ID Requests</span>
                         <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'credentials' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                            {student.studentids?.length || 0}
+                            {student.idrequests?.length || 0}
                         </span>
                     </button>
                     <button
@@ -421,7 +390,7 @@ export default function Show({ student }) {
                                                 </p>
                                             </div>
                                             <Badge tone={ad.admissionStatus || 'neutral'}>
-                                                {formatStatus(ad.admissionStatus)}
+                                                {formatStatusLabel(ad.admissionStatus)}
                                             </Badge>
                                         </div>
                                     ))}
@@ -472,7 +441,7 @@ export default function Show({ student }) {
                                                 </p>
                                             </div>
                                             <Badge tone={clearanceStatusToneMap[sc.overallStatus] || sc.overallStatus || 'neutral'}>
-                                                {formatStatus(sc.overallStatus)}
+                                                {formatStatusLabel(sc.overallStatus)}
                                             </Badge>
                                         </div>
                                     ))}
@@ -492,7 +461,7 @@ export default function Show({ student }) {
                                                 {ss.scholarshipType?.scholarshipName || `Scholarship #${ss.scholarshipTypeId}`}
                                             </p>
                                             <Badge tone={scholarshipStatusToneMap[ss.status] || 'neutral'}>
-                                                {formatStatus(ss.status)}
+                                                {formatStatusLabel(ss.status)}
                                             </Badge>
                                         </div>
                                     ))}
@@ -506,22 +475,23 @@ export default function Show({ student }) {
 
                 {/* Tab Content: Credentials & IDs */}
                 {(activeTab === 'credentials' || activeTab === 'all') && (
-                    <Card title="Student Identification Cards" subtitle="Issued physical & digital student credentials">
-                        {student.studentids?.length ? (
+                    <Card title="ID Request History" subtitle="ID desk requests — identity validation and card release">
+                        {student.idrequests?.length ? (
                             <div className="space-y-3">
-                                {student.studentids.map((id) => (
-                                    <div key={id.idId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
+                                {student.idrequests.map((id) => (
+                                    <div key={id.idRequestId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
                                         <p className="font-medium text-brand-900">
-                                            Issued {id.issueDate ? new Date(id.issueDate).toLocaleDateString('en-PH') : '—'}
+                                            {idRequestReasonLabel[id.requestReason] || formatStatusLabel(id.requestReason)}
+                                            <span className="text-slate-500 font-normal"> · Requested {id.requestDate ? new Date(id.requestDate).toLocaleDateString('en-PH') : '—'}</span>
                                         </p>
-                                        <Badge tone={id.validationStatus === 'active' ? 'success' : 'neutral'}>
-                                            {id.validationStatus || '—'}
+                                        <Badge tone={idRequestStatusTone[id.status] || 'neutral'}>
+                                            {formatStatusLabel(id.status)}
                                         </Badge>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <EmptyState title="No IDs" message="No ID records for this student." />
+                            <EmptyState title="No ID requests" message="No ID desk requests for this student." />
                         )}
                     </Card>
                 )}
@@ -545,7 +515,7 @@ export default function Show({ student }) {
                                             )}
                                         </div>
                                         <Badge tone={cr.status === 'completed' ? 'success' : 'pending'}>
-                                            {formatStatus(cr.status)}
+                                            {formatStatusLabel(cr.status)}
                                         </Badge>
                                     </div>
                                 ))}

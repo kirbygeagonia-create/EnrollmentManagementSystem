@@ -1,9 +1,26 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal } from '@/Components/ui';
+import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Timetable grid: 7:00-21:00 in 30-min slots (item 9) = 28 rows.
+const START_HOUR = 7;
+const END_HOUR = 21;
+const SLOTS = (END_HOUR - START_HOUR) * 2;
+
+const slotMinutes = (t) => {
+    const [h, m] = String(t).split(':').map(Number);
+    return h * 60 + m;
+};
+
+/** [startSlot, spanSlots] for a meeting, clamped to the 7:00-21:00 grid. */
+const meetingSpan = (meeting) => {
+    const start = Math.min(Math.max(Math.floor((slotMinutes(meeting.startTime) - START_HOUR * 60) / 30), 0), SLOTS - 1);
+    const end = Math.min(Math.max(Math.ceil((slotMinutes(meeting.endTime) - START_HOUR * 60) / 30), start + 1), SLOTS);
+    return [start, end - start];
+};
 
 // SVG icon components (extracted to avoid parser issues with long strings in JSX)
 const CapacityIcon = () => (
@@ -53,6 +70,14 @@ function FlashMessages({ flash }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <span>{flash.warning}</span>
+                </div>
+            )}
+            {flash.info && (
+                <div className="p-4 bg-info-50 border border-info-200 rounded-card text-info-800 flex items-center gap-3">
+                    <svg className="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{flash.info}</span>
                 </div>
             )}
             {flash.error && (
@@ -112,6 +137,41 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     const [confirmDeleteSchedule, setConfirmDeleteSchedule] = useState({ open: false, scheduleId: null });
     const [submittingUnassign, setSubmittingUnassign] = useState(false);
     const [submittingDeleteSchedule, setSubmittingDeleteSchedule] = useState(false);
+    const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+    const [submittingFinalize, setSubmittingFinalize] = useState(false);
+    const [showEditBlockModal, setShowEditBlockModal] = useState(false);
+    const [blockForm, setBlockForm] = useState({ blockName: block.blockName, maxStudents: block.maxStudents });
+    const [blockErrors, setBlockErrors] = useState({});
+    const [submittingBlock, setSubmittingBlock] = useState(false);
+
+    const isFinalized = block.scheduleStatus === 'final';
+
+    const handleFinalize = () => {
+        setSubmittingFinalize(true);
+        router.patch(route('blocking.finalize', { block: block.blockId }), {}, {
+            onSuccess: () => {
+                setShowFinalizeModal(false);
+                setSubmittingFinalize(false);
+            },
+            onError: () => setSubmittingFinalize(false),
+        });
+    };
+
+    const handleBlockSubmit = (e) => {
+        e.preventDefault();
+        setBlockErrors({});
+        setSubmittingBlock(true);
+        router.patch(route('blocking.update', { block: block.blockId }), blockForm, {
+            onSuccess: () => {
+                setShowEditBlockModal(false);
+                setSubmittingBlock(false);
+            },
+            onError: (errors) => {
+                setBlockErrors(errors);
+                setSubmittingBlock(false);
+            },
+        });
+    };
 
     const scheduleColumns = useMemo(() => [
         { key: 'subject', label: 'Subject', render: (row) => row.subject?.subjectCode || '—' },
@@ -137,7 +197,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         { key: 'subject', label: 'Subject', render: (row) => row.subject?.subjectCode || '—' },
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={getStatusTone(row.status)}>
-                {row.status?.charAt(0).toUpperCase() + row.status?.slice(1)}
+                {formatStatusLabel(row.status)}
             </Badge>
         )},
     ], []);
@@ -146,8 +206,9 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         <div className="flex items-center gap-2">
             <button
                 onClick={() => handleEditSchedule(row)}
-                className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
-                title="Edit schedule"
+                disabled={isFinalized}
+                title={isFinalized ? 'Block schedule is finalized — unfinalize to edit' : 'Edit schedule'}
+                className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900 disabled:opacity-50"
             >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -155,8 +216,9 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             </button>
             <button
                 onClick={() => handleDeleteSchedule(row.scheduleId)}
-                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
-                title="Delete schedule"
+                disabled={isFinalized}
+                title={isFinalized ? 'Block schedule is finalized — unfinalize to delete' : 'Delete schedule'}
+                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900 disabled:opacity-50"
             >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -294,14 +356,14 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
 
     const confirmUnassignStudent = () => {
         setSubmittingUnassign(true);
-        router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentId: confirmUnassign.enrollmentId }, {
+        router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentIds: [confirmUnassign.enrollmentId] }, {
             onSuccess: () => {
                 setConfirmUnassign({ open: false, enrollmentId: null });
                 setSubmittingUnassign(false);
             },
             onError: (errors) => {
-                if (errors.enrollmentId) {
-                    alert(errors.enrollmentId);
+                if (errors.enrollmentIds) {
+                    alert(errors.enrollmentIds[0]);
                 }
                 setSubmittingUnassign(false);
             },
@@ -322,6 +384,31 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         });
     }, [block.schedules]);
 
+    // Combined timetable: maps each day+slot to its meeting so the grid can
+    // render one class block per meeting. First meeting wins on overlap —
+    // the conflict detector only blocks instructor/room overlaps, so two
+    // legal schedules can still share a slot; overlapped starts get an
+    // overflow badge rather than silently disappearing.
+    const timetable = useMemo(() => {
+        const occupied = {};
+        const overflows = {};
+        (block.schedules || []).forEach((schedule) => {
+            (schedule.meetings || []).forEach((m) => {
+                const d = dayOrder.indexOf(m.dayOfWeek?.value || m.dayOfWeek);
+                if (d < 0 || !m.startTime || !m.endTime) return;
+                const [start, span] = meetingSpan(m);
+                for (let s = start; s < start + span; s++) {
+                    if (!occupied[`${d}:${s}`]) {
+                        occupied[`${d}:${s}`] = { meeting: m, schedule, isStart: s === start, span };
+                    } else if (s === start) {
+                        overflows[`${d}:${s}`] = (overflows[`${d}:${s}`] || 0) + 1;
+                    }
+                }
+            });
+        });
+        return { occupied, overflows };
+    }, [block.schedules]);
+
     const sortedStudents = useMemo(() => {
         if (!block.enrolledSubjects) return [];
         return [...block.enrolledSubjects].sort((a, b) => {
@@ -337,8 +424,6 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 <PageHeader
                     title={`Block Section: ${block.blockName}`}
                     subtitle={`${block.course?.courseName} - ${block.term?.semester?.value || block.term?.semester} ${block.term?.academicYear?.yearLabel || ''} ${block.yearLevel}${getYearSuffix(block.yearLevel)}`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Scheduling Office"
                     phaseBadge="Phase 6 · Section Scheduling"
                     officeBadge="Office 5 · Scheduling Desk"
                     actions={
@@ -374,7 +459,14 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 <FlashMessages flash={flash} />
 
                 {/* Block Info Card */}
-                <Card title="Block Information" subtitle="Course, term, and section details for this block">
+                <Card title="Block Information" subtitle="Course, term, and section details for this block" actions={
+                    <button onClick={() => setShowEditBlockModal(true)} className="btn btn-secondary btn-sm">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit Block
+                    </button>
+                }>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <p className="text-sm text-brand-500">Course</p>
@@ -435,16 +527,92 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
 
                 {/* Schedule Section */}
                 <Card title="Block Schedule" subtitle="Subject meeting times, rooms, and instructors" actions={
-                    <button
-                        onClick={() => setShowScheduleModal(true)}
-                        className="btn btn-primary btn-sm"
-                    >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Schedule
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {isFinalized ? (
+                            <Badge tone="approved">Finalized — timetable locked</Badge>
+                        ) : (
+                            <button
+                                onClick={() => setShowFinalizeModal(true)}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Finalize Schedule
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setShowScheduleModal(true)}
+                            disabled={isFinalized}
+                            title={isFinalized ? 'Timetable is finalized — schedule slots can no longer be added' : undefined}
+                            className="btn btn-primary btn-sm"
+                        >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Schedule
+                        </button>
+                    </div>
                 }>
+                    {sortedSchedules.length > 0 && (
+                        <div className="mb-6">
+                            <p className="text-sm text-brand-500 mb-2">Weekly Timetable (7:00 AM – 9:00 PM, 30-minute slots)</p>
+                            <div className="overflow-x-auto rounded-btn border border-brand-100">
+                                <div
+                                    className="grid min-w-[760px]"
+                                    style={{
+                                        gridTemplateColumns: '64px repeat(7, minmax(96px, 1fr))',
+                                        gridTemplateRows: `32px repeat(${SLOTS}, 20px)`,
+                                    }}
+                                >
+                                    {/* Header row */}
+                                    <div />
+                                    {dayOrder.map((day) => (
+                                        <div key={day} className="flex items-center justify-center text-xs font-medium text-brand-700 border-b border-brand-100 bg-brand-50">
+                                            {day.slice(0, 3)}
+                                        </div>
+                                    ))}
+                                    {/* Slot rows */}
+                                    {Array.from({ length: SLOTS }, (_, s) => {
+                                        const isHourMark = s % 2 === 0;
+                                        return (
+                                            <div key={`label-${s}`} className="text-[10px] text-brand-400 pr-2 text-right" style={{ gridRow: `${s + 2} / span ${isHourMark ? 2 : 1}`, gridColumn: 1 }}>
+                                                {isHourMark ? `${(START_HOUR + s / 2) % 12 || 12}:00 ${(START_HOUR + s / 2) >= 12 ? 'PM' : 'AM'}` : ''}
+                                            </div>
+                                        );
+                                    })}
+                                    {dayOrder.map((day, d) => (
+                                        Array.from({ length: SLOTS }, (_, s) => {
+                                            const cell = timetable.occupied[`${d}:${s}`];
+                                            if (cell && cell.isStart) {
+                                                const { meeting, schedule } = cell;
+                                                const extra = timetable.overflows[`${d}:${s}`] || 0;
+                                                const title = `${meeting.dayOfWeek?.value || meeting.dayOfWeek} ${formatTime(meeting.startTime)}-${formatTime(meeting.endTime)} · ${schedule.subject?.subjectName || ''} · ${schedule.room?.roomName || 'No room'} · ${schedule.instructor ? `${schedule.instructor.firstName} ${schedule.instructor.lastName}` : 'No instructor'}${extra > 0 ? ` · +${extra} more meeting(s) in this slot — see the table below` : ''}`;
+                                                return (
+                                                    <div
+                                                        key={`${day}-${s}`}
+                                                        title={title}
+                                                        className={`bg-brand-100 border rounded-sm px-1.5 py-0.5 overflow-hidden ${extra > 0 ? 'border-amber-400' : 'border-brand-300'}`}
+                                                        style={{ gridRow: `${s + 2} / span ${cell.span}`, gridColumn: d + 2 }}
+                                                    >
+                                                        <p className="text-[11px] font-medium text-brand-900 leading-tight truncate">{schedule.subject?.subjectCode}</p>
+                                                        <p className="text-[10px] text-brand-600 leading-tight truncate">{schedule.room?.roomName || '—'}</p>
+                                                        {extra > 0 && (
+                                                            <p className="text-[10px] font-bold text-amber-700 leading-tight">+{extra} more</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            if (cell) {
+                                                return <div key={`${day}-${s}`} style={{ gridRow: s + 2, gridColumn: d + 2 }} />;
+                                            }
+                                            return <div key={`${day}-${s}`} className="border-b border-r border-brand-50" style={{ gridRow: s + 2, gridColumn: d + 2 }} />;
+                                        })
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {sortedSchedules.length > 0 ? (
                         <DataTable
                             columns={scheduleColumns}
@@ -456,8 +624,8 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                         <EmptyState
                             title="No schedules yet"
                             message="Add a schedule to define when and where subjects meet."
-                            actionLabel="Add Schedule"
-                            onAction={() => setShowScheduleModal(true)}
+                            actionLabel={isFinalized ? undefined : 'Add Schedule'}
+                            onAction={isFinalized ? undefined : () => setShowScheduleModal(true)}
                         />
                     )}
                 </Card>
@@ -467,6 +635,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <button
                         onClick={() => setShowAssignModal(true)}
                         disabled={sortedSchedules.length === 0}
+                        title={sortedSchedules.length === 0 ? 'Create a schedule first, then assign students to it' : undefined}
                         className="btn btn-primary btn-sm"
                     >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -525,6 +694,9 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             >
                 <form id="schedule-form" onSubmit={handleScheduleSubmit} className="space-y-4">
                     <ConflictAlert conflicts={scheduleErrors.conflicts} title="Schedule conflicts detected" />
+                    {/* Item 9: the finalized-guard error key is 'schedule' — render it
+                        instead of letting a blocked submit die silently. */}
+                    {scheduleErrors.schedule && <p className="form-error">{scheduleErrors.schedule}</p>}
                     <FormSection label="Subject">
                         <Select
                             value={scheduleForm.subjectId}
@@ -571,22 +743,28 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                         className="form-input flex-1"
                                         error={scheduleErrors.meetings?.[index]?.dayOfWeek}
                                     />
-                                    <input
-                                        type="time"
-                                        value={meeting.startTime}
-                                        onChange={(e) => updateMeeting(index, 'startTime', e.target.value)}
-                                        placeholder="Start Time"
-                                        className="form-input flex-1"
-                                        error={scheduleErrors.meetings?.[index]?.startTime}
-                                    />
-                                    <input
-                                        type="time"
-                                        value={meeting.endTime}
-                                        onChange={(e) => updateMeeting(index, 'endTime', e.target.value)}
-                                        placeholder="End Time"
-                                        className="form-input flex-1"
-                                        error={scheduleErrors.meetings?.[index]?.endTime}
-                                    />
+                                    <div className="flex-1 w-full">
+                                        <input
+                                            type="time"
+                                            value={meeting.startTime}
+                                            onChange={(e) => updateMeeting(index, 'startTime', e.target.value)}
+                                            className="form-input w-full"
+                                        />
+                                        {scheduleErrors.meetings?.[index]?.startTime && (
+                                            <p className="form-error mt-1">{scheduleErrors.meetings[index].startTime}</p>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 w-full">
+                                        <input
+                                            type="time"
+                                            value={meeting.endTime}
+                                            onChange={(e) => updateMeeting(index, 'endTime', e.target.value)}
+                                            className="form-input w-full"
+                                        />
+                                        {scheduleErrors.meetings?.[index]?.endTime && (
+                                            <p className="form-error mt-1">{scheduleErrors.meetings[index].endTime}</p>
+                                        )}
+                                    </div>
                                     {scheduleForm.meetings.length > 1 && (
                                         <button
                                             type="button"
@@ -638,6 +816,13 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                             type="submit"
                             form="assign-form"
                             disabled={submittingAssign || assignForm.enrollmentIds.length === 0 || !assignForm.scheduleId || assignForm.enrollmentIds.length > available}
+                            title={
+                                submittingAssign ? undefined
+                                    : assignForm.enrollmentIds.length > available ? `Selection exceeds available seats (${available} available)`
+                                        : !assignForm.scheduleId ? 'Select a schedule first'
+                                            : assignForm.enrollmentIds.length === 0 ? 'Select at least one student'
+                                                : undefined
+                            }
                             className="btn btn-primary"
                         >
                             {submittingAssign ? 'Assigning...' : 'Assign Students'}
@@ -769,6 +954,78 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 cancelText="Keep Schedule"
                 loading={submittingDeleteSchedule}
             />
+
+            {/* Finalize Schedule Cause & Effect Modal */}
+            <CauseEffectModal
+                show={showFinalizeModal}
+                onClose={() => setShowFinalizeModal(false)}
+                onConfirm={handleFinalize}
+                title="Finalize Block Schedule"
+                subtitle="Section Timetable Lock"
+                tone="info"
+                entityContext={{
+                    label: 'Block Section',
+                    value: block.blockName,
+                    badge: `${sortedSchedules.length} SCHEDULE SLOT${sortedSchedules.length === 1 ? '' : 'S'}`,
+                }}
+                cause="Finalizing locks this block's weekly timetable as the official class schedule for the term."
+                effects={[
+                    'Schedule slots can no longer be added, edited, or deleted for this block.',
+                    'Students can still be assigned to the block while capacity allows.',
+                    'Class card and schedule printing can proceed from the finalized timetable.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I confirm that this timetable is final and ready for student assignment."
+                confirmText="Yes, Finalize Schedule"
+                cancelText="Keep Editing"
+                loading={submittingFinalize}
+            />
+
+            {/* Edit Block Modal (capacity stays editable after finalization) */}
+            <Modal
+                show={showEditBlockModal}
+                onClose={() => { setShowEditBlockModal(false); setBlockErrors({}); }}
+                title="Edit Block"
+                subtitle="Update the section name and seat capacity."
+                icon={<CapacityIcon />}
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => setShowEditBlockModal(false)} className="btn btn-secondary" disabled={submittingBlock}>
+                            Cancel
+                        </button>
+                        <button type="submit" form="edit-block-form" className="btn btn-primary" disabled={submittingBlock}>
+                            {submittingBlock ? 'Saving...' : 'Update'}
+                        </button>
+                    </div>
+                }
+            >
+                <form id="edit-block-form" onSubmit={handleBlockSubmit} className="space-y-4">
+                    <FormSection label="Section Name" error={blockErrors.blockName} required>
+                        <input
+                            type="text"
+                            value={blockForm.blockName}
+                            onChange={(e) => setBlockForm({ ...blockForm, blockName: e.target.value })}
+                            className={`form-input ${blockErrors.blockName ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    <FormSection label="Max Students" error={blockErrors.maxStudents} required>
+                        <input
+                            type="number"
+                            min="1"
+                            value={blockForm.maxStudents}
+                            onChange={(e) => setBlockForm({ ...blockForm, maxStudents: e.target.value })}
+                            className={`form-input ${blockErrors.maxStudents ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    {isFinalized && (
+                        <p className="text-sm text-info-700 bg-info-50 border border-info-200 rounded-btn p-3">
+                            This block's timetable is finalized — the schedule is locked, but seat capacity stays adjustable.
+                        </p>
+                    )}
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

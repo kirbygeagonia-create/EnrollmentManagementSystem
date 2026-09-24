@@ -4,13 +4,11 @@ namespace App\Policies;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
-use App\Enums\IdValidationStatus;
 use App\Enums\OfficeId;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Idrequests;
 use App\Models\Staffusers;
-use App\Models\Studentids;
 
 class IDPolicy
 {
@@ -67,27 +65,10 @@ class IDPolicy
     }
 
     /**
-     * Determine whether the user can produce ID card.
+     * Determine whether the user can attach the captured face photo to the
+     * ID request (validation prep).
      */
-    public function produceCard(Staffusers $user, Idrequests $request): bool
-    {
-        if (! $user->hasPermissionTo('id.card.produce')) {
-            return false;
-        }
-
-        // Must be ID Office
-        if ($user->officeId !== OfficeId::IdOffice->value) {
-            return false;
-        }
-
-        // Request must be pending
-        return $request->status === IdRequestStatus::Pending;
-    }
-
-    /**
-     * Determine whether the user can validate ID (QR code).
-     */
-    public function validate(Staffusers $user, Studentids $id): bool
+    public function attachPhoto(Staffusers $user, Idrequests $request): bool
     {
         if (! $user->hasPermissionTo('id.validate')) {
             return false;
@@ -98,22 +79,33 @@ class IDPolicy
             return false;
         }
 
-        // ID must be pending validation
-        return $id->validationStatus === IdValidationStatus::PendingValidation;
+        return $request->status === IdRequestStatus::Pending;
     }
 
     /**
-     * Alias for validate - used by explicit gate 'id.validateCard'.
+     * Determine whether the user can validate the ID request.
+     * Strict validation: the request must carry the captured face photo.
      */
-    public function validateCard(Staffusers $user, Studentids $id): bool
+    public function validate(Staffusers $user, Idrequests $request): bool
     {
-        return $this->validate($user, $id);
+        if (! $user->hasPermissionTo('id.validate')) {
+            return false;
+        }
+
+        // Must be ID Office
+        if ($user->officeId !== OfficeId::IdOffice->value) {
+            return false;
+        }
+
+        return $request->status === IdRequestStatus::Pending
+            && filled($request->cardPhotoPath);
     }
 
     /**
-     * Determine whether the user can release ID to student.
+     * Determine whether the user can release the physical ID card to the
+     * student (cards are printed off-system; release records the handover).
      */
-    public function release(Staffusers $user, Studentids $id): bool
+    public function release(Staffusers $user, Idrequests $request): bool
     {
         if (! $user->hasPermissionTo('id.release')) {
             return false;
@@ -124,46 +116,7 @@ class IDPolicy
             return false;
         }
 
-        // ID must be active
-        return $id->validationStatus === IdValidationStatus::Active;
-    }
-
-    /**
-     * Determine whether the user can reissue ID card.
-     * Reissue allowed when status is cardProduced (reprint) or released (replacement).
-     */
-    public function reissue(Staffusers $user, Idrequests $idRequest): bool
-    {
-        if (! $user->hasPermissionTo('id.reissue')) {
-            return false;
-        }
-
-        // Must be ID Office
-        if ($user->officeId !== OfficeId::IdOffice->value) {
-            return false;
-        }
-
-        // Only allow reissue from cardProduced (reprint) or released (replacement)
-        return in_array($idRequest->status, [IdRequestStatus::CardProduced, IdRequestStatus::Released], true);
-    }
-
-    /**
-     * Determine whether the user can cancel ID request.
-     * Cancel allowed when status is pending or cardProduced.
-     */
-    public function cancel(Staffusers $user, Idrequests $idRequest): bool
-    {
-        if (! $user->hasPermissionTo('id.cancel')) {
-            return false;
-        }
-
-        // Must be ID Office
-        if ($user->officeId !== OfficeId::IdOffice->value) {
-            return false;
-        }
-
-        // Only allow cancel from pending or cardProduced
-        return in_array($idRequest->status, [IdRequestStatus::Pending, IdRequestStatus::CardProduced], true);
+        return $request->status === IdRequestStatus::Validated;
     }
 
     /**

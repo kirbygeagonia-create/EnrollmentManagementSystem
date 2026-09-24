@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const studentTypeToneMap = {
@@ -8,15 +8,6 @@ const studentTypeToneMap = {
     continuing: 'success',
     transferee: 'warning',
     shifter: 'accent',
-};
-
-const enrollmentStatusToneMap = {
-    pending: 'pending',
-    evaluated: 'evaluated',
-    assessed: 'assessed',
-    paid: 'paid',
-    enrolled: 'enrolled',
-    dropped: 'dropped',
 };
 
 export default function Index({ enrollments, filters = {} }) {
@@ -44,8 +35,8 @@ export default function Index({ enrollments, filters = {} }) {
             </Badge>
         )},
         { key: 'enrollmentStatus', label: 'Status', render: (row) => (
-            <Badge tone={enrollmentStatusToneMap[row.enrollmentStatus] || 'neutral'}>
-                {row.enrollmentStatus?.charAt(0).toUpperCase() + row.enrollmentStatus?.slice(1)}
+            <Badge tone={enrollmentStatusTone[row.enrollmentStatus] || 'neutral'}>
+                {formatStatusLabel(row.enrollmentStatus)}
             </Badge>
         )},
     ], []);
@@ -81,8 +72,6 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="Academic Department Evaluation Desk"
                     subtitle="Capture student demographic profiles (BR32), evaluate transfer credits, and propose curriculum subject loads"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Academic Evaluation"
                     phaseBadge="Phase 2 · Department Evaluation"
                     officeBadge="Office 4 · Academic Evaluation Desk"
                 />

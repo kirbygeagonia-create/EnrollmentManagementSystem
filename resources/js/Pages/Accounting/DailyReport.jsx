@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, StatCard, Badge } from '@/Components/ui';
+import { PageHeader, Card, DataTable, StatCard, Badge, formatStatusLabel } from '@/Components/ui';
 import { useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -28,7 +28,7 @@ export default function DailyReport({ payments, summary, date }) {
         )},
         { key: 'paymentMode', label: 'Mode', render: (row) => (
             <Badge tone={paymentModeToneMap[row.paymentMode] || 'neutral'}>
-                {row.paymentMode ? row.paymentMode.charAt(0).toUpperCase() + row.paymentMode.slice(1) : '—'}
+                {row.paymentMode ? formatStatusLabel(row.paymentMode) : '—'}
             </Badge>
         )},
         { key: 'processedBy', label: 'Processed By', render: (row) => row.processedBy?.name || '—' },
@@ -44,8 +44,6 @@ export default function DailyReport({ payments, summary, date }) {
                 <PageHeader
                     title="Daily Collection & Cashier Report"
                     subtitle={`Collection audit for ${formattedDate}`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Accounting Office"
                     phaseBadge="Phase 4 · Financial Audit"
                     officeBadge="Office 2 · Cashier Terminal"
                     actions={
@@ -124,7 +122,7 @@ export default function DailyReport({ payments, summary, date }) {
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-sm text-brand-500 capitalize">{mode}</p>
                                     <Badge tone={paymentModeToneMap[mode] || 'neutral'}>
-                                        {mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : '—'}
+                                        {mode ? formatStatusLabel(mode) : '—'}
                                     </Badge>
                                 </div>
                                 <p className="text-2xl font-bold text-brand-900">{peso(data.amount)}</p>

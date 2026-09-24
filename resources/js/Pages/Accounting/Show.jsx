@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
@@ -148,7 +148,7 @@ export default function Show({ assessment }) {
         )},
         { key: 'paymentStatus', label: 'Status', render: (row) => (
             <Badge tone={paymentStatusToneMap[row.paymentStatus] || 'neutral'}>
-                {row.paymentStatus ? row.paymentStatus.charAt(0).toUpperCase() + row.paymentStatus.slice(1) : '—'}
+                {row.paymentStatus ? formatStatusLabel(row.paymentStatus) : '—'}
             </Badge>
         )},
         { key: 'processedBy', label: 'Cashier In-Charge', render: (row) => row.processedBy?.name || 'Cashier Desk' },
@@ -160,8 +160,6 @@ export default function Show({ assessment }) {
                 <PageHeader
                     title="Cashier Terminal & Payment Desk"
                     subtitle={`${studentName} • ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.semester?.value || enrollment?.term?.semester || 'Current Term'})`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Cashier Office"
                     phaseBadge="Phase 4 · Cashier Collections"
                     officeBadge="Office 2 · Cashier Terminal"
                 />
@@ -220,7 +218,7 @@ export default function Show({ assessment }) {
             </div>
 
             {/* Enrollment Workflow Progress */}
-            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+            <Card title="Enrollment Workflow Progress" subtitle="The enrollment workflow form — signed offices and pending steps" className="mb-5">
                 <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
             </Card>
 

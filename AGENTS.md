@@ -17,11 +17,15 @@ This ensures:
 ## Gate Requirements Before Push
 
 All 5 gates must pass:
-- **Pest** (backend tests): 216/216 passing
+- **Pest** (backend tests): 274/274 passing (SQLite suite; the E2E walkthrough + admin smoke skip when the real MySQL `ems` database is unreachable)
 - **PHPStan** (static analysis): 0 errors
 - **Pint** (code style): passed
 - **ESLint** (frontend lint): 0 errors, 0 warnings
 - **Vite build**: succeeds
+
+Note: this file's Mandatory Workflow Rule (commit+push per agent dispatch) is
+OVERRIDDEN by the user's standing instruction — never commit or push until the
+user explicitly says so. The user's rule wins in every session.
 
 ## Agent Dispatch Discipline
 

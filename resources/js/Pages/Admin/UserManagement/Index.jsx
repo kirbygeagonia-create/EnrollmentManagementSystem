@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -23,7 +23,7 @@ const roleBadgeMap = {
     staff: 'role-badge-staff',
 };
 
-export default function Index({ users, offices, units, roles, filters = {}, staffRoles, staffStatuses }) {
+export default function Index({ users, offices, units, roles, filters = {}, staffRoles }) {
     const [search, setSearch] = useState(filters.search || '');
     const [officeId, setOfficeId] = useState(filters.officeId || '');
     const [status, setStatus] = useState(filters.status || '');
@@ -112,7 +112,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
         }},
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={statusToneMap[row.status] || 'neutral'}>
-                {row.status?.charAt(0).toUpperCase() + row.status?.slice(1)}
+                {formatStatusLabel(row.status)}
             </Badge>
         )},
     ], []);
@@ -283,7 +283,6 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     ], [offices]);
 
     const staffRoleOptions = useMemo(() => staffRoles.map(r => ({ value: r.value, label: r.value.replace(/([A-Z])/g, ' $1') })), [staffRoles]);
-    const staffStatusOptions = useMemo(() => staffStatuses.map(s => ({ value: s.value, label: s.value })), [staffStatuses]);
 
     return (
         <AuthenticatedLayout
@@ -291,8 +290,6 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                 <PageHeader
                     title="User Management & RBAC Administration"
                     subtitle="Manage staff accounts, institutional office assignments, position titles, and Spatie granular permission roles"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Administrative Seal"
                     phaseBadge="System Administration"
                     officeBadge="Access Control"
                     actions={
@@ -496,13 +493,16 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                             />
                         </FormSection>
                         <FormSection label="Status" error={createForm.errors.status} required>
-                            <Select
+                            {/* Item 13 — active/inactive is a binary choice: radio pair, not a dropdown. */}
+                            <RadioCards
+                                name="status"
+                                label="Status"
                                 value={createForm.data.status}
-                                onChange={(e) => createForm.setData('status', e.target.value)}
-                                options={staffStatusOptions}
-                                placeholder="Select Status"
-                                className="form-input"
-                                required
+                                onChange={(v) => createForm.setData('status', v)}
+                                options={[
+                                    { value: 'active', label: 'Active', tone: 'success' },
+                                    { value: 'inactive', label: 'Inactive' },
+                                ]}
                             />
                         </FormSection>
                         <FormSection label="Password" error={createForm.errors.password} required>
@@ -661,13 +661,16 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                             />
                         </FormSection>
                         <FormSection label="Status" error={editForm.errors.status} required>
-                            <Select
+                            {/* Item 13 — active/inactive is a binary choice: radio pair, not a dropdown. */}
+                            <RadioCards
+                                name="status"
+                                label="Status"
                                 value={editForm.data.status}
-                                onChange={(e) => editForm.setData('status', e.target.value)}
-                                options={staffStatusOptions}
-                                placeholder="Select Status"
-                                className="form-input"
-                                required
+                                onChange={(v) => editForm.setData('status', v)}
+                                options={[
+                                    { value: 'active', label: 'Active', tone: 'success' },
+                                    { value: 'inactive', label: 'Inactive' },
+                                ]}
                             />
                         </FormSection>
                         <FormSection label="Roles (Spatie)" error={editForm.errors.roleIds} className="md:col-span-2">
@@ -758,7 +761,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                 entityContext={{
                     label: 'Staff Account',
                     value: `${togglingUser?.firstName} ${togglingUser?.lastName} (${togglingUser?.username})`,
-                    badge: togglingUser?.role?.toUpperCase() || 'STAFF',
+                    badge: togglingUser?.role ? formatStatusLabel(togglingUser.role) : 'Staff',
                 }}
                 cause={
                     togglingUser?.status === 'active'

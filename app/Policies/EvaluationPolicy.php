@@ -78,8 +78,10 @@ class EvaluationPolicy
             return false;
         }
 
-        // Enrollment must still be pending (the controller transitions to evaluated after proposing)
-        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Pending) {
+        // Enrollment must still be pending (the controller transitions to
+        // evaluated after proposing). Item 8: registrar-returned enrollments
+        // come back to this desk for re-proposal.
+        if (! in_array($enrollment->enrollmentStatus, [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation], true)) {
             return false;
         }
 
@@ -118,6 +120,22 @@ class EvaluationPolicy
         // Must be evaluator or dean/program head
         return $enrollment->evaluatedBy === $user->userId
             || $user->hasPermissionTo('evaluation.sign.dean');
+    }
+
+    /**
+     * Item 4: determine whether the user can record the retention exam result
+     * for the enrollment. Retention exams are handled and viewed only by the
+     * owning academic department, in the Academic Evaluation area (BR10) —
+     * mainly board courses, though any course flagged requiresRetentionExam
+     * gates here.
+     */
+    public function recordRetention(Staffusers $user, Enrollments $enrollment): bool
+    {
+        if (! $user->hasPermissionTo('exam.record.retention')) {
+            return false;
+        }
+
+        return (bool) $enrollment->course?->requiresRetentionExam;
     }
 
     /**

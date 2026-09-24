@@ -73,10 +73,10 @@ You should see the SEAIT EMS login page.
 | `office1_head` | Registrar | 10.0 Registrar Operations — approve enrollment, print COR / class cards |
 | `office2_head` | Accounting | 7.0 Payments & Collections — record payments, daily report |
 | `office3_head` | Scholarship | 6.0 Fee Assessments — compute & finalize charges |
-| `office4_head` | Guidance | 4.0 Exams (course-specific entrance) + 5.0 Evaluations |
+| `office4_head` | Guidance | 4.0 Exams — School Entrance Examination (Stage 1, Guidance-only) |
 | `office5_head` | Blocking | 9.0 Block Sections & Schedules |
 | `office6_head` | Admission | 3.0 Admissions — intake, requirements, approval |
-| `office7_head` | Academic Department | 4.0 Exams (general + retention) |
+| `office7_head` | Academic Department | 4.0 Exams — Course-Specific Entrance (Stage 2) + 5.0 Retention Exam |
 | `office8_head` | Clearance | 8.0 Clearances |
 | `office11_head` | Clinic | 11.0 Clinic Assessments |
 | `office22_head` | ID Office | 12.0 Student IDs |
@@ -96,7 +96,7 @@ You should see the SEAIT EMS login page.
 ### Student demo data (records you'll click through — not logins)
 | Student | School ID | Role in the demo |
 |---|---|---|
-| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID card with QR `SEAIT-DEMO-53`** |
+| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID validated, QR `SEAIT-DEMO-53`** |
 | **Maria Reyes** | DEMO-2026-002 | Continuing student: **retention exam passed**, clearance slip with **all 10 offices approved** + receipt |
 | **Pedro Santos** | DEMO-2026-003 | **Pending admission** — 3 requirement submissions, Form 138 PDF attached; the entrance-exam candidate |
 | **Liza Bautista** | DEMO-2026-004 | Enrolled BSBA from a prior term — the retention-exam candidate |
@@ -132,19 +132,25 @@ intake end and **Juan** (fully processed) for everything after.
    Click **Verify** on a requirement — status flips to verified (FDD 3.2.2).
    Optionally show the **Register Applicant** tab (FDD 3.1) — the full intake
    form.
-5. **(4.0 Entrance & Retention Exams)** **Desks & Apps → Guidance & Exam
-   Lab → Exam Queue.** Click **Record Entrance Exam** — the course dropdown
-   lists **BSCrim** (only exam-requiring courses appear), pick the term, and
-   the **candidate dropdown auto-lists Pedro Santos** (admitted, not yet
-   enrolled = exam candidate). That's FDD 4.1–4.4. Now back up and click
-   **Record Retention** — the course list now shows **BSBA** and the
-   candidates show **Liza Bautista** — that's FDD 4.5 (BR10: retention
-   gating for board courses). Finally the **Pass / Fail Results** tab
-   (FDD 4.6) — Juan passed, listed under BSCrim.
+5. **(4.0 Entrance Examinations)** **Desks & Apps → Guidance & Exam
+   Lab → Exam Queue.** Click **Record School Entrance Exam** — the course
+   dropdown lists **BSCrim and BSSW** (only exam-requiring courses appear —
+   the two board courses with SCAT requirements), pick the
+   term, and the **candidate dropdown auto-lists Pedro Santos** (admitted,
+   not yet enrolled = exam candidate). Two-stage BR9: Guidance scores the
+   **School Entrance** exam (Stage 1 — sees every result, pass and failed)
+   and each academic department scores its own **Course-Specific** exam
+   (Stage 2) for the passers Guidance transferred. That's FDD 4.1–4.4.
+   The **Pass / Fail Results** tab (FDD 4.1.3) — Juan passed, listed under
+   BSCrim.
 6. **(5.0 Department Evaluations)** **Desks & Apps → Academic Evaluation.**
    Open Juan's evaluation: student profile captured (FDD 5.2), subjects
    proposed from the curriculum (FDD 5.3), signed by the evaluator
-   (FDD 5.4), status `evaluated`.
+   (FDD 5.4), status `evaluated`. Point at the **Retention Examination**
+   section on board-course evaluations (FDD 5.6, BR10) — the retention exam
+   is recorded here in the Academic Evaluation area by the owning
+   department, never in the Exam module; Maria's retention result is
+   already on record.
 7. **(6.0 Fee Assessment)** **Desks & Apps → Scholarship & Assessment.**
    Open Juan's assessment: itemized charges per fee type (FDD 6.2),
    finalized (FDD 6.3). If asked about corrections — FDD 6.4 lets you edit
@@ -175,9 +181,9 @@ intake end and **Juan** (fully processed) for everything after.
     assessment — height, weight, blood pressure, PhilHealth, physical exam
     findings (FDD 11.2–11.3).
 13. **(12.0 Student IDs)** **Desks & Apps → Student ID Hub.** Juan's ID:
-    requested → produced → **validated**, with the **QR code** — scan it
-    with your phone and it reads **`SEAIT-DEMO-53`** (studentId 53). That's
-    FDD 12.1–12.5 end-to-end.
+    request **validated** with the **face photo on file** — and the archived
+    **QR code** from the card record — scan it with your phone and it reads
+    **`SEAIT-DEMO-53`** (studentId 53). That's FDD 12.1–12.5 end-to-end.
 
 ### Cross-cutting modules (FDD 13.0 → 15.0)
 14. **(13.0 Student 360°)** Press **Ctrl+K**, type `Dela`, open Juan —
@@ -228,7 +234,11 @@ C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < "C:\Users\AD
 Then refresh the browser (Ctrl+F5). All four students, all workflow states,
 and all 11 accounts return exactly as documented above.
 
-Backup taken **2026-09-13** — 63 tables, all demo rows included.
+Backup taken **2026-09-19** — 63 tables, all demo rows included (refreshed
+after the curriculum expansion: all 16 SEAIT programs carry their own
+curriculum with per-program major subjects plus the shared CHED GE pool,
+and every subject carries code, name, description, prerequisites, and
+lecture/lab units).
 
 ---
 
@@ -250,7 +260,7 @@ ID Office:  office22_head     / password
 
 Navigate:   "Desks & Apps" button (top bar)  |  Ctrl+K = search any student
 
-Students:   Juan Dela Cruz   DEMO-2026-001  (full pipeline, QR: SEAIT-DEMO-53)
+Students:   Juan Dela Cruz   DEMO-2026-001  (full pipeline, ID validated)
             Maria Reyes     DEMO-2026-002  (retention + clearance complete)
             Pedro Santos    DEMO-2026-003  (pending admission, exam candidate)
             Liza Bautista   DEMO-2026-004  (BSBA, retention candidate)

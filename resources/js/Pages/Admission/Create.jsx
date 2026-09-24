@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, FormSection, Select, StepProgress } from '@/Components/ui';
+import { PageHeader, Card, FormSection, Select, StepProgress, RadioCards } from '@/Components/ui';
 import { useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
@@ -188,8 +188,6 @@ export default function Create({ courses, terms, religions }) {
                 <PageHeader
                     title="New Admission"
                     subtitle="Register a new student applicant"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                 />
             }
         >
@@ -290,14 +288,15 @@ export default function Create({ courses, terms, religions }) {
                             </FormSection>
 
                             <FormSection label="Gender" required>
-                                <Select
+                                {/* Item 13 — binary choice as a radio pair, not a dropdown. */}
+                                <RadioCards
+                                    name="gender"
+                                    label="Gender"
                                     value={form.data.gender}
-                                    onChange={(e) => form.setData('gender', e.target.value)}
+                                    onChange={(v) => form.setData('gender', v)}
                                     options={genderOptions}
-                                    placeholder="Select gender"
-                                    required
+                                    error={form.errors.gender}
                                 />
-                                {form.errors.gender && <p className="form-error">{form.errors.gender}</p>}
                             </FormSection>
 
                             <FormSection label="Birthdate" required>

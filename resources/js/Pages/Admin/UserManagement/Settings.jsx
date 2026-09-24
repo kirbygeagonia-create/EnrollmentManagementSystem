@@ -70,8 +70,6 @@ export default function Settings({ settings }) {
                 <PageHeader
                     title="System Settings"
                     subtitle="Manage application configuration values"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                 />
             }
         >

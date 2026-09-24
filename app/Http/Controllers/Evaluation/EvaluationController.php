@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Evaluation;
 use App\Enums\AcademicStanding;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\ExamStage;
+use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Addresses;
 use App\Models\Creditedsubjects;
@@ -13,6 +15,8 @@ use App\Models\Curriculumsubjects;
 use App\Models\Educationalinstitutions;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
+use App\Models\Examresults;
+use App\Models\Gradescale;
 use App\Models\Guardians;
 use App\Models\Religions;
 use App\Models\Subjects;
@@ -46,7 +50,9 @@ class EvaluationController extends Controller
         $this->authorize('viewAny', Enrollments::class);
 
         $query = Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedByUser'])
-            ->where('enrollmentStatus', EnrollmentStatus::Pending)
+            // Item 8: enrollments returned by the Registrar land back on this
+            // desk with a return reason, alongside fresh Pending records.
+            ->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
 
@@ -62,7 +68,7 @@ class EvaluationController extends Controller
      * Show enrollment form wizard (demographic profile + subject load).
      * BR32: All demographic fields must be filled
      */
-    public function show(Enrollments $enrollment): Response
+    public function show(Request $request, Enrollments $enrollment): Response
     {
         $this->authorize('view', $enrollment);
 
@@ -70,17 +76,18 @@ class EvaluationController extends Controller
             'student.addresses',
             'student.guardians',
             'student.educationalBackgrounds.institution',
-            'course',
+            'course.unit',
             'major',
             'term.academicYear',
             'admission',
             'enrolledSubjects.subject',
+            // Item 6: the credit-transfer panel renders existing credited subjects.
+            'creditedsubjects.creditedToSubject',
         ]);
 
-        $curriculum = Curriculums::where('courseId', $enrollment->courseId)
-            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
-            ->latest('effectiveYear')
-            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+        // Item 7: the enrollment stays pinned to the curriculum version the
+        // student was admitted under — never silently drifts to a newer one.
+        $curriculum = $this->resolveCurriculum($enrollment);
 
         $semester = $enrollment->term?->semester instanceof \BackedEnum
             ? $enrollment->term->semester->value
@@ -92,12 +99,90 @@ class EvaluationController extends Controller
             ->where('semesterOffered', $semester)
             ->get() : collect();
 
+        // Item 7: which offered subjects have an unmet prerequisite, so the
+        // UI can lock them before the evaluator even clicks.
+        $satisfied = $this->satisfiedPrerequisites($enrollment);
+        $unmetPrerequisiteSubjectIds = $curriculumSubjects
+            ->filter(fn ($cs) => $cs->prerequisiteSubjectId && ! in_array($cs->prerequisiteSubjectId, $satisfied))
+            ->pluck('subjectId')
+            ->values();
+
+        // Item 4: the retention exam result is recorded and viewed here, in the
+        // Academic Evaluation area, by the owning academic department (BR10).
+        $retentionResult = Examresults::where('studentId', $enrollment->studentId)
+            ->where('courseId', $enrollment->courseId)
+            ->where('examStage', ExamStage::Retention->value)
+            ->orderByDesc('examId')
+            ->first();
+
         return Inertia::render('Evaluation/Show', [
             'enrollment' => $enrollment,
             'curriculumSubjects' => $curriculumSubjects,
+            'curriculum' => $curriculum?->only(['curriculumId', 'curriculumName', 'effectiveYear']),
+            'unmetPrerequisiteSubjectIds' => $unmetPrerequisiteSubjectIds,
             'religions' => Religions::all(['religionId', 'religionName']),
             'academicStandings' => collect(AcademicStanding::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            'retentionExam' => $retentionResult ? [
+                'examId' => $retentionResult->examId,
+                'examResult' => $retentionResult->examResult->value,
+                'examDate' => $retentionResult->examDate,
+            ] : null,
+            'can' => [
+                'recordRetention' => $request->user()->can('recordRetention', $enrollment),
+            ],
         ]);
+    }
+
+    /**
+     * Resolve the curriculum version for an enrollment (item 7). A pinned
+     * curriculumId always wins; otherwise fall back to the newest version —
+     * which is then pinned on the first proposal.
+     */
+    private function resolveCurriculum(Enrollments $enrollment): ?Curriculums
+    {
+        if ($enrollment->curriculumId) {
+            return Curriculums::find($enrollment->curriculumId);
+        }
+
+        return Curriculums::where('courseId', $enrollment->courseId)
+            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
+            ->latest('effectiveYear')
+            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+    }
+
+    /**
+     * Subject ids whose prerequisites the student has already satisfied:
+     * passed (best grade within the passing band — PH scale, lower is
+     * better; Gradescale rows win over the 3.00 fallback) or credited
+     * through transfer.
+     *
+     * @return int[]
+     */
+    private function satisfiedPrerequisites(Enrollments $enrollment): array
+    {
+        $passingCeiling = Gradescale::where('isPassing', true)->max('maxGrade');
+        $passingCeiling = $passingCeiling !== null ? (float) $passingCeiling : 3.0;
+
+        $bestGrades = Enrolledsubjects::query()
+            ->join('enrollments as e2', 'e2.enrollmentId', '=', 'enrolledsubjects.enrollmentId')
+            ->where('e2.studentId', $enrollment->studentId)
+            ->whereNotNull('enrolledsubjects.grade')
+            ->groupBy('enrolledsubjects.subjectId')
+            ->selectRaw('enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade')
+            ->pluck('best_grade', 'subjectId');
+
+        $passed = $bestGrades
+            ->filter(fn ($grade) => (float) $grade <= $passingCeiling)
+            ->keys()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $credited = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+            ->pluck('creditedToSubjectId')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique(array_merge($passed, $credited)));
     }
 
     /**
@@ -215,10 +300,8 @@ class EvaluationController extends Controller
         }
 
         // Load curriculum subjects for this enrollment's year level and term
-        $curriculum = Curriculums::where('courseId', $enrollment->courseId)
-            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
-            ->latest('effectiveYear')
-            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+        // (item 7: resolved through the enrollment's pinned version).
+        $curriculum = $this->resolveCurriculum($enrollment);
 
         $semesterVal = $enrollment->term?->semester instanceof \BackedEnum
             ? $enrollment->term->semester->value
@@ -273,7 +356,39 @@ class EvaluationController extends Controller
             }
         }
 
-        DB::transaction(function () use ($enrollment, $validated) {
+        // Item 7: prerequisite auto-gate — a subject whose curriculum-defined
+        // prerequisite the student has neither passed nor credited cannot be
+        // proposed. Evaluated across the WHOLE pinned curriculum, not just
+        // this term's offerings.
+        if ($curriculum) {
+            $satisfied = $this->satisfiedPrerequisites($enrollment);
+            $violations = Curriculumsubjects::with('subject', 'prerequisiteSubject')
+                ->where('curriculumId', $curriculum->curriculumId)
+                ->whereNotNull('prerequisiteSubjectId')
+                ->whereIn('subjectId', $subjectIds)
+                ->get()
+                ->filter(fn ($cs) => ! in_array($cs->prerequisiteSubjectId, $satisfied));
+
+            if ($violations->isNotEmpty()) {
+                $details = $violations->map(fn ($cs) => sprintf(
+                    '%s requires %s',
+                    $cs->subject->subjectCode ?? $cs->subjectId,
+                    $cs->prerequisiteSubject->subjectCode ?? $cs->prerequisiteSubjectId
+                ))->implode('; ');
+
+                throw ValidationException::withMessages([
+                    'subjects' => 'Prerequisite requirements not met: '.$details.'.',
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($enrollment, $validated, $curriculum) {
+            // Item 7: pin the enrollment to the curriculum version it was
+            // evaluated against (first proposal stamps it).
+            if ($curriculum && ! $enrollment->curriculumId) {
+                $enrollment->update(['curriculumId' => $curriculum->curriculumId]);
+            }
+
             // Clear existing proposed subjects
             $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
 
@@ -367,5 +482,39 @@ class EvaluationController extends Controller
         });
 
         return back()->with('success', 'Evaluation signed. Workflow created.');
+    }
+
+    /**
+     * Record the retention exam result for the enrollment. Item 4: retention
+     * exams are handled and viewed only by the owning academic department, in
+     * the Academic Evaluation area (BR10) — mainly board courses, though any
+     * course flagged requiresRetentionExam gates here.
+     */
+    public function recordRetention(Request $request, Enrollments $enrollment): RedirectResponse
+    {
+        $this->authorize('recordRetention', $enrollment);
+
+        $validated = $request->validate([
+            'examResult' => 'required|in:pass,fail',
+            'examDate' => 'required|date',
+        ]);
+
+        // One retention result per student/course/term — re-recording on the
+        // evaluation page corrects it rather than duplicating it. The exam
+        // attaches to the enrollment's own term: the gate applies to this
+        // term's progression decision.
+        $retention = Examresults::firstOrNew([
+            'studentId' => $enrollment->studentId,
+            'courseId' => $enrollment->courseId,
+            'termId' => $enrollment->termId,
+            'examStage' => ExamStage::Retention->value,
+        ]);
+        $retention->examType = ExamType::CourseSpecific;
+        $retention->examResult = $validated['examResult'];
+        $retention->examDate = $validated['examDate'];
+        $retention->save();
+
+        return redirect()->route('evaluation.show', $enrollment->enrollmentId)
+            ->with('success', 'Retention exam recorded.');
     }
 }

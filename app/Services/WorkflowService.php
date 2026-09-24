@@ -97,7 +97,14 @@ class WorkflowService
             || $signedBy->unitId !== null
         );
 
-        if ($step->officeId !== $signedBy->officeId && ! $isAcademicSigner && ! $signedBy->hasRole(['SysAdmin', 'Admin'])) {
+        // Item 3 write-boundary: only SysAdmin may sign across offices. The
+        // Admin role is read-everywhere with NO mutation permissions
+        // (RbacSeeder), and every HTTP path into signStep authorizes first
+        // with an office-scoped permission Admin lacks — so including Admin
+        // here inverted the boundary at the one choke point every step write
+        // routes through, and would hand Admin a silent cross-office write
+        // the moment a caller forgets its authorize() call.
+        if ($step->officeId !== $signedBy->officeId && ! $isAcademicSigner && ! $signedBy->hasRole('SysAdmin')) {
             throw new InvalidStateTransitionException(
                 "Staff member {$signedBy->name} cannot sign step {$stepOrder} (requires office {$step->officeId})."
             );

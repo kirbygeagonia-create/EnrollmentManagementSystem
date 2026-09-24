@@ -42,11 +42,12 @@ class BlockingPolicy
             return false;
         }
 
-        // SysAdmin/Admin act globally; everyone else must belong to the
-        // Blocking & Scheduling office. An OfficeHead from another office
-        // previously passed this gate and failed later inside
+        // SysAdmin acts globally (item 3 write-boundary: the Admin role is
+        // read-everywhere and must NOT bypass office scoping); everyone else
+        // must belong to the Blocking & Scheduling office. An OfficeHead from
+        // another office previously passed this gate and failed later inside
         // WorkflowService with a 500 instead of a clean 403.
-        if ($user->hasRole(['SysAdmin', 'Admin'])) {
+        if ($user->hasRole('SysAdmin')) {
             return true;
         }
 

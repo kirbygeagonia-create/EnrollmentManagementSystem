@@ -136,8 +136,6 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
                 <PageHeader
                     title="Academic Blocking & Schedule Allocation"
                     subtitle="Manage block sections, monitor class capacity limits, and assign student subject schedules"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Scheduling Office"
                     phaseBadge="Phase 6 · Section Blocking"
                     officeBadge="Office 5 · Scheduling Desk"
                     actions={

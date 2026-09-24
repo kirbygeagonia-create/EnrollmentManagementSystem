@@ -5,7 +5,6 @@ namespace Tests\Feature\ID;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestReason;
 use App\Enums\IdRequestStatus;
-use App\Enums\IdValidationStatus;
 use App\Enums\UnitType;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
@@ -19,11 +18,10 @@ use App\Models\Idrequests;
 use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
-use App\Models\Studentids;
 use App\Models\Students;
 use App\Models\Workflowsteps;
-use App\Services\WorkflowService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -316,7 +314,7 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
-    public function test_show_renders_id_form_with_null_idrequest_and_studentid_initially(): void
+    public function test_show_renders_id_form_with_null_idrequest_initially(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
@@ -329,7 +327,6 @@ class IDControllerTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('ID/Show')
             ->has('enrollment')
             ->where('idRequest', null)
-            ->where('studentId', null)
             ->has('requestReasons')
         );
     }
@@ -348,15 +345,12 @@ class IDControllerTest extends TestCase
             'emergencyContactName' => 'Emergency Contact',
             'emergencyContactNumber' => '09171234569',
             'bloodType' => 'O+',
-            'cardPhotoPath' => null,
-            'producedByVendor' => null,
         ])->assertSessionHasNoErrors();
 
         // Show should now contain the idRequest
         $response = $this->get(route('id.show', $enrollment));
         $response->assertInertia(fn ($page) => $page->where('idRequest.requestReason', 'newStudent')
             ->where('idRequest.status', 'pending')
-            ->where('studentId', null)
         );
     }
 
@@ -374,7 +368,6 @@ class IDControllerTest extends TestCase
             'emergencyContactNumber' => '09171234569',
             'bloodType' => 'O+',
             'cardPhotoPath' => '/photos/card.jpg',
-            'producedByVendor' => 'Vendor Inc',
         ]);
 
         $response->assertRedirect(route('id.show', $enrollment));
@@ -387,7 +380,6 @@ class IDControllerTest extends TestCase
         $this->assertEquals('09171234569', $idRequest->emergencyContactNumber);
         $this->assertEquals('O+', $idRequest->bloodType);
         $this->assertEquals('/photos/card.jpg', $idRequest->cardPhotoPath);
-        $this->assertEquals('Vendor Inc', $idRequest->producedByVendor);
         $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
         $this->assertNotNull($idRequest->requestDate);
     }
@@ -447,7 +439,7 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
-    public function test_produce_card_creates_studentids_row_and_updates_request_status(): void
+    public function test_attach_photo_stores_file_and_keeps_request_pending(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
@@ -463,80 +455,45 @@ class IDControllerTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $idRequest = $enrollment->fresh()->idrequests->first();
-        $qrCode = 'QR-'.uniqid();
 
-        $response = $this->post(route('id.produce', $idRequest), [
-            'qrCode' => $qrCode,
-            'securityPhotoPath' => '/photos/security.jpg',
+        $response = $this->post(route('id.photo', $idRequest), [
+            'photo' => UploadedFile::fake()->image('capture.jpg'),
         ]);
 
         $response->assertSessionHasNoErrors();
-        $response->assertSessionHas('success', 'ID card produced.');
+        $response->assertSessionHas('success', 'Face photo attached to the ID request.');
 
-        $studentId = Studentids::where('idRequestId', $idRequest->idRequestId)->first();
-        $this->assertNotNull($studentId);
-        $this->assertEquals($qrCode, $studentId->qrCode);
-        $this->assertEquals('/photos/security.jpg', $studentId->securityPhotoPath);
-        $this->assertEquals(IdValidationStatus::PendingValidation, $studentId->validationStatus);
-        $this->assertNotNull($studentId->issueDate);
-        $this->assertEquals($enrollment->studentId, $studentId->studentId);
-
-        // Request status should be updated to CardProduced
         $idRequest->refresh();
-        $this->assertEquals(IdRequestStatus::CardProduced, $idRequest->status);
+        $this->assertNotNull($idRequest->cardPhotoPath);
+        $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
     }
 
     #[Test]
-    public function test_produce_card_rejects_duplicate_qr_code(): void
+    public function test_attach_photo_rejects_non_image_file(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
 
-        $enrollment1 = $this->createEnrollment();
-        $enrollment2 = $this->createEnrollment();
+        $enrollment = $this->createEnrollment();
 
-        // Create first ID request and produce card
-        $this->post(route('id.create', $enrollment1), [
+        $this->post(route('id.create', $enrollment), [
             'requestReason' => 'newStudent',
             'emergencyContactName' => 'Contact',
             'emergencyContactNumber' => '09171234569',
             'bloodType' => 'O+',
         ])->assertSessionHasNoErrors();
 
-        $idRequest1 = $enrollment1->fresh()->idrequests->first();
-        $qrCode = 'DUPLICATE-QR-'.uniqid();
+        $idRequest = $enrollment->fresh()->idrequests->first();
 
-        $this->post(route('id.produce', $idRequest1), [
-            'qrCode' => $qrCode,
-            'securityPhotoPath' => null,
-        ])->assertSessionHasNoErrors();
-
-        // Create second ID request
-        $this->post(route('id.create', $enrollment2), [
-            'requestReason' => 'newStudent',
-            'emergencyContactName' => 'Contact',
-            'emergencyContactNumber' => '09171234569',
-            'bloodType' => 'O+',
-        ])->assertSessionHasNoErrors();
-
-        $idRequest2 = $enrollment2->fresh()->idrequests->first();
-
-        // Try to produce card with same QR code — unique constraint violation
-        // Laravel validation catches unique:studentids,qrCode before DB insert,
-        // so we expect a validation error (session error on qrCode).
-        $response = $this->post(route('id.produce', $idRequest2), [
-            'qrCode' => $qrCode,
-            'securityPhotoPath' => null,
+        $response = $this->post(route('id.photo', $idRequest), [
+            'photo' => UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
         ]);
 
-        // The unique rule in validation should catch this and return session error
-        $response->assertSessionHasErrors('qrCode');
-        $errors = session('errors')?->get('qrCode') ?? [];
-        $this->assertStringContainsString('already been taken', $errors[0] ?? '');
+        $response->assertSessionHasErrors('photo');
     }
 
     #[Test]
-    public function test_validate_sets_studentid_active_and_signs_workflow_step(): void
+    public function test_validate_sets_request_validated_and_signs_workflow_step(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
@@ -553,26 +510,20 @@ class IDControllerTest extends TestCase
 
         $idRequest = $enrollment->fresh()->idrequests->first();
 
-        // Produce card
-        $this->post(route('id.produce', $idRequest), [
-            'qrCode' => 'QR-'.uniqid(),
-            'securityPhotoPath' => null,
-        ])->assertSessionHasNoErrors();
-
-        $studentId = $idRequest->fresh()->studentids;
-        $this->assertNotNull($studentId);
+        // Attach the face photo (validation prerequisite)
+        $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
 
         // Validate ID
-        $response = $this->post(route('id.validate', $studentId));
+        $response = $this->post(route('id.validate', $idRequest));
 
         $response->assertSessionHasNoErrors();
         $response->assertSessionHas('success', 'ID validated successfully.');
 
-        // Student ID should be Active with validatedBy/validatedDate
-        $studentId->refresh();
-        $this->assertEquals(IdValidationStatus::Active, $studentId->validationStatus);
-        $this->assertEquals($idStaff->userId, $studentId->validatedBy);
-        $this->assertNotNull($studentId->validatedDate);
+        // Request should be Validated with validatedBy/validatedDate
+        $idRequest->refresh();
+        $this->assertEquals(IdRequestStatus::Validated, $idRequest->status);
+        $this->assertEquals($idStaff->userId, $idRequest->validatedBy);
+        $this->assertNotNull($idRequest->validatedDate);
 
         // Workflow step for ID Office (office 22) should be signed
         $workflow = $enrollment->fresh()->enrollmentworkflow;
@@ -588,6 +539,39 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_validate_fails_without_attached_photo(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+
+        // Create ID request WITHOUT a photo
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        // Validate — IDPolicy::validate requires the face photo, so the
+        // authorization fails with 403 (not a silent pass).
+        $response = $this->post(route('id.validate', $idRequest));
+
+        $response->assertForbidden();
+
+        // Verify the step was NOT signed and the request stays pending
+        $idRequest->refresh();
+        $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
+        $workflow = $enrollment->fresh()->enrollmentworkflow;
+        $idStep = $workflow->workflowsteps()->where('officeId', 22)->first();
+        $this->assertEquals(WorkflowStepStatus::Pending, $idStep->stepStatus);
+        $this->assertNull($idStep->signedBy);
+    }
+
+    #[Test]
     public function test_validate_fails_when_clinic_step_still_pending(): void
     {
         $idStaff = $this->staffForOffice(22);
@@ -599,25 +583,17 @@ class IDControllerTest extends TestCase
         $enrollment->enrollmentworkflow->delete();
         $this->createWorkflowAtClinicStep($enrollment);
 
-        // Create ID request (policy allows create only when ID step is current,
-        // but we bypass by creating directly for this test)
+        // Create ID request directly (policy allows create only when ID step
+        // is current, but we bypass by creating directly for this test)
         $idRequest = Idrequests::create([
             'enrollmentId' => $enrollment->enrollmentId,
             'requestReason' => 'newStudent',
             'emergencyContactName' => 'Contact',
             'emergencyContactNumber' => '09171234569',
             'bloodType' => 'O+',
+            'cardPhotoPath' => 'id-photos/test-capture.jpg',
             'requestDate' => now(),
             'status' => IdRequestStatus::Pending,
-        ]);
-
-        // Produce card
-        $studentId = Studentids::create([
-            'studentId' => $enrollment->studentId,
-            'idRequestId' => $idRequest->idRequestId,
-            'qrCode' => 'QR-'.uniqid(),
-            'issueDate' => now(),
-            'validationStatus' => IdValidationStatus::PendingValidation,
         ]);
 
         // Try to validate — WorkflowService::signStepByOffice throws
@@ -625,7 +601,7 @@ class IDControllerTest extends TestCase
         // completed. The global exception renderer converts it to a friendly
         // redirect-back with a flash error (not a raw 500).
         $response = $this->from(route('id.index'))
-            ->post(route('id.validate', $studentId));
+            ->post(route('id.validate', $idRequest));
 
         $response->assertRedirect(route('id.index'));
         $response->assertSessionHas('error');
@@ -657,7 +633,7 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
-    public function test_unauthorized_staff_cannot_produce_card_returns_403(): void
+    public function test_unauthorized_staff_cannot_attach_photo_returns_403(): void
     {
         $idStaff = $this->staffForOffice(22);
         $unauthorizedStaff = $this->staffForOffice(11);
@@ -675,11 +651,10 @@ class IDControllerTest extends TestCase
 
         $idRequest = $enrollment->fresh()->idrequests->first();
 
-        // Try to produce card as unauthorized staff
+        // Try to attach photo as unauthorized staff (office 11, not ID Office 22)
         $this->actingAs($unauthorizedStaff);
-        $response = $this->post(route('id.produce', $idRequest), [
-            'qrCode' => 'QR-'.uniqid(),
-            'securityPhotoPath' => null,
+        $response = $this->post(route('id.photo', $idRequest), [
+            'photo' => UploadedFile::fake()->image('capture.jpg'),
         ]);
 
         $response->assertForbidden();
@@ -693,7 +668,7 @@ class IDControllerTest extends TestCase
 
         $enrollment = $this->createEnrollment();
 
-        // Create ID request and produce card as authorized staff
+        // Create ID request and attach photo as authorized staff
         $this->actingAs($idStaff);
         $this->post(route('id.create', $enrollment), [
             'requestReason' => 'newStudent',
@@ -703,22 +678,17 @@ class IDControllerTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $idRequest = $enrollment->fresh()->idrequests->first();
-        $this->post(route('id.produce', $idRequest), [
-            'qrCode' => 'QR-'.uniqid(),
-            'securityPhotoPath' => null,
-        ])->assertSessionHasNoErrors();
-
-        $studentId = $idRequest->fresh()->studentids;
+        $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
 
         // Try to validate as unauthorized staff
         $this->actingAs($unauthorizedStaff);
-        $response = $this->post(route('id.validate', $studentId));
+        $response = $this->post(route('id.validate', $idRequest));
 
         $response->assertForbidden();
     }
 
     #[Test]
-    public function test_release_sets_validation_status_active(): void
+    public function test_release_sets_request_released(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
@@ -735,24 +705,17 @@ class IDControllerTest extends TestCase
 
         $idRequest = $enrollment->fresh()->idrequests->first();
 
-        // Produce card
-        $this->post(route('id.produce', $idRequest), [
-            'qrCode' => 'QR-'.uniqid(),
-            'securityPhotoPath' => null,
-        ])->assertSessionHasNoErrors();
+        // Attach photo, then validate (sets to Validated)
+        $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
+        $this->post(route('id.validate', $idRequest))->assertSessionHasNoErrors();
 
-        $studentId = $idRequest->fresh()->studentids;
-
-        // Validate first (sets to Active)
-        $this->post(route('id.validate', $studentId))->assertSessionHasNoErrors();
-
-        // Release (should keep Active)
-        $response = $this->post(route('id.release', $studentId));
+        // Release (moves to Released)
+        $response = $this->post(route('id.release', $idRequest));
 
         $response->assertSessionHasNoErrors();
         $response->assertSessionHas('success', 'ID released to student.');
 
-        $studentId->refresh();
-        $this->assertEquals(IdValidationStatus::Active, $studentId->validationStatus);
+        $idRequest->refresh();
+        $this->assertEquals(IdRequestStatus::Released, $idRequest->status);
     }
 }

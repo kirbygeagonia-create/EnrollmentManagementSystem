@@ -4,21 +4,17 @@ import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Bad
 import { useState, useMemo } from 'react';
 
 const idStatusToneMap = {
-    active: 'success',
-    cardProduced: 'warning',
     pending: 'warning',
-    pendingValidation: 'warning',
-    lost: 'danger',
-    replaced: 'info',
+    validated: 'seait',
+    released: 'success',
+    cancelled: 'danger',
 };
 
 const idStatusLabelMap = {
-    active: 'Active',
-    cardProduced: 'Card Produced',
     pending: 'Pending',
-    pendingValidation: 'Pending Validation',
-    lost: 'Lost',
-    replaced: 'Replaced',
+    validated: 'Validated',
+    released: 'Released',
+    cancelled: 'Cancelled',
 };
 
 export default function Index({ enrollments, filters = {} }) {
@@ -26,24 +22,19 @@ export default function Index({ enrollments, filters = {} }) {
 
     const rows = useMemo(() => enrollments?.data || [], [enrollments]);
 
-    // Summary tiles derived from the current page
+    // Summary tiles derived from the current page (request status only)
     const stats = useMemo(() => {
         let pending = 0;
-        let produced = 0;
-        let active = 0;
+        let validated = 0;
+        let released = 0;
         rows.forEach((row) => {
-            let status = null;
-            if (row.studentids && row.studentids.length > 0) {
-                status = row.studentids[0].validationStatus || 'active';
-            } else if (row.idrequests && row.idrequests.length > 0) {
-                status = row.idrequests[0].status || 'pending';
-            }
+            const status = row.idrequests?.[0]?.status;
             if (!status) return;
-            if (status === 'active') active += 1;
-            else if (status === 'cardProduced') produced += 1;
-            else if (['pending', 'pendingValidation'].includes(status)) pending += 1;
+            if (status === 'pending') pending += 1;
+            else if (status === 'validated') validated += 1;
+            else if (status === 'released') released += 1;
         });
-        return { pending, produced, active };
+        return { pending, validated, released };
     }, [rows]);
 
     const columns = useMemo(() => [
@@ -51,24 +42,15 @@ export default function Index({ enrollments, filters = {} }) {
         { key: 'studentName', label: 'Student Name' },
         { key: 'course', label: 'Course', render: (row) => row.course?.name || '—' },
         { key: 'idStatus', label: 'ID Status', render: (row) => {
-            let tone = 'neutral';
-            let label = 'None';
+            const status = row.idrequests?.[0]?.status;
 
-            if (row.studentids && row.studentids.length > 0) {
-                const studentId = row.studentids[0];
-                const status = studentId.validationStatus || 'active';
-                tone = idStatusToneMap[status] || 'neutral';
-                label = idStatusLabelMap[status] || status;
-            } else if (row.idrequests && row.idrequests.length > 0) {
-                const idRequest = row.idrequests[0];
-                const status = idRequest.status || 'pending';
-                tone = idStatusToneMap[status] || 'warning';
-                label = idStatusLabelMap[status] || status;
+            if (!status) {
+                return <Badge tone="neutral">None</Badge>;
             }
 
             return (
-                <Badge tone={tone}>
-                    {label}
+                <Badge tone={idStatusToneMap[status] || 'neutral'}>
+                    {idStatusLabelMap[status] || status}
                 </Badge>
             );
         }},
@@ -104,11 +86,9 @@ export default function Index({ enrollments, filters = {} }) {
             header={
                 <PageHeader
                     title="Student ID Processing & Validation"
-                    subtitle="Issue, validate, and track student ID cards — photo capture, QR code generation, and GZEL intake sync"
-                    logo="/images/logos/gzel-id-validation.jpg"
-                    logoAlt="GZEL ID Validation Office"
-                    phaseBadge="Phase 8 · ID Issuance"
-                    officeBadge="Office 22 · ID Processing Desk"
+                    subtitle="Validate ID requests with face-photo capture, then track release of the printed cards"
+                    phaseBadge="Phase 8 · ID Office"
+                    officeBadge="ID Validation Desk"
                 />
             }
         >
@@ -118,7 +98,7 @@ export default function Index({ enrollments, filters = {} }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                 <StatCard
                     compact
-                    label="Pending / Validation"
+                    label="Pending Validation"
                     value={stats.pending}
                     iconBg="warning"
                     icon={
@@ -129,23 +109,23 @@ export default function Index({ enrollments, filters = {} }) {
                 />
                 <StatCard
                     compact
-                    label="Card Produced"
-                    value={stats.produced}
-                    iconBg="info"
+                    label="Validated"
+                    value={stats.validated}
+                    iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     }
                 />
                 <StatCard
                     compact
-                    label="Active IDs"
-                    value={stats.active}
+                    label="Released"
+                    value={stats.released}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                     }
                 />

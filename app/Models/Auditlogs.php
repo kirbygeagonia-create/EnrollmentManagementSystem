@@ -13,11 +13,12 @@ class Auditlogs extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['userId', 'action', 'entityTable', 'entityId', 'oldValues', 'newValues', 'ipAddress', 'createdAt'];
+    protected $fillable = ['userId', 'action', 'adminOverride', 'entityTable', 'entityId', 'oldValues', 'newValues', 'ipAddress', 'createdAt'];
 
     protected function casts(): array
     {
         return [
+            'adminOverride' => 'boolean',
             'oldValues' => 'array',
             'newValues' => 'array',
             'createdAt' => 'datetime',

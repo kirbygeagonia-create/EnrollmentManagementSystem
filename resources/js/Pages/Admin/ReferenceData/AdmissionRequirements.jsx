@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel } from '@/Components/ui';
 
 const appliesToOptions = [
     { value: '', label: 'All Types' },
@@ -45,7 +45,7 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
         { key: 'requirementName', label: 'Name' },
         { key: 'appliesTo', label: 'Applies To', render: (row) => (
             <Badge tone={appliesToToneMap[row.appliesTo] || 'neutral'}>
-                {row.appliesTo?.charAt(0).toUpperCase() + row.appliesTo?.slice(1).replace(/([A-Z])/g, ' $1')}
+                {formatStatusLabel(row.appliesTo)}
             </Badge>
         ), className: 'text-center' },
         { key: 'isRequired', label: 'Status', render: (row) => (
@@ -146,8 +146,6 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
                 <PageHeader
                     title="Admission Requirements"
                     subtitle="Manage admission requirements by applicant type"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,7 +250,7 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
                             <Select
                                 value={form.data.appliesTo}
                                 onChange={(e) => form.setData('appliesTo', e.target.value)}
-                                options={appliesTo.map(a => ({ value: a.value, label: a.value.charAt(0).toUpperCase() + a.value.slice(1).replace(/([A-Z])/g, ' $1') }))}
+                                options={appliesTo.map(a => ({ value: a.value, label: formatStatusLabel(a.value) }))}
                                 placeholder="Select applicant type"
                                 className="form-input"
                                 error={form.errors.appliesTo}

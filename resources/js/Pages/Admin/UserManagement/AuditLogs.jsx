@@ -61,9 +61,17 @@ export default function AuditLogs({ logs, filters = {} }) {
             <span className="text-xs text-brand-400 italic">System</span>
         )},
         { key: 'action', label: 'Action', render: (row) => (
-            <Badge tone={actionToneMap[row.action] || 'neutral'} className="capitalize">
-                {row.action?.replace(/_/g, ' ')}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+                <Badge tone={actionToneMap[row.action] || 'neutral'} className="capitalize">
+                    {row.action?.replace(/_/g, ' ')}
+                </Badge>
+                {/* Item 3: oversight-role write flag from the audit observer */}
+                {row.adminOverride && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        Admin Override
+                    </span>
+                )}
+            </div>
         )},
         { key: 'entityTable', label: 'Entity', render: (row) => (
             <span className="font-mono text-xs text-brand-700">{row.entityTable || '—'}</span>
@@ -145,8 +153,6 @@ export default function AuditLogs({ logs, filters = {} }) {
                 <PageHeader
                     title="Audit Logs"
                     subtitle="Read-only trail of system activity and changes"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                 />
             }
         >
@@ -277,7 +283,14 @@ export default function AuditLogs({ logs, filters = {} }) {
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-brand-400 mb-1">Action</p>
-                                <Badge tone={actionToneMap[viewingLog.action] || 'neutral'} className="capitalize">{viewingLog.action?.replace(/_/g, ' ')}</Badge>
+                                <div className="flex items-center gap-1.5">
+                                    <Badge tone={actionToneMap[viewingLog.action] || 'neutral'} className="capitalize">{viewingLog.action?.replace(/_/g, ' ')}</Badge>
+                                    {viewingLog.adminOverride && (
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full">
+                                            Admin Override
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-brand-400 mb-1">Entity</p>

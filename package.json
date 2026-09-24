@@ -28,8 +28,5 @@
     },
     "overrides": {
         "qs": "^6.16.0"
-    },
-    "dependencies": {
-        "react-qr-code": "^2.2.0"
     }
 }

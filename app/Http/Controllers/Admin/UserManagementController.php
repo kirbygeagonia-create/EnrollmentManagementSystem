@@ -206,7 +206,7 @@ class UserManagementController extends Controller
             || $user->payments()->exists()
             || $user->schedules()->exists()
             || $user->studentclearances()->exists()
-            || $user->studentids()->exists()
+            || $user->validatedIdrequests()->exists()
             || $user->studentscholarships()->exists()
             || $user->workflowsteps()->exists();
 

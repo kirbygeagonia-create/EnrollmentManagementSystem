@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
 
 const semesterOptions = [
     { value: '', label: 'All Semesters' },
@@ -145,8 +145,6 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
                 <PageHeader
                     title="Academic Terms"
                     subtitle="Manage semesters and school years"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,14 +247,14 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
                             />
                         </FormSection>
                         <FormSection label="Semester" error={form.errors.semester} required>
-                            <Select
+                            {/* Item 13 — three-option semester choice: segmented cards, not a dropdown. */}
+                            <RadioCards
+                                name="semester"
+                                label="Semester"
                                 value={form.data.semester}
-                                onChange={(e) => form.setData('semester', e.target.value)}
-                                options={semesters.map(s => ({ value: s.value, label: s.value.charAt(0).toUpperCase() + s.value.slice(1) + ' Semester' }))}
-                                placeholder="Select semester"
-                                className="form-input"
-                                error={form.errors.semester}
-                                required
+                                onChange={(v) => form.setData('semester', v)}
+                                columns={3}
+                                options={semesters.map(s => ({ value: s.value, label: s.value === 'Summer' ? 'Summer' : `${s.value} Semester` }))}
                             />
                         </FormSection>
                         <FormSection label="Start Date" error={form.errors.startDate} required>

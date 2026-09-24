@@ -78,8 +78,6 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                 <PageHeader
                     title="Clearance Requirements"
                     subtitle="Manage clearance requirements per office"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

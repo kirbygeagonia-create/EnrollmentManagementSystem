@@ -117,8 +117,6 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                 <PageHeader
                     title="Blocks"
                     subtitle="Manage student block sections"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

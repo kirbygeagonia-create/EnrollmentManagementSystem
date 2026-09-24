@@ -1,4 +1,4 @@
-import { PrintLayout, Card, Badge } from '@/Components/ui';
+import { PrintLayout, Card, Badge, formatStatusLabel } from '@/Components/ui';
 
 const approvalStatusToneMap = {
     pending: 'pending',
@@ -61,7 +61,7 @@ export default function PrintSlip({ clearance }) {
                                     </div>
                                     <div className="flex items-center gap-4 sm:ml-auto">
                                         <Badge tone={approvalStatusToneMap[approval.status] || 'neutral'} className="whitespace-nowrap">
-                                            {approval.status?.charAt(0).toUpperCase() + approval.status?.slice(1)}
+                                            {formatStatusLabel(approval.status)}
                                         </Badge>
                                         <div className="w-32 border-t border-brand-300" />
                                         <span className="text-xs text-brand-500">Signature</span>
@@ -93,7 +93,7 @@ export default function PrintSlip({ clearance }) {
                         )}
                     </div>
                     <Badge tone={approvalStatusToneMap[clearance.overallStatus] || 'neutral'} className="text-lg px-4 py-2">
-                        {clearance.overallStatus?.charAt(0).toUpperCase() + clearance.overallStatus?.slice(1)}
+                        {formatStatusLabel(clearance.overallStatus)}
                     </Badge>
                 </div>
             </Card>

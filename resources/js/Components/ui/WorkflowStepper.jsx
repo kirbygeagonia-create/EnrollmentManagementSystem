@@ -1,5 +1,6 @@
 import Badge from './Badge';
 import StepProgress from './StepProgress';
+import { formatStatusLabel } from './statusLabel';
 
 // Workflow step status → badge tone
 const stepStatusTone = {
@@ -42,7 +43,7 @@ export default function WorkflowStepper({ workflow }) {
                     <div key={meta.stepOrder} className="flex items-center justify-between text-sm border-b border-brand-100 pb-2 last:border-0 last:pb-0">
                         <div className="flex items-center gap-2">
                             <Badge tone={stepStatusTone[status]}>
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {formatStatusLabel(status)}
                             </Badge>
                             <span className="text-brand-900 font-medium">{label}</span>
                         </div>

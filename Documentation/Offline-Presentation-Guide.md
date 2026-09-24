@@ -12,7 +12,7 @@ and how to restore the demo data if anything goes wrong.
 |---|---|---|
 | Figtree font (400/500/600) | Loaded from `fonts.bunny.net` CDN | Self-hosted at `public/fonts/` (6 woff2 files, ~53 KB) via `@font-face` in `resources/css/app.css` |
 | Content-Security-Policy | Allowed `fonts.bunny.net`, `fonts.googleapis.com`, `fonts.gstatic.com` | `style-src 'self'`, `font-src 'self'` — fully closed to third parties |
-| QR codes | Already local — `react-qr-code` npm package is bundled into `public/build/` at build time | No change needed |
+| QR codes | Already local — `react-qr-code` was bundled into `public/build/` at build time | Package removed with the card-making flow (no QR rendering remains) |
 | Fonts / assets in built JS/CSS | — | Verified: **zero external URLs** in `public/build/assets/*` |
 | Page resources (links/scripts/images) | — | Verified on dashboard, exam, blocking, student pages: all refs point to `localhost` |
 | Mail / sessions / queue | Already local (`MAIL_MAILER=log`, `SESSION_DRIVER=file`, `QUEUE_CONNECTION=database`) | No change needed |
@@ -52,7 +52,7 @@ Run through this ~10 minutes before presenting:
 
 | Student | School ID | State |
 |---|---|---|
-| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic → ID card **produced & validated with QR** |
+| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic → ID **validated** (face photo on file, archived QR) |
 | Maria Reyes (`demo_maria_r`) | DEMO-2026-002 | Continuing BSBA, **retention exam passed**, clearance slip generated + **all 10 offices approved** + receipt recorded |
 | Pedro Santos (`demo_pedro`) | DEMO-2026-003 | **Pending admission** (BSCrim) — shows up as an entrance-exam candidate in the Exam form |
 | Liza Bautista (`demo_liza`) | DEMO-2026-004 | **Enrolled BSBA** — shows up as a retention-exam candidate in the Exam form |
@@ -65,7 +65,7 @@ Run through this ~10 minutes before presenting:
 4. **Assessment → Payment → Registrar** (offices 3, 2, 1): show Juan's computed charges, the recorded payment (OR DEMO-OR-0001), and registrar approval.
 5. **Blocking** (office5_head): open block BSCrim 1-A — Juan assigned.
 6. **Clinic** (office11_head): Juan's health record.
-7. **ID** (office22_head): Juan's ID card with the QR code — scan it, it reads `SEAIT-DEMO-53`.
+7. **ID** (office22_head): Juan's validated ID request — face photo on file; the archived card QR reads `SEAIT-DEMO-53`.
 8. **Retention exam** (office7_head): Exam → Record Retention → BSBA → Liza Bautista appears → record pass.
 9. **Clearance** (office1_head): Maria Reyes's slip — all 10 offices approved, receipt recorded.
 

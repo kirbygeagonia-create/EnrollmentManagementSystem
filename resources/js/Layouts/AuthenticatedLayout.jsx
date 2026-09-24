@@ -4,6 +4,7 @@ import DeskSubNav from '@/Components/navigation/DeskSubNav';
 import GlobalSearchModal from '@/Components/navigation/GlobalSearchModal';
 import MegaAppLauncher from '@/Components/navigation/MegaAppLauncher';
 import { Toast, CauseEffectModal } from '@/Components/ui';
+import { officeLogoFor } from '@/officeBranding';
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
@@ -92,6 +93,10 @@ export default function AuthenticatedLayout({ header, children }) {
     }) || 'dashboard';
 
     const currentDesk = deskInfoMap[activeKey] || deskInfoMap.dashboard;
+
+    // Account-bound office branding: the signed-in office head's crest
+    // rides on their avatar (per OfficeId), not on per-page logos.
+    const officeLogo = officeLogoFor(user?.office?.officeId);
 
     const handleConfirmLogout = () => {
         setIsLoggingOut(true);
@@ -255,9 +260,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                         type="button"
                                         className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 transition-all text-left"
                                     >
-                                        <div className="h-8 w-8 rounded-lg bg-seait-600 text-white font-heading font-bold text-xs flex items-center justify-center ring-2 ring-seait-400/40 shadow-xs flex-shrink-0">
-                                            {getInitials(user?.name)}
-                                        </div>
+                                        {officeLogo ? (
+                                            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center ring-2 ring-seait-400/40 shadow-xs flex-shrink-0 overflow-hidden p-0.5">
+                                                <img src={officeLogo} alt={user?.office?.officeName || 'Office crest'} className="max-h-full max-w-full object-contain" />
+                                            </div>
+                                        ) : (
+                                            <div className="h-8 w-8 rounded-lg bg-seait-600 text-white font-heading font-bold text-xs flex items-center justify-center ring-2 ring-seait-400/40 shadow-xs flex-shrink-0">
+                                                {getInitials(user?.name)}
+                                            </div>
+                                        )}
                                         <div className="hidden sm:flex flex-col leading-tight min-w-0 pr-1">
                                             <span className="font-bold text-white text-xs truncate max-w-[120px]">
                                                 {user?.name}

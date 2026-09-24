@@ -6,7 +6,9 @@ export default function StatCard({ label, value, icon, iconBg = 'brand', trend, 
         warning: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200',
         danger: 'bg-rose-100 text-rose-700 ring-1 ring-rose-200',
         info: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200',
-        accent: 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200',
+        // 'accent' is SEAIT orange per tailwind.config (same token as seait) —
+        // it used to render indigo, a color that appears nowhere else.
+        accent: 'bg-seait-100 text-seait-700 ring-1 ring-seait-200',
     };
 
     if (compact) {

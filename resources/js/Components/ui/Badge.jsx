@@ -16,6 +16,7 @@ export default function Badge({ tone = 'neutral', children, className = '' }) {
         dropped: 'badge-dropped',
         evaluated: 'badge-evaluated',
         assessed: 'badge-assessed',
+        accent: 'badge-accent',
     };
 
     return (

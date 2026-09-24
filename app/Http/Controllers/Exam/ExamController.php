@@ -29,17 +29,53 @@ class ExamController extends Controller
     {
         $this->authorize('viewAny', Examresults::class);
 
+        $user = $request->user();
+        $canGeneral = $user->hasPermissionTo('exam.record.general');
+        $canCourseSpecific = $user->hasPermissionTo('exam.record.courseSpecific');
+        // Course-specific and retention results are handled and viewed only by
+        // the owning academic department (item 4).
+        $isDepartment = $canCourseSpecific || $user->hasPermissionTo('exam.record.retention');
+
         $query = Examresults::with(['student', 'course', 'term'])
             ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
 
+        // Item 4 ownership: Guidance handles and views the School Entrance
+        // Examination only — all of its results, pass and failed. Course-specific
+        // and retention results are handled and viewed only by the academic
+        // department. What crosses the boundary is the passer transfer (BR9):
+        // general-stage PASS rows surface to the department as transferred
+        // passers — names and results only, never the failed ones.
+        if ($canGeneral && $isDepartment) {
+            // SysAdmin (both scopes): the full matrix.
+        } elseif ($canGeneral) {
+            $query->where('examStage', ExamStage::Entrance->value)
+                ->where('examType', ExamType::General->value);
+        } elseif ($isDepartment) {
+            $query->where('examStage', ExamStage::Entrance->value)
+                ->where(function ($q) {
+                    $q->where('examType', ExamType::CourseSpecific->value)
+                        ->orWhere(fn ($sq) => $sq
+                            ->where('examType', ExamType::General->value)
+                            ->where('examResult', ExamResult::Pass->value));
+                });
+        } else {
+            // View-only: the transferred passer roster.
+            $query->where('examType', ExamType::General->value)
+                ->where('examResult', ExamResult::Pass->value);
+        }
+
         $exams = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Exam/Index', [
             'exams' => $exams,
             'filters' => $request->only(['stage', 'type', 'search']),
+            'can' => [
+                'recordGeneral' => $canGeneral,
+                'recordCourseSpecific' => $canCourseSpecific,
+            ],
         ]);
     }
 
@@ -48,41 +84,47 @@ class ExamController extends Controller
      */
     public function create(Request $request): Response
     {
-        $stage = ExamStage::from($request->stage ?? 'entrance');
+        // Item 4: the Exam module is entrance examinations only — the retention
+        // exam is recorded in the Academic Evaluation area by the owning
+        // department (BR10).
+        abort_unless(ExamStage::tryFrom($request->stage ?? 'entrance') === ExamStage::Entrance, 404);
 
-        // Entrance forms are open to either exam-recording permission; the
-        // retention form requires the retention permission (BR10).
-        $this->authorize('exam.record', [Courses::class, $stage, ExamType::General]);
+        $type = ExamType::tryFrom($request->type ?? 'general') ?? ExamType::General;
+
+        // The entrance form is gated by the requested recording permission:
+        // general = Guidance (Stage 1), course-specific = the owning academic
+        // department (Stage 2) — BR9.
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, $type]);
 
         $courseId = $request->courseId;
         $termId = $request->termId;
 
-        // Course list depends on the stage: entrance exams list entrance-exam
-        // courses, retention exams list retention-exam (board) courses.
-        $courses = $stage === ExamStage::Retention
-            ? Courses::where('requiresRetentionExam', true)
-            : Courses::where('requiresEntranceExam', true);
+        // Course list: entrance-exam courses only.
+        $courses = Courses::where('requiresEntranceExam', true);
 
         return Inertia::render('Exam/Create', [
             'courses' => $courses->get(['courseId', 'courseName', 'courseCode']),
             'terms' => Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']),
             'selectedCourse' => $courseId ? Courses::find($courseId) : null,
             'selectedTerm' => $termId ? Academicterms::find($termId) : null,
-            'stage' => $stage->value,
-            'type' => $request->type ?? 'general',
+            'stage' => ExamStage::Entrance->value,
+            'type' => $type->value,
         ]);
     }
 
     /**
      * Return exam candidates for a course/term:
-     *  - entrance: admitted students (pending/approved admission, no enrollment yet)
-     *  - retention: continuing students enrolled in the course (prior term)
+     *  - general (School Entrance): first-year applicants admitted to the
+     *    course/term, not yet enrolled — the exam runs from before enrollment
+     *    opens up to enrollment day.
+     *  - course-specific: the School Entrance passers Guidance transferred to
+     *    the department (the BR9 passer transfer — names and results only).
      */
     public function students(Request $request): JsonResponse
     {
-        $stage = ExamStage::from($request->input('stage', 'entrance'));
+        $type = ExamType::tryFrom($request->input('type', 'general')) ?? ExamType::General;
 
-        $this->authorize('exam.record', [Courses::class, $stage, ExamType::General]);
+        $this->authorize('exam.record', [Courses::class, ExamStage::Entrance, $type]);
 
         if (! $request->filled('courseId') || ! $request->filled('termId')) {
             return response()->json(['students' => []]);
@@ -93,13 +135,26 @@ class ExamController extends Controller
             'termId' => 'required|exists:academicterms,termId',
         ]);
 
-        if ($stage === ExamStage::Retention) {
-            // Retention candidates: continuing students enrolled in the course
-            // (any term — the gate applies at the start of a new term).
-            $students = Students::whereHas('enrollments', fn ($q) => $q
+        if ($type === ExamType::CourseSpecific) {
+            // Item 4 — the passer transfer (BR9): these are the School Entrance
+            // Examination passers. Students are not applicants at this stage —
+            // only names and results are shown.
+            $passers = Examresults::with('student')
                 ->where('courseId', $request->courseId)
-                ->where('enrollmentStatus', 'enrolled')
-            )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+                ->where('termId', $request->termId)
+                ->where('examStage', ExamStage::Entrance->value)
+                ->where('examType', ExamType::General->value)
+                ->where('examResult', ExamResult::Pass->value)
+                ->get();
+
+            $students = $passers->map(fn ($result) => [
+                'studentId' => $result->student->studentId,
+                'schoolIdNumber' => $result->student->schoolIdNumber,
+                'lastName' => $result->student->lastName,
+                'firstName' => $result->student->firstName,
+                'middleName' => $result->student->middleName,
+                'examResult' => $result->examResult->value,
+            ])->values();
         } else {
             // Entrance candidates: students admitted to the course/term who have
             // not yet enrolled (exam happens between admission and evaluation).
@@ -135,15 +190,20 @@ class ExamController extends Controller
             return back()->withErrors(['courseId' => 'This course does not require an entrance exam.']);
         }
 
-        Examresults::create([
+        // firstOrNew: re-recording corrects the existing result rather than
+        // creating a duplicate (mirrors the retention path).
+        $exam = Examresults::firstOrNew([
             'studentId' => $validated['studentId'],
             'courseId' => $validated['courseId'],
             'termId' => $validated['termId'],
             'examStage' => ExamStage::Entrance,
             'examType' => ExamType::General,
+        ]);
+        $exam->fill([
             'examResult' => $validated['examResult'],
             'examDate' => $validated['examDate'],
         ]);
+        $exam->save();
 
         // Update admission status if failed
         if ($validated['examResult'] === 'fail') {
@@ -215,56 +275,55 @@ class ExamController extends Controller
     }
 
     /**
-     * Record retention exam (Board course continuing students).
-     * BR10: Required for continuing board-course students
-     */
-    public function recordRetention(Request $request): RedirectResponse
-    {
-        $this->authorize('exam.record', [Courses::class, ExamStage::Retention, ExamType::CourseSpecific]);
-
-        $validated = $request->validate([
-            'studentId' => 'required|exists:students,studentId',
-            'courseId' => 'required|exists:courses,courseId',
-            'termId' => 'required|exists:academicterms,termId',
-            'examResult' => 'required|in:pass,fail',
-            'examDate' => 'required|date',
-        ]);
-
-        $course = Courses::findOrFail($validated['courseId']);
-        if (! $course->requiresRetentionExam) {
-            return back()->withErrors(['courseId' => 'This course does not require a retention exam.']);
-        }
-
-        Examresults::create([
-            'studentId' => $validated['studentId'],
-            'courseId' => $validated['courseId'],
-            'termId' => $validated['termId'],
-            'examStage' => ExamStage::Retention,
-            'examType' => ExamType::CourseSpecific,
-            'examResult' => $validated['examResult'],
-            'examDate' => $validated['examDate'],
-        ]);
-
-        return redirect()->route('exam.index')->with('success', 'Retention exam recorded.');
-    }
-
-    /**
      * Show pass/fail lists.
      */
     public function results(Request $request): Response
     {
         $this->authorize('viewAny', Examresults::class);
 
+        $user = $request->user();
+        $canGeneral = $user->hasPermissionTo('exam.record.general');
+        // Course-specific and retention results are handled and viewed only by
+        // the owning academic department (item 4).
+        $isDepartment = $user->hasPermissionTo('exam.record.courseSpecific')
+            || $user->hasPermissionTo('exam.record.retention');
+
         $query = Examresults::with(['student', 'course', 'term'])
             ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
             ->orderByDesc('examId');
 
+        // Same ownership split as index(): Guidance holds every School Entrance
+        // result including failed; the department holds its own course-specific
+        // results plus the transferred passers (names and results only).
+        if ($canGeneral && $isDepartment) {
+            // SysAdmin (both scopes): the full matrix.
+        } elseif ($canGeneral) {
+            $query->where('examStage', ExamStage::Entrance->value)
+                ->where('examType', ExamType::General->value);
+        } elseif ($isDepartment) {
+            $query->where('examStage', ExamStage::Entrance->value)
+                ->where(function ($q) {
+                    $q->where('examType', ExamType::CourseSpecific->value)
+                        ->orWhere(fn ($sq) => $sq
+                            ->where('examType', ExamType::General->value)
+                            ->where('examResult', ExamResult::Pass->value));
+                });
+        } else {
+            // View-only: the transferred passer roster.
+            $query->where('examType', ExamType::General->value)
+                ->where('examResult', ExamResult::Pass->value);
+        }
+
         $exams = $query->paginate(50)->withQueryString();
 
         return Inertia::render('Exam/Results', [
             'exams' => $exams,
-            'filters' => $request->only(['stage', 'result']),
+            'filters' => $request->only(['result']),
+            'can' => [
+                'recordGeneral' => $canGeneral,
+                'recordCourseSpecific' => $user->hasPermissionTo('exam.record.courseSpecific'),
+            ],
         ]);
     }
 }

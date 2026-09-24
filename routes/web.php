@@ -60,7 +60,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/exam/students', [ExamController::class, 'students'])->name('exam.students');
     Route::post('/exam/general', [ExamController::class, 'recordGeneral'])->name('exam.general.record');
     Route::post('/exam/course-specific', [ExamController::class, 'recordCourseSpecific'])->name('exam.course-specific.record');
-    Route::post('/exam/retention', [ExamController::class, 'recordRetention'])->name('exam.retention.record');
     Route::get('/exam/results', [ExamController::class, 'results'])->name('exam.results');
 
     /* ==================== Evaluation ==================== */
@@ -70,6 +69,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/evaluation/{enrollment}/subjects', [EvaluationController::class, 'proposeSubjects'])->name('evaluation.subjects.propose');
     Route::post('/evaluation/{enrollment}/credits', [EvaluationController::class, 'processCredits'])->name('evaluation.credits.process');
     Route::post('/evaluation/{enrollment}/sign', [EvaluationController::class, 'sign'])->name('evaluation.sign');
+    // Item 4: the retention exam is recorded in the Academic Evaluation area by
+    // the owning department (BR10) — not in the Exam module.
+    Route::post('/evaluation/{enrollment}/retention', [EvaluationController::class, 'recordRetention'])->name('evaluation.retention.record');
 
     /* ==================== Assessment ==================== */
     Route::get('/assessment', [AssessmentController::class, 'index'])->name('assessment.index');
@@ -102,6 +104,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/blocking/{block}', [BlockingController::class, 'show'])->name('blocking.show');
     Route::post('/blocking', [BlockingController::class, 'store'])->name('blocking.store');
     Route::patch('/blocking/{block}', [BlockingController::class, 'update'])->name('blocking.update');
+    Route::patch('/blocking/{block}/finalize', [BlockingController::class, 'finalize'])->name('blocking.finalize');
     Route::delete('/blocking/{block}', [BlockingController::class, 'destroy'])->name('blocking.destroy');
     Route::post('/blocking/{block}/schedules', [BlockingController::class, 'storeSchedule'])->name('blocking.schedules.store');
     Route::patch('/blocking/schedules/{schedule}', [BlockingController::class, 'updateSchedule'])->name('blocking.schedules.update');
@@ -114,6 +117,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/registrar', [RegistrarController::class, 'index'])->name('registrar.index');
     Route::get('/registrar/{enrollment}', [RegistrarController::class, 'show'])->name('registrar.show');
     Route::post('/registrar/{enrollment}/approve', [RegistrarController::class, 'approve'])->name('registrar.approve');
+    Route::post('/registrar/{enrollment}/return', [RegistrarController::class, 'returnToEvaluation'])->name('registrar.return');
     Route::get('/registrar/{enrollment}/print/certificate', [RegistrarController::class, 'printCertificate'])->name('registrar.print-certificate');
     Route::get('/registrar/{enrollment}/print/class-cards', [RegistrarController::class, 'printClassCards'])->name('registrar.print-class-cards');
     Route::get('/registrar/{enrollment}/print/subject-load', [RegistrarController::class, 'printSubjectLoad'])->name('registrar.print-subject-load');
@@ -129,11 +133,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/id', [IDController::class, 'index'])->name('id.index');
     Route::get('/id/{enrollment}', [IDController::class, 'show'])->name('id.show');
     Route::post('/id/{enrollment}', [IDController::class, 'create'])->name('id.create');
-    Route::post('/id/requests/{idRequest}/produce', [IDController::class, 'produceCard'])->name('id.produce');
-    Route::post('/id/cards/{studentId}/validate', [IDController::class, 'validate'])->name('id.validate');
-    Route::post('/id/cards/{studentId}/release', [IDController::class, 'release'])->name('id.release');
-    Route::post('/id/requests/{idRequest}/reissue', [IDController::class, 'reissue'])->name('id.reissue');
-    Route::post('/id/requests/{idRequest}/cancel', [IDController::class, 'cancel'])->name('id.cancel');
+    Route::post('/id/requests/{idRequest}/photo', [IDController::class, 'attachPhoto'])->name('id.photo');
+    Route::post('/id/requests/{idRequest}/validate', [IDController::class, 'validate'])->name('id.validate');
+    Route::post('/id/requests/{idRequest}/release', [IDController::class, 'release'])->name('id.release');
 
     /* ==================== Admin / Reference Data ==================== */
     Route::get('/admin/reference-data', [ReferenceDataController::class, 'index'])->name('admin.reference-data.index');

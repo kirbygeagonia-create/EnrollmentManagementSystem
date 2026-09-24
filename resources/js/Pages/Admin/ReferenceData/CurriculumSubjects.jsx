@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
 
 export default function CurriculumSubjects({ curriculum, subjects, allSubjects, semesters }) {
     const [showModal, setShowModal] = useState(false);
@@ -121,8 +121,6 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                 <PageHeader
                     title="Curriculum Subjects"
                     subtitle={curriculumTitle}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <>
                             <Link href={route('admin.reference-data.curriculums')} className="btn btn-secondary">
@@ -227,14 +225,14 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                             />
                         </FormSection>
                         <FormSection label="Semester Offered" error={form.errors.semesterOffered} required>
-                            <Select
+                            {/* Item 13 — three-option choice: segmented cards, not a dropdown. */}
+                            <RadioCards
+                                name="semesterOffered"
+                                label="Semester Offered"
                                 value={form.data.semesterOffered}
-                                onChange={(e) => form.setData('semesterOffered', e.target.value)}
+                                onChange={(v) => form.setData('semesterOffered', v)}
+                                columns={3}
                                 options={semesterOptions}
-                                placeholder="Select semester"
-                                className="form-input"
-                                error={form.errors.semesterOffered}
-                                required
                             />
                         </FormSection>
                     </div>

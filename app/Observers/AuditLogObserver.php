@@ -69,9 +69,30 @@ class AuditLogObserver
         $user = Auth::user();
         $userId = $user instanceof Staffusers ? $user->userId : null; // nullable; system tasks run without a session
 
+        // Item 3: the Admin role is read-everywhere (no direct mutation by
+        // permission). A write from an account that holds Admin WITHOUT the
+        // SysAdmin super-role is therefore an oversight-role override — the
+        // account holds no mutation authority, so the write happened outside
+        // its boundary. SysAdmin writes stay unflagged: Gate::before makes
+        // them the super-role's first-class authority, and flagging every
+        // staff8 action would dilute this marker into noise.
+        // Self-service account writes are NOT overrides: ProfileController
+        // updates a user's own name/email with no authorization gate, so an
+        // Admin editing their own profile would otherwise flag itself and
+        // dilute the marker into noise.
+        $isSelfService = $user !== null
+            && $model instanceof Staffusers
+            && $model->getKey() === $user->getKey();
+
+        $adminOverride = $user !== null
+            && ! $isSelfService
+            && $user->hasRole('Admin')
+            && ! $user->hasRole('SysAdmin');
+
         Auditlogs::create([
             'userId' => $userId,
             'action' => $action,
+            'adminOverride' => $adminOverride,
             'entityTable' => $model->getTable(),
             'entityId' => $model->getKey(),
             'oldValues' => $action === 'updated'

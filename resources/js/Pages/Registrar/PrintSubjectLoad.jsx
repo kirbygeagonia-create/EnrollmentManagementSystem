@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
-import { Badge } from '@/Components/ui';
+import { Badge, formatStatusLabel } from '@/Components/ui';
 
 export default function PrintSubjectLoad({ enrollment }) {
     const studentName = enrollment.student
@@ -148,8 +148,7 @@ function getYearSuffix(year) {
 }
 
 function formatStatus(status) {
-    if (!status) return '—';
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    return formatStatusLabel(status);
 }
 
 function getSubjectStatusTone(status) {

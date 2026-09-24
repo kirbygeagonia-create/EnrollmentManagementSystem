@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
 
 const typeOptions = [
     { value: '', label: 'All Types' },
@@ -27,6 +27,7 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
     const form = useForm({
         subjectCode: '',
         subjectName: '',
+        subjectDesc: '',
         lectureUnits: 0,
         labUnits: 0,
         subjectType: 'lecture',
@@ -35,9 +36,12 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
     const columns = useMemo(() => [
         { key: 'subjectCode', label: 'Code', className: 'font-mono text-sm' },
         { key: 'subjectName', label: 'Title' },
+        { key: 'subjectDesc', label: 'Description', className: 'hidden xl:table-cell', render: (row) => (
+            <span className="block max-w-xs truncate text-xs text-slate-500" title={row.subjectDesc}>{row.subjectDesc || '—'}</span>
+        )},
         { key: 'subjectType', label: 'Type', render: (row) => (
             <Badge tone={typeToneMap[row.subjectType] || 'neutral'}>
-                {row.subjectType?.charAt(0).toUpperCase() + row.subjectType?.slice(1)}
+                {formatStatusLabel(row.subjectType)}
             </Badge>
         )},
         { key: 'lectureUnits', label: 'Lec Units', className: 'text-center' },
@@ -60,6 +64,7 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
         form.reset({
             subjectCode: '',
             subjectName: '',
+            subjectDesc: '',
             lectureUnits: 0,
             labUnits: 0,
             subjectType: 'lecture',
@@ -72,6 +77,7 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
         form.reset({
             subjectCode: subject.subjectCode,
             subjectName: subject.subjectName,
+            subjectDesc: subject.subjectDesc || '',
             lectureUnits: subject.lectureUnits,
             labUnits: subject.labUnits,
             subjectType: subject.subjectType,
@@ -143,8 +149,6 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
                 <PageHeader
                     title="Subjects"
                     subtitle="Manage individual course subjects"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,14 +241,14 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
                             />
                         </FormSection>
                         <FormSection label="Subject Type" error={form.errors.subjectType} required>
-                            <Select
+                            {/* Item 13 — three-option type choice: segmented cards, not a dropdown. */}
+                            <RadioCards
+                                name="subjectType"
+                                label="Subject Type"
                                 value={form.data.subjectType}
-                                onChange={(e) => form.setData('subjectType', e.target.value)}
-                                options={subjectTypes.map(t => ({ value: t.value, label: t.value.charAt(0).toUpperCase() + t.value.slice(1) }))}
-                                placeholder="Select type"
-                                className="form-input"
-                                error={form.errors.subjectType}
-                                required
+                                onChange={(v) => form.setData('subjectType', v)}
+                                columns={3}
+                                options={subjectTypes.map(t => ({ value: t.value, label: formatStatusLabel(t.value) }))}
                             />
                         </FormSection>
                         <FormSection label="Subject Name" error={form.errors.subjectName} required>
@@ -279,6 +283,17 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
                                 required
                             />
                         </FormSection>
+                        <div className="md:col-span-2">
+                            <FormSection label="Description" error={form.errors.subjectDesc}>
+                                <textarea
+                                    rows={2}
+                                    value={form.data.subjectDesc}
+                                    onChange={(e) => form.setData('subjectDesc', e.target.value)}
+                                    className={`form-input ${form.errors.subjectDesc ? 'form-input-error' : ''}`}
+                                    placeholder="Official course description (e.g., CHED course description)"
+                                />
+                            </FormSection>
+                        </div>
                     </div>
                 </form>
             </Modal>

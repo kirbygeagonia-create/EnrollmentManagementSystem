@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 
@@ -60,13 +60,13 @@ export default function Show({ assessment, scholarshipTypes }) {
         { key: 'scholarshipName', label: 'Scholarship', render: (row) => row.scholarshipType?.scholarshipName || '—' },
         { key: 'coverageType', label: 'Coverage', render: (row) => (
             <Badge tone={coverageTypeToneMap[row.scholarshipType?.coverageType] || 'neutral'}>
-                {row.scholarshipType?.coverageType ? row.scholarshipType.coverageType.charAt(0).toUpperCase() + row.scholarshipType.coverageType.slice(1) : '—'}
+                {row.scholarshipType?.coverageType ? formatStatusLabel(row.scholarshipType.coverageType) : '—'}
             </Badge>
         )},
         { key: 'coveragePercent', label: 'Percent', render: (row) => row.scholarshipType?.coveragePercent ? `${row.scholarshipType.coveragePercent}%` : '—' },
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={row.status === 'active' ? 'success' : row.status === 'pending' ? 'pending' : 'danger'}>
-                {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : '—'}
+                {row.status ? formatStatusLabel(row.status) : '—'}
             </Badge>
         )},
     ], []);
@@ -78,7 +78,7 @@ export default function Show({ assessment, scholarshipTypes }) {
         { key: 'orNumber', label: 'Reference', render: (row) => row.orNumber || '—' },
         { key: 'paymentStatus', label: 'Status', render: (row) => (
             <Badge tone={row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? 'paid' : row.paymentStatus === 'pending' ? 'pending' : 'danger'}>
-                {row.paymentStatus ? row.paymentStatus.charAt(0).toUpperCase() + row.paymentStatus.slice(1) : '—'}
+                {row.paymentStatus ? formatStatusLabel(row.paymentStatus) : '—'}
             </Badge>
         )},
     ], []);
@@ -145,8 +145,6 @@ export default function Show({ assessment, scholarshipTypes }) {
                 <PageHeader
                     title="Student Fee Assessment & Scholarship Coverage"
                     subtitle={`${studentName} — ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.name || 'Current Term'})`}
-                    logo="/images/logos/scholarship.jpg"
-                    logoAlt="SEAIT Scholarship & Financial Aid Office"
                     phaseBadge="Phase 3 · Fee Assessment"
                     officeBadge="Office 3 · Scholarship Desk"
                 />
@@ -183,7 +181,7 @@ export default function Show({ assessment, scholarshipTypes }) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-brand-900">{statusBanner.label}</h3>
                         <Badge tone={statusBanner.tone === 'success' ? 'paid' : statusBanner.tone}>
-                            {enrollment?.enrollmentStatus ? enrollment.enrollmentStatus.charAt(0).toUpperCase() + enrollment.enrollmentStatus.slice(1) : '—'}
+                            {enrollment?.enrollmentStatus ? formatStatusLabel(enrollment.enrollmentStatus) : '—'}
                         </Badge>
                     </div>
                     <p className="text-sm text-brand-600 mt-1">{statusBanner.message}</p>
@@ -392,6 +390,7 @@ export default function Show({ assessment, scholarshipTypes }) {
                         className="btn btn-primary"
                         onClick={handleCompute}
                         disabled={isSubmitting || charges.length > 0}
+                        title={charges.length > 0 ? 'Assessment already computed — charges are listed above' : undefined}
                     >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m0 0h-6m6 0V7" />

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusOptions = [
@@ -39,7 +39,7 @@ export default function Index({ admissions, filters = {} }) {
         { key: 'term', label: 'Term', render: (row) => row.term?.name || '—' },
         { key: 'admissionStatus', label: 'Status', render: (row) => (
             <Badge tone={statusToneMap[row.admissionStatus] || 'neutral'}>
-                {row.admissionStatus?.charAt(0).toUpperCase() + row.admissionStatus?.slice(1)}
+                {formatStatusLabel(row.admissionStatus)}
             </Badge>
         )},
         { key: 'createdAt', label: 'Submitted', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-PH') : '—' },
@@ -86,8 +86,6 @@ export default function Index({ admissions, filters = {} }) {
                 <PageHeader
                     title="Admissions & Application Intake"
                     subtitle="Register first-year and transferee applicants, verify submitted physical documents, and gate admission approval"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Admissions Office"
                     phaseBadge="Phase 0 · Admissions Desk"
                     officeBadge="Office 6 · Admission Office"
                     actions={

@@ -2,6 +2,8 @@
 
 **Scope:** Does the React/Inertia UI properly show and enforce the intended enrollment workflow (phase badges, status gating of buttons, queue filters, workflow visualization, cross-page consistency)?
 
+**Companion audit:** input-control fit across every form (`Forms-UX-Audit-2026-09-22.md`) — this audit scoped input-control choice out; the companion sweep covers it.
+
 **Method:** Read every module action page (Show/Index), the shared workflow components, the state machine, all desk controllers, Dashboard queue logic, routes, enums, models, and seeders. Every finding below cites file:line evidence verified in this session. Nothing is speculative unless marked otherwise.
 
 ---

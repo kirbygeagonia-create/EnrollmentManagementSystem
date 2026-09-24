@@ -110,14 +110,6 @@ class Students extends Model
     }
 
     /**
-     * @return HasMany<Studentids, $this>
-     */
-    public function studentids(): HasMany
-    {
-        return $this->hasMany(Studentids::class, 'studentId');
-    }
-
-    /**
      * @return HasMany<Studentscholarships, $this>
      */
     public function scholarships(): HasMany

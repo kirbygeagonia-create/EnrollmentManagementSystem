@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, CauseEffectModal } from '@/Components/ui';
+import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLabel } from '@/Components/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -156,8 +156,6 @@ export default function Show({ admission, requirements }) {
                 <PageHeader
                     title="Applicant Admission & Requirement Verification"
                     subtitle={`${student?.firstName} ${student?.lastName} — ${admission.course?.courseName || '—'} (${admission.term?.termName || 'Current Term'})`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Admissions Office"
                     phaseBadge="Phase 0 · Document Verification"
                     officeBadge="Office 6 · Admission Desk"
                 />
@@ -211,7 +209,7 @@ export default function Show({ admission, requirements }) {
                         </>
                     )}
                     <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
-                        {admission.admissionStatus?.charAt(0).toUpperCase() + admission.admissionStatus?.slice(1)}
+                        {formatStatusLabel(admission.admissionStatus)}
                     </Badge>
                 </div>
             </div>
@@ -357,7 +355,7 @@ export default function Show({ admission, requirements }) {
                                                     </p>
                                                 </div>
                                                 <Badge tone={submissionStatusToneMap[status] || 'neutral'}>
-                                                    {status?.charAt(0).toUpperCase() + status?.slice(1)}
+                                                    {formatStatusLabel(status)}
                                                 </Badge>
                                             </div>
 

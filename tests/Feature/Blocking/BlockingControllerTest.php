@@ -459,6 +459,33 @@ class BlockingControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_schedule_update_allows_shifting_own_time(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        // Moving a schedule's own meeting to an overlapping range (Mon 9-10 →
+        // Mon 9-11, same instructor and room) must not flag a conflict against
+        // its own still-present old meeting — the old meeting is replaced.
+        $fixture = $this->createBlockWithSchedule();
+        $schedule = $fixture['schedule'];
+
+        $response = $this->patch(route('blocking.schedules.update', $schedule), [
+            'instructorId' => $fixture['instructor']->userId,
+            'roomId' => $fixture['room']->roomId,
+            'meetings' => [
+                ['dayOfWeek' => 'Monday', 'startTime' => '09:00', 'endTime' => '11:00'],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $schedule->refresh();
+        $schedule->load('meetings');
+        $this->assertEquals('09:00', $schedule->meetings->first()->startTime);
+        $this->assertEquals('11:00', $schedule->meetings->first()->endTime);
+    }
+
+    #[Test]
     public function test_unauthorized_office_cannot_assign(): void
     {
         // Create staff user for office 4 (Department Evaluation) for evaluatedBy
@@ -543,11 +570,14 @@ class BlockingControllerTest extends TestCase
             ],
         ]);
 
-        // Should succeed but with warning
+        // Should succeed but with warning — and the schedule must actually be
+        // persisted: the early-return regression would pass this test while
+        // silently dropping the save.
         $response->assertSessionHasNoErrors();
         $response->assertSessionHas('warning');
         $warning = session('warning');
         $this->assertStringContainsString('exceeds room capacity', $warning);
+        $this->assertEquals(1, Schedules::where('blockId', $block->blockId)->count(), 'Warning-only path must still persist the schedule');
     }
 
     #[Test]
@@ -633,5 +663,80 @@ class BlockingControllerTest extends TestCase
 
         // Schedule should still exist
         $this->assertTrue(Schedules::where('scheduleId', $schedule->scheduleId)->exists());
+    }
+
+    #[Test]
+    public function test_finalize_marks_block_schedule_final(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+
+        $this->patch(route('blocking.finalize', $block))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('final', $block->fresh()->scheduleStatus);
+    }
+
+    #[Test]
+    public function test_finalize_is_idempotent(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+
+        $this->patch(route('blocking.finalize', $block))->assertRedirect();
+        $this->assertSame('final', $block->fresh()->scheduleStatus);
+
+        // Re-clicking Finalize on an already-final block returns an info
+        // flash (mirrors the assessment finalize pattern), not an error.
+        $this->patch(route('blocking.finalize', $block))
+            ->assertRedirect()
+            ->assertSessionHas('info');
+
+        $this->assertSame('final', $block->fresh()->scheduleStatus);
+    }
+
+    #[Test]
+    public function test_finalized_block_rejects_schedule_changes(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+        $schedule = $fixture['schedule'];
+        $block->update(['scheduleStatus' => 'final']);
+
+        // Store: adding a slot to a finalized timetable is rejected
+        $this->post(route('blocking.schedules.store', $block), [
+            'subjectId' => Subjects::firstOrFail()->subjectId,
+            'instructorId' => Staffusers::where('officeId', '!=', 1)->firstOrFail()->userId,
+            'roomId' => Rooms::firstOrFail()->roomId,
+            'meetings' => [['dayOfWeek' => 'Tuesday', 'startTime' => '09:00', 'endTime' => '10:00']],
+        ])->assertSessionHasErrors('schedule');
+
+        // Update: editing an existing slot is rejected
+        $this->patch(route('blocking.schedules.update', $schedule), [
+            'meetings' => [['dayOfWeek' => 'Tuesday', 'startTime' => '09:00', 'endTime' => '10:00']],
+        ])->assertSessionHasErrors('schedule');
+
+        // Destroy: deleting a slot is rejected
+        $this->delete(route('blocking.schedules.destroy', $schedule))->assertSessionHasErrors('schedule');
+
+        // Nothing changed
+        $this->assertSame(1, $schedule->fresh()->meetings()->count());
+
+        // Capacity stays editable on a finalized block (item 9)
+        $this->patch(route('blocking.update', $block), [
+            'blockName' => 'Renamed Block',
+            'maxStudents' => 50,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(50, $block->fresh()->maxStudents);
     }
 }

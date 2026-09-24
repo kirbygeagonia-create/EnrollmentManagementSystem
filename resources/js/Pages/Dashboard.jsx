@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, Link } from '@inertiajs/react';
-import { Card, StatCard, Badge } from '@/Components/ui';
+import { Card, StatCard, Badge, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
 import { useState, useEffect, useMemo } from 'react';
 
 function AdmissionIcon({ className }) {
@@ -66,6 +66,7 @@ const categoryLabels = {
 export default function Dashboard() {
     const { user } = usePage().props.auth;
     const stats = usePage().props.stats || {};
+    const progressTracking = usePage().props.progressTracking || [];
     const [queueCounts, setQueueCounts] = useState({});
     const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -253,6 +254,59 @@ export default function Dashboard() {
                                 </div>
                             }
                         >
+                            {/* Item 2: the System Admin tab swaps module tiles for a
+                                per-applicant progress workflow view — each recent
+                                enrollment's position in the 6-7 step pipeline. */}
+                            {selectedCategory === 'admin' ? (
+                                progressTracking.length === 0 ? (
+                                    <div className="py-10 text-center">
+                                        <p className="text-sm font-bold text-slate-900">No enrollment activity yet</p>
+                                        <p className="text-xs text-slate-500 mt-1">Applicant workflow progress appears here as students move through the pipeline.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        {progressTracking.map((t) => {
+                                            const pct = t.totalSteps > 0 ? Math.round((t.completedSteps / t.totalSteps) * 100) : 0;
+                                            const done = t.enrollmentStatus === 'enrolled';
+                                            return (
+                                                <Link
+                                                    key={t.enrollmentId}
+                                                    href={route('students.show', { student: t.studentId })}
+                                                    className="group p-3.5 rounded-xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-seait-400 hover:shadow-card-hover transition-all duration-150 flex items-center gap-4 text-left"
+                                                >
+                                                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-heading font-bold transition-all duration-200 ${
+                                                        done
+                                                            ? 'bg-emerald-600 text-white'
+                                                            : 'bg-seait-100 text-seait-700 group-hover:bg-seait-600 group-hover:text-white'
+                                                    }`}>
+                                                        {pct}%
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-sm font-bold text-slate-900 group-hover:text-seait-700 transition-colors truncate">
+                                                                {t.studentName}
+                                                            </span>
+                                                            <Badge tone={enrollmentStatusTone[t.enrollmentStatus] || 'neutral'}>
+                                                                {formatStatusLabel(t.enrollmentStatus)}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="h-1.5 w-full rounded-full bg-slate-200 mt-2 overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-500 ${done ? 'bg-emerald-500' : 'bg-seait-500'}`}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        <p className="text-[11px] font-medium text-slate-500 mt-1 truncate leading-tight">
+                                                            {t.courseCode || '—'} · {t.totalSteps > 0 ? `${t.completedSteps}/${t.totalSteps} steps signed` : 'workflow not started'}
+                                                            {t.currentOffice ? ` · at ${t.currentOffice}` : done ? ' · complete' : ''}
+                                                        </p>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )
+                            ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {filteredLinks.map((link) => (
                                     <Link
@@ -279,6 +333,7 @@ export default function Dashboard() {
                                     </Link>
                                 ))}
                             </div>
+                            )}
                         </Card>
                     </div>
 

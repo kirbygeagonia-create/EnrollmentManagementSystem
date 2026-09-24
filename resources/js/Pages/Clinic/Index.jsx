@@ -61,8 +61,6 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="School Clinic & Health Assessment"
                     subtitle="Record physical examinations, biometric vitals, and PhilHealth registrations"
-                    logo="/images/logos/clinic.jpg"
-                    logoAlt="SEAIT School Clinic"
                     phaseBadge="Phase 7 · Clinic Desk"
                     officeBadge="Office 11 · School Clinic"
                 />

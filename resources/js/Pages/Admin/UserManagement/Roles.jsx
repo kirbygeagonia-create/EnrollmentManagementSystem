@@ -153,8 +153,6 @@ export default function Roles({ roles, permissions }) {
                 <PageHeader
                     title="Roles Management"
                     subtitle="Define system roles and assign granular permissions"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

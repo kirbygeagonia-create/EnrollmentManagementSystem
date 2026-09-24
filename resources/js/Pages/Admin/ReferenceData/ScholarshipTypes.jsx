@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel } from '@/Components/ui';
 
 const coverageOptions = [
     { value: '', label: 'All Coverage Types' },
@@ -32,7 +32,7 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
         { key: 'scholarshipName', label: 'Name' },
         { key: 'coverageType', label: 'Coverage', render: (row) => (
             <Badge tone={coverageToneMap[row.coverageType] || 'neutral'}>
-                {row.coverageType?.charAt(0).toUpperCase() + row.coverageType?.slice(1)}
+                {formatStatusLabel(row.coverageType)}
             </Badge>
         ), className: 'text-center' },
         { key: 'coveragePercent', label: 'Coverage %', render: (row) => `${parseFloat(row.coveragePercent).toFixed(2)}%`, className: 'text-center font-mono' },
@@ -132,8 +132,6 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
                 <PageHeader
                     title="Scholarship Types"
                     subtitle="Manage available scholarship programs"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +227,7 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
                             <Select
                                 value={form.data.coverageType}
                                 onChange={(e) => form.setData('coverageType', e.target.value)}
-                                options={coverageTypes.map(c => ({ value: c.value, label: c.value.charAt(0).toUpperCase() + c.value.slice(1) }))}
+                                options={coverageTypes.map(c => ({ value: c.value, label: formatStatusLabel(c.value) }))}
                                 placeholder="Select coverage type"
                                 className="form-input"
                                 error={form.errors.coverageType}

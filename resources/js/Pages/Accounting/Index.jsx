@@ -88,8 +88,6 @@ export default function Index({ assessments, filters = {} }) {
                 <PageHeader
                     title="Accounting & Cashier Terminal"
                     subtitle="Collect enrollment fee payments, generate Official Receipts (OR), and monitor account balances"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Accounting Office"
                     phaseBadge="Phase 4 · Cashier Desk"
                     officeBadge="Office 2 · Accounting Department"
                 />

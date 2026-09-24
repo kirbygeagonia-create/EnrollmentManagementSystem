@@ -1,24 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-
-const stageOptions = [
-    { value: '', label: 'All Stages' },
-    { value: 'entrance', label: 'Entrance' },
-    { value: 'retention', label: 'Retention' },
-];
-
-const typeOptions = [
-    { value: '', label: 'All Types' },
-    { value: 'general', label: 'General' },
-    { value: 'courseSpecific', label: 'Course Specific' },
-];
-
-const stageToneMap = {
-    entrance: 'info',
-    retention: 'warning',
-};
 
 const typeToneMap = {
     general: 'neutral',
@@ -30,12 +13,35 @@ const resultToneMap = {
     fail: 'danger',
 };
 
-export default function Index({ exams, filters = {} }) {
+const typeLabels = {
+    general: 'School Entrance',
+    courseSpecific: 'Course-Specific',
+};
+
+export default function Index({ exams, filters = {}, can = {} }) {
     const [search, setSearch] = useState(filters.search || '');
-    const [stage, setStage] = useState(filters.stage || '');
     const [type, setType] = useState(filters.type || '');
 
+    // Item 4: recording scopes arrive from the backend — Guidance holds
+    // exam.record.general (School Entrance, Stage 1); the owning academic
+    // department holds exam.record.courseSpecific (Stage 2). A viewer with
+    // neither sees only the transferred passer roster.
+    const canGeneral = can.recordGeneral ?? false;
+    const canCourseSpecific = can.recordCourseSpecific ?? false;
+    const isGuidance = canGeneral && !canCourseSpecific;
+    const isDepartment = canCourseSpecific && !canGeneral;
+
     const rows = useMemo(() => exams?.data || [], [exams]);
+
+    // The Exam module is entrance-only now (retention moved to Academic
+    // Evaluation), so the stage filter is gone. The type filter offers only
+    // the exams this desk owns.
+    const typeOptions = useMemo(() => {
+        const options = [{ value: '', label: 'All Types' }];
+        if (canGeneral || !isDepartment) options.push({ value: 'general', label: 'School Entrance' });
+        if (canCourseSpecific || isGuidance) options.push({ value: 'courseSpecific', label: 'Course-Specific' });
+        return options;
+    }, [canGeneral, canCourseSpecific, isGuidance, isDepartment]);
 
     // Summary tiles derived from the current page
     const stats = useMemo(() => {
@@ -52,19 +58,14 @@ export default function Index({ exams, filters = {} }) {
         { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
         { key: 'studentName', label: 'Student Name' },
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'examStage', label: 'Stage', render: (row) => (
-            <Badge tone={stageToneMap[row.examStage] || 'neutral'}>
-                {row.examStage?.charAt(0).toUpperCase() + row.examStage?.slice(1)}
-            </Badge>
-        )},
-        { key: 'examType', label: 'Type', render: (row) => (
+        { key: 'examType', label: 'Exam', render: (row) => (
             <Badge tone={typeToneMap[row.examType] || 'neutral'}>
-                {row.examType === 'courseSpecific' ? 'Course Specific' : row.examType?.charAt(0).toUpperCase() + row.examType?.slice(1)}
+                {typeLabels[row.examType] || row.examType}
             </Badge>
         )},
         { key: 'examResult', label: 'Result', render: (row) => (
             <Badge tone={resultToneMap[row.examResult] || 'neutral'}>
-                {row.examResult?.charAt(0).toUpperCase() + row.examResult?.slice(1)}
+                {formatStatusLabel(row.examResult)}
             </Badge>
         )},
         { key: 'examDate', label: 'Date', render: (row) => row.examDate ? new Date(row.examDate).toLocaleDateString('en-PH') : '—' },
@@ -74,7 +75,6 @@ export default function Index({ exams, filters = {} }) {
         e.preventDefault();
         router.get(route('exam.index'), {
             search: search || undefined,
-            stage: stage || undefined,
             type: type || undefined,
         }, {
             preserveState: true,
@@ -96,33 +96,65 @@ export default function Index({ exams, filters = {} }) {
         </div>
     );
 
+    // Item 4: the page frames itself by the viewer's desk. Guidance sees all
+    // School Entrance results (pass and failed); the department sees its own
+    // course-specific exams plus the transferred passers; everyone else sees
+    // only the transferred passers.
+    const subtitle = isGuidance
+        ? 'School Entrance Examination — Stage 1 (BR9): record every result, pass and failed, and transfer the passers to the academic departments'
+        : isDepartment
+            ? 'Course-specific entrance examinations — Stage 2 (BR9): your department\'s own exams, plus the School Entrance passers transferred from Guidance'
+            : canGeneral
+                ? 'School Entrance Examination (Stage 1) and course-specific department exams (Stage 2) — the BR9 two-stage workflow'
+                : 'School Entrance Examination passers transferred from Guidance — names and results only';
+
+    // The general (School Entrance) exam is Stage 1 — it is always the first
+    // exam, so the empty-state shortcut points there and only for Guidance.
+    const hasFilters = Boolean(search || type);
+
     return (
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Guidance Services & Testing Center"
-                    subtitle="Administer and record 2-stage entrance exam results (General Guidance & Academic Dept) and retention gates"
-                    logo="/images/logos/guidance-office.jpg"
-                    logoAlt="SEAIT Guidance Services & Testing Center"
-                    phaseBadge="Phase 0.5 & Retention"
-                    officeBadge="Office 4 · Guidance & Testing Desk"
+                    title="Entrance Examinations"
+                    subtitle={subtitle}
+                    phaseBadge="Phase 0.5 · BR9"
+                    officeBadge={isGuidance ? 'Guidance & Testing Center' : 'Academic Departments'}
                     actions={
                         <div className="flex items-center gap-2">
-                            <Link href={route('exam.create', { stage: 'retention' })} className="btn btn-secondary">
-                                Record Retention
-                            </Link>
-                            <Link href={route('exam.create')} className="btn btn-primary">
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Record Entrance Exam
-                            </Link>
+                            {canCourseSpecific && (
+                                <Link href={route('exam.create', { type: 'courseSpecific' })} className="btn btn-secondary">
+                                    Record Course-Specific Exam
+                                </Link>
+                            )}
+                            {canGeneral && (
+                                <Link href={route('exam.create')} className="btn btn-primary">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Record School Entrance Exam
+                                </Link>
+                            )}
                         </div>
                     }
                 />
             }
         >
-            <Head title="Entrance Exams" />
+            <Head title="Entrance Examinations" />
+
+            {/* Passer transfer note — what crosses the office boundary (BR9) */}
+            {(isDepartment || (!canGeneral && !canCourseSpecific)) && (
+                <div className="mb-5 flex items-start gap-3 rounded-lg border border-info-200 bg-info-50 px-4 py-3 text-sm text-info-900 dark:border-info-800 dark:bg-info-950/40 dark:text-info-100">
+                    <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                        {isDepartment
+                            ? 'Rows marked “School Entrance · Pass” are passers transferred from the Guidance & Testing Center — names and results only. Failed School Entrance results stay with Guidance.'
+                            : 'This roster lists the School Entrance Examination passers transferred from the Guidance & Testing Center. Failed results remain with Guidance.'}
+                    </span>
+                </div>
+            )}
 
             {/* Summary tiles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
@@ -172,16 +204,7 @@ export default function Index({ exams, filters = {} }) {
                         className="form-input"
                     />
                 </FilterBarField>
-                <FilterBarField label="Stage">
-                    <Select
-                        value={stage}
-                        onChange={setStage}
-                        options={stageOptions}
-                        placeholder="All Stages"
-                        className="form-input"
-                    />
-                </FilterBarField>
-                <FilterBarField label="Type">
+                <FilterBarField label="Exam">
                     <Select
                         value={type}
                         onChange={setType}
@@ -209,9 +232,9 @@ export default function Index({ exams, filters = {} }) {
                 ) : (
                     <EmptyState
                         title="No exam records found"
-                        message={search || stage || type ? 'Try adjusting your filters to find matching records.' : 'No exam results have been recorded yet.'}
-                        actionLabel={!search && !stage && !type ? 'Record First Exam' : undefined}
-                        onAction={!search && !stage && !type ? () => router.visit(route('exam.create')) : undefined}
+                        message={hasFilters ? 'Try adjusting your filters to find matching records.' : 'No exam results have been recorded yet.'}
+                        actionLabel={canGeneral && !hasFilters ? 'Record First Exam' : undefined}
+                        onAction={canGeneral && !hasFilters ? () => router.visit(route('exam.create')) : undefined}
                         icon={
                             <svg className="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

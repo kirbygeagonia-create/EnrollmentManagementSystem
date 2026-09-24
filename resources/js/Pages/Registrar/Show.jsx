@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal } from '@/Components/ui';
 import { useState } from 'react';
 
 const checklistSteps = [
@@ -13,9 +13,16 @@ const checklistSteps = [
 
 export default function Show({ enrollment, checklist, allValid }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [returnOpen, setReturnOpen] = useState(false);
 
     const form = useForm({
         _method: 'post',
+    });
+
+    // Item 8: registrar hold — return a paid enrollment to Department
+    // Evaluation with a mandatory reason.
+    const returnForm = useForm({
+        returnReason: '',
     });
 
     const handleApprove = () => {
@@ -29,6 +36,15 @@ export default function Show({ enrollment, checklist, allValid }) {
         });
     };
 
+    const confirmReturn = () => {
+        returnForm.post(route('registrar.return', { enrollment: enrollment.enrollmentId }), {
+            onSuccess: () => {
+                setReturnOpen(false);
+                returnForm.reset();
+            },
+        });
+    };
+
     const termLabel = enrollment.term
         ? `${enrollment.term.semester?.value || enrollment.term.semester} ${enrollment.term.academicYear?.yearLabel || ''}`.trim()
         : '—';
@@ -38,6 +54,8 @@ export default function Show({ enrollment, checklist, allValid }) {
         : '—';
 
     const isEnrolled = enrollment.enrollmentStatus === 'enrolled' || enrollment.enrollmentStatus?.value === 'enrolled';
+    const isPaid = enrollment.enrollmentStatus === 'paid' || enrollment.enrollmentStatus?.value === 'paid';
+    const isReturned = enrollment.enrollmentStatus === 'returnedToEvaluation' || enrollment.enrollmentStatus?.value === 'returnedToEvaluation';
 
     const enrolledSubjects = enrollment.enrolledSubjects || [];
     const totalUnits = enrolledSubjects.reduce((sum, es) => {
@@ -52,8 +70,6 @@ export default function Show({ enrollment, checklist, allValid }) {
                 <PageHeader
                     title="Registrar Official Enrollment & Certificate Studio"
                     subtitle={`${studentName} • ${enrollment.course?.courseName || '—'}`}
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="Office of the Registrar Seal"
                     phaseBadge="Phase 5 · Official Enrollment"
                     officeBadge="Office 1 · Office of the Registrar"
                     actions={
@@ -65,6 +81,16 @@ export default function Show({ enrollment, checklist, allValid }) {
             }
         >
             <Head title={`Registrar — ${studentName}`} />
+
+            {/* Item 8: the hold must be visible on the Registrar's own page,
+                not just in the queue badge and the evaluator's banner. */}
+            {isReturned && (
+                <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <span className="font-bold">Returned by the Registrar for Re-Evaluation.</span>{' '}
+                    {enrollment.returnReason || 'No reason recorded.'} The evaluator adjusts the load and resubmits —
+                    approval unlocks once the evaluation is back to Evaluated.
+                </div>
+            )}
 
             {/* Quick Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -104,8 +130,8 @@ export default function Show({ enrollment, checklist, allValid }) {
                 <StatCard
                     compact
                     label="Enrollment Status"
-                    value={isEnrolled ? 'OFFICIALLY ENROLLED' : 'READY FOR APPROVAL'}
-                    iconBg={isEnrolled ? 'success' : 'accent'}
+                    value={isEnrolled ? 'OFFICIALLY ENROLLED' : isReturned ? 'ON HOLD — RE-EVALUATION' : 'READY FOR APPROVAL'}
+                    iconBg={isEnrolled ? 'success' : isReturned ? 'warning' : 'accent'}
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -115,7 +141,7 @@ export default function Show({ enrollment, checklist, allValid }) {
             </div>
 
             {/* Enrollment Workflow Progress */}
-            <Card title="Enrollment Workflow Progress" subtitle="The 8-step workflow form — signed offices and pending steps" className="mb-5">
+            <Card title="Enrollment Workflow Progress" subtitle="Signed offices and pending steps per enrollment type" className="mb-5">
                 <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
             </Card>
 
@@ -174,17 +200,33 @@ export default function Show({ enrollment, checklist, allValid }) {
                         {/* Approval Button */}
                         <div className="pt-5 border-t border-slate-100 mt-5">
                             {!isEnrolled ? (
-                                <button
-                                    type="button"
-                                    onClick={handleApprove}
-                                    disabled={!allValid || form.processing}
-                                    className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-seait-600 to-amber-700 hover:from-seait-500 hover:to-amber-600 text-white font-heading font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    {form.processing ? 'Finalizing Enrollment...' : 'Official Registrar Approval & Certification'}
-                                </button>
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleApprove}
+                                        disabled={!allValid || form.processing || isReturned}
+                                        title={isReturned ? 'On hold — returned to Department Evaluation. Approvable again once the evaluation is resubmitted.' : undefined}
+                                        className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-seait-600 to-amber-700 hover:from-seait-500 hover:to-amber-600 text-white font-heading font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {form.processing ? 'Finalizing Enrollment...' : 'Official Registrar Approval & Certification'}
+                                    </button>
+                                    {isPaid && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReturnOpen(true)}
+                                            disabled={returnForm.processing}
+                                            className="w-full mt-2.5 py-3 px-4 rounded-xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-heading font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                            </svg>
+                                            Return to Department Evaluation
+                                        </button>
+                                    )}
+                                </>
                             ) : (
                                 <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold text-xs flex items-center justify-center gap-2">
                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -351,6 +393,63 @@ export default function Show({ enrollment, checklist, allValid }) {
                 cancelText="Return to Verification"
                 loading={form.processing}
             />
+
+            {/* Return to Department Evaluation — Required Reason Modal (Item 8).
+                Shared Modal: Escape, click-outside, and focus trap for free. */}
+            <Modal
+                show={returnOpen}
+                onClose={() => {
+                    setReturnOpen(false);
+                    returnForm.reset();
+                }}
+                title="Return to Department Evaluation"
+                subtitle={`${studentName} re-enters the Department Evaluation queue for correction`}
+                size="sm"
+                footer={
+                    <div className="flex items-center justify-end gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setReturnOpen(false);
+                                returnForm.reset();
+                            }}
+                            className="btn btn-ghost btn-sm"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmReturn}
+                            disabled={returnForm.processing || returnForm.data.returnReason.trim().length < 10}
+                            title={returnForm.data.returnReason.trim().length < 10 ? 'Return reason must be at least 10 characters' : undefined}
+                            className="btn btn-primary btn-sm disabled:opacity-50"
+                        >
+                            {returnForm.processing ? 'Returning…' : 'Confirm Return'}
+                        </button>
+                    </div>
+                }
+            >
+                <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Return Reason <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={returnForm.data.returnReason}
+                        onChange={(e) => returnForm.setData('returnReason', e.target.value)}
+                        placeholder="e.g., Subject load conflicts with the student's advising plan — re-evaluate units."
+                        className="w-full text-sm rounded-xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
+                    />
+                    {returnForm.errors.returnReason && (
+                        <p className="form-error mt-1">{returnForm.errors.returnReason}</p>
+                    )}
+                    {returnForm.data.returnReason.trim().length > 0 && returnForm.data.returnReason.trim().length < 10 && (
+                        <p className="text-xs text-slate-500 mt-1">
+                            Minimum 10 characters — {10 - returnForm.data.returnReason.trim().length} more needed.
+                        </p>
+                    )}
+                </div>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

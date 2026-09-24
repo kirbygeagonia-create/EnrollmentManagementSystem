@@ -14,7 +14,7 @@ class Subjects extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['subjectCode', 'subjectName', 'lectureUnits', 'labUnits', 'subjectType'];
+    protected $fillable = ['subjectCode', 'subjectName', 'subjectDesc', 'lectureUnits', 'labUnits', 'subjectType'];
 
     protected function casts(): array
     {

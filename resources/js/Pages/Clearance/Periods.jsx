@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, Badge, Modal, ConfirmDialog, EmptyState, FormSection, Select, StatCard } from '@/Components/ui';
+import { PageHeader, Card, Badge, Modal, ConfirmDialog, EmptyState, FormSection, Select, StatCard, RadioCards, formatStatusLabel as titleCase } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { useForm } from '@inertiajs/react';
 
@@ -12,8 +12,6 @@ const periodStatusToneMap = {
 };
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
-
-const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
 
 // Distinct terms available for selection (deduped by termId).
 const useTermOptions = (periods) => useMemo(() => periods
@@ -135,10 +133,8 @@ export default function Periods({ periods }) {
                 <PageHeader
                     title="Clearance Windows & Term Periods"
                     subtitle="Open and close clearance processing windows for each academic semester"
-                    logo="/images/logos/safety-and-security.jpg"
-                    logoAlt="Safety and Security Office (Clearance Periods)"
                     phaseBadge="Phase 1 · Clearance Setup"
-                    officeBadge="Office 6 · Safety & Security"
+                    officeBadge="Office 1 · Registrar"
                     actions={
                         <button
                             type="button"
@@ -345,16 +341,16 @@ export default function Periods({ periods }) {
                         />
                     </FormSection>
                     <FormSection label="Status" required error={createErrors.periodStatus} className="sm:col-span-2">
-                        <Select
+                        {/* Item 13 — open/closed is a binary choice: radio pair, not a dropdown. Same control as the edit modal. */}
+                        <RadioCards
+                            name="createPeriodStatus"
+                            label="Status"
                             value={createData.periodStatus}
-                            onChange={(e) => setCreateData('periodStatus', e.target.value)}
+                            onChange={(v) => setCreateData('periodStatus', v)}
                             options={[
-                                { value: 'open', label: 'Open' },
+                                { value: 'open', label: 'Open', tone: 'success' },
                                 { value: 'closed', label: 'Closed' },
                             ]}
-                            placeholder="Select status"
-                            className={`form-input ${createErrors.periodStatus ? 'form-input-error' : ''}`}
-                            required
                         />
                     </FormSection>
                 </div>
@@ -407,16 +403,16 @@ export default function Periods({ periods }) {
                             </div>
                         </div>
                         <FormSection label="Status" required error={editErrors.periodStatus} hint="Open periods accept new clearance slips. Closed periods are read-only.">
-                            <Select
+                            {/* Item 13 — open/closed is a binary choice: radio pair, not a dropdown. */}
+                            <RadioCards
+                                name="periodStatus"
+                                label="Status"
                                 value={editData.periodStatus}
-                                onChange={(e) => setEditData('periodStatus', e.target.value)}
+                                onChange={(v) => setEditData('periodStatus', v)}
                                 options={[
-                                    { value: 'open', label: 'Open' },
+                                    { value: 'open', label: 'Open', tone: 'success' },
                                     { value: 'closed', label: 'Closed' },
                                 ]}
-                                placeholder="Select status"
-                                className={`form-input ${editErrors.periodStatus ? 'form-input-error' : ''}`}
-                                required
                             />
                         </FormSection>
                     </div>

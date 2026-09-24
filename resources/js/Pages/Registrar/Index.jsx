@@ -1,16 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-
-const statusToneMap = {
-    pending: 'pending',
-    evaluated: 'evaluated',
-    assessed: 'assessed',
-    paid: 'paid',
-    enrolled: 'enrolled',
-    dropped: 'dropped',
-};
 
 // Inline icon — queue of records awaiting registrar validation
 const QueueIcon = () => (
@@ -28,8 +19,8 @@ export default function Index({ enrollments, filters = {} }) {
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `${row.yearLevel}${getYearSuffix(row.yearLevel)} Year` : '—' },
         { key: 'enrollmentStatus', label: 'Status', render: (row) => (
-            <Badge tone={statusToneMap[row.enrollmentStatus?.value || row.enrollmentStatus] || 'neutral'}>
-                {formatStatus(row.enrollmentStatus?.value || row.enrollmentStatus)}
+            <Badge tone={enrollmentStatusTone[row.enrollmentStatus?.value || row.enrollmentStatus] || 'neutral'}>
+                {formatStatusLabel(row.enrollmentStatus?.value || row.enrollmentStatus)}
             </Badge>
         )},
         { key: 'term', label: 'Term', render: (row) => row.term ? `${row.term.semester?.value || row.term.semester} ${row.term.academicYear?.yearLabel || ''}`.trim() : '—' },
@@ -70,8 +61,6 @@ export default function Index({ enrollments, filters = {} }) {
                 <PageHeader
                     title="Office of the Registrar — Approval Terminal"
                     subtitle="Validate upstream clearance, accounting payment, and academic evaluation to officially finalize student enrollment"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="Office of the Registrar Seal"
                     phaseBadge="Phase 5 · Registrar Central Desk"
                     officeBadge="Office 1 · Office of the Registrar"
                 />
@@ -168,9 +157,4 @@ function getYearSuffix(year) {
     if (year === 2) return 'nd';
     if (year === 3) return 'rd';
     return 'th';
-}
-
-function formatStatus(status) {
-    if (!status) return '—';
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }

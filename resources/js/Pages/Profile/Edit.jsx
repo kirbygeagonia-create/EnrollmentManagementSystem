@@ -12,8 +12,6 @@ export default function Edit() {
                 <PageHeader
                     title="Profile"
                     subtitle="Manage your account information and security settings"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT logo"
                 />
             }
         >

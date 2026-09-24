@@ -24,13 +24,14 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Dedicated Exam-module coverage (BR9 two-stage entrance exam, BR10 retention).
+ * Dedicated Exam-module coverage (BR9 two-stage entrance exam).
  *
  * Mirrors the Clinic controller test structure: isolated SQLite database,
- * seeded RBAC, and direct model fixtures. Exercises the permission-gated
- * recording endpoints (general / courseSpecific / retention), the BR9
- * general-pass prerequisite, admission auto-status updates, and the
- * exam.students JSON lookup.
+ * seeded RBAC, and direct model fixtures. Exercises the item-4 ownership
+ * boundaries (Guidance = School Entrance only; the academic department =
+ * course-specific only), the BR9 general-pass prerequisite, the BR9 passer
+ * transfer surfaced through the exam.students lookup, admission auto-status
+ * updates, and the retention exam's move into the Academic Evaluation area.
  */
 class ExamControllerTest extends TestCase
 {
@@ -223,6 +224,19 @@ class ExamControllerTest extends TestCase
         ]);
     }
 
+    private function recordGeneral(Staffusers $actor, Students $student, int $courseId, string $result): void
+    {
+        $this->actingAs($actor)
+            ->post(route('exam.general.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $courseId,
+                'termId' => $this->termId,
+                'examResult' => $result,
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('exam.index'));
+    }
+
     #[Test]
     public function exam_index_and_results_are_viewable_with_exam_view(): void
     {
@@ -230,6 +244,21 @@ class ExamControllerTest extends TestCase
 
         $this->actingAs($guidance)->get(route('exam.index'))->assertOk();
         $this->actingAs($guidance)->get(route('exam.results'))->assertOk();
+    }
+
+    #[Test]
+    public function exam_index_is_viewable_by_every_desk_shape(): void
+    {
+        // Item 4: the index is a view over the desk-owned rows — Guidance,
+        // the department, and view-only staff all render it; only the row
+        // scopes differ (asserted through the JSON lookup endpoints).
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $viewer = $this->staffWithRole('Staff', 2);
+
+        $this->actingAs($department)->get(route('exam.index'))->assertOk();
+        $this->actingAs($department)->get(route('exam.results'))->assertOk();
+        $this->actingAs($viewer)->get(route('exam.index'))->assertOk();
+        $this->actingAs($viewer)->get(route('exam.results'))->assertOk();
     }
 
     #[Test]
@@ -362,14 +391,56 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
+    public function guidance_cannot_record_course_specific_exam(): void
+    {
+        // Item 4: the course-specific entrance exam is handled and viewed only
+        // by the owning academic department — Guidance must not record it.
+        $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $student = $this->createStudent();
+
+        $this->actingAs($guidance)
+            ->post(route('exam.course-specific.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $this->entranceCourseId,
+                'termId' => $this->termId,
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, Examresults::where('examType', ExamType::CourseSpecific->value)->count());
+    }
+
+    #[Test]
+    public function department_cannot_record_general_exam(): void
+    {
+        // Item 4: the School Entrance Examination is Guidance-only — the
+        // academic department must not record the general stage.
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+
+        $this->actingAs($department)
+            ->post(route('exam.general.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $this->entranceCourseId,
+                'termId' => $this->termId,
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, Examresults::count());
+    }
+
+    #[Test]
     public function course_specific_requires_general_pass_first(): void
     {
-        $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $department = $this->staffWithRole('DeptEvaluator', 4);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
         // No general exam recorded yet — BR9 requires it to be PASSED first.
-        $this->actingAs($guidance)
+        $this->actingAs($department)
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $student->studentId,
                 'courseId' => $this->entranceCourseId,
@@ -390,22 +461,15 @@ class ExamControllerTest extends TestCase
     public function course_specific_pass_approves_admission(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $department = $this->staffWithRole('DeptEvaluator', 4);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
-        // Stage 1: general pass
-        $this->actingAs($guidance)
-            ->post(route('exam.general.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => $this->entranceCourseId,
-                'termId' => $this->termId,
-                'examResult' => 'pass',
-                'examDate' => now()->toDateString(),
-            ])
-            ->assertRedirect(route('exam.index'));
+        // Stage 1: Guidance records the general pass.
+        $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'pass');
 
-        // Stage 2: course-specific pass → admission auto-approved
-        $this->actingAs($guidance)
+        // Stage 2: the department records its own pass → admission approved.
+        $this->actingAs($department)
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $student->studentId,
                 'courseId' => $this->entranceCourseId,
@@ -431,19 +495,13 @@ class ExamControllerTest extends TestCase
     public function course_specific_failure_rejects_admission(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $department = $this->staffWithRole('DeptEvaluator', 4);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
-        $this->actingAs($guidance)
-            ->post(route('exam.general.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => $this->entranceCourseId,
-                'termId' => $this->termId,
-                'examResult' => 'pass',
-                'examDate' => now()->toDateString(),
-            ]);
+        $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'pass');
 
-        $this->actingAs($guidance)
+        $this->actingAs($department)
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $student->studentId,
                 'courseId' => $this->entranceCourseId,
@@ -460,48 +518,89 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
-    public function retention_exam_requires_retention_course(): void
+    public function retention_exam_is_recorded_in_evaluation_area_by_department(): void
     {
+        // Item 4 / BR10: the retention exam lives in the Academic Evaluation
+        // area, handled by the owning academic department — not the Exam module.
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student, $this->retentionCourseId);
+
+        $this->actingAs($department)
+            ->post(route('evaluation.retention.record', ['enrollment' => $enrollment->enrollmentId]), [
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('evaluation.show', ['enrollment' => $enrollment->enrollmentId]))
+            ->assertSessionHas('success', 'Retention exam recorded.');
+
+        $this->assertDatabaseHas('examresults', [
+            'studentId' => $student->studentId,
+            'courseId' => $this->retentionCourseId,
+            'termId' => $this->termId,
+            'examStage' => ExamStage::Retention->value,
+            'examType' => ExamType::CourseSpecific->value,
+            'examResult' => 'pass',
+        ]);
+
+        // Re-recording corrects the existing result rather than duplicating.
+        $this->actingAs($department)
+            ->post(route('evaluation.retention.record', ['enrollment' => $enrollment->enrollmentId]), [
+                'examResult' => 'fail',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('evaluation.show', ['enrollment' => $enrollment->enrollmentId]));
+
+        $this->assertSame(1, Examresults::where('examStage', ExamStage::Retention->value)
+            ->where('studentId', $student->studentId)
+            ->count());
+        $this->assertDatabaseHas('examresults', [
+            'studentId' => $student->studentId,
+            'examStage' => ExamStage::Retention->value,
+            'examResult' => 'fail',
+        ]);
+    }
+
+    #[Test]
+    public function retention_exam_is_denied_to_guidance(): void
+    {
+        // Item 4: the retention exam is handled and viewed only by the owning
+        // academic department — Guidance holds exam.record.general only.
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
         $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student, $this->retentionCourseId);
 
-        // Plain course — no retention exam requirement (BR10): ExamPolicy::record
-        // denies the ability outright (403) before the controller even runs.
         $this->actingAs($guidance)
-            ->post(route('exam.retention.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => $this->plainCourseId,
-                'termId' => $this->termId,
+            ->post(route('evaluation.retention.record', ['enrollment' => $enrollment->enrollmentId]), [
                 'examResult' => 'pass',
                 'examDate' => now()->toDateString(),
             ])
             ->assertForbidden();
 
         $this->assertSame(0, Examresults::where('examStage', ExamStage::Retention->value)->count());
-
-        // Board course — retention exam accepted.
-        $this->actingAs($guidance)
-            ->post(route('exam.retention.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => $this->retentionCourseId,
-                'termId' => $this->termId,
-                'examResult' => 'pass',
-                'examDate' => now()->toDateString(),
-            ])
-            ->assertRedirect(route('exam.index'))
-            ->assertSessionHas('success', 'Retention exam recorded.');
-
-        $this->assertDatabaseHas('examresults', [
-            'studentId' => $student->studentId,
-            'courseId' => $this->retentionCourseId,
-            'examStage' => ExamStage::Retention->value,
-            'examType' => ExamType::CourseSpecific->value,
-            'examResult' => 'pass',
-        ]);
     }
 
     #[Test]
-    public function students_endpoint_validates_and_returns_stage_appropriate_candidates(): void
+    public function retention_exam_is_denied_on_plain_course(): void
+    {
+        // BR10: only courses flagged requiresRetentionExam gate the recording
+        // (EvaluationPolicy::recordRetention) — a plain course denies outright.
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student, $this->plainCourseId);
+
+        $this->actingAs($department)
+            ->post(route('evaluation.retention.record', ['enrollment' => $enrollment->enrollmentId]), [
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, Examresults::where('examStage', ExamStage::Retention->value)->count());
+    }
+
+    #[Test]
+    public function students_endpoint_returns_entrance_candidates_for_general(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
 
@@ -512,7 +611,7 @@ class ExamControllerTest extends TestCase
             ->assertJson(['students' => []]);
 
         // Entrance candidates: admitted to the course/term, not yet enrolled
-        // (the exam happens between admission and evaluation).
+        // (the exam runs from before enrollment opens up to enrollment day).
         $admitted = $this->createStudent();
         Admissions::create([
             'studentId' => $admitted->studentId,
@@ -527,17 +626,31 @@ class ExamControllerTest extends TestCase
         $this->createEnrolledEnrollment($enrolled, $this->retentionCourseId);
 
         $this->actingAs($guidance)
-            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId, 'stage' => 'entrance']))
+            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId, 'type' => 'general']))
             ->assertOk()
             ->assertJsonFragment(['studentId' => $admitted->studentId])
             ->assertJsonMissing(['studentId' => $enrolled->studentId]);
+    }
 
-        // Retention candidates: students enrolled in the board (retention) course.
-        $this->actingAs($guidance)
-            ->getJson(route('exam.students', ['courseId' => $this->retentionCourseId, 'termId' => $this->termId, 'stage' => 'retention']))
+    #[Test]
+    public function course_specific_candidates_are_transferred_school_entrance_passers(): void
+    {
+        // Item 4 — the BR9 passer transfer: course-specific candidates are the
+        // School Entrance Examination passers Guidance transferred, names and
+        // results only. Failed results are never transferred.
+        $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $passer = $this->createStudent();
+        $failed = $this->createStudent();
+
+        $this->recordGeneral($guidance, $passer, $this->entranceCourseId, 'pass');
+        $this->recordGeneral($guidance, $failed, $this->entranceCourseId, 'fail');
+
+        $this->actingAs($department)
+            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId, 'type' => 'courseSpecific']))
             ->assertOk()
-            ->assertJsonFragment(['studentId' => $enrolled->studentId])
-            ->assertJsonMissing(['studentId' => $admitted->studentId]);
+            ->assertJsonFragment(['studentId' => $passer->studentId, 'examResult' => 'pass'])
+            ->assertJsonMissing(['studentId' => $failed->studentId]);
     }
 
     #[Test]

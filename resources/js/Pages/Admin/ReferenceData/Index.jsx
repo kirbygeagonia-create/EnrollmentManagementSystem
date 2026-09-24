@@ -68,8 +68,6 @@ export default function Index({ stats = {} }) {
                 <PageHeader
                     title="Reference Data Management"
                     subtitle="Manage all reference data for the enrollment system"
-                    logo="/images/logos/seait-logo.png"
-                    logoAlt="SEAIT Logo"
                 />
             }
         >

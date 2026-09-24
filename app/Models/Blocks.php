@@ -14,7 +14,7 @@ class Blocks extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['courseId', 'termId', 'yearLevel', 'blockName', 'maxStudents'];
+    protected $fillable = ['courseId', 'termId', 'yearLevel', 'blockName', 'maxStudents', 'scheduleStatus'];
 
     /**
      * @return BelongsTo<Courses, $this>
