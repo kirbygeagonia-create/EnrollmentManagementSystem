@@ -23,6 +23,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Serialize Eloquent relations as camelCase in JSON (academicYear, not
+        // academic_year). The React pages read camelCase relation keys; Laravel
+        // defaults Model::$snakeAttributes to true, which snake_cases every
+        // multi-word relation in toArray/toArrayJson payloads.
+        Model::$snakeAttributes = false;
+
         Vite::prefetch(concurrency: 3);
 
         // Audit §2.3: refuse to serve production traffic with debug mode on.

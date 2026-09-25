@@ -291,7 +291,7 @@ class ClearanceController extends Controller
     {
         $this->authorize('view', $clearance);
 
-        $clearance->load(['student.enrollments', 'clearancePeriod.term.academicYear', 'approvals.requirement.office']);
+        $clearance->load(['student.enrollments.course', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser']);
 
         // Log print (BR: every print inserts a documentprintlog row)
         $enrollmentId = $clearance->student?->enrollments?->first()?->enrollmentId;

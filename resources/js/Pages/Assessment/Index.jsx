@@ -171,7 +171,7 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                                         {ev.student?.schoolIdNumber} • {ev.course?.courseCode} (Yr {ev.yearLevel})
                                     </p>
                                     <p className="text-[11px] text-slate-400 mt-0.5">
-                                        {ev.enrolled_subjects?.length || 0} subjects proposed
+                                        {ev.enrolledSubjects?.length || 0} subjects proposed
                                     </p>
                                 </div>
                                 <button

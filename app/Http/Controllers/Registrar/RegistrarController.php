@@ -233,7 +233,7 @@ class RegistrarController extends Controller
      */
     public function printCertificate(Enrollments $enrollment): Response
     {
-        $this->authorize('printCertificate', $enrollment);
+        $this->authorize('registrar.printCertificate', $enrollment);
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
@@ -261,7 +261,7 @@ class RegistrarController extends Controller
      */
     public function printClassCards(Enrollments $enrollment): Response
     {
-        $this->authorize('printClassCards', $enrollment);
+        $this->authorize('registrar.printClassCards', $enrollment);
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
@@ -293,11 +293,15 @@ class RegistrarController extends Controller
      */
     public function printSubjectLoad(Enrollments $enrollment): Response
     {
-        $this->authorize('printSubjectLoad', $enrollment);
+        $this->authorize('registrar.printSubjectLoad', $enrollment);
 
         $enrollment->load([
             'student', 'course', 'major', 'term.academicYear',
-            'enrolledSubjects.subject', 'registrarProcessedByUser',
+            'enrolledSubjects.subject',
+            'enrolledSubjects.schedule.room',
+            'enrolledSubjects.schedule.instructor',
+            'enrolledSubjects.schedule.meetings',
+            'registrarProcessedByUser',
         ]);
 
         Documentprintlog::create([

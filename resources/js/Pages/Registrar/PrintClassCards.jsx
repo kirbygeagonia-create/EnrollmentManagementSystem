@@ -45,7 +45,7 @@ export default function PrintClassCards({ enrollment }) {
             {confirmedSubjects.length > 0 ? (
                 <div className="space-y-8">
                     {confirmedSubjects.map((es, index) => (
-                        <div key={index} className="border border-brand-200 rounded-lg p-6 page-break-inside-avoid">
+                        <div key={index} className="border border-brand-200 rounded-lg p-6 break-inside-avoid">
                             <div className="flex items-start justify-between mb-4">
                                 <div>
                                     <p className="text-sm text-brand-500 mb-1">Subject Code</p>

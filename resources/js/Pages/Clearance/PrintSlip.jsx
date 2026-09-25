@@ -19,7 +19,7 @@ export default function PrintSlip({ clearance }) {
         <PrintLayout
             title="Clearance Slip"
             subtitle={student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : 'Student Clearance'}
-            date={academicYear ? `${academicYear.yearStart}-${academicYear.yearEnd} ${term?.semester}` : undefined}
+            date={academicYear ? `${academicYear.yearLabel} ${term?.semester?.value || term?.semester || ''}`.trim() : undefined}
             headerContent={
                 <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
@@ -28,7 +28,7 @@ export default function PrintSlip({ clearance }) {
                     </div>
                     <div>
                         <p className="font-medium">Course:</p>
-                        <p>{student?.enrollments?.[0]?.course?.name || '—'}</p>
+                        <p>{student?.enrollments?.[0]?.course?.courseName || '—'}</p>
                     </div>
                     <div>
                         <p className="font-medium">Year Level:</p>
@@ -48,7 +48,7 @@ export default function PrintSlip({ clearance }) {
                 <div className="space-y-3">
                     {approvals.length > 0 ? (
                         approvals.map((approval, index) => {
-                            const req = approval.clearanceRequirement;
+                            const req = approval.requirement;
                             const office = req?.office;
                             return (
                                 <div key={approval.clearanceApprovalId} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-brand-200 rounded-lg">
@@ -88,8 +88,8 @@ export default function PrintSlip({ clearance }) {
                         {clearance.receivedDate && (
                             <p className="text-sm text-brand-500 mt-1">Received on: {new Date(clearance.receivedDate).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         )}
-                        {clearance.receivedBy && (
-                            <p className="text-sm text-brand-500">Received by: {clearance.receivedBy.name}</p>
+                        {clearance.receivedByUser && (
+                            <p className="text-sm text-brand-500">Received by: {clearance.receivedByUser.name}</p>
                         )}
                     </div>
                     <Badge tone={approvalStatusToneMap[clearance.overallStatus] || 'neutral'} className="text-lg px-4 py-2">

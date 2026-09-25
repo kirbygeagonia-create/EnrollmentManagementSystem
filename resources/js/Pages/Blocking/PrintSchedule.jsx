@@ -49,7 +49,7 @@ export default function PrintSchedule({ block }) {
 
             {sortedSchedules.length > 0 ? (
                 <div className="overflow-x-auto">
-                    <table className="data-table data-table-striped print-table">
+                    <table className="data-table data-table-striped">
                         <thead>
                             <tr>
                                 <th>Subject Code</th>

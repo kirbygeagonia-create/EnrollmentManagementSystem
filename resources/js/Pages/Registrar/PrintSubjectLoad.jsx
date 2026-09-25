@@ -65,7 +65,7 @@ export default function PrintSubjectLoad({ enrollment }) {
 
             {confirmedSubjects.length > 0 ? (
                 <div className="overflow-x-auto">
-                    <table className="data-table data-table-striped print-table">
+                    <table className="data-table data-table-striped">
                         <thead>
                             <tr>
                                 <th className="w-8">#</th>

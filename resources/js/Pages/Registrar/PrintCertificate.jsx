@@ -15,8 +15,8 @@ export default function PrintCertificate({ enrollment }) {
         ? new Date(enrollment.enrolledDate).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
         : '—';
 
-    const processedBy = enrollment.registrarProcessedBy
-        ? `${enrollment.registrarProcessedBy.firstName} ${enrollment.registrarProcessedBy.lastName}`
+    const processedBy = enrollment.registrarProcessedByUser
+        ? `${enrollment.registrarProcessedByUser.firstName} ${enrollment.registrarProcessedByUser.lastName}`
         : '—';
 
     return (

@@ -28,11 +28,9 @@ use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
-use App\Policies\RegistrarPolicy;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -59,12 +57,6 @@ class PrintControllerTest extends TestCase
 
         // Seed RBAC permissions and roles
         $this->seed(RbacSeeder::class);
-
-        // Override gate definitions to match controller's authorize() calls
-        // (Controller uses 'printCertificate' but AuthServiceProvider defines 'registrar.printCertificate')
-        Gate::define('printCertificate', fn ($user, $enrollment) => app(RegistrarPolicy::class)->printCertificate($user, $enrollment));
-        Gate::define('printClassCards', fn ($user, $enrollment) => app(RegistrarPolicy::class)->printClassCards($user, $enrollment));
-        Gate::define('printSubjectLoad', fn ($user, $enrollment) => app(RegistrarPolicy::class)->printSubjectLoad($user, $enrollment));
 
         // Create reference data needed for enrollment
         $this->createReferenceData();

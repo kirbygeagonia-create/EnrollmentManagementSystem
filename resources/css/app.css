@@ -555,7 +555,7 @@
 
     /* Print Layout */
     .print-layout {
-        @apply max-w-[210mm] mx-auto bg-white;
+        @apply max-w-[210mm] mx-auto bg-white p-8 sm:p-10 shadow-lg;
     }
 
     .print-header {
