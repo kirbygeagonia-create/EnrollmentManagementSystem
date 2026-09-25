@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Institutional Status & Completion Note**:
-> Stages 1 through 5 of this system are **fully engineered, validated, and operational** (encompassing the 54-table relational architecture, 8-phase enrollment workflow, Spatie RBAC desk roles, reactive Inertia/React UI, and cause-effect safety confirmation models).
+> Stages 1 through 5 of this system are **fully engineered, validated, and operational** (encompassing the 62-table relational architecture, the 6–7 step per-student enrollment workflow, Spatie RBAC desk roles, reactive Inertia/React UI, and cause-effect safety confirmation models).
 > 
 > *The remaining advanced stages (Stage 6 and beyond) will be rolled out systematically as soon as the core system achieves full production readiness and satisfies all operational requirements of SEAIT.*
 
@@ -12,9 +12,9 @@
 
 | Stage | Title | Status | Description |
 |---|---|:---:|---|
-| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 54 tables, 86 foreign-key constraints, strict enum validation, audit tables, indexes, and full relational model. |
+| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 62 tables (86 foreign keys at the original baseline), strict enum validation, audit tables, indexes, and full relational model. |
 | **Stage 2** | **Spatie RBAC & Security Infrastructure** | ✅ **COMPLETED** | 13 functional desk roles, 86 granular permissions, multi-guard session authentication, and audit trails. |
-| **Stage 3** | **Core Enrollment Lifecycle Engine (Phases 0–8)** | ✅ **COMPLETED** | Complete 8-step workflow (Admissions, SCAT/Guidance, Clearance, Evaluation, Scholarships, Cashier/Payments, Registrar Official Gate, Blocking, Clinic, ID Hub). |
+| **Stage 3** | **Core Enrollment Lifecycle Engine (Phases 0–8)** | ✅ **COMPLETED** | Complete per-student workflow — 7 steps for first-year/transferee, 6 for continuing/shifter (Department Evaluation → Assessment → Accounting → Registrar → Blocking → Clinic → ID Office), via `WorkflowService::stepsFor()`; admissions, exams, and clearance run as their own desk flows alongside. |
 | **Stage 4** | **Enterprise UI/UX Design & App Launcher** | ✅ **COMPLETED** | Glassmorphism, Tailwind design system, MegaAppLauncher command center, phase-specific badging, responsive tables, and filters. |
 | **Stage 5** | **Enterprise Safety, Modals & Print Services** | ✅ **COMPLETED** | Universal `CauseEffectModal.jsx`, destructive action guards, sign-out safety, high-fidelity Certificate of Registration (COR), Class Cards, and Subject Load printing. |
 | **Stage 6** | **Institutional Org Structure Realignment** | 🚀 **IN PROGRESS** | College-exclusive Deans & Program Heads, 10+ dedicated staff per administrative office, Instructor/Faculty role, removal of mock offices. |
@@ -27,12 +27,12 @@
 ## Detailed Breakdown of Stages
 
 ### Stage 1: Database Architecture (COMPLETED)
-- Strict MySQL 8 engine with 54 interconnected tables and 86 foreign keys.
+- Strict MySQL 8 engine with 62 interconnected tables (86 foreign keys at the original baseline).
 - Complete data dictionary covering `students`, `admissions`, `examresults`, `clearances`, `enrollments`, `assessments`, `payments`, `blockschedules`, `clinicrecords`, and `idrequests`.
 - Zero nullable foreign key violations, cascade constraints where appropriate, and soft deletions on master catalogs.
 
 ### Stage 2: RBAC Security Infrastructure (COMPLETED)
-- 13 functional desk roles: `SysAdmin`, `Admin`, `AdmissionOfficer`, `GuidanceStaff`, `DeptEvaluator`, `Dean`, `ProgramHead`, `ScholarshipOfficer`, `AccountingStaff`, `RegistrarDesk`, `RegistrarApprover`, `BlockingCoordinator`, `ClinicStaff`, `IdOfficer`.
+- 14 functional desk roles plus 3 general roles (`OfficeHead`, `Staff`, `Instructor`): `SysAdmin`, `Admin`, `AdmissionOfficer`, `GuidanceStaff`, `DeptEvaluator`, `Dean`, `ProgramHead`, `ScholarshipOfficer`, `AccountingStaff`, `RegistrarDesk`, `RegistrarApprover`, `BlockingCoordinator`, `ClinicStaff`, `IdOfficer`.
 - Module permissions scoped across intake, exam scoring, clearance sign-offs, load evaluation, fee computation, OR recording, blocking, health checks, and card releasing.
 
 ### Stage 3: Core Enrollment Engine (COMPLETED)
@@ -45,7 +45,7 @@
 - **Phase 5 (Registrar Gate)**: Pre-enrollment verification, final enrollment confirmation, and student data recording.
 - **Phase 6 (Blocking & Scheduling)**: Visual block assignment, classroom matrix, conflict detection.
 - **Phase 7 (School Clinic)**: Physical assessment, vital signs, PhilHealth registration verification.
-- **Phase 8 (Student ID Hub)**: Photo validation, PVC mockup generation, QR security encoding, card release.
+- **Phase 8 (Student ID Hub)**: ID request intake, face-photo upload, validation, release. (PVC mockup + QR encoding were dropped when the ID desk was converted to an ID requests flow, 2026-09-22.)
 
 ### Stage 4: Enterprise UI/UX & Design Tokens (COMPLETED)
 - Unified Tailwind CSS theme incorporating SEAIT branding (`#FF6B35` / `#EA580C` orange palette).

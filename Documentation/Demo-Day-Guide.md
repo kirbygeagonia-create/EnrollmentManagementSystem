@@ -4,7 +4,7 @@ Everything you need to run the full demo: start the system, log in as any
 office, walk the professor through every FDD module, and shut it down cleanly.
 
 **The system is 100% offline-capable** — no internet is needed at any point.
-All fonts, scripts, QR rendering, and assets are served from this machine.
+All fonts, scripts, and assets are served from this machine.
 
 > **How navigation works** (so the directions below make sense): there is no
 > sidebar. At the top of every page is a navbar — the **SEAIT logo** (left,
@@ -96,7 +96,7 @@ You should see the SEAIT EMS login page.
 ### Student demo data (records you'll click through — not logins)
 | Student | School ID | Role in the demo |
 |---|---|---|
-| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID validated, QR `SEAIT-DEMO-53`** |
+| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID validated, face photo on file** |
 | **Maria Reyes** | DEMO-2026-002 | Continuing student: **retention exam passed**, clearance slip with **all 10 offices approved** + receipt |
 | **Pedro Santos** | DEMO-2026-003 | **Pending admission** — 3 requirement submissions, Form 138 PDF attached; the entrance-exam candidate |
 | **Liza Bautista** | DEMO-2026-004 | Enrolled BSBA from a prior term — the retention-exam candidate |
@@ -181,9 +181,8 @@ intake end and **Juan** (fully processed) for everything after.
     assessment — height, weight, blood pressure, PhilHealth, physical exam
     findings (FDD 11.2–11.3).
 13. **(12.0 Student IDs)** **Desks & Apps → Student ID Hub.** Juan's ID:
-    request **validated** with the **face photo on file** — and the archived
-    **QR code** from the card record — scan it with your phone and it reads
-    **`SEAIT-DEMO-53`** (studentId 53). That's FDD 12.1–12.5 end-to-end.
+    request **validated** with the **face photo on file**. That's FDD
+    12.1–12.5 end-to-end.
 
 ### Cross-cutting modules (FDD 13.0 → 15.0)
 14. **(13.0 Student 360°)** Press **Ctrl+K**, type `Dela`, open Juan —
@@ -197,7 +196,7 @@ intake end and **Juan** (fully processed) for everything after.
     (type in the search box, results narrow, the URL carries the filter).
     That's FDD 14.1–14.3 across the 12 catalogs.
 16. **(15.0 Users, Roles & Security)** **Desks & Apps → User & Role
-    Security.** The roles list shows the 11 roles; open one to see its
+    Security.** The roles list shows all 17 roles; open one to see its
     permission matrix (FDD 15.2). Switch to the **Audit Logs** tab —
     every action from this demo session is there with who/what/when
     (FDD 15.5). Then do the **RBAC switch** from §2: log out, log in as

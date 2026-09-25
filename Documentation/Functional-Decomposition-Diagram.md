@@ -6,6 +6,8 @@
 > permission-gated endpoint verified against commit `c8ea184`. Nothing is invented; CLI-only
 > utilities (`ems:create-admin`, `ems:benchmark`, `ems:print-fidelity`) are excluded as they are
 > not user-facing system functions.
+>
+> **Status update (2026-09-24):** this tree was generated against commit `c8ea184`. The 15-module structure below is unchanged, but controller methods have since evolved — the ID desk (12.0) is now an ID requests flow (request → photo upload → validate → release) — and the live app serves 166 HTTP routes. The function names below remain current.
 
 **Decomposition levels**
 - **Level 0** — the system as a single process

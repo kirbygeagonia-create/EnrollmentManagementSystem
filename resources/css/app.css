@@ -755,6 +755,17 @@
         print-color-adjust: exact;
     }
 
+    /* 10-column print tables (subject load, class cards) must fit the A4
+       sheet — compact type and padding so no column is clipped. */
+    .data-table {
+        font-size: 11px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 4px 6px;
+    }
+
     .badge {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;

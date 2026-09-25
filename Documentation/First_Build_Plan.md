@@ -4,6 +4,8 @@
 
 **Stack:** Laravel 11 (PHP 8.3) · Inertia.js + React + Tailwind CSS · MySQL 8 / MariaDB 10.11 · Redis · S3-compatible file storage · server-rendered PDFs (dompdf / Browsershot)
 
+> **As built (2026-09-24):** Laravel 13 (PHP 8.3) + Inertia + React 18 + Tailwind; MySQL 8 on Laragon; `database` queue/cache and `file` session drivers (no Redis, no S3 — local disk storage); prints are browser print views rendered by React (`PrintLayout`), no server-side PDF engine.
+
 ---
 
 ## Stage 0 — Project Setup & Foundations (Week 1)
@@ -110,7 +112,7 @@ settings (settingKey PK, settingValue, description)   -- e.g. current termId, en
 | **Registrar (Ph 5)** | Validation gate (clearance copy present, payment done, evaluation signed), approve subjects (proposed→confirmed), enroll (new/old record-vs-update), print Certificate + Class Cards → `documentprintlog` | `enrollment.approve`, `print.*` |
 | **Blocking & Scheduling (Ph 6)** | Manage blocks/schedules/meetings/rooms, capacity checks (`maxStudents`, room capacity), conflict detection (instructor/room/time overlap), assign students, print Block & Schedule | `block.*` |
 | **Clinic (Ph 7)** | Record physical exam + PhilHealth, sign workflow step | `clinic.*` |
-| **ID Office (Ph 8)** | ID request, photo upload, vendor tracking, QR generation (unique), release + validation | `id.*` |
+| **ID Office (Ph 8)** | ID request, photo upload, release + validation. *(QR generation and vendor tracking were dropped when the ID desk became an ID requests flow, 2026-09-22.)* | `id.*` |
 | **Reference Data (admin)** | Courses, majors, curricula, subjects, prerequisites, terms/years, fee types, scholarship types, offices, rooms, requirement catalogs | `refdata.manage` |
 | **User Management (admin)** | Staff accounts, role assignment, deactivation | `user.manage` |
 
@@ -191,7 +193,7 @@ Staff users range from young clerks to senior faculty; design for the least tech
 
 ## Stage 6 — Modern innovations (post-launch roadmap, in value order)
 
-1. **QR-driven desk flow** — the student ID / a printed queue slip QR is scanned at every desk to pull up the student instantly (you already have unique QR codes in `studentids`).
+1. **QR-driven desk flow** — ~~the student ID / a printed queue slip QR is scanned at every desk~~ **Superseded 2026-09-22:** the `studentids` table was dropped and the ID desk became an ID requests flow — no QR generation exists in the system anymore. A QR slip flow would require reintroducing QR generation first.
 2. **Queue management** — number dispenser + wall display per office during enrollment week; ties into the phase stepper.
 3. **SMS/email notices** — "You are now officially enrolled", "Clearance period closes Friday" (Semaphore/Twilio for PH SMS).
 4. **Analytics dashboards** — enrollment velocity per day, bottleneck office detection (avg time between workflow steps), block fill rates, collections.

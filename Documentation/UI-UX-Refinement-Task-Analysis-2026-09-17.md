@@ -4,6 +4,8 @@
 **Scope analyzed:** the proposed 12-item UI/UX and workflow-visibility refinement pass (Admin, Evaluation, Blocking, ID-validation modules), against the codebase as of commit `46c6916` (master, clean tree, CI green).
 **Baseline:** SEAIT-EMS-Round3-Current-State.md — backend/security findings closed; this pass is additive on top of it.
 
+> **Status update (2026-09-24):** this analysis guided the refinement pass that followed — the headline items have since landed in the codebase (GZEL removal, the two-stage exam split, the ID-validation desk conversion dropping card-making in `ced3b0a`, and the return-to-evaluation hold state). The item-by-item verdicts below are kept as the analysis record.
+
 ## Verdict up front
 
 The list is **correct and sensible in substance** — every premise checked against the code verified, and the instincts are the right ones (no parallel status concepts, reuse optimized queries, extend the state machine rather than invent a mechanism, OCR as a later phase). Four items need adjustment before execution, two of them because their premise describes the *current* state rather than the target, and there is one internal contradiction in the scope statement.

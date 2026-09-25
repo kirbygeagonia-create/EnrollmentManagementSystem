@@ -8,6 +8,7 @@ use App\Enums\StaffStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Students extends Model
 {
@@ -91,6 +92,16 @@ class Students extends Model
     public function studentclearances(): HasMany
     {
         return $this->clearances();
+    }
+
+    /**
+     * ID requests are keyed to enrollments, not directly to students.
+     *
+     * @return HasManyThrough<Idrequests, Enrollments, $this>
+     */
+    public function idrequests(): HasManyThrough
+    {
+        return $this->hasManyThrough(Idrequests::class, Enrollments::class, 'studentId', 'enrollmentId');
     }
 
     /**

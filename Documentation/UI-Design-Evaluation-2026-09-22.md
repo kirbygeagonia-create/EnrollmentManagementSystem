@@ -112,3 +112,5 @@ Type scale collapses hard to two sizes:
 ---
 
 *Nothing from this pass is committed. Commits remain gated on an explicit instruction.*
+
+> **Status update (2026-09-24):** this pass was committed in `ced3b0a` and follow-ups in `163f4df` / `f52d510`; the remaining items in §6 are still open by design. The verdict and findings above reflect the 2026-09-22 tree.

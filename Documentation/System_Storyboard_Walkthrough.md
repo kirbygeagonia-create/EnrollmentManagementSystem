@@ -1,8 +1,8 @@
 # SEAIT Enrollment Management System — Complete Workflow & Process Storyboard
 
-> **Last Verified:** September 6, 2026  
-> **System Version:** Laravel 12 + React (Inertia.js)  
-> **Test Suite Status:** ✅ 237 tests passed, 1,367 assertions (0 failures)  
+> **Last Verified:** September 24, 2026  
+> **System Version:** Laravel 13 + React (Inertia.js)  
+> **Test Suite Status:** ✅ 274 tests passed, 1,638 assertions (0 failures)  
 
 ---
 
@@ -183,7 +183,7 @@ sequenceDiagram
   - `ExamResults` — raw scores, stanine rank, pass/fail determination
   - `Courses` — `requiresEntranceExam` flag
 
-* **Key Controllers**: `ExamController@store`, `ExamController@updateResults`
+* **Key Controllers**: `ExamController@recordGeneral`, `ExamController@recordCourseSpecific`
 
 ### Phase 1 — End-of-Term Clearance Slip
 * **Who**: Continuing and Irregular Students; College Departments, Student Affairs, Library, Accounting, Registrar.
@@ -205,7 +205,7 @@ sequenceDiagram
   - `ClearanceApprovals` — per-office sign-off
   - `ClearanceRequirements` — office-specific requirements
 
-* **Key Controllers**: `ClearanceController@store`, `ClearanceController@approve`
+* **Key Controllers**: `ClearanceController@generateSlip`, `ClearanceController@approveRequirement`
 
 ### Phase 2 — Academic Department Evaluation & Advising
 * **Who**: Returning Students, Transferees, Shifters; College Deans, Program Heads, Department Evaluators.
@@ -237,7 +237,7 @@ sequenceDiagram
   - `CreditedSubjects` — transferred credit mappings
   - `GradeScale` — grade conversion table
 
-* **Key Controllers**: `EvaluationController@store`, `EvaluationController@signStep`
+* **Key Controllers**: `EvaluationController@captureProfile`, `EvaluationController@proposeSubjects`, `EvaluationController@sign`
 * **Key Services**: `EnrollmentStateMachine::transition('pending', 'evaluated')`, `WorkflowService::stepsFor()`
 
 ### Phase 3 — Scholarship & Financial Assessment
@@ -256,7 +256,7 @@ sequenceDiagram
   - `StudentScholarships` — student-specific scholarship awards
   - `FeeTypes` — fee category catalog
 
-* **Key Controllers**: `AssessmentController@store`, `AssessmentController@signStep`
+* **Key Controllers**: `AssessmentController@compute`, `AssessmentController@finalize`
 * **Key Services**: `EnrollmentStateMachine::transition('evaluated', 'assessed')`
 
 ### Phase 4 — Accounting (Payment & Cashier)
@@ -274,7 +274,7 @@ sequenceDiagram
   - `StudentAssessments` — updated balances
   - `PaymentSchedules` — installment plans (if applicable)
 
-* **Key Controllers**: `AccountingController@recordPayment`
+* **Key Controllers**: `AccountingController@record`
 * **Key Services**: `EnrollmentStateMachine::transition('assessed', 'paid')`
 
 ### Phase 5 — Office of the Registrar: Enrollment Confirmation
@@ -301,7 +301,7 @@ sequenceDiagram
   - `EnrolledSubjects` — status transition to 'confirmed'
   - `DocumentPrintLog` — immutable print audit trail
 
-* **Key Controllers**: `RegistrarController@confirmEnroll`
+* **Key Controllers**: `RegistrarController@approve`
 * **Key Services**: `EnrollmentStateMachine::transition('paid', 'enrolled')`
 
 ### Phase 6 — Academic Department: Section Blocking & Scheduling
@@ -321,7 +321,7 @@ sequenceDiagram
   - `Rooms` — physical room catalog
   - `Instructors` — faculty assignments
 
-* **Key Controllers**: `BlockingController@assignBlock`, `BlockingController@signStep`
+* **Key Controllers**: `BlockingController@assignStudents`, `BlockingController@storeSchedule`
 
 ### Phase 7 — School Clinic: Health Assessment & PhilHealth
 * **Who**: All Enrolled Students; Campus Physicians and Registered Nurses.
@@ -336,7 +336,7 @@ sequenceDiagram
   - `ClinicRecords` — health assessment records
   - `MedicalHistories` — student medical history
 
-* **Key Controllers**: `ClinicController@store`, `ClinicController@signStep`
+* **Key Controllers**: `ClinicController@record`
 
 ### Phase 8 — ID Office: Request Validation & Card Release
 * **Who**: All Enrolled Students; ID Office Staff.
@@ -361,7 +361,7 @@ sequenceDiagram
 
 ## State Machine Transition Rules
 
-The enrollment lifecycle is governed by an event-driven Finite State Machine (`EnrollmentStateMachine.php`) ensuring consistency across the forward journey, with one sanctioned reverse path: the cashier's payment void-revert (`paid -> assessed`, applied when a voided payment leaves an outstanding balance). No other backward transitions exist.
+The enrollment lifecycle is governed by an event-driven Finite State Machine (`EnrollmentStateMachine.php`) ensuring consistency across the forward journey, with two sanctioned reverse paths: the cashier's payment void-revert (`paid -> assessed`, applied when a voided payment leaves an outstanding balance) and the Registrar's return-to-evaluation (`paid -> returnedToEvaluation` with a required reason; the enrollment re-enters the pipeline through a fresh evaluation sign-off). No other backward transitions exist.
 
 ```mermaid
 stateDiagram-v2
@@ -371,6 +371,8 @@ stateDiagram-v2
     assessed --> paid: Accounting Cashier Payment (Phase 4)
     paid --> enrolled: Registrar Approves & Prints (Phase 5)
     paid --> assessed: Payment Voided (balance remains)
+    paid --> returnedToEvaluation: Registrar Returns with Reason (item 8)
+    returnedToEvaluation --> evaluated: Fresh Evaluation Sign-off
     enrolled --> dropped: Voluntary Withdrawal / Cancellation
     dropped --> [*]
     enrolled --> [*]: Term Completion
@@ -383,6 +385,8 @@ stateDiagram-v2
 | `assessed` | `paid` | Cashier records receipt of payment | `Payments` logged, assessment `paidAmount` updated |
 | `paid` | `enrolled` | Registrar confirms documents | `Enrollments.enrollmentStatus = 'enrolled'`, `EnrolledSubjects.status = 'confirmed'` |
 | `paid` | `assessed` | Cashier voids a payment with outstanding balance (void-revert) | `Payments.paymentStatus = 'voided'`, assessment `remainingBalance` recomputed |
+| `paid` | `returnedToEvaluation` | Registrar returns the enrollment to Department Evaluation with a required reason | `Enrollments.returnReason` set, history logged |
+| `returnedToEvaluation` | `evaluated` | Evaluator re-signs after corrections | Fresh evaluation sign-off |
 | `enrolled` | `dropped` | Registrar processes dropping form | `EnrolledSubjects.status = 'dropped'`, history logged |
 
 ---
@@ -404,19 +408,19 @@ stateDiagram-v2
 
 ## Database Architecture Summary
 
-The system manages **54 distinct database tables** organized into the following functional groups:
+The system manages **62 distinct database tables** organized into the following functional groups:
 
 | Group | Tables | Purpose |
 | :--- | :--- | :--- |
-| **Core Identity** | `Students`, `Users`, `Offices`, `Roles`, `Permissions` | User authentication, authorization, office assignments |
+| **Core Identity** | `Students`, `Staffusers`, `Offices`, `Roles`, `Permissions` | User authentication, authorization, office assignments |
 | **Academic Structure** | `Courses`, `Departments`, `Colleges`, `Curriculums`, `CurriculumSubjects`, `Subjects`, `SubjectPrerequisites`, `GradeScale` | Institutional academic hierarchy and curriculum definitions |
 | **Admission Pipeline** | `Admissions`, `AdmissionRequirements`, `StudentRequirementSubmissions`, `ExamResults` | Application intake and document verification |
 | **Enrollment Core** | `Enrollments`, `EnrolledSubjects`, `EnrollmentWorkflow`, `WorkflowSteps`, `AcademicTerms` | Enrollment lifecycle and workflow tracking |
 | **Financial** | `StudentAssessments`, `Charges`, `Payments`, `FeeTypes`, `PaymentSchedules`, `ScholarshipTypes`, `StudentScholarships` | Fee computation, payments, scholarships |
 | **Clearance** | `ClearancePeriods`, `StudentClearances`, `ClearanceApprovals`, `ClearanceRequirements` | End-of-term clearance processing |
 | **Scheduling** | `Blocks`, `BlockStudents`, `Schedules`, `ScheduleMeetings`, `Rooms`, `Instructors` | Section blocking and class scheduling |
-| **Health & ID** | `ClinicRecords`, `MedicalHistories`, `IdRequests`, `StudentIds` | Clinic assessments and ID card management |
-| **Audit & Print** | `DocumentPrintLog`, `AuditTrails` | Immutable document generation and system audit logs |
+| **Health & ID** | `ClinicRecords`, `MedicalHistories`, `IdRequests` | Clinic assessments and ID request management |
+| **Audit & Print** | `DocumentPrintLog`, `Auditlogs` | Immutable document generation and system audit logs |
 | **Demographics** | `Addresses`, `Guardians`, `PreviousSchools`, `TransferAcademicRecords`, `CreditedSubjects` | Student personal and academic history |
 
 ---
@@ -425,7 +429,7 @@ The system manages **54 distinct database tables** organized into the following 
 
 | Layer | Technology | Version |
 | :--- | :--- | :--- |
-| **Backend Framework** | Laravel | 12.x |
+| **Backend Framework** | Laravel | 13.x |
 | **Frontend Framework** | React (via Inertia.js) | 18.x |
 | **Database** | MySQL | 8.x |
 | **CSS Framework** | Tailwind CSS | 3.x |
@@ -438,8 +442,8 @@ The system manages **54 distinct database tables** organized into the following 
 
 ## Test Suite Results
 
-> **Last Run:** September 6, 2026  
-> **Runner:** PHPUnit 12.5.33  
+> **Last Run:** September 24, 2026  
+> **Runner:** PHPUnit 12.5.33 (Pest 4.7.7)  
 > **Result:** ✅ ALL TESTS PASSED
 
 | Category | Test File | Tests | Status |
@@ -461,7 +465,7 @@ The system manages **54 distinct database tables** organized into the following 
 | **Feature/Print** | Print audit tests | Document generation logging, immutability | ✅ Pass |
 | **Feature/Rbac** | RBAC permission tests | Role-based access control, office boundaries | ✅ Pass |
 
-**Total: 237 tests, 1,367 assertions, 0 failures, 0 errors**
+**Total: 274 tests, 1,638 assertions, 0 failures, 0 errors**
 
 ---
 
@@ -470,4 +474,6 @@ The system manages **54 distinct database tables** organized into the following 
 | Date | Action | Details |
 | :--- | :--- | :--- |
 | **September 6, 2026** | Full system audit & documentation | Complete storyboard walkthrough created. 237/237 tests passing. Schema parity verified (54/54 tables). Transaction hardening applied to all 9 critical controllers. |
+| **September 13–22, 2026** | Demo dataset, quality sprint, audit remediation | Demo dataset seeded for the offline presentation (2026-09-13). Design quality audit with 29 findings (`40ea5a6`); critical pipeline defects remediated (`96667de`). UI↔workflow conformance findings closed (`163f4df`, `46c6916`). ID validation-desk conversion + UI polish sweep (`ced3b0a`). |
+| **September 24, 2026** | Print-view fixes & documentation sweep | All 6 print pages fixed — camelCase relation serialization (`Model::$snakeAttributes = false`) plus `receivedByUser` added to the printSlip load — verified with 6/6 print tests + screenshots. All 14 docs swept for stale info: 62-table counts, 6–7 step per-student workflow, ID requests flow (no QR), live office mapping. |
 

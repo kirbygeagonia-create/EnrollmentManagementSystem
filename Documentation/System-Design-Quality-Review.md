@@ -2,13 +2,15 @@
 
 **Date:** 2026-09-15  
 **Prepared by:** Claude Code systematic audit  
-**Scope:** Laravel 11 + Inertia React 18 + Vue 3 EMS codebase review
+**Scope:** Laravel 13 + Inertia React 18 EMS codebase review
+
+> **Status update (2026-09-24):** the demo dataset has since been regenerated — the live DB now holds one enrollment (DEMO-2026-001) and an empty `schedulemeetings` table, so most desk pages render empty states. The "11 stations live" state below existed in the 2026-09-15 pipeline-seeder dataset, which was replaced. Backup size below reflects the 2026-09-15 snapshot; the current `ems-demo-backup.sql` is ~510 KB.
 
 ---
 
 ## EXECUTIVE SUMMARY
 
-### CURRENT STATUS: REMEDIATED & DEMO-READY (ALL 11 STATIONS LIVE)
+### CURRENT STATUS: REMEDIATED (ALL 11 STATIONS LIVE AS OF 2026-09-15)
 
 Following comprehensive remediation on 2026-09-15, all 4 critical blocking defects and major pipeline gaps have been resolved and verified across the live stack:
 

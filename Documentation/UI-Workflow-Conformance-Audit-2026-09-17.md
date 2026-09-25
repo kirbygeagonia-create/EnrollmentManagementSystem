@@ -6,6 +6,8 @@
 
 **Method:** Read every module action page (Show/Index), the shared workflow components, the state machine, all desk controllers, Dashboard queue logic, routes, enums, models, and seeders. Every finding below cites file:line evidence verified in this session. Nothing is speculative unless marked otherwise.
 
+> **Status update (2026-09-24):** every finding in this audit was closed by commit `163f4df` ("close all UI-workflow conformance audit findings"); the Phase 8 (ID) findings were further superseded by the ID-validation-desk conversion in `ced3b0a` — the `studentids` table was dropped and the ID desk became an ID requests flow (`IdRequestStatus`/`Idrequests`). The verdict table and findings below reflect the 2026-09-17 state and are kept as the audit record.
+
 ---
 
 ## Verdict Summary

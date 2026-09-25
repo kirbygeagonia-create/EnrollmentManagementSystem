@@ -6,6 +6,8 @@
 > **System Scope:** South East Asian Institute of Technology (SEAIT) Enrollment Management System  
 > **Specification Standard:** UML 2.5 compliant notation with strict **Action-Verb Format**  
 > **Source of Truth:** Verified against routes (`routes/web.php`, `routes/auth.php`), Eloquent models (`app/Models/**`), RBAC permissions (`database/seeders/RbacSeeder.php`), and controller methods (`app/Http/Controllers/**`).
+>
+> **Status update (2026-09-24):** the counts in this guide were verified at commit `c8ea184`. The live app now serves **166 HTTP routes** and the RBAC layer holds **17 roles** (14 functional desk roles + OfficeHead, Staff, Instructor). Desk 10 is now the **Student ID Hub** — an ID requests flow (request → photo upload → validate → release; no PVC/QR production). The use case names and methodology below remain current.
 
 ---
 
@@ -46,7 +48,7 @@
 A **Use Case Diagram** is the primary dynamic view of a system's functional architecture within the Unified Modeling Language (UML). It captures **what** the system does from the perspective of external users (actors) without committing to **how** internal software layers, database schemas, or algorithms deliver that functionality.
 
 For the **SEAIT Enrollment Management System (EMS)**, this guide fulfills two vital functions:
-1. **Architectural Specification:** Maps all 15 operational desks, 13 Spatie RBAC security roles, and 58 distinct HTTP routes to clear, traceable Use Cases that represent genuine business transactions.
+1. **Architectural Specification:** Maps the system's operational desks, Spatie RBAC security roles, and their HTTP routes to clear, traceable Use Cases that represent genuine business transactions.
 2. **Pedagogical Standard:** Serves as a definitive manual on how to design, construct, and defend industrial-grade Use Case diagrams using the **Action-Verb Format**.
 
 ---

@@ -39,9 +39,9 @@ Run through this ~10 minutes before presenting:
 |---|---|---|
 | `staff8` | `password` | SysAdmin — sees everything |
 | `office6_head` | `password` | Admission Office |
-| `office7_head` | `password` | Guidance (entrance + retention exams) |
-| `office4_head` | `password` | Department Evaluation |
-| `office3_head` | `password` | Assessment |
+| `office7_head` | `password` | Academic Department (course-specific exams, evaluations, retention) |
+| `office4_head` | `password` | Guidance (School Entrance Examination) |
+| `office3_head` | `password` | Scholarship (fee assessments) |
 | `office2_head` | `password` | Accounting |
 | `office1_head` | `password` | Registrar |
 | `office5_head` | `password` | Blocking & Scheduling |
@@ -52,22 +52,22 @@ Run through this ~10 minutes before presenting:
 
 | Student | School ID | State |
 |---|---|---|
-| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic → ID **validated** (face photo on file, archived QR) |
-| Maria Reyes (`demo_maria_r`) | DEMO-2026-002 | Continuing BSBA, **retention exam passed**, clearance slip generated + **all 10 offices approved** + receipt recorded |
+| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic → ID **validated** (face photo on file) |
+| Maria Reyes (`demo_maria_r`) | DEMO-2026-002 | Clearance slip generated + **all 10 offices approved** + receipt recorded |
 | Pedro Santos (`demo_pedro`) | DEMO-2026-003 | **Pending admission** (BSCrim) — shows up as an entrance-exam candidate in the Exam form |
 | Liza Bautista (`demo_liza`) | DEMO-2026-004 | **Enrolled BSBA** — shows up as a retention-exam candidate in the Exam form |
 
 ### Suggested demo storyline (follows the real workflow)
 
 1. **Admission** (office6_head): open the admission of Pedro Santos — pending, awaiting exam.
-2. **Entrance exam** (office7_head): Exam → Record Entrance Exam → BSCrim + term 18 → Pedro appears in the candidate dropdown → record **pass**, then course-specific **pass** (office4_head records that one).
-3. **Evaluation** (office4_head): open Juan Dela Cruz's evaluation — profile captured, subjects proposed, signed.
+2. **Entrance exam** (office4_head): Exam → Record Entrance Exam → BSCrim + term 18 → Pedro appears in the candidate dropdown → record **pass**, then course-specific **pass** (office7_head records that one).
+3. **Evaluation** (office7_head): open Juan Dela Cruz's evaluation — profile captured, subjects proposed, signed.
 4. **Assessment → Payment → Registrar** (offices 3, 2, 1): show Juan's computed charges, the recorded payment (OR DEMO-OR-0001), and registrar approval.
 5. **Blocking** (office5_head): open block BSCrim 1-A — Juan assigned.
 6. **Clinic** (office11_head): Juan's health record.
-7. **ID** (office22_head): Juan's validated ID request — face photo on file; the archived card QR reads `SEAIT-DEMO-53`.
+7. **ID** (office22_head): Juan's validated ID request — face photo on file.
 8. **Retention exam** (office7_head): Exam → Record Retention → BSBA → Liza Bautista appears → record pass.
-9. **Clearance** (office1_head): Maria Reyes's slip — all 10 offices approved, receipt recorded.
+9. **Clearance** (office8_head): Maria Reyes's slip — all 10 offices approved, receipt recorded.
 
 ## If the demo data gets lost
 

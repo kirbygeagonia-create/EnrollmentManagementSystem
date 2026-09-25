@@ -126,3 +126,5 @@ The sweep found **one leftover** from the B2 pass — the Clearance Periods *cre
 ---
 
 *Nothing from this pass is committed. Commits remain gated on an explicit instruction.*
+
+> **Status update (2026-09-24):** this pass was committed in `ced3b0a`; the native `<select>` findings above (M2/M3/m2) were addressed in the same sweep. The findings reflect the 2026-09-22 tree.
