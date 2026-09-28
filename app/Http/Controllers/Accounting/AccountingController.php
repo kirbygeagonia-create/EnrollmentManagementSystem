@@ -46,9 +46,9 @@ class AccountingController extends Controller
         // must describe the full queue, not just the current page (audit 2026-09-25).
         $summary = (clone $query)
             ->reorder()
-            ->selectRaw("coalesce(sum(totalAssessedAmount), 0) as totalAssessed, coalesce(sum(remainingBalance), 0) as totalBalance,
+            ->selectRaw('coalesce(sum(totalAssessedAmount), 0) as totalAssessed, coalesce(sum(remainingBalance), 0) as totalBalance,
                 sum(case when remainingBalance > 0 and remainingBalance < totalAssessedAmount then 1 else 0 end) as partialCount,
-                sum(case when remainingBalance >= totalAssessedAmount and totalAssessedAmount > 0 then 1 else 0 end) as unpaidCount")
+                sum(case when remainingBalance >= totalAssessedAmount and totalAssessedAmount > 0 then 1 else 0 end) as unpaidCount')
             ->first();
 
         return Inertia::render('Accounting/Index', [
