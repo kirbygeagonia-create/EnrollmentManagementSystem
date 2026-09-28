@@ -226,7 +226,7 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
                         <FormSection label="Coverage Type" error={form.errors.coverageType} required>
                             <Select
                                 value={form.data.coverageType}
-                                onChange={(e) => form.setData('coverageType', e.target.value)}
+                                onChange={(v) => form.setData('coverageType', v)}
                                 options={coverageTypes.map(c => ({ value: c.value, label: formatStatusLabel(c.value) }))}
                                 placeholder="Select coverage type"
                                 className="form-input"

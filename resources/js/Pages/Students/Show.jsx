@@ -94,7 +94,10 @@ function EnrollmentCard({ enrollment }) {
                     <div>
                         <p className="text-brand-500 text-xs uppercase tracking-wider">Balance</p>
                         <p className={`font-semibold mt-0.5 ${balance != null && balance > 0 ? 'text-danger-700' : 'text-success-700'}`}>
-                            {balance != null ? `₱${balance.toLocaleString('en-PH')}` : '—'}
+                            {balance == null ? '—'
+                                : balance > 0 ? `₱${balance.toLocaleString('en-PH')}`
+                                : balance < 0 ? `₱${Math.abs(balance).toLocaleString('en-PH')} credit`
+                                : '₱0'}
                         </p>
                     </div>
                     <div>

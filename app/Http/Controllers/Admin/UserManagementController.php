@@ -409,13 +409,14 @@ class UserManagementController extends Controller
             ->when($request->entityTable, fn ($q, $table) => $q->where('entityTable', $table))
             ->when($request->dateFrom, fn ($q, $date) => $q->whereDate('createdAt', '>=', $date))
             ->when($request->dateTo, fn ($q, $date) => $q->whereDate('createdAt', '<=', $date))
+            ->when($request->adminOverride === '1', fn ($q) => $q->where('adminOverride', true))
             ->orderByDesc('createdAt');
 
         $logs = $query->paginate(50)->withQueryString();
 
         return Inertia::render('Admin/UserManagement/AuditLogs', [
             'logs' => $logs,
-            'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo']),
+            'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo', 'adminOverride']),
         ]);
     }
 }

@@ -201,7 +201,7 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
                         <FormSection label="Course" error={form.errors.courseId} required>
                             <Select
                                 value={form.data.courseId}
-                                onChange={(e) => form.setData('courseId', e.target.value)}
+                                onChange={(v) => form.setData('courseId', v)}
                                 options={courses.map(c => ({ value: c.courseId, label: c.courseName }))}
                                 placeholder="Select course"
                                 className="form-input"
@@ -212,7 +212,7 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
                         <FormSection label="Major" error={form.errors.majorId}>
                             <Select
                                 value={form.data.majorId}
-                                onChange={(e) => form.setData('majorId', e.target.value)}
+                                onChange={(v) => form.setData('majorId', v)}
                                 options={majors.map(m => ({ value: m.majorId, label: m.majorName }))}
                                 placeholder="Select major (optional)"
                                 className="form-input"

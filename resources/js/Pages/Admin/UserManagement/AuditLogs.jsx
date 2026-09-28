@@ -39,6 +39,7 @@ export default function AuditLogs({ logs, filters = {} }) {
     const [entityTable, setEntityTable] = useState(filters.entityTable || '');
     const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
     const [dateTo, setDateTo] = useState(filters.dateTo || '');
+    const [adminOverride, setAdminOverride] = useState(filters.adminOverride || '');
     const [viewingLog, setViewingLog] = useState(null);
 
     const columns = useMemo(() => [
@@ -108,6 +109,7 @@ export default function AuditLogs({ logs, filters = {} }) {
             entityTable: entityTable || undefined,
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
+            adminOverride: adminOverride || undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -223,6 +225,15 @@ export default function AuditLogs({ logs, filters = {} }) {
                         type="date"
                         value={dateTo}
                         onChange={(e) => setDateTo(e.target.value)}
+                        className="form-input"
+                    />
+                </FilterBarField>
+                <FilterBarField label="Override">
+                    <Select
+                        value={adminOverride}
+                        onChange={setAdminOverride}
+                        options={[{ value: '', label: 'All Logs' }, { value: '1', label: 'Admin Override Only' }]}
+                        placeholder="All Logs"
                         className="form-input"
                     />
                 </FilterBarField>

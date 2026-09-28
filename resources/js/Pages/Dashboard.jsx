@@ -50,7 +50,7 @@ const quickLinks = [
     { name: 'Registrar', category: 'records', desc: 'Enrollment & official records', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
     { name: 'Blocking', category: 'records', desc: 'Timetables & section loads', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
     { name: 'Clinic', category: 'records', desc: 'Student medical & health', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
-    { name: 'ID Office', category: 'records', desc: 'Card printing & verification', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
+    { name: 'ID Office', category: 'records', desc: 'ID requests & card release', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
     { name: 'Reference Data', category: 'admin', desc: 'Curricula, terms & courses', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
     { name: 'User Management', category: 'admin', desc: 'Staff accounts & permissions', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
 ];
@@ -66,6 +66,7 @@ const categoryLabels = {
 export default function Dashboard() {
     const { user } = usePage().props.auth;
     const stats = usePage().props.stats || {};
+    const currentTerm = usePage().props.currentTerm;
     const progressTracking = usePage().props.progressTracking || [];
     const [queueCounts, setQueueCounts] = useState({});
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -173,7 +174,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2.5 flex-wrap">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
                             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>AY 2026-2027 · 1st Semester</span>
+                            <span>{currentTerm || 'No active term'}</span>
                         </div>
                         <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-medium">
                             <span>Shortcuts:</span>
@@ -188,7 +189,7 @@ export default function Dashboard() {
                     <StatCard
                         compact={true}
                         label="Total Admissions"
-                        value={stats.totalAdmissions || '—'}
+                        value={stats.totalAdmissions ?? '—'}
                         icon={<AdmissionIcon className="h-5 w-5" />}
                         iconBg="seait"
                         trend={stats.admissionsTrend}
@@ -197,7 +198,7 @@ export default function Dashboard() {
                     <StatCard
                         compact={true}
                         label="Pending Evaluations"
-                        value={stats.pendingEvaluations || '—'}
+                        value={stats.pendingEvaluations ?? '—'}
                         icon={<EvaluationIcon className="h-5 w-5" />}
                         iconBg="warning"
                         trend={stats.evaluationsTrend}
@@ -206,7 +207,7 @@ export default function Dashboard() {
                     <StatCard
                         compact={true}
                         label="Enrolled Students"
-                        value={stats.enrolledStudents || '—'}
+                        value={stats.enrolledStudents ?? '—'}
                         icon={<RegistrarIcon className="h-5 w-5" />}
                         iconBg="success"
                         trend={stats.enrolledTrend}
@@ -215,7 +216,7 @@ export default function Dashboard() {
                     <StatCard
                         compact={true}
                         label="Revenue (This Month)"
-                        value={stats.monthlyRevenue ? `₱${Number(stats.monthlyRevenue).toLocaleString()}` : '—'}
+                        value={stats.monthlyRevenue != null ? `₱${Number(stats.monthlyRevenue).toLocaleString()}` : '—'}
                         icon={<AccountingIcon className="h-5 w-5" />}
                         iconBg="accent"
                         trend={stats.revenueTrend}
@@ -393,15 +394,15 @@ export default function Dashboard() {
                                 <div className="grid grid-cols-3 gap-2 text-center">
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Staff</p>
-                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalStaff || '—'}</p>
+                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalStaff ?? '—'}</p>
                                     </div>
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Terms</p>
-                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.activeTerms || '—'}</p>
+                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.activeTerms ?? '—'}</p>
                                     </div>
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Courses</p>
-                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalCourses || '—'}</p>
+                                        <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalCourses ?? '—'}</p>
                                     </div>
                                 </div>
                             </Card>

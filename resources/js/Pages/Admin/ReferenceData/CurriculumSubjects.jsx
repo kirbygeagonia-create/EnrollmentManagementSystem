@@ -189,7 +189,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                         <FormSection label="Subject" error={form.errors.subjectId} required>
                             <Select
                                 value={form.data.subjectId}
-                                onChange={(e) => form.setData('subjectId', e.target.value)}
+                                onChange={(v) => form.setData('subjectId', v)}
                                 options={allSubjects.map(s => ({ value: s.subjectId, label: `${s.subjectCode} - ${s.subjectName}` }))}
                                 placeholder="Select subject"
                                 className="form-input"
@@ -200,7 +200,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                         <FormSection label="Prerequisite Subject" error={form.errors.prerequisiteSubjectId}>
                             <Select
                                 value={form.data.prerequisiteSubjectId}
-                                onChange={(e) => form.setData('prerequisiteSubjectId', e.target.value)}
+                                onChange={(v) => form.setData('prerequisiteSubjectId', v)}
                                 options={allSubjects.map(s => ({ value: s.subjectId, label: `${s.subjectCode} - ${s.subjectName}` }))}
                                 placeholder="Select prerequisite (optional)"
                                 className="form-input"
@@ -210,7 +210,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                         <FormSection label="Year Level" error={form.errors.yearLevel} required>
                             <Select
                                 value={form.data.yearLevel}
-                                onChange={(e) => form.setData('yearLevel', parseInt(e.target.value))}
+                                onChange={(v) => form.setData('yearLevel', parseInt(v))}
                                 options={[
                                     { value: 1, label: '1st Year' },
                                     { value: 2, label: '2nd Year' },

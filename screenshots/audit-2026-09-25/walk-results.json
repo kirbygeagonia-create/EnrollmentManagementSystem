@@ -1,0 +1,351 @@
+{
+  "pages": [
+    {
+      "path": "/dashboard",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/accounting",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/accounting/daily-report",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/admission-requirements",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/blocks",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/clearance-requirements",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/courses",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/curriculums",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/fee-types",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/majors",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/offices",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/rooms",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/scholarship-types",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/subjects",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/terms",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/audit-logs",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/permissions",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/roles",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/settings",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission/create",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/assessment",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/blocking",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clearance",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clearance/periods",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clinic",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/confirm-password",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/evaluation",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/create",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/results",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/students",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/id",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/profile",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/registrar",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/students",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/students/quick-search",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission/44",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/admission/45",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/assessment/89",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/assessment/84",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/accounting/83",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/accounting/84",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/students/53",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/students/81",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/evaluation/84",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/id/84",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/id/53",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/clinic/53",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/clearance/27",
+      "status": 404,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/registrar/53",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/blocking/99",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/blocking/77",
+      "status": 200,
+      "label": "admin-detail"
+    },
+    {
+      "path": "/students/53",
+      "status": 200,
+      "label": "screenshot"
+    },
+    {
+      "path": "/accounting/daily-report?date=2026-09-13",
+      "status": 200,
+      "label": "daily-report"
+    },
+    {
+      "path": "/students/999999",
+      "status": 404,
+      "label": "404-probe"
+    },
+    {
+      "path": "/admission/999999",
+      "status": 404,
+      "label": "404-probe"
+    },
+    {
+      "path": "/definitely-not-a-page",
+      "status": 404,
+      "label": "404-probe"
+    },
+    {
+      "path": "/admission/create",
+      "status": 200,
+      "label": "form"
+    },
+    {
+      "path": "/admission",
+      "status": 200,
+      "label": "office6-walk"
+    },
+    {
+      "path": "http://localhost:8080/admission/45",
+      "status": "error",
+      "label": "office6-walk",
+      "err": "Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL\nCall log:\n\u001b[2m  - navigating to \"http:/"
+    },
+    {
+      "path": "/clearance",
+      "status": 200,
+      "label": "office6-walk"
+    },
+    {
+      "path": "/students/53",
+      "status": 200,
+      "label": "office6-walk"
+    },
+    {
+      "path": "/admin/users",
+      "status": 200,
+      "label": "office6-walk"
+    }
+  ],
+  "consoleErrors": [
+    "[admin] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[admin] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[admin] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[admin] Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "notes": [
+    "A: logged in as staff8 (admin)",
+    "A: global search \"Juan\" → 0 result links",
+    "A: System Admin tab shows progress view: true",
+    "A: /dashboard?tab=admin shows progress view after fresh load: true (false = tab not deep-linkable)",
+    "A: /students/999999 body snippet:  404 Page not found The page you're looking for doesn't exist or may have been moved. Check the address, or head back and use the navigation menu. Back to Dashb",
+    "A: empty-submit validation errors (1): *",
+    "B: logged in as office6_head",
+    "B: visible queue cards: Admission Queue, Queue clear, Clearance Queue, Queue clear"
+  ]
+}

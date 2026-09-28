@@ -26,7 +26,7 @@ class NotificationSeeder extends Seeder
                 'notifiable_type' => Staffusers::class,
                 'notifiable_id' => $user->userId,
                 'data' => [
-                    'message' => 'Welcome to the SEAIT Enrollment Management System. You can manage enrollment workflows from the sidebar.',
+                    'message' => 'Welcome to the SEAIT Enrollment Management System. You can manage enrollment workflows from the Desks & Apps menu.',
                     'signedBy' => 'System',
                 ],
             ]);

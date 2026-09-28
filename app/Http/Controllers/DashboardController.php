@@ -14,7 +14,6 @@ use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Models\Payments;
-use App\Models\Settings;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
@@ -30,8 +29,6 @@ class DashboardController extends Controller
      */
     public function __invoke(Request $request): Response
     {
-        $currentTermId = Settings::where('settingKey', 'currentTermId')->value('settingValue');
-
         // Item 2: the admin System Admin dashboard tab shows a per-applicant
         // progress workflow view — recent enrollments with their 6-7 step
         // workflow progress — instead of module link tiles. Gated to the
@@ -73,7 +70,9 @@ class DashboardController extends Controller
                     ->whereYear('paymentDate', now()->year)
                     ->sum('amount'),
                 'totalStaff' => Staffusers::count(),
-                'activeTerms' => $currentTermId ? Academicterms::where('termId', $currentTermId)->count() : 0,
+                // Count terms active TODAY by date range — not by the
+                // currentTermId setting, which may be unset (audit 2026-09-25).
+                'activeTerms' => Academicterms::whereDate('startDate', '<=', now())->whereDate('endDate', '>=', now())->count(),
                 'totalCourses' => Courses::count(),
             ],
             'progressTracking' => $progressTracking,

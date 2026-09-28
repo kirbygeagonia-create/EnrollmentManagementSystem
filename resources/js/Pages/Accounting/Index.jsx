@@ -12,27 +12,8 @@ const balanceToneFor = (balance, total) => {
     return 'danger';
 };
 
-export default function Index({ assessments, filters = {} }) {
+export default function Index({ assessments, summary = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
-
-    // Financial overview across the current page.
-    const summary = useMemo(() => {
-        const rows = assessments?.data || [];
-        const totalAssessed = rows.reduce((s, r) => s + Number(r.totalAssessedAmount || 0), 0);
-        const totalBalance = rows.reduce((s, r) => s + Number(r.remainingBalance || 0), 0);
-        const paidCount = rows.filter((r) => Number(r.remainingBalance || 0) <= 0).length;
-        const partialCount = rows.filter((r) => {
-            const b = Number(r.remainingBalance || 0);
-            const t = Number(r.totalAssessedAmount || 0);
-            return b > 0 && b < t;
-        }).length;
-        const unpaidCount = rows.filter((r) => {
-            const b = Number(r.remainingBalance || 0);
-            const t = Number(r.totalAssessedAmount || 0);
-            return b >= t && t > 0;
-        }).length;
-        return { totalAssessed, totalBalance, paidCount, partialCount, unpaidCount, count: rows.length };
-    }, [assessments]);
 
     const columns = useMemo(() => [
         { key: 'enrollment.student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm', render: (row) => row.enrollment?.student?.schoolIdNumber || '—' },
@@ -40,7 +21,7 @@ export default function Index({ assessments, filters = {} }) {
             const s = row.enrollment?.student;
             return s ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` : '—';
         }},
-        { key: 'enrollment.course.name', label: 'Course', render: (row) => row.enrollment?.course?.name || '—' },
+        { key: 'enrollment.course.name', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
         { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
             <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
         )},
@@ -99,8 +80,8 @@ export default function Index({ assessments, filters = {} }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 <StatCard
                     compact
-                    label="Total Assessed (page)"
-                    value={peso(summary.totalAssessed)}
+                    label="Total Assessed"
+                    value={peso(summary.totalAssessed ?? 0)}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +92,7 @@ export default function Index({ assessments, filters = {} }) {
                 <StatCard
                     compact
                     label="Outstanding Balance"
-                    value={peso(summary.totalBalance)}
+                    value={peso(summary.totalBalance ?? 0)}
                     iconBg="danger"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +103,7 @@ export default function Index({ assessments, filters = {} }) {
                 <StatCard
                     compact
                     label="Partially Paid"
-                    value={summary.partialCount}
+                    value={summary.partialCount ?? 0}
                     iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,8 +113,8 @@ export default function Index({ assessments, filters = {} }) {
                 />
                 <StatCard
                     compact
-                    label="Fully Paid"
-                    value={summary.paidCount}
+                    label="Nothing Paid Yet"
+                    value={summary.unpaidCount ?? 0}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

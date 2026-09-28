@@ -15,9 +15,11 @@ export default function Index({ enrollments, filters = {} }) {
     const pendingCount = rows.length - completedCount;
 
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.name || '—' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
+        )},
+        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'clinicStatus', label: 'Clinic Status', render: (row) => {
             const hasRecord = row.clinicrecords && row.clinicrecords.length > 0;
             const status = hasRecord ? 'Completed' : 'Pending';

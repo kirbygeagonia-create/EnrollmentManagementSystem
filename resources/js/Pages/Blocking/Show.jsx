@@ -700,7 +700,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <FormSection label="Subject">
                         <Select
                             value={scheduleForm.subjectId}
-                            onChange={(e) => setScheduleForm({ ...scheduleForm, subjectId: e.target.value })}
+                            onChange={(v) => setScheduleForm({ ...scheduleForm, subjectId: v })}
                             options={subjects.map(s => ({ value: s.subjectId, label: `${s.subjectCode} - ${s.subjectName}` }))}
                             placeholder="Select subject"
                             className="form-input"
@@ -712,7 +712,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <FormSection label="Instructor">
                         <Select
                             value={scheduleForm.instructorId}
-                            onChange={(e) => setScheduleForm({ ...scheduleForm, instructorId: e.target.value })}
+                            onChange={(v) => setScheduleForm({ ...scheduleForm, instructorId: v })}
                             options={instructors.map(i => ({ value: i.userId, label: `${i.firstName} ${i.lastName}` }))}
                             placeholder="Select instructor"
                             className="form-input"
@@ -723,7 +723,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <FormSection label="Room">
                         <Select
                             value={scheduleForm.roomId}
-                            onChange={(e) => setScheduleForm({ ...scheduleForm, roomId: e.target.value })}
+                            onChange={(v) => setScheduleForm({ ...scheduleForm, roomId: v })}
                             options={rooms.map(r => ({ value: r.roomId, label: `${r.roomName} (${r.building}) - Cap: ${r.capacity}` }))}
                             placeholder="Select room"
                             className="form-input"
@@ -737,7 +737,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                 <div key={index} className="flex flex-col sm:flex-row gap-3 items-start">
                                     <Select
                                         value={meeting.dayOfWeek}
-                                        onChange={(e) => updateMeeting(index, 'dayOfWeek', e.target.value)}
+                                        onChange={(v) => updateMeeting(index, 'dayOfWeek', v)}
                                         options={days.map(d => ({ value: d.value, label: d.value }))}
                                         placeholder="Day"
                                         className="form-input flex-1"
@@ -845,7 +845,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                     <FormSection label="Schedule">
                         <Select
                             value={assignForm.scheduleId}
-                            onChange={(e) => setAssignForm({ ...assignForm, scheduleId: e.target.value })}
+                            onChange={(v) => setAssignForm({ ...assignForm, scheduleId: v })}
                             options={sortedSchedules.map(s => ({
                                 value: s.scheduleId,
                                 label: `${s.subject?.subjectCode} - ${s.room?.roomName} - ${s.meetings?.[0]?.dayOfWeek?.value || s.meetings?.[0]?.dayOfWeek} ${formatTime(s.meetings?.[0]?.startTime)}-${formatTime(s.meetings?.[0]?.endTime)}`

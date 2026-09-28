@@ -392,7 +392,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         >
                             <Select
                                 value={['dean', 'programHead'].includes(createForm.data.role) ? '' : createForm.data.officeId}
-                                onChange={(e) => createForm.setData('officeId', e.target.value)}
+                                onChange={(v) => createForm.setData('officeId', v)}
                                 options={officeOptions.filter(o => o.value)}
                                 placeholder={['dean', 'programHead'].includes(createForm.data.role) ? "Not Applicable (Academic Unit Only)" : "Select Office"}
                                 className="form-input"
@@ -407,7 +407,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         >
                             <Select
                                 value={createForm.data.unitId}
-                                onChange={(e) => createForm.setData('unitId', e.target.value)}
+                                onChange={(v) => createForm.setData('unitId', v)}
                                 options={[{ value: '', label: 'None' }, ...units.map(u => ({ value: u.unitId, label: u.unitName }))]}
                                 placeholder="Select Academic Unit / College"
                                 className="form-input"
@@ -485,7 +485,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         <FormSection label="Role" error={createForm.errors.role} required>
                             <Select
                                 value={createForm.data.role}
-                                onChange={(e) => createForm.setData('role', e.target.value)}
+                                onChange={(v) => createForm.setData('role', v)}
                                 options={staffRoleOptions}
                                 placeholder="Select Role"
                                 className="form-input"
@@ -560,7 +560,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         >
                             <Select
                                 value={['dean', 'programHead'].includes(editForm.data.role) ? '' : (editForm.data.officeId || '')}
-                                onChange={(e) => editForm.setData('officeId', e.target.value)}
+                                onChange={(v) => editForm.setData('officeId', v)}
                                 options={officeOptions.filter(o => o.value)}
                                 placeholder={['dean', 'programHead'].includes(editForm.data.role) ? "Not Applicable (Academic Unit Only)" : "Select Office"}
                                 className="form-input"
@@ -575,7 +575,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         >
                             <Select
                                 value={editForm.data.unitId || ''}
-                                onChange={(e) => editForm.setData('unitId', e.target.value)}
+                                onChange={(v) => editForm.setData('unitId', v)}
                                 options={[{ value: '', label: 'None' }, ...units.map(u => ({ value: u.unitId, label: u.unitName }))]}
                                 placeholder="Select Academic Unit / College"
                                 className="form-input"
@@ -653,7 +653,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         <FormSection label="Role" error={editForm.errors.role} required>
                             <Select
                                 value={editForm.data.role}
-                                onChange={(e) => editForm.setData('role', e.target.value)}
+                                onChange={(v) => editForm.setData('role', v)}
                                 options={staffRoleOptions}
                                 placeholder="Select Role"
                                 className="form-input"

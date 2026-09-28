@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { PageHeader, Card, FormSection, Select, StepProgress, RadioCards } from '@/Components/ui';
 import { useForm, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
 const applicantTypeOptions = [
@@ -53,13 +53,13 @@ const levelCompletedOptions = [
     { value: 'graduate', label: 'Graduate' },
 ];
 
-// Section progress steps (visual navigator — scroll-to-anchor only)
+// Section progress steps (visual navigator — scroll-spy + click-to-jump)
 const sectionSteps = [
-    { label: 'Student', status: 'current', anchor: 'section-student' },
-    { label: 'Addresses', status: 'pending', anchor: 'section-addresses' },
-    { label: 'Guardians', status: 'pending', anchor: 'section-guardians' },
-    { label: 'Education', status: 'pending', anchor: 'section-education' },
-    { label: 'Admission', status: 'pending', anchor: 'section-admission' },
+    { label: 'Student', anchor: 'section-student' },
+    { label: 'Addresses', anchor: 'section-addresses' },
+    { label: 'Guardians', anchor: 'section-guardians' },
+    { label: 'Education', anchor: 'section-education' },
+    { label: 'Admission', anchor: 'section-admission' },
 ];
 
 export default function Create({ courses, terms, religions }) {
@@ -168,6 +168,9 @@ export default function Create({ courses, terms, religions }) {
 
         router.post(route('admission.store'), formData, {
             onSuccess: () => form.reset(),
+            // router.post bypasses useForm's error sync — map server validation
+            // errors into form.errors or every form-error render stays dead.
+            onError: (errors) => Object.entries(errors).forEach(([k, v]) => form.setError(k, v)),
         });
     };
 
@@ -176,6 +179,31 @@ export default function Create({ courses, terms, religions }) {
         const el = document.getElementById(anchor);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+
+    // Scroll-spy: the stepper highlights the section currently in view —
+    // the status was previously hardcoded to 'current' on Student and never
+    // moved (audit 2026-09-25).
+    const [activeSection, setActiveSection] = useState('section-student');
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) setActiveSection(entry.target.id);
+                });
+            },
+            { rootMargin: '-15% 0px -55% 0px' },
+        );
+        sectionSteps.forEach((step) => {
+            const el = document.getElementById(step.anchor);
+            if (el) observer.observe(el);
+        });
+        return () => observer.disconnect();
+    }, []);
+
+    const stepperSteps = sectionSteps.map((step) => ({
+        ...step,
+        status: step.anchor === activeSection ? 'current' : 'pending',
+    }));
 
     const { formProps } = useFormKeyboardNav({
         onSubmit: handleSubmit,
@@ -193,21 +221,9 @@ export default function Create({ courses, terms, religions }) {
         >
             <Head title="New Admission" />
 
-            {/* Section Progress Navigator */}
+            {/* Section Progress Navigator — labels are the jump buttons */}
             <Card className="mb-4 sm:mb-5">
-                <StepProgress steps={sectionSteps} />
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    {sectionSteps.map((step) => (
-                        <button
-                            key={step.anchor}
-                            type="button"
-                            onClick={() => scrollToSection(step.anchor)}
-                            className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
-                        >
-                            {step.label}
-                        </button>
-                    ))}
-                </div>
+                <StepProgress steps={stepperSteps} onStepClick={(step) => scrollToSection(step.anchor)} />
             </Card>
 
             {/* Rapid Data Entry Keyboard Navigation Banner */}
@@ -337,7 +353,7 @@ export default function Create({ courses, terms, religions }) {
                             <FormSection label="Religion" required>
                                 <Select
                                     value={form.data.religionId}
-                                    onChange={(e) => form.setData('religionId', e.target.value)}
+                                    onChange={(v) => form.setData('religionId', v)}
                                     options={religions.map(r => ({ value: r.religionId, label: r.religionName }))}
                                     placeholder="Select religion"
                                     required
@@ -346,13 +362,14 @@ export default function Create({ courses, terms, religions }) {
                             </FormSection>
 
                             <FormSection label="Civil Status" required>
-                                <Select
+                                <RadioCards
+                                    name="civilStatus"
+                                    label="Civil Status"
                                     value={form.data.civilStatus}
-                                    onChange={(e) => form.setData('civilStatus', e.target.value)}
+                                    onChange={(v) => form.setData('civilStatus', v)}
                                     options={civilStatusOptions}
-                                    required
+                                    error={form.errors.civilStatus}
                                 />
-                                {form.errors.civilStatus && <p className="form-error">{form.errors.civilStatus}</p>}
                             </FormSection>
 
                             <FormSection label="Contact Number" required>
@@ -448,7 +465,7 @@ export default function Create({ courses, terms, religions }) {
                                     <FormSection label="Address Type" required>
                                         <Select
                                             value={addr.addressType}
-                                            onChange={(e) => updateAddress(idx, 'addressType', e.target.value)}
+                                            onChange={(v) => updateAddress(idx, 'addressType', v)}
                                             options={addressTypeOptions}
                                             required
                                         />
@@ -580,7 +597,7 @@ export default function Create({ courses, terms, religions }) {
                                     <FormSection label="Relationship" required>
                                         <Select
                                             value={guardian.relationship}
-                                            onChange={(e) => updateGuardian(idx, 'relationship', e.target.value)}
+                                            onChange={(v) => updateGuardian(idx, 'relationship', v)}
                                             options={relationshipOptions}
                                             required
                                         />
@@ -677,7 +694,7 @@ export default function Create({ courses, terms, religions }) {
                                     <FormSection label="Institution Type" required>
                                         <Select
                                             value={bg.institutionType}
-                                            onChange={(e) => updateEducationalBackground(idx, 'institutionType', e.target.value)}
+                                            onChange={(v) => updateEducationalBackground(idx, 'institutionType', v)}
                                             options={institutionTypeOptions}
                                             placeholder="Select type"
                                             required
@@ -704,7 +721,7 @@ export default function Create({ courses, terms, religions }) {
                                     <FormSection label="Level Completed" required>
                                         <Select
                                             value={bg.levelCompleted}
-                                            onChange={(e) => updateEducationalBackground(idx, 'levelCompleted', e.target.value)}
+                                            onChange={(v) => updateEducationalBackground(idx, 'levelCompleted', v)}
                                             options={levelCompletedOptions}
                                             placeholder="Select level"
                                             required
@@ -755,7 +772,7 @@ export default function Create({ courses, terms, religions }) {
                             <FormSection label="Course" required>
                                 <Select
                                     value={form.data.courseId}
-                                    onChange={(e) => form.setData('courseId', e.target.value)}
+                                    onChange={(v) => form.setData('courseId', v)}
                                     options={courses.map(c => ({ value: c.courseId, label: `${c.courseCode} - ${c.courseName}` }))}
                                     placeholder="Select course"
                                     required
@@ -766,7 +783,7 @@ export default function Create({ courses, terms, religions }) {
                             <FormSection label="Term" required>
                                 <Select
                                     value={form.data.termId}
-                                    onChange={(e) => form.setData('termId', e.target.value)}
+                                    onChange={(v) => form.setData('termId', v)}
                                     options={terms.map(t => ({ value: t.termId, label: `${t.semester} ${t.academicYear?.year || ''}` }))}
                                     placeholder="Select term"
                                     required
@@ -775,13 +792,14 @@ export default function Create({ courses, terms, religions }) {
                             </FormSection>
 
                             <FormSection label="Applicant Type" required>
-                                <Select
+                                <RadioCards
+                                    name="applicantType"
+                                    label="Applicant Type"
                                     value={form.data.applicantType}
-                                    onChange={(e) => form.setData('applicantType', e.target.value)}
+                                    onChange={(v) => form.setData('applicantType', v)}
                                     options={applicantTypeOptions}
-                                    required
+                                    error={form.errors.applicantType}
                                 />
-                                {form.errors.applicantType && <p className="form-error">{form.errors.applicantType}</p>}
                             </FormSection>
                         </div>
                     </Card>

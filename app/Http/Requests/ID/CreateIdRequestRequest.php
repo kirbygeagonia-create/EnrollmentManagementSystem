@@ -19,7 +19,6 @@ class CreateIdRequestRequest extends FormRequest
             'emergencyContactNumber' => 'required|string|max:20',
             'bloodType' => 'required|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
             'cardPhotoPath' => 'nullable|string|max:500',
-            'producedByVendor' => 'nullable|string|max:255',
         ];
     }
 }

@@ -1,46 +1,18 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { formatStatusLabel, idRequestStatusTone } from '@/Components/ui/statusLabel';
 import { useState, useMemo } from 'react';
 
-const idStatusToneMap = {
-    pending: 'warning',
-    validated: 'seait',
-    released: 'success',
-    cancelled: 'danger',
-};
-
-const idStatusLabelMap = {
-    pending: 'Pending',
-    validated: 'Validated',
-    released: 'Released',
-    cancelled: 'Cancelled',
-};
-
-export default function Index({ enrollments, filters = {} }) {
+export default function Index({ enrollments, stats = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
-    const rows = useMemo(() => enrollments?.data || [], [enrollments]);
-
-    // Summary tiles derived from the current page (request status only)
-    const stats = useMemo(() => {
-        let pending = 0;
-        let validated = 0;
-        let released = 0;
-        rows.forEach((row) => {
-            const status = row.idrequests?.[0]?.status;
-            if (!status) return;
-            if (status === 'pending') pending += 1;
-            else if (status === 'validated') validated += 1;
-            else if (status === 'released') released += 1;
-        });
-        return { pending, validated, released };
-    }, [rows]);
-
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.name || '—' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
+        )},
+        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'idStatus', label: 'ID Status', render: (row) => {
             const status = row.idrequests?.[0]?.status;
 
@@ -49,8 +21,8 @@ export default function Index({ enrollments, filters = {} }) {
             }
 
             return (
-                <Badge tone={idStatusToneMap[status] || 'neutral'}>
-                    {idStatusLabelMap[status] || status}
+                <Badge tone={idRequestStatusTone[status] || 'neutral'}>
+                    {formatStatusLabel(status)}
                 </Badge>
             );
         }},
@@ -86,7 +58,7 @@ export default function Index({ enrollments, filters = {} }) {
             header={
                 <PageHeader
                     title="Student ID Processing & Validation"
-                    subtitle="Validate ID requests with face-photo capture, then track release of the printed cards"
+                    subtitle="Validate ID requests with face-photo capture, then track card release to students"
                     phaseBadge="Phase 8 · ID Office"
                     officeBadge="ID Validation Desk"
                 />
@@ -99,7 +71,7 @@ export default function Index({ enrollments, filters = {} }) {
                 <StatCard
                     compact
                     label="Pending Validation"
-                    value={stats.pending}
+                    value={stats.pending ?? 0}
                     iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +82,7 @@ export default function Index({ enrollments, filters = {} }) {
                 <StatCard
                     compact
                     label="Validated"
-                    value={stats.validated}
+                    value={stats.validated ?? 0}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +93,7 @@ export default function Index({ enrollments, filters = {} }) {
                 <StatCard
                     compact
                     label="Released"
-                    value={stats.released}
+                    value={stats.released ?? 0}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

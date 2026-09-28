@@ -238,7 +238,7 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
                         <FormSection label="School Year" error={form.errors.academicYearId} required>
                             <Select
                                 value={form.data.academicYearId}
-                                onChange={(e) => form.setData('academicYearId', e.target.value)}
+                                onChange={(v) => form.setData('academicYearId', v)}
                                 options={years.map(y => ({ value: y.academicYearId, label: y.yearLabel }))}
                                 placeholder="Select school year"
                                 className="form-input"

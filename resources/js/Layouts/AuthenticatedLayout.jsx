@@ -26,6 +26,7 @@ const deskInfoMap = {
 
 export default function AuthenticatedLayout({ header, children }) {
     const { user } = usePage().props.auth;
+    const currentTerm = usePage().props.currentTerm;
     const { url } = usePage();
     const [isLauncherOpen, setIsLauncherOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -35,12 +36,17 @@ export default function AuthenticatedLayout({ header, children }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Global keyboard shortcuts (Ctrl+K or Cmd+K for search)
+    // Global keyboard shortcuts (Ctrl+K or Cmd+K for search, Escape closes popovers)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 setIsSearchOpen(true);
+            }
+            if (e.key === 'Escape') {
+                setShowingNotifications(false);
+                setIsLauncherOpen(false);
+                setIsSearchOpen(false);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
@@ -195,7 +201,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             {/* Academic Term Indicator */}
                             <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-800/60 border border-slate-700 text-slate-300 text-xs">
                                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                                <span className="font-semibold text-[11px]">2026-2027 · 1st Sem</span>
+                                <span className="font-semibold text-[11px]">{currentTerm || 'No active term'}</span>
                             </div>
 
                             {/* Notification Bell */}

@@ -1,3 +1,9 @@
+// Resolve dotted key paths ('enrollment.student.schoolIdNumber') against the
+// row; falls back to '—' so a wrong key renders a visible dash, never a
+// silent blank cell (audit 2026-09-25).
+const resolveKey = (row, key) =>
+    key.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), row) ?? '—';
+
 export default function DataTable({ columns, rows, children, emptyMessage = 'No records found', className = '' }) {
     const hasRows = rows && rows.length > 0;
 
@@ -20,7 +26,7 @@ export default function DataTable({ columns, rows, children, emptyMessage = 'No 
                             <tr key={rowIndex}>
                                 {columns.map((col) => (
                                     <td key={col.key} className={col.className}>
-                                        {col.render ? col.render(row, rowIndex) : row[col.key]}
+                                        {col.render ? col.render(row, rowIndex) : resolveKey(row, col.key)}
                                     </td>
                                 ))}
                                 {children && (

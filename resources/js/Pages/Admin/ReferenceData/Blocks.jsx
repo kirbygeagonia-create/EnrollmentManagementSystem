@@ -192,7 +192,7 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                         <FormSection label="Course" error={form.errors.courseId} required>
                             <Select
                                 value={form.data.courseId}
-                                onChange={(e) => form.setData('courseId', e.target.value)}
+                                onChange={(v) => form.setData('courseId', v)}
                                 options={courses.map(c => ({ value: c.courseId, label: c.courseName }))}
                                 placeholder="Select course"
                                 className="form-input"
@@ -203,7 +203,7 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                         <FormSection label="Term" error={form.errors.termId} required>
                             <Select
                                 value={form.data.termId}
-                                onChange={(e) => form.setData('termId', e.target.value)}
+                                onChange={(v) => form.setData('termId', v)}
                                 options={terms.map(t => ({ value: t.termId, label: `${t.academicYear?.yearLabel} ${t.semester}` }))}
                                 placeholder="Select term"
                                 className="form-input"
@@ -214,7 +214,7 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                         <FormSection label="Year Level" error={form.errors.yearLevel} required>
                             <Select
                                 value={form.data.yearLevel}
-                                onChange={(e) => form.setData('yearLevel', parseInt(e.target.value))}
+                                onChange={(v) => form.setData('yearLevel', parseInt(v))}
                                 options={[
                                     { value: 1, label: '1st Year' },
                                     { value: 2, label: '2nd Year' },

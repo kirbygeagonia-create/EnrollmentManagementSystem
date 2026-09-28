@@ -16,33 +16,27 @@ const statusToneMap = {
     rejected: 'rejected',
 };
 
-export default function Index({ admissions, filters = {} }) {
+export default function Index({ admissions, stats = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
 
-    // Derive quick stats from the full paginator payload (if available)
-    const stats = useMemo(() => {
-        const rows = admissions?.data || [];
-        const count = (tone) => rows.filter((r) => r.admissionStatus === tone).length;
-        return {
-            total: admissions?.total ?? rows.length,
-            pending: count('pending'),
-            approved: count('approved'),
-            rejected: count('rejected'),
-        };
-    }, [admissions]);
-
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.name || '—' },
-        { key: 'term', label: 'Term', render: (row) => row.term?.name || '—' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
+        )},
+        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'term', label: 'Term', render: (row) => {
+            if (!row.term) return '—';
+            const sem = row.term.semester?.value ?? row.term.semester;
+            return `${sem} · ${row.term.academicYear?.yearLabel || '—'}`;
+        }},
         { key: 'admissionStatus', label: 'Status', render: (row) => (
             <Badge tone={statusToneMap[row.admissionStatus] || 'neutral'}>
                 {formatStatusLabel(row.admissionStatus)}
             </Badge>
         )},
-        { key: 'createdAt', label: 'Submitted', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-PH') : '—' },
+        { key: 'created_at', label: 'Submitted', render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-PH') : '—' },
     ], []);
 
     const handleFilter = (e) => {
@@ -107,7 +101,7 @@ export default function Index({ admissions, filters = {} }) {
                     <StatCard
                         compact
                         label="Total Applications"
-                        value={stats.total}
+                        value={stats.total ?? 0}
                         iconBg="seait"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +114,7 @@ export default function Index({ admissions, filters = {} }) {
                     <StatCard
                         compact
                         label="Pending Review"
-                        value={stats.pending}
+                        value={stats.pending ?? 0}
                         iconBg="warning"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +127,7 @@ export default function Index({ admissions, filters = {} }) {
                     <StatCard
                         compact
                         label="Approved"
-                        value={stats.approved}
+                        value={stats.approved ?? 0}
                         iconBg="success"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +140,7 @@ export default function Index({ admissions, filters = {} }) {
                     <StatCard
                         compact
                         label="Rejected"
-                        value={stats.rejected}
+                        value={stats.rejected ?? 0}
                         iconBg="danger"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

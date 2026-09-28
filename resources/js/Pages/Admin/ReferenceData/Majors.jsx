@@ -195,7 +195,7 @@ export default function Majors({ majors, courses, filters = {} }) {
                         <FormSection label="Course" error={form.errors.courseId} required>
                             <Select
                                 value={form.data.courseId}
-                                onChange={(e) => form.setData('courseId', e.target.value)}
+                                onChange={(v) => form.setData('courseId', v)}
                                 options={courses.map(c => ({ value: c.courseId, label: c.courseName }))}
                                 placeholder="Select course"
                                 className="form-input"

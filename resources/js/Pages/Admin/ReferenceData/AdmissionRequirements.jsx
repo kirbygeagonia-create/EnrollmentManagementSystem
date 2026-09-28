@@ -249,7 +249,7 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
                         <FormSection label="Applies To" error={form.errors.appliesTo} required>
                             <Select
                                 value={form.data.appliesTo}
-                                onChange={(e) => form.setData('appliesTo', e.target.value)}
+                                onChange={(v) => form.setData('appliesTo', v)}
                                 options={appliesTo.map(a => ({ value: a.value, label: formatStatusLabel(a.value) }))}
                                 placeholder="Select applicant type"
                                 className="form-input"

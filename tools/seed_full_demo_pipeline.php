@@ -1,4 +1,5 @@
 <?php
+
 // Comprehensive Demo-Day Pipeline Seeder: populates active, realistic students
 // across every single office desk and workflow queue for live demonstration.
 //
@@ -6,20 +7,15 @@
 
 require 'vendor/autoload.php';
 $app = require 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 use App\Enums\AcademicStanding;
 use App\Enums\AdmissionStatus;
 use App\Enums\ApplicantType;
 use App\Enums\ApplicationMode;
 use App\Enums\ClearanceOverallStatus;
-use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
-use App\Enums\FeeUnitBasis;
-use App\Enums\OfficeId;
-use App\Enums\PaymentMode;
-use App\Enums\PaymentStatus;
 use App\Enums\StudentType;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
@@ -33,6 +29,7 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Workflowsteps;
 use App\Services\WorkflowService;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -61,24 +58,27 @@ if (! $bsitBlock) {
 }
 
 // Helper to create basic student
-function createDemoStudent($schoolId, $first, $last, $user, $email, $gender = 'male', $passwordHash = null) {
+function createDemoStudent($schoolId, $first, $last, $user, $email, $gender = 'male', $passwordHash = null)
+{
     global $defaultPassword;
     $student = Students::where('schoolIdNumber', $schoolId)->first();
-    if ($student) return $student;
+    if ($student) {
+        return $student;
+    }
 
     return Students::create([
         'schoolIdNumber' => $schoolId,
         'firstName' => $first,
         'lastName' => $last,
         'middleName' => 'M',
-        'suffix' => 'N/A',
+        'suffix' => '',
         'gender' => $gender,
         'birthdate' => '2004-05-12',
         'birthplace' => 'Davao City',
         'citizenship' => 'Filipino',
         'civilStatus' => 'single',
         'religionId' => 1,
-        'contactNumber' => '0917' . rand(1000000, 9999999),
+        'contactNumber' => '0917'.rand(1000000, 9999999),
         'email' => $email,
         'username' => $user,
         'passwordHash' => $passwordHash ?? $defaultPassword,
@@ -178,7 +178,9 @@ if ($period) {
                 'approvalDate' => $isApp ? now() : null,
                 'remarks' => $isApp ? 'Cleared' : '',
             ]);
-            if ($isApp) $approvedCount++;
+            if ($isApp) {
+                $approvedCount++;
+            }
         }
         echo "✔ Clearance: Seeded Rico Navarro (DEMO-2026-007) - IN PROGRESS ($approvedCount/10 offices approved)\n";
     }
@@ -512,7 +514,7 @@ if (! $enrDan) {
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-    echo "✔ ID Desk: Seeded Danica Sotto (DEMO-2026-016) - ID REQUESTED (pending card production)\n";
+    echo "✔ ID Desk: Seeded Danica Sotto (DEMO-2026-016) - ID REQUESTED (awaiting ID Office validation)\n";
 }
 
 $kevin = createDemoStudent('DEMO-2026-017', 'Kevin', 'Santos', 'demo_kevin', 'demo.kevin@example.com');
@@ -531,25 +533,19 @@ if (! $enrKev) {
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
-    $idReqId = DB::table('idrequests')->insertGetId([
+    DB::table('idrequests')->insert([
         'enrollmentId' => $enrKev->enrollmentId,
         'requestReason' => 'newStudent',
         'emergencyContactName' => 'Rosa Santos',
         'emergencyContactNumber' => '09171234500',
         'bloodType' => 'B+',
-        'status' => 'cardProduced',
+        'status' => 'validated',
+        'validatedDate' => now(),
         'requestDate' => now(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
-    DB::table('studentids')->insert([
-        'studentId' => $kevin->studentId,
-        'idRequestId' => $idReqId,
-        'qrCode' => 'SEAIT-DEMO-' . $kevin->studentId,
-        'issueDate' => now(),
-        'validationStatus' => 'pendingValidation',
-    ]);
-    echo "✔ ID Desk: Seeded Kevin Santos (DEMO-2026-017) - ID PRODUCED (ready for validation & release)\n";
+    echo "✔ ID Desk: Seeded Kevin Santos (DEMO-2026-017) - ID VALIDATED (ready for release)\n";
 }
 
 echo "\n=======================================================\n";

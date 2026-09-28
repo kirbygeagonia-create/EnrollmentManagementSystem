@@ -1,0 +1,231 @@
+{
+  "pages": [
+    {
+      "path": "/dashboard",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/accounting",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/accounting/daily-report",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/admission-requirements",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/blocks",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/clearance-requirements",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/courses",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/curriculums",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/fee-types",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/majors",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/offices",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/rooms",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/scholarship-types",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/subjects",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/reference-data/terms",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/audit-logs",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/permissions",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/roles",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admin/users/settings",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission/create",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/assessment",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/blocking",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clearance",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clearance/periods",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/clinic",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/evaluation",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/create",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/results",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/exam/students",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/id",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/profile",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/registrar",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/students",
+      "status": 200,
+      "label": "admin-sweep"
+    },
+    {
+      "path": "/admission/create",
+      "status": 200,
+      "label": "form"
+    },
+    {
+      "path": "/admin/users/audit-logs",
+      "status": 200,
+      "label": "auditlogs"
+    },
+    {
+      "path": "/admission",
+      "status": 200,
+      "label": "office6-postfix"
+    },
+    {
+      "path": "/admission/create",
+      "status": 200,
+      "label": "office6-postfix"
+    },
+    {
+      "path": "/clearance",
+      "status": 200,
+      "label": "office6-postfix"
+    },
+    {
+      "path": "/students/81",
+      "status": 200,
+      "label": "office6-postfix"
+    }
+  ],
+  "consoleErrors": [],
+  "notes": [
+    "selects on /admission/create: 5",
+    "identified: religion=#0 (Roman Catholic), course=#3 (BSIT - Bachelor of Science in Information Technology), term=#4 (1st)",
+    "errors seen: *"
+  ],
+  "checks": [
+    "ROUTE SWEEP: 37 pages, non-200: []",
+    "SELECT CONTRACT: 1 errors after empty submit; religion/course/term still erroring: NONE (fix works live)",
+    "AUDIT OVERRIDE FILTER: url=http://localhost:8080/admin/users/audit-logs; rows show Admin Override badge: true",
+    "OFFICE6 SWEEP: non-200: []"
+  ]
+}

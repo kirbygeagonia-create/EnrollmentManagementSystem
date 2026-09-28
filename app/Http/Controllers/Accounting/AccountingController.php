@@ -42,8 +42,23 @@ class AccountingController extends Controller
 
         $assessments = $query->paginate(20)->withQueryString();
 
+        // Financial summary across the whole filtered set — the summary tiles
+        // must describe the full queue, not just the current page (audit 2026-09-25).
+        $summary = (clone $query)
+            ->reorder()
+            ->selectRaw("coalesce(sum(totalAssessedAmount), 0) as totalAssessed, coalesce(sum(remainingBalance), 0) as totalBalance,
+                sum(case when remainingBalance > 0 and remainingBalance < totalAssessedAmount then 1 else 0 end) as partialCount,
+                sum(case when remainingBalance >= totalAssessedAmount and totalAssessedAmount > 0 then 1 else 0 end) as unpaidCount")
+            ->first();
+
         return Inertia::render('Accounting/Index', [
             'assessments' => $assessments,
+            'summary' => [
+                'totalAssessed' => (float) ($summary->totalAssessed ?? 0),
+                'totalBalance' => (float) ($summary->totalBalance ?? 0),
+                'partialCount' => (int) ($summary->partialCount ?? 0),
+                'unpaidCount' => (int) ($summary->unpaidCount ?? 0),
+            ],
             'filters' => $request->only(['search']),
         ]);
     }

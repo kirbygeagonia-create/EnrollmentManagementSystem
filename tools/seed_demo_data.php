@@ -1,4 +1,5 @@
 <?php
+
 // Demo dataset seeder: walks two students through the enrollment pipeline
 // using the real HTTP endpoints + authenticated staff (same flow the E2E test
 // drives), leaving persistent rows in the `ems` database so every parametrized
@@ -7,19 +8,22 @@
 // Usage: php seed_demo_data.php
 require 'vendor/autoload.php';
 $app = require 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
+use App\Enums\EnrollmentStatus;
 use App\Models\Admissions;
 use App\Models\Clearanceperiods;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-function req(Staffusers $user, string $method, string $uri, array $data = []) {
+function req(Staffusers $user, string $method, string $uri, array $data = [])
+{
     $session = app('session.store');
     $session->start();
 
@@ -34,13 +38,15 @@ function req(Staffusers $user, string $method, string $uri, array $data = []) {
     $request->setLaravelSession($session);
     $response = app()->handle($request);
     Auth::logout(); // keep the session clean for the next actor
+
     return $response;
 }
 
-function ok(string $label, $response) {
+function ok(string $label, $response)
+{
     $code = $response->getStatusCode();
     if (! in_array($code, [200, 302])) {
-        echo "FAIL $label -- HTTP $code: " . substr($response->getContent(), 0, 300) . "\n";
+        echo "FAIL $label -- HTTP $code: ".substr($response->getContent(), 0, 300)."\n";
         exit(1);
     }
     echo "ok   $label ($code)\n";
@@ -52,7 +58,7 @@ $staff = fn (int $officeId) => Staffusers::where('officeId', $officeId)->where('
 $payload = [
     'schoolIdNumber' => 'DEMO-2026-001',
     'lastName' => 'Dela Cruz', 'firstName' => 'Juan', 'middleName' => 'P',
-    'suffix' => 'N/A', 'gender' => 'male', 'birthdate' => '2004-01-01',
+    'suffix' => '', 'gender' => 'male', 'birthdate' => '2004-01-01',
     'birthplace' => 'Test City', 'citizenship' => 'Filipino', 'religionId' => 1,
     'civilStatus' => 'single', 'contactNumber' => '09171234567', 'telephoneNumber' => null,
     'email' => 'demo.juan@example.com', 'username' => 'demo_juan', 'password' => 'password123', 'password_confirmation' => 'password123',
@@ -102,12 +108,12 @@ $enrollment = Enrollments::create([
     'enrollmentType' => 'new',
     'academicStanding' => 'regular',
     'evaluatedBy' => $evaluator->userId,
-    'enrollmentStatus' => App\Enums\EnrollmentStatus::Pending,
+    'enrollmentStatus' => EnrollmentStatus::Pending,
 ]);
 echo "     enrollment #{$enrollment->enrollmentId} created\n";
 
 $profile = [
-    'lastName' => 'Dela Cruz', 'firstName' => 'Juan', 'middleName' => 'P', 'suffix' => 'N/A',
+    'lastName' => 'Dela Cruz', 'firstName' => 'Juan', 'middleName' => 'P', 'suffix' => '',
     'gender' => 'male', 'birthdate' => '2004-01-01', 'birthplace' => 'Test City',
     'citizenship' => 'Filipino', 'religionId' => 1, 'civilStatus' => 'single',
     'contactNumber' => '09171234567', 'telephoneNumber' => null, 'email' => 'demo.juan@example.com',
@@ -180,25 +186,20 @@ ok('clinic.record', req($staff(11), 'POST', route('clinic.record', $enrollment),
     'assessmentDate' => now()->toDateString(),
 ]));
 
-// ---------- 9. ID ----------
+// ---------- 9. ID (validation-only flow: intake -> validate -> release) ----------
 ok('id.create', req($staff(22), 'POST', route('id.create', $enrollment), [
     'requestReason' => 'newStudent', 'emergencyContactName' => 'Maria Dela Cruz',
     'emergencyContactNumber' => '09171234568', 'bloodType' => 'O+',
-    'cardPhotoPath' => null, 'producedByVendor' => null,
+    'cardPhotoPath' => null,
 ]));
 $idRequest = $enrollment->fresh()->idrequests->first();
-ok('id.produce', req($staff(22), 'POST', route('id.produce', $idRequest), [
-    'qrCode' => 'SEAIT-DEMO-' . $studentId, 'securityPhotoPath' => null,
-]));
-$studentIdCard = $idRequest->fresh()->studentids;
-ok('id.validate', req($staff(22), 'POST', route('id.validate', $studentIdCard)));
-$cardId = $studentIdCard->studentIdId ?? $studentIdCard->studentId ?? '?';
-echo "     ID card #$cardId validated\n";
+ok('id.validate', req($staff(22), 'POST', route('id.validate', $idRequest)));
+echo "     ID request #{$idRequest->idRequestId} validated\n";
 
 // ---------- 10. Continuing student with clearance (2nd demo path) ----------
 $student2 = Students::create([
     'schoolIdNumber' => 'DEMO-2026-002', 'lastName' => 'Reyes', 'firstName' => 'Maria', 'middleName' => 'S',
-    'suffix' => 'N/A', 'gender' => 'female', 'birthdate' => '2003-05-15', 'birthplace' => 'Test City',
+    'suffix' => '', 'gender' => 'female', 'birthdate' => '2003-05-15', 'birthplace' => 'Test City',
     'citizenship' => 'Filipino', 'civilStatus' => 'single', 'religionId' => 1,
     'contactNumber' => '09171234570', 'telephoneNumber' => null,
     'semestersCompleted' => 4, 'yearsInInstitution' => 2,

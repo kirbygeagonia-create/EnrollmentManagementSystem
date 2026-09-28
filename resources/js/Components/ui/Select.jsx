@@ -1,3 +1,5 @@
+// NOTE: unlike a native <select>, onChange receives the selected VALUE string, not the DOM event.
+// Use `onChange={(v) => form.setData('field', v)}` or `onChange={setStatus}` — never `e.target.value`.
 export default function Select({ value, onChange, options = [], placeholder, error, className = '', disabled = false, required = false, name, id }) {
     return (
         <select

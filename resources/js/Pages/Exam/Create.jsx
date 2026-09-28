@@ -64,6 +64,9 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
 
         router.post(submitRoute, form.data(), {
             onSuccess: () => form.reset('examResult'),
+            // router.post bypasses useForm's error sync — map server validation
+            // errors into form.errors or every form-error render stays dead.
+            onError: (errors) => Object.entries(errors).forEach(([k, v]) => form.setError(k, v)),
         });
     };
 

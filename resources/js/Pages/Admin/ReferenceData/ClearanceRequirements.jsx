@@ -152,7 +152,7 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                     <FormSection label="Office" error={form.errors.officeId} required>
                         <Select
                             value={form.data.officeId}
-                            onChange={(e) => form.setData('officeId', e.target.value)}
+                            onChange={(v) => form.setData('officeId', v)}
                             options={offices.map(o => ({ value: o.officeId, label: o.officeName }))}
                             placeholder="Select office"
                             className="form-input"

@@ -48,6 +48,15 @@ class AssessmentController extends Controller
 
         $assessments = $query->paginate(20)->withQueryString();
 
+        // Fee summary across the whole filtered set — the summary tiles must
+        // describe the full queue, not just the current page (audit 2026-09-25).
+        $summary = (clone $query)
+            ->reorder()
+            ->selectRaw('coalesce(sum(totalAssessedAmount), 0) as total, coalesce(sum(remainingBalance), 0) as balance,
+                sum(case when remainingBalance > 0 and remainingBalance < totalAssessedAmount then 1 else 0 end) as partialCount,
+                sum(case when remainingBalance <= 0 then 1 else 0 end) as settledCount')
+            ->first();
+
         $pendingEvaluations = Enrollments::with(['student', 'course', 'term', 'enrolledSubjects.subject'])
             ->where('enrollmentStatus', EnrollmentStatus::Evaluated)
             ->doesntHave('studentassessments')
@@ -58,6 +67,12 @@ class AssessmentController extends Controller
         return Inertia::render('Assessment/Index', [
             'assessments' => $assessments,
             'pendingEvaluations' => $pendingEvaluations,
+            'summary' => [
+                'total' => (float) ($summary->total ?? 0),
+                'balance' => (float) ($summary->balance ?? 0),
+                'partialCount' => (int) ($summary->partialCount ?? 0),
+                'settledCount' => (int) ($summary->settledCount ?? 0),
+            ],
             'filters' => $request->only(['search']),
         ]);
     }

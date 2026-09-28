@@ -460,7 +460,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                         <FormSection label="Request Reason" required>
                             <Select
                                 value={createForm.data.requestReason}
-                                onChange={(e) => createForm.setData('requestReason', e.target.value)}
+                                onChange={(v) => createForm.setData('requestReason', v)}
                                 options={requestReasons || []}
                                 required
                             />
@@ -468,7 +468,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                         <FormSection label="Blood Type" required>
                             <Select
                                 value={createForm.data.bloodType}
-                                onChange={(e) => createForm.setData('bloodType', e.target.value)}
+                                onChange={(v) => createForm.setData('bloodType', v)}
                                 options={bloodTypeOptions}
                                 className="font-mono"
                                 required

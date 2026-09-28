@@ -25,9 +25,11 @@ export default function Index({ enrollments, filters = {} }) {
     }, [enrollments]);
 
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.name || '—' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
+        )},
+        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `Year ${row.yearLevel}` : '—' },
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeToneMap[row.studentType] || 'neutral'}>

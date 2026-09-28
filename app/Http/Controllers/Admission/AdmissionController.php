@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admission;
 
+use App\Enums\AdmissionStatus;
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
@@ -36,16 +37,30 @@ class AdmissionController extends Controller
     {
         $this->authorize('viewAny', Admissions::class);
 
-        $query = Admissions::with(['student', 'course', 'term', 'evaluatedByUser'])
+        $query = Admissions::with(['student', 'course', 'term.academicYear', 'evaluatedByUser'])
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('admissionId');
 
         $admissions = $query->paginate(20)->withQueryString();
 
+        // Status counts across the whole filtered set — the summary tiles must
+        // describe the full queue, not just the current page (audit 2026-09-25).
+        $statusCounts = (clone $query)
+            ->reorder()
+            ->selectRaw('admissionStatus, count(*) as aggregate')
+            ->groupBy('admissionStatus')
+            ->pluck('aggregate', 'admissionStatus');
+
         return Inertia::render('Admission/Index', [
             'admissions' => $admissions,
             'filters' => $request->only(['status', 'search']),
+            'stats' => [
+                'total' => (int) $statusCounts->sum(),
+                'pending' => (int) ($statusCounts[AdmissionStatus::Pending->value] ?? 0),
+                'approved' => (int) ($statusCounts[AdmissionStatus::Approved->value] ?? 0),
+                'rejected' => (int) ($statusCounts[AdmissionStatus::Rejected->value] ?? 0),
+            ],
         ]);
     }
 

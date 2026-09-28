@@ -33,20 +33,37 @@ class IDController extends Controller
     {
         $this->authorize('viewAny', Idrequests::class);
 
-        $query = Enrollments::with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
+        $base = Enrollments::query()
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
                 ->where('stepStatus', 'pending')
                 ->where('officeId', OfficeId::IdOffice->value)
                 ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
             )
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('enrollmentId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
-        $enrollments = $query->paginate(20)->withQueryString();
+        $enrollments = (clone $base)
+            ->with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
+            ->orderByDesc('enrollmentId')
+            ->paginate(20)->withQueryString();
+
+        // ID-request status counts across the whole filtered set — first
+        // request per enrollment, matching what the table shows (audit 2026-09-25).
+        $idStats = (clone $base)
+            ->join('idrequests', fn ($join) => $join
+                ->on('idrequests.enrollmentId', '=', 'enrollments.enrollmentId')
+                ->whereRaw('idrequests.idrequestId = (SELECT MIN(ir2.idrequestId) FROM idrequests ir2 WHERE ir2.enrollmentId = enrollments.enrollmentId)'))
+            ->selectRaw('idrequests.status as status, count(*) as aggregate')
+            ->groupBy('idrequests.status')
+            ->pluck('aggregate', 'status');
 
         return Inertia::render('ID/Index', [
             'enrollments' => $enrollments,
+            'stats' => [
+                'pending' => (int) ($idStats[IdRequestStatus::Pending->value] ?? 0),
+                'validated' => (int) ($idStats[IdRequestStatus::Validated->value] ?? 0),
+                'released' => (int) ($idStats[IdRequestStatus::Released->value] ?? 0),
+            ],
             'filters' => $request->only(['search']),
         ]);
     }

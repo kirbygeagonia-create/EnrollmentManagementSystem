@@ -211,7 +211,7 @@ export default function Courses({ courses, units, filters = {} }) {
                         <FormSection label="Unit" error={form.errors.unitId} required>
                             <Select
                                 value={form.data.unitId}
-                                onChange={(e) => form.setData('unitId', e.target.value)}
+                                onChange={(v) => form.setData('unitId', v)}
                                 options={units.map(u => ({ value: u.unitId, label: u.unitName }))}
                                 placeholder="Select unit"
                                 className="form-input"

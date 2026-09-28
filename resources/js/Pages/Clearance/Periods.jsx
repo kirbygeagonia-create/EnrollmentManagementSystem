@@ -315,7 +315,7 @@ export default function Periods({ periods }) {
                     <FormSection label="Term" required error={createErrors.termId} className="sm:col-span-2">
                         <Select
                             value={createData.termId}
-                            onChange={(e) => setCreateData('termId', e.target.value)}
+                            onChange={(v) => setCreateData('termId', v)}
                             options={termOptions}
                             placeholder="Select term"
                             className={`form-input ${createErrors.termId ? 'form-input-error' : ''}`}

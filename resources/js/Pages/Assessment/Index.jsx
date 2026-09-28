@@ -1,15 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-// Assessment status (the workflow state of the assessment record itself).
-const assessmentStatusToneMap = {
-    assessed: 'assessed',
-    pending: 'pending',
-};
 
 // Balance status derived from remaining vs total — uses the real badge tones.
 const balanceToneFor = (balance, total) => {
@@ -18,28 +12,16 @@ const balanceToneFor = (balance, total) => {
     return 'danger';
 };
 
-export default function Index({ assessments, pendingEvaluations = [], filters = {} }) {
+export default function Index({ assessments, pendingEvaluations = [], summary = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
-    // Aggregate fee summary across the current page of assessments.
-    const summary = useMemo(() => {
-        const rows = assessments?.data || [];
-        const total = rows.reduce((s, r) => s + Number(r.totalAssessedAmount || 0), 0);
-        const balance = rows.reduce((s, r) => s + Number(r.remainingBalance || 0), 0);
-        const assessedCount = rows.filter((r) => r.status === 'assessed').length;
-        const partialCount = rows.filter((r) => {
-            const b = Number(r.remainingBalance || 0);
-            const t = Number(r.totalAssessedAmount || 0);
-            return b > 0 && b < t;
-        }).length;
-        const settledCount = rows.filter((r) => Number(r.remainingBalance || 0) <= 0).length;
-        return { total, balance, assessedCount, partialCount, settledCount, count: rows.length };
-    }, [assessments]);
-
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
-        { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.name || '—' },
+        { key: 'enrollment.student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => {
+            const s = row.enrollment?.student;
+            return s ? `${s.lastName}, ${s.firstName}` : '—';
+        }},
+        { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
         { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
             <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
         )},
@@ -53,11 +35,17 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                 </Badge>
             );
         }},
-        { key: 'status', label: 'Status', render: (row) => (
-            <Badge tone={assessmentStatusToneMap[row.status] || 'neutral'}>
-                {row.status ? formatStatusLabel(row.status) : '—'}
-            </Badge>
-        )},
+        { key: 'paymentStatus', label: 'Payment Status', render: (row) => {
+            const balance = Number(row.remainingBalance || 0);
+            const total = Number(row.totalAssessedAmount || 0);
+            const tone = balanceToneFor(balance, total);
+            const label = balance <= 0 ? 'Paid' : balance < total ? 'Partial' : 'Unpaid';
+            return (
+                <Badge tone={tone}>
+                    {label}
+                </Badge>
+            );
+        }},
     ], []);
 
     const handleFilter = (e) => {
@@ -102,8 +90,8 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                 <StatCard
                     compact
-                    label="Total Assessed (page)"
-                    value={peso(summary.total)}
+                    label="Total Assessed"
+                    value={peso(summary.total ?? 0)}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +102,7 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                 <StatCard
                     compact
                     label="Outstanding Balance"
-                    value={peso(summary.balance)}
+                    value={peso(summary.balance ?? 0)}
                     iconBg="danger"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,9 +112,9 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                 />
                 <StatCard
                     compact
-                    label="Assessed"
-                    value={summary.assessedCount}
-                    iconBg="accent"
+                    label="Partially Paid"
+                    value={summary.partialCount ?? 0}
+                    iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -136,7 +124,7 @@ export default function Index({ assessments, pendingEvaluations = [], filters = 
                 <StatCard
                     compact
                     label="Fully Settled"
-                    value={summary.settledCount}
+                    value={summary.settledCount ?? 0}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
