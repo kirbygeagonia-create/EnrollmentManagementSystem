@@ -4,18 +4,22 @@ namespace Tests\Feature;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Enums\StudentType;
 use App\Events\EnrollmentStatusChanged;
+use App\Events\WorkflowStepSigned;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
 use App\Models\Courses;
 use App\Models\Enrollments;
+use App\Models\Enrollmentworkflow;
 use App\Models\Notifications;
 use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Services\WorkflowService;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -34,13 +38,12 @@ use Tests\TestCase;
  * is now off in bootstrap/app.php, and one_status_change_writes_exactly_one_message
  * is the guard against it coming back.
  *
- * Second, addressing: §19 of the documentation states the position these tests pin —
- * the bell reads rows addressed to App\Models\Staffusers, while every writer in the
- * application addresses App\Models\Students — so nothing the system produces is ever
- * displayed, and who is actually meant to receive these messages (C-9) is still
- * SEAIT's to decide. The read side is therefore tested against rows placed the way
- * the read side expects them, and the last test measures the gap rather than
- * papering over it.
+ * Second, addressing: §19 used to record this as an open question (C-9) because the
+ * bell reads rows addressed to App\Models\Staffusers while every writer addressed
+ * App\Models\Students — so nothing the system produced was ever displayed. Both
+ * writers now resolve the desk that inherits the record through
+ * App\Support\WorkflowInbox, and the last two tests drive the real event to prove a
+ * notice lands in a bell that can actually read it.
  */
 class NotificationBellTest extends TestCase
 {
@@ -56,8 +59,11 @@ class NotificationBellTest extends TestCase
 
         $this->seed(RbacSeeder::class);
 
-        foreach ([1, 2, 8] as $officeId) {
-            Offices::firstOrCreate(['officeId' => $officeId], ['officeName' => 'Office '.$officeId]);
+        // Every office the workflow vocabulary can name, because a workflow form
+        // writes one box per desk and each box carries an officeId the schema
+        // enforces.
+        foreach (OfficeId::cases() as $office) {
+            Offices::firstOrCreate(['officeId' => $office->value], ['officeName' => 'Office '.$office->value]);
         }
 
         $this->registrar = $this->staff(1);
@@ -195,40 +201,108 @@ class NotificationBellTest extends TestCase
 
         $written = Notifications::where('type', 'enrollment_status_changed')->get();
 
-        $this->assertCount(1, $written, 'The event was handled more than once, so the student has duplicates.');
+        $this->assertCount(1, $written, 'The event was handled more than once, so the desk has duplicates.');
 
         $message = $written->first()->data;
-        $this->assertSame('Payment received. Proceed to Registrar for approval.', $message['message']);
+        $this->assertStringContainsString($student->lastName, $message['message']);
+        $this->assertStringContainsString('payment settled', $message['message']);
+        $this->assertStringContainsString('Registrar approves next', $message['message']);
         $this->assertSame($enrollment->enrollmentId, $message['enrollmentId']);
         $this->assertSame('assessed', $message['fromStatus']);
         $this->assertSame('paid', $message['toStatus']);
     }
 
     #[Test]
-    public function a_message_the_application_actually_writes_is_invisible_to_every_bell(): void
+    public function the_message_a_status_change_produces_reaches_the_desk_that_inherits_the_record(): void
     {
-        // The real writer, driven by the real event: SendEnrollmentNotification
-        // addresses the row at the student, which is the only notifiable the two
-        // listeners ever use (N-1, with the recipient itself logged as C-9).
+        // Both writers used to address every row at App\Models\Students, the only
+        // notifiable they knew, while the bell filters on App\Models\Staffusers —
+        // so the channel was dead at both ends (N-1, and C-9 asked who should
+        // really receive these). They now resolve the office that owns the next
+        // pending box, or the desk the status hands the record to.
         $student = $this->student();
         $enrollment = $this->enrollment($student);
 
         event(new EnrollmentStatusChanged($enrollment, 'assessed', 'paid', $this->registrar, ''));
 
         $written = Notifications::where('type', 'enrollment_status_changed')->sole();
-        $this->assertSame('App\Models\Students', $written->notifiable_type);
-        $this->assertSame($student->studentId, (int) $written->notifiable_id);
+        $this->assertSame(Staffusers::class, $written->notifiable_type);
+        $this->assertSame($this->registrar->userId, (int) $written->notifiable_id);
         $this->assertIsArray($written->data);
 
-        // Every desk's bell filters on App\Models\Staffusers, so the only message the
-        // system really produces reaches nobody.
-        foreach ([$this->registrar, $this->cashier] as $desk) {
-            $this->actingAs($desk)
-                ->getJson(route('notifications.index'))
-                ->assertOk()
-                ->assertJsonCount(0, 'notifications')
-                ->assertJson(['unreadCount' => 0]);
+        // 'paid' hands the record to the Registrar, so that desk reads it.
+        $this->actingAs($this->registrar)
+            ->getJson(route('notifications.index'))
+            ->assertOk()
+            ->assertJsonCount(1, 'notifications')
+            ->assertJson(['unreadCount' => 1]);
+
+        // A desk that is not next in line is not pinged for someone else's turn.
+        $this->actingAs($this->cashier)
+            ->getJson(route('notifications.index'))
+            ->assertOk()
+            ->assertJsonCount(0, 'notifications')
+            ->assertJson(['unreadCount' => 0]);
+    }
+
+    #[Test]
+    public function a_signed_box_warns_the_last_desk_that_it_is_the_last(): void
+    {
+        $idOffice = $this->staff(OfficeId::IdOffice->value);
+
+        $enrollment = $this->enrollment($this->student());
+        $justSigned = $this->boxes($this->signedThrough($enrollment, 6))[5];
+
+        event(new WorkflowStepSigned($justSigned->workflow, $justSigned, $this->registrar));
+
+        $written = Notifications::where('type', 'workflow_step_signed')->sole();
+
+        $this->assertSame(Staffusers::class, $written->notifiable_type);
+        $this->assertSame($idOffice->userId, (int) $written->notifiable_id, 'Only the desk still waiting is told.');
+        $this->assertStringContainsString('Phase 6 of 7', $written->data['message']);
+        $this->assertStringContainsString('Last desk before the enrollment form closes.', $written->data['message']);
+        $this->assertTrue($written->data['lastDesk']);
+    }
+
+    #[Test]
+    public function a_form_signed_through_notifies_the_records_custodian_that_it_is_complete(): void
+    {
+        $enrollment = $this->enrollment($this->student());
+        $workflow = $this->signedThrough($enrollment, 7);
+
+        event(new WorkflowStepSigned($workflow, $this->boxes($workflow)[6], $this->registrar));
+
+        $signed = Notifications::where('type', 'workflow_step_signed')->count();
+        $completed = Notifications::where('type', 'workflow_completed')->sole();
+
+        $this->assertSame(0, $signed, 'Nothing is pending, so no desk is waiting on it.');
+        $this->assertSame($this->registrar->userId, (int) $completed->notifiable_id);
+        $this->assertStringContainsString('form complete', $completed->data['message']);
+        $this->assertStringContainsString('all 7 desks signed', $completed->data['message']);
+    }
+
+    /**
+     * Sign the first $count workflow boxes straight on the table — these tests
+     * are about who is told, not about the order signStep enforces.
+     */
+    private function signedThrough(Enrollments $enrollment, int $count): Enrollmentworkflow
+    {
+        $workflow = app(WorkflowService::class)->createWorkflow($enrollment);
+
+        foreach ($workflow->workflowsteps()->orderBy('stepOrder')->get()->take($count) as $box) {
+            DB::table('workflowsteps')->where('workflowStepId', $box->workflowStepId)->update([
+                'stepStatus' => 'completed',
+                'signedBy' => $this->registrar->userId,
+                'signedDate' => now(),
+            ]);
         }
+
+        return $workflow;
+    }
+
+    private function boxes(Enrollmentworkflow $workflow)
+    {
+        return $workflow->workflowsteps()->orderBy('stepOrder')->get();
     }
 
     private function student(): Students
