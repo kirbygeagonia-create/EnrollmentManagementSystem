@@ -66,7 +66,7 @@
     @endphp
     <div class="info-row">
         <span class="info-label">Course & Year:</span>
-        <span class="info-value">{{ $termEnrollment?->course?->courseName ?? 'N/A' }} - {{ $termEnrollment?->yearLevel ?? 'N/A' }} Year</span>
+        <span class="info-value">{{ $termEnrollment?->course?->courseName ?? 'N/A' }} - {{ $termEnrollment?->yearLevel ? 'Year '.$termEnrollment->yearLevel : 'Year N/A' }}</span>
     </div>
     <div class="info-row">
         <span class="info-label">Date to be Signed:</span>

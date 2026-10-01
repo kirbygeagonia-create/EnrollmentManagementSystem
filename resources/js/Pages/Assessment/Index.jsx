@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -166,7 +166,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                                         {ev.student?.lastName}, {ev.student?.firstName}
                                     </p>
                                     <p className="text-xs text-slate-500 font-mono">
-                                        {ev.student?.schoolIdNumber} • {ev.course?.courseCode} (Yr {ev.yearLevel})
+                                        {ev.student?.schoolIdNumber} • {ev.course?.courseCode} ({formatYearLevel(ev.yearLevel)})
                                     </p>
                                     <p className="text-[11px] text-slate-400 mt-0.5">
                                         {ev.enrolledSubjects?.length || 0} subjects proposed

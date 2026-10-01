@@ -47,6 +47,15 @@ export function academicStandingToneFor(standing) {
     return standing ? (academicStandingTone[standing] || 'neutral') : 'pending';
 }
 
+// A year level is a level, not a rank. Six pages each carried their own
+// getYearSuffix and printed four vocabularies for one number — "1st Year", a
+// bare "1st", "Year 1", and the raw digit — so the printed paper disagreed with
+// the picker the evaluator used to record it. One formatter, matching that
+// picker, and it names the empty case instead of rendering "th Year".
+export function formatYearLevel(level) {
+    return level ? `Year ${level}` : '—';
+}
+
 // Keys match App\Enums\IdRequestReason values; labels match the ID desk's
 // own vocabulary (IDController::show maps the same cases).
 export const idRequestReasonLabel = {

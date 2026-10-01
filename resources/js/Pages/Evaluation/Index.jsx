@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 export default function Index({ enrollments, filters = {} }) {
@@ -23,7 +23,7 @@ export default function Index({ enrollments, filters = {} }) {
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `Year ${row.yearLevel}` : '—' },
+        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}

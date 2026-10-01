@@ -1,15 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const yearLevelOptions = [
     { value: '', label: 'All Year Levels' },
-    { value: '1', label: '1st Year' },
-    { value: '2', label: '2nd Year' },
-    { value: '3', label: '3rd Year' },
-    { value: '4', label: '4th Year' },
-    { value: '5', label: '5th Year' },
+    { value: '1', label: 'Year 1' },
+    { value: '2', label: 'Year 2' },
+    { value: '3', label: 'Year 3' },
+    { value: '4', label: 'Year 4' },
+    { value: '5', label: 'Year 5' },
 ];
 
 const availableToneMap = {
@@ -23,15 +23,6 @@ const BlockIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
 );
-
-const getYearSuffix = (year) => {
-    switch (year) {
-        case 1: return 'st';
-        case 2: return 'nd';
-        case 3: return 'rd';
-        default: return 'th';
-    }
-};
 
 export default function Index({ blocks, courses, terms, filters = {} }) {
     const [search, setSearch] = useState('');
@@ -67,7 +58,7 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
             const yearLabel = row.term.academicYear?.yearLabel || '';
             return `${semester} ${yearLabel}`.trim();
         }},
-        { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `${row.yearLevel}${getYearSuffix(row.yearLevel)} Year` : '—' },
+        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'capacity', label: 'Capacity', render: (row) => {
             const enrolled = row.enrolled_subjects_count ?? 0;
             const capacity = row.maxStudents;

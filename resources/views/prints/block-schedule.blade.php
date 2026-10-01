@@ -46,7 +46,7 @@
         </div>
         <div class="info-field">
             <span class="info-label">Year Level:</span>
-            <span class="info-value">{{ $block->yearLevel }}</span>
+            <span class="info-value">{{ $block->yearLevel ? 'Year '.$block->yearLevel : 'N/A' }}</span>
         </div>
         <div class="info-field">
             <span class="info-label">Term:</span>

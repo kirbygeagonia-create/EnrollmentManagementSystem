@@ -216,11 +216,11 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                                 value={form.data.yearLevel}
                                 onChange={(v) => form.setData('yearLevel', parseInt(v))}
                                 options={[
-                                    { value: 1, label: '1st Year' },
-                                    { value: 2, label: '2nd Year' },
-                                    { value: 3, label: '3rd Year' },
-                                    { value: 4, label: '4th Year' },
-                                    { value: 5, label: '5th Year' },
+                                    { value: 1, label: 'Year 1' },
+                                    { value: 2, label: 'Year 2' },
+                                    { value: 3, label: 'Year 3' },
+                                    { value: 4, label: 'Year 4' },
+                                    { value: 5, label: 'Year 5' },
                                 ]}
                                 placeholder="Select year level"
                                 className="form-input"

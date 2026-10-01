@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone, formatYearLevel } from '@/Components/ui';
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
@@ -474,7 +474,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 className="form-select"
                             >
                                 {[1, 2, 3, 4, 5].map((level) => (
-                                    <option key={level} value={level}>{`Year ${level}`}</option>
+                                    <option key={level} value={level}>{formatYearLevel(level)}</option>
                                 ))}
                             </select>
                             {standingForm.errors.yearLevel && (

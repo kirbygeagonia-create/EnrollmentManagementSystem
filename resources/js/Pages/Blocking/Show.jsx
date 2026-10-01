@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -433,7 +433,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             header={
                 <PageHeader
                     title={`Block Section: ${block.blockName}`}
-                    subtitle={`${block.course?.courseName} - ${block.term?.semester?.value || block.term?.semester} ${block.term?.academicYear?.yearLabel || ''} ${block.yearLevel}${getYearSuffix(block.yearLevel)}`}
+                    subtitle={`${block.course?.courseName} - ${block.term?.semester?.value || block.term?.semester} ${block.term?.academicYear?.yearLabel || ''} ${formatYearLevel(block.yearLevel)}`}
                     phaseBadge="Phase 6 · Section Scheduling"
                     officeBadge="Office 5 · Scheduling Desk"
                     actions={
@@ -490,7 +490,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                         </div>
                         <div>
                             <p className="text-sm text-brand-500">Year Level</p>
-                            <p className="font-medium">{block.yearLevel}{getYearSuffix(block.yearLevel)} Year</p>
+                            <p className="font-medium">{formatYearLevel(block.yearLevel)}</p>
                         </div>
                         <div>
                             <p className="text-sm text-brand-500">Section</p>
@@ -1038,13 +1038,6 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             </Modal>
         </AuthenticatedLayout>
     );
-}
-
-function getYearSuffix(year) {
-    if (year === 1) return 'st';
-    if (year === 2) return 'nd';
-    if (year === 3) return 'rd';
-    return 'th';
 }
 
 function formatTime(time) {

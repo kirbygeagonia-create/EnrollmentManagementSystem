@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
-import { Badge, formatStatusLabel } from '@/Components/ui';
+import { Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
 
 export default function PrintSubjectLoad({ enrollment }) {
     const studentName = enrollment.student
@@ -49,7 +49,7 @@ export default function PrintSubjectLoad({ enrollment }) {
                     </div>
                     <div className="sm:col-span-2">
                         <p className="font-medium text-brand-900">Year Level:</p>
-                        <p>{enrollment.yearLevel ? `${enrollment.yearLevel}${getYearSuffix(enrollment.yearLevel)} Year` : '—'}</p>
+                        <p>{formatYearLevel(enrollment.yearLevel)}</p>
                     </div>
                     <div>
                         <p className="font-medium text-brand-900">Term:</p>
@@ -139,13 +139,6 @@ export default function PrintSubjectLoad({ enrollment }) {
             </div>
         </PrintLayout>
     );
-}
-
-function getYearSuffix(year) {
-    if (year === 1) return 'st';
-    if (year === 2) return 'nd';
-    if (year === 3) return 'rd';
-    return 'th';
 }
 
 function formatStatus(status) {

@@ -53,7 +53,7 @@
         </div>
         <div class="info-field">
             <span class="info-label">Course & Year:</span>
-            <span class="info-value">{{ $enrollment->course->courseName }} - {{ $enrollment->yearLevel }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
+            <span class="info-value">{{ $enrollment->course->courseName }} - {{ $enrollment->yearLevel ? 'Year '.$enrollment->yearLevel : 'Year N/A' }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
         </div>
         <div class="info-field">
             <span class="info-label">Student ID:</span>

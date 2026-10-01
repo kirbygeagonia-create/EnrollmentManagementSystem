@@ -57,7 +57,7 @@
         </div>
         <div class="block-field">
             <span class="block-label">Course & Year:</span>
-            <span class="block-value">{{ $enrollment->course->courseName }} - {{ $enrollment->yearLevel }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
+            <span class="block-value">{{ $enrollment->course->courseName }} - {{ $enrollment->yearLevel ? 'Year '.$enrollment->yearLevel : 'Year N/A' }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
         </div>
     </div>
 

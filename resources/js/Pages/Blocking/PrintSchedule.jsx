@@ -1,3 +1,4 @@
+import { formatYearLevel } from '@/Components/ui';
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
 
@@ -33,7 +34,7 @@ export default function PrintSchedule({ block }) {
                     </div>
                     <div>
                         <p className="font-medium text-brand-900">Year Level:</p>
-                        <p>{block.yearLevel}{getYearSuffix(block.yearLevel)} Year</p>
+                        <p>{formatYearLevel(block.yearLevel)}</p>
                     </div>
                     <div>
                         <p className="font-medium text-brand-900">Section:</p>
@@ -93,13 +94,6 @@ export default function PrintSchedule({ block }) {
             )}
         </PrintLayout>
     );
-}
-
-function getYearSuffix(year) {
-    if (year === 1) return 'st';
-    if (year === 2) return 'nd';
-    if (year === 3) return 'rd';
-    return 'th';
 }
 
 function formatTime(time) {

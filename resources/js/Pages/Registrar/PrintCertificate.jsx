@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
-import { Badge, formatStatusLabel } from '@/Components/ui';
+import { Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
 
 export default function PrintCertificate({ enrollment, documentNumber, issuedDate }) {
     const studentName = enrollment.student
@@ -44,7 +44,7 @@ export default function PrintCertificate({ enrollment, documentNumber, issuedDat
                     </div>
                     <div>
                         <p className="font-medium text-brand-900">Year Level:</p>
-                        <p>{enrollment.yearLevel ? `Year ${enrollment.yearLevel}` : '—'}</p>
+                        <p>{formatYearLevel(enrollment.yearLevel)}</p>
                     </div>
                     <div>
                         <p className="font-medium text-brand-900">Term:</p>

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel } from '@/Components/ui';
 import { useState } from 'react';
 
 const checklistSteps = [
@@ -378,7 +378,7 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
                             <div>
                                 <span className="text-slate-400 font-semibold block">Year Level & Standing:</span>
                                 <span className="font-bold text-slate-900">
-                                    Year {enrollment.yearLevel} ({form.data.academicStanding || 'Not yet decided'})
+                                    {formatYearLevel(enrollment.yearLevel)} ({form.data.academicStanding || 'Not yet decided'})
                                 </span>
                             </div>
                         </div>

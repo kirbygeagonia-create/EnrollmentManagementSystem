@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Inline icon — queue of records awaiting registrar validation
@@ -19,7 +19,7 @@ export default function Index({ enrollments, filters = {} }) {
             row.student ? `${row.student.lastName}, ${row.student.firstName}${row.student.middleName ? ' ' + row.student.middleName.charAt(0) + '.' : ''}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `${row.yearLevel}${getYearSuffix(row.yearLevel)} Year` : '—' },
+        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType?.value || row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType?.value || row.studentType)}
@@ -164,9 +164,3 @@ export default function Index({ enrollments, filters = {} }) {
     );
 }
 
-function getYearSuffix(year) {
-    if (year === 1) return 'st';
-    if (year === 2) return 'nd';
-    if (year === 3) return 'rd';
-    return 'th';
-}

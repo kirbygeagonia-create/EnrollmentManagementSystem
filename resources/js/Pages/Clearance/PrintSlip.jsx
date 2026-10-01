@@ -1,4 +1,4 @@
-import { PrintLayout, Card, Badge, formatStatusLabel } from '@/Components/ui';
+import { PrintLayout, Card, Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
 
 const approvalStatusToneMap = {
     pending: 'pending',
@@ -33,7 +33,7 @@ export default function PrintSlip({ clearance, termEnrollment, documentNumber })
                     </div>
                     <div>
                         <p className="font-medium">Year Level:</p>
-                        <p>{termEnrollment?.yearLevel || '—'}</p>
+                        <p>{formatYearLevel(termEnrollment?.yearLevel)}</p>
                     </div>
                     <div>
                         <p className="font-medium">Document No.:</p>
