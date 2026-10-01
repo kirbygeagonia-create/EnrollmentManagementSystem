@@ -42,6 +42,15 @@ class AssessmentPolicy
             return false;
         }
 
+        // The fee sheet prices the subject load the department signed, so
+        // computing before that signature values a proposal nobody has stood
+        // behind — and, because the signature is what BR32 forces the profile
+        // through, it is also how a profile-less enrollment reached Phase 3
+        // with the desk's own Sign button visibly disabled.
+        if ($enrollment->formSignedDate === null) {
+            return false;
+        }
+
         // Must be Accounting/Scholarship office
         return in_array($user->officeId, [OfficeId::Accounting->value, OfficeId::Scholarship->value], true);
     }
