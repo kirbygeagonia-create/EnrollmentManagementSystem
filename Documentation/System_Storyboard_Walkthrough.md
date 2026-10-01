@@ -26,7 +26,7 @@ flowchart LR
     F --> G[Phase 5: Registrar Approval]
     G --> H[Phase 6: Blocking & Scheduling]
     H --> I[Phase 7: School Clinic]
-    I --> J[Phase 8: ID Validation & Release]
+    I --> J[Phase 8: ID Validation]
 
     style A fill:#1e3a8a,stroke:#3b82f6,color:#fff
     style B fill:#1e3a8a,stroke:#3b82f6,color:#fff
@@ -55,7 +55,7 @@ flowchart LR
 | **Registrar Officer** | Official custodian of academic records & university seal | `Registrar/Index.jsx`, `Registrar/Show.jsx` | Certificate of Matriculation, Official Class Cards |
 | **Department Scheduler** | Manages section cohorts, instructors, and physical rooms | `Blocking/Index.jsx`, `Blocking/Show.jsx` | Master Schedule, Room Directory, Class Block Sheets |
 | **Clinic Physician / Nurse** | Conducts physical exam, manages PhilHealth compliance | `Clinic/Index.jsx`, `Clinic/Show.jsx` | Medical Records, PhilHealth Enrollment Forms |
-| **ID Processing Staff** | Validates ID requests with face-photo capture, releases printed cards | `ID/Index.jsx`, `ID/Show.jsx` | ID Intake Slip, Webcam / Photo File, Printed ID Card |
+| **ID Processing Staff** | Validates ID requests with face-photo capture and signs the final workflow step | `ID/Index.jsx`, `ID/Show.jsx` | ID Intake Slip, Webcam / Photo File |
 
 ---
 
@@ -138,14 +138,13 @@ sequenceDiagram
     CLN->>CLN: Registers/verifies PhilHealth number
     CLN->>CLN: Creates ClinicRecords & signs Step 6 (WorkflowSteps Office 11)
 
-    Note over S,IDO: PHASE 8: ID Request Validation & Card Release
+    Note over S,IDO: PHASE 8: ID Request Validation
     S->>IDO: Submits ID intake slip (reason, emergency contact, blood type)
     IDO->>IDO: Creates IdRequests row (status = 'pending')
     IDO->>IDO: Captures student face photo & attaches it to the request
     IDO->>IDO: Validates IdRequests (status = 'validated')
-    IDO->>IDO: Signs final ID Office step (WorkflowSteps Office 22)
+    IDO->>IDO: Signs final ID Validation step (WorkflowSteps Office 22)
     IDO->>IDO: Closes EnrollmentWorkflow (status = 'completed')
-    IDO-->>S: Hands over the printed ID card (status = 'released')
 ```
 
 ---
@@ -338,24 +337,23 @@ sequenceDiagram
 
 * **Key Controllers**: `ClinicController@record`
 
-### Phase 8 — ID Office: Request Validation & Card Release
+### Phase 8 — ID Office: Request Validation
 * **Who**: All Enrolled Students; ID Office Staff.
 * **The Story**:
   1. **Intake**: The student fills out a brief intake slip (reason, emergency contact, blood type) at the ID Office window. An `IdRequests` row is created in `pending` and linked to the enrollment.
   2. **Face Photo Capture**: The ID staff member captures the student's face photo live from the EMS workstation camera (or uploads an existing photo file) — the photo is attached to the ID request.
   3. **Strict Validation**: Validation requires the request to be `pending` AND carry the attached face photo. Validating records the validating staff member and timestamp on the request and transitions it to `validated`.
-  4. The ID officer digitally signs the ID Office workflow step (Office 22).
-  5. **Card Release**: The physical ID card is printed off-system; releasing records the handover and transitions the request to `released`.
-  6. **The Final Closure**:
+  4. The ID officer digitally signs the ID Validation workflow step (Office 22).
+  5. **The Final Closure**:
      - Having collected all required office signatures in strict sequence, the system marks `EnrollmentWorkflow.workflowStatus = 'completed'`.
      - The physical enrollment tracking slip is complete, filed, and archived.
-     - The student is handed their active institutional ID and officially begins the semester!
+     - Validation is the last action the system performs. Card printing and hand-over are outside the EMS (owner ruling, 2026-09-30), so there is no `released` status and nothing left to record here.
 
 * **Database Tables Involved**:
   - `IdRequests` — ID processing request (with face photo, validatedBy/validatedDate)
   - `EnrollmentWorkflow` — final workflow closure
 
-* **Key Controllers**: `IdController@attachPhoto`, `IdController@validate`, `IdController@release`
+* **Key Controllers**: `IdController@attachPhoto`, `IdController@validate`
 
 ---
 
@@ -460,7 +458,7 @@ The system manages **62 distinct database tables** organized into the following 
 | **Feature/E2E** | End-to-end flow tests | Full enrollment lifecycle simulation | ✅ Pass |
 | **Feature/Evaluation** | Evaluation tests | Subject advising, grade evaluation, retention checks | ✅ Pass |
 | **Feature/Exam** | Exam result tests | Entrance exam scoring, pass/fail determination | ✅ Pass |
-| **Feature/ID** | ID processing tests | ID validation, face-photo capture, release | ✅ Pass |
+| **Feature/ID** | ID processing tests | ID validation, face-photo capture | ✅ Pass |
 | **Feature/Observers** | Model observer tests | Automatic side-effects on model events | ✅ Pass |
 | **Feature/Print** | Print audit tests | Document generation logging, immutability | ✅ Pass |
 | **Feature/Rbac** | RBAC permission tests | Role-based access control, office boundaries | ✅ Pass |

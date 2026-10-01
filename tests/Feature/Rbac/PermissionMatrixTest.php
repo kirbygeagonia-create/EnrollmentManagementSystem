@@ -461,7 +461,7 @@ class PermissionMatrixTest extends TestCase
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
             'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'id.request.create', 'id.validate', 'id.release', 'id.sign',
+            'id.request.create', 'id.validate', 'id.sign',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',

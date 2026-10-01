@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Exam;
 
+use App\Enums\AdmissionStatus;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
-use App\Models\Admissions;
 use App\Models\Courses;
+use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Students;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -68,6 +69,18 @@ class ExamController extends Controller
         }
 
         $exams = $query->paginate(20)->withQueryString();
+
+        // An exam record is per (student, term) with no enrollmentId, so the
+        // standing this desk reads comes from the matching enrollment in one
+        // lookup. Applicants not enrolled yet simply show as undecided.
+        $standings = Enrollments::standingMapFor(
+            $exams->getCollection()->map(fn (Examresults $e) => [$e->studentId, $e->termId])
+        );
+        $exams->getCollection()->each(function (Examresults $row) use ($standings) {
+            $match = $standings[$row->studentId.'-'.$row->termId] ?? null;
+            $row->setAttribute('studentType', $match?->studentType?->value);
+            $row->setAttribute('academicStanding', $match?->academicStanding?->value);
+        });
 
         return Inertia::render('Exam/Index', [
             'exams' => $exams,
@@ -161,7 +174,7 @@ class ExamController extends Controller
             $students = Students::whereHas('admissions', fn ($q) => $q
                 ->where('courseId', $request->courseId)
                 ->where('termId', $request->termId)
-                ->whereIn('admissionStatus', ['pending', 'approved'])
+                ->whereIn('admissionStatus', [AdmissionStatus::Pending->value, AdmissionStatus::Approved->value])
             )->whereDoesntHave('enrollments', fn ($q) => $q
                 ->where('termId', $request->termId)
             )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
@@ -205,15 +218,14 @@ class ExamController extends Controller
         ]);
         $exam->save();
 
-        // Update admission status if failed
-        if ($validated['examResult'] === 'fail') {
-            Admissions::where('studentId', $validated['studentId'])
-                ->where('courseId', $validated['courseId'])
-                ->where('termId', $validated['termId'])
-                ->update(['admissionStatus' => 'rejected']);
-        }
-
-        return redirect()->route('exam.index')->with('success', 'General entrance exam recorded.');
+        // The examination module writes examresults rows and nothing else. Deciding
+        // the application belongs to the Admission office: AdmissionPolicy::approve
+        // already refuses an application whose general result is missing or failed,
+        // and only AdmissionController::approve creates the enrollment that the next
+        // six desks read. Set the status here and a failed applicant simply vanishes
+        // from the Admission queue with no signature and no audit row (G-8).
+        return redirect()->route('exam.index')
+            ->with('success', 'General entrance exam recorded. The Admission office decides the application.');
     }
 
     /**
@@ -259,19 +271,14 @@ class ExamController extends Controller
             'examDate' => $validated['examDate'],
         ]);
 
-        // Update admission status
-        $admission = Admissions::where('studentId', $validated['studentId'])
-            ->where('courseId', $validated['courseId'])
-            ->where('termId', $validated['termId'])
-            ->first();
-
-        if ($admission) {
-            $admission->update([
-                'admissionStatus' => $validated['examResult'] === 'pass' ? 'approved' : 'rejected',
-            ]);
-        }
-
-        return redirect()->route('exam.index')->with('success', 'Course-specific entrance exam recorded.');
+        // Same boundary as the general stage: this is where the department's opinion
+        // ends. A pass here used to write admissionStatus = approved directly, which
+        // left the application reading as approved with no enrollment row — and
+        // because AdmissionPolicy::approve only accepts a pending application, the
+        // Admission office could no longer correct it, so the student never reached
+        // the Evaluation queue (G-8). A fail used to reject the application outright.
+        return redirect()->route('exam.index')
+            ->with('success', 'Course-specific entrance exam recorded. The Admission office decides the application.');
     }
 
     /**

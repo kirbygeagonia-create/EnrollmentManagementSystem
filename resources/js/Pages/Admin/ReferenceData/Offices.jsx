@@ -17,6 +17,28 @@ export default function Offices({ offices, filters = {} }) {
     const columns = useMemo(() => [
         { key: 'officeId', label: 'ID', className: 'font-mono text-sm hidden md:table-cell' },
         { key: 'officeName', label: 'Name' },
+        {
+            key: 'workflowName',
+            label: 'Desk in the workflow',
+            render: (row) => (row.workflowName ? (
+                <span className="badge badge-success">{row.workflowName}</span>
+            ) : (
+                <span className="text-muted-foreground">
+                    No desk is wired to id {row.officeId}
+                    <span className="block text-xs">It signs nothing and is hidden from every office-scoped check.</span>
+                </span>
+            )),
+        },
+        {
+            key: 'usage',
+            label: 'Used by',
+            className: 'hidden lg:table-cell',
+            render: (row) => (
+                <span className="font-mono text-xs text-muted-foreground">
+                    {row.staffCount} staff · {row.requirementCount} clearance requirements · {row.stepCount} workflow steps
+                </span>
+            ),
+        },
     ], []);
 
     const handleFilter = (e) => {
@@ -88,7 +110,11 @@ export default function Offices({ offices, filters = {} }) {
             </button>
             <button
                 onClick={() => confirmDelete(row)}
-                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
+                disabled={!!row.workflowName}
+                title={row.workflowName
+                    ? `The application compares authorizations against office id ${row.officeId} (OfficeId::${row.workflowName}), so this row cannot be deleted.`
+                    : 'Delete office'}
+                className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Delete office"
             >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +129,7 @@ export default function Offices({ offices, filters = {} }) {
             header={
                 <PageHeader
                     title="Offices"
-                    subtitle="Manage administrative offices"
+                    subtitle="Names printed on slips and letters. Which office may sign what is fixed in code by office id, so a row here only becomes a desk when the application is taught its id."
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +182,9 @@ export default function Offices({ offices, filters = {} }) {
                 show={showModal}
                 onClose={closeModal}
                 title={editingOffice ? 'Edit Office' : 'Create Office'}
-                subtitle="Enter the administrative office name."
+                subtitle={editingOffice
+                    ? 'Renaming changes what prints on documents. It changes no one\'s access, because authorization compares the office id.'
+                    : 'A new office is a name only until the application is taught its id — it will not appear as a desk, sign a workflow step, or gain a queue.'}
                 icon={
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />

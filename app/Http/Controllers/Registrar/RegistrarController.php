@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Registrar;
 
+use App\Enums\AcademicStanding;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
 use App\Enums\DocumentType;
@@ -11,14 +12,17 @@ use App\Enums\EnrollmentType;
 use App\Enums\OfficeId;
 use App\Enums\PaymentStatus;
 use App\Enums\StudentType;
+use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Clearanceperiods;
-use App\Models\Documentprintlog;
+use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
+use App\Services\AcademicStandingService;
 use App\Services\EnrollmentStateMachine;
+use App\Services\PrintService;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +31,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class RegistrarController extends Controller
 {
@@ -34,7 +39,8 @@ class RegistrarController extends Controller
 
     public function __construct(
         private EnrollmentStateMachine $stateMachine,
-        private WorkflowService $workflowService
+        private WorkflowService $workflowService,
+        private AcademicStandingService $standingService
     ) {}
 
     /**
@@ -92,7 +98,7 @@ class RegistrarController extends Controller
             'assessment_completed' => (bool) $enrollment->studentassessments,
             'payment_completed' => $paymentCompleted,
             'clearance_verified' => $this->checkClearance($enrollment),
-            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
+            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
         ];
 
         $allValid = collect($checklist)->every(fn ($v) => $v);
@@ -101,6 +107,11 @@ class RegistrarController extends Controller
             'enrollment' => $enrollment,
             'checklist' => $checklist,
             'allValid' => $allValid,
+            // The Registrar makes the FINAL call on the standing, so the desk is
+            // given the same evidence the evaluator saw — what the records derive
+            // and whether the department agreed with it — rather than an empty
+            // dropdown to guess at.
+            'standingReport' => $this->standingService->derive($enrollment),
         ]);
     }
 
@@ -137,6 +148,14 @@ class RegistrarController extends Controller
     {
         $this->authorize('registrar.approve', $enrollment);
 
+        // The standing is the Registrar's to finalize. Whatever the evaluating
+        // department recorded only becomes the official label once it is
+        // confirmed here, so approval cannot be granted while it is unstated —
+        // and no document that prints it is ever showing a default nobody decided.
+        $validated = $request->validate([
+            'academicStanding' => ['required', 'in:'.implode(',', array_column(AcademicStanding::cases(), 'value'))],
+        ]);
+
         $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
             || ($enrollment->studentassessments?->remainingBalance <= 0)
             || $enrollment->payments()->where('paymentStatus', PaymentStatus::Paid)->exists();
@@ -151,7 +170,7 @@ class RegistrarController extends Controller
             // pending workflow step must belong to the Registrar's office.
             // Keeps server-side validation in lockstep with the 5-gate
             // checklist rendered in the UI (M4) instead of validating only 4.
-            'registrar_ready' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
+            'registrar_ready' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
         ];
 
         if (collect($checklist)->contains(false)) {
@@ -171,7 +190,7 @@ class RegistrarController extends Controller
             // Data already updated in evaluation phase
         }
 
-        DB::transaction(function () use ($enrollment, $enrollmentType) {
+        DB::transaction(function () use ($enrollment, $enrollmentType, $validated) {
             // Confirm enrolled subjects
             $enrollment->enrolledSubjects()
                 ->where('status', EnrolledSubjectStatus::Proposed)
@@ -182,6 +201,7 @@ class RegistrarController extends Controller
 
             $enrollment->update([
                 'enrollmentType' => $enrollmentType,
+                'academicStanding' => AcademicStanding::from($validated['academicStanding']),
                 'registrarProcessedBy' => Auth::user()->userId,
                 'enrolledDate' => now(),
             ]);
@@ -189,7 +209,7 @@ class RegistrarController extends Controller
             // Sign workflow step 5 (Registrar Approval)
             $workflow = $enrollment->enrollmentworkflow;
             if ($workflow) {
-                $this->workflowService->signStepByOffice($workflow, 1, Auth::user());
+                $this->workflowService->signStepByOffice($workflow, OfficeId::Registrar->value, Auth::user());
             }
         });
 
@@ -231,7 +251,7 @@ class RegistrarController extends Controller
     /**
      * Print enrollment certificate.
      */
-    public function printCertificate(Enrollments $enrollment): Response
+    public function printCertificate(Enrollments $enrollment, PrintService $printService): Response
     {
         $this->authorize('registrar.printCertificate', $enrollment);
 
@@ -241,25 +261,19 @@ class RegistrarController extends Controller
         ]);
 
         // Log print
-        Documentprintlog::create([
-            'enrollmentId' => $enrollment->enrollmentId,
-            'documentType' => DocumentType::Certificate,
-            'printedDate' => now(),
-            'printedBy' => Auth::user()->userId,
-            'documentNumber' => Documentprintlog::where('enrollmentId', $enrollment->enrollmentId)
-                ->where('documentType', DocumentType::Certificate)
-                ->count() + 1,
-        ]);
+        $printLog = $printService->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, Auth::user()->userId);
 
         return Inertia::render('Registrar/PrintCertificate', [
             'enrollment' => $enrollment,
+            'documentNumber' => $printLog->documentNumber,
+            'issuedDate' => $enrollment->formIssuedDate?->toDateString() ?? now()->toDateString(),
         ]);
     }
 
     /**
-     * Print class cards (one per subject).
+     * Print class cards (one per confirmed subject).
      */
-    public function printClassCards(Enrollments $enrollment): Response
+    public function printClassCards(Enrollments $enrollment, PrintService $printService): Response
     {
         $this->authorize('registrar.printClassCards', $enrollment);
 
@@ -272,16 +286,14 @@ class RegistrarController extends Controller
             'registrarProcessedByUser',
         ]);
 
-        // Log prints
-        foreach ($enrollment->enrolledSubjects as $index => $es) {
-            Documentprintlog::create([
-                'enrollmentId' => $enrollment->enrollmentId,
-                'documentType' => DocumentType::ClassCard,
-                'printedDate' => now(),
-                'printedBy' => Auth::user()->userId,
-                'documentNumber' => $index + 1,
-            ]);
-        }
+        // One log row per card the screen actually prints.
+        $printService->cardSubjects($enrollment)->each(
+            fn () => $printService->recordIssue(
+                $enrollment->enrollmentId,
+                DocumentType::ClassCard,
+                Auth::user()->userId
+            )
+        );
 
         return Inertia::render('Registrar/PrintClassCards', [
             'enrollment' => $enrollment,
@@ -291,7 +303,7 @@ class RegistrarController extends Controller
     /**
      * Print subject load.
      */
-    public function printSubjectLoad(Enrollments $enrollment): Response
+    public function printSubjectLoad(Enrollments $enrollment, PrintService $printService): Response
     {
         $this->authorize('registrar.printSubjectLoad', $enrollment);
 
@@ -304,18 +316,61 @@ class RegistrarController extends Controller
             'registrarProcessedByUser',
         ]);
 
-        Documentprintlog::create([
-            'enrollmentId' => $enrollment->enrollmentId,
-            'documentType' => DocumentType::SubjectLoad,
-            'printedDate' => now(),
-            'printedBy' => Auth::user()->userId,
-            'documentNumber' => Documentprintlog::where('enrollmentId', $enrollment->enrollmentId)
-                ->where('documentType', DocumentType::SubjectLoad)
-                ->count() + 1,
-        ]);
+        $printService->recordIssue($enrollment->enrollmentId, DocumentType::SubjectLoad, Auth::user()->userId);
 
         return Inertia::render('Registrar/PrintSubjectLoad', [
             'enrollment' => $enrollment,
         ]);
+    }
+
+    /**
+     * Download the enrollment certificate as a PDF. A saved copy is an issued copy,
+     * so it writes its own print-log row like the print screen does.
+     */
+    public function downloadCertificate(Enrollments $enrollment, PrintService $printService): BinaryFileResponse
+    {
+        $this->authorize('registrar.printCertificate', $enrollment);
+
+        return $printService
+            ->printEnrollmentCertificate($enrollment, Auth::user()->userId)
+            ->asDownload("certificate-{$enrollment->student?->schoolIdNumber}-{$enrollment->enrollmentId}.pdf");
+    }
+
+    /**
+     * Download one class card as a PDF.
+     */
+    public function downloadClassCard(
+        Enrollments $enrollment,
+        Enrolledsubjects $enrolledSubject,
+        PrintService $printService
+    ): BinaryFileResponse {
+        $this->authorize('registrar.printClassCards', $enrollment);
+
+        abort_unless($enrolledSubject->enrollmentId === $enrollment->enrollmentId, 404);
+
+        // Only a subject that actually earns a card may be downloaded as one: a
+        // dropped or still-proposed enrolment has no card, and printing one would
+        // register a subject the student is not carrying.
+        abort_unless(
+            $printService->cardSubjects($enrollment)
+                ->contains(fn (Enrolledsubjects $card) => $card->enrolledSubjectId === $enrolledSubject->enrolledSubjectId),
+            404
+        );
+
+        return $printService
+            ->printClassCard($enrollment, $enrolledSubject, Auth::user()->userId)
+            ->asDownload("class-card-{$enrollment->student?->schoolIdNumber}-{$enrolledSubject->subject?->subjectCode}.pdf");
+    }
+
+    /**
+     * Download the subject load as a PDF.
+     */
+    public function downloadSubjectLoad(Enrollments $enrollment, PrintService $printService): BinaryFileResponse
+    {
+        $this->authorize('registrar.printSubjectLoad', $enrollment);
+
+        return $printService
+            ->printSubjectLoad($enrollment, Auth::user()->userId)
+            ->asDownload("subject-load-{$enrollment->student?->schoolIdNumber}-{$enrollment->enrollmentId}.pdf");
     }
 }

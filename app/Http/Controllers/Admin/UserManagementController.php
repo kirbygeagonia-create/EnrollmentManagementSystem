@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserManagementController extends Controller
 {
@@ -75,6 +76,10 @@ class UserManagementController extends Controller
             'role' => 'required|in:staff,officeHead,dean,programHead,admin,instructor',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
+            // Not a staffusers column: it only reaches syncRoles() below, and an id
+            // that no longer resolves throws RoleDoesNotExist in the middle of a save.
+            'roleIds' => 'nullable|array',
+            'roleIds.*' => 'exists:roles,id',
         ]);
 
         // Enforce organizational constraints: Deans & Program Heads belong to academic units, not admin offices
@@ -94,23 +99,25 @@ class UserManagementController extends Controller
         }
 
         $user = Staffusers::create([
-            'officeId' => $validated['officeId'],
-            'unitId' => $validated['unitId'],
+            'officeId' => $validated['officeId'] ?? null,
+            'unitId' => $validated['unitId'] ?? null,
             'employeeNo' => $validated['employeeNo'],
             'firstName' => $validated['firstName'],
-            'middleName' => $validated['middleName'],
+            'middleName' => $validated['middleName'] ?? null,
             'lastName' => $validated['lastName'],
             'username' => $validated['username'],
             'email' => $validated['email'],
             'passwordHash' => bcrypt($validated['password']),
             'role' => $validated['role'],
-            'contactNo' => $validated['contactNo'],
+            'contactNo' => $validated['contactNo'] ?? null,
             'status' => $validated['status'],
         ]);
 
-        // Assign roles if provided
-        if ($request->filled('roleIds')) {
-            $user->syncRoles($request->roleIds);
+        // Assign roles if provided. array_key_exists() rather than filled(): the
+        // screen's role matrix posts an empty array when every box is unticked, and
+        // clearing an account's roles has to be as reachable as granting them.
+        if (array_key_exists('roleIds', $validated)) {
+            $user->syncRoles($validated['roleIds']);
         }
 
         return back()->with('success', 'Staff user created.');
@@ -135,6 +142,8 @@ class UserManagementController extends Controller
             'role' => 'required|in:staff,officeHead,dean,programHead,admin,instructor',
             'contactNo' => 'nullable|string|max:20',
             'status' => 'required|in:active,inactive',
+            'roleIds' => 'nullable|array',
+            'roleIds.*' => 'exists:roles,id',
         ]);
 
         // Enforce organizational constraints: Deans & Program Heads belong to academic units, not admin offices
@@ -153,12 +162,14 @@ class UserManagementController extends Controller
             }
         }
 
-        $user->update($validated);
+        // roleIds is not a staffusers column; it only feeds syncRoles() below.
+        $user->update(collect($validated)->except('roleIds')->all());
 
-        // Sync roles with audit logging
-        if ($request->filled('roleIds')) {
+        // Sync roles with audit logging — see store() for why the matrix's empty
+        // array is honoured instead of ignored.
+        if (array_key_exists('roleIds', $validated)) {
             $oldRoles = $user->roles()->pluck('name')->toArray();
-            $user->syncRoles($request->roleIds);
+            $user->syncRoles($validated['roleIds']);
             $newRoles = $user->fresh()->roles()->pluck('name')->toArray();
 
             if ($oldRoles != $newRoles) {
@@ -187,11 +198,14 @@ class UserManagementController extends Controller
      */
     public function destroy(Staffusers $user): RedirectResponse
     {
-        $this->authorize('delete', $user);
-
+        // Answered before the policy so the desk reads an in-page message: the
+        // UserManagementPolicy denies deleting yourself, and authorize() would
+        // have rendered a bare 403 for a button the screen still shows.
         if ($user->userId === Auth::user()->userId) {
             return back()->withErrors(['user' => 'Cannot delete yourself.']);
         }
+
+        $this->authorize('delete', $user);
 
         // Check if user has historical activity across foreign key relationships
         $hasHistoricalRecords = $user->admissions()->exists()
@@ -232,6 +246,12 @@ class UserManagementController extends Controller
      */
     public function assignRoles(Request $request, Staffusers $user): RedirectResponse
     {
+        // See destroy(): the policy refuses this for yourself, and the screen still
+        // offers the button on your own row.
+        if ($user->userId === Auth::user()->userId) {
+            return back()->withErrors(['user' => 'Cannot assign roles to yourself.']);
+        }
+
         $this->authorize('assignRoles', $user);
 
         $request->validate([
@@ -266,11 +286,13 @@ class UserManagementController extends Controller
      */
     public function toggleStatus(Staffusers $user): RedirectResponse
     {
-        $this->authorize('toggleStatus', $user);
-
+        // Same reason as destroy(): the policy refuses toggling yourself, which
+        // would otherwise reach the desk as a 403 page instead of a message.
         if ($user->userId === Auth::user()->userId) {
             return back()->withErrors(['user' => 'Cannot change your own status.']);
         }
+
+        $this->authorize('toggleStatus', $user);
 
         $user->update([
             'status' => $user->status === StaffStatus::Active ? StaffStatus::Inactive : StaffStatus::Active,
@@ -297,14 +319,24 @@ class UserManagementController extends Controller
     {
         $this->authorize('manageRoles', Roles::class);
 
-        $role = Roles::create($request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:100|unique:roles,name',
             'description' => 'nullable|string',
-        ]) + ['guard_name' => config('auth.defaults.guard')]);
+            // A permission id that no longer resolves throws PermissionDoesNotExist
+            // halfway through the save, after the role row is already committed.
+            'permissionIds' => 'nullable|array',
+            'permissionIds.*' => 'exists:permissions,id',
+        ]);
 
-        if ($request->filled('permissionIds')) {
-            $role->syncPermissions($request->permissionIds);
-        }
+        $role = Roles::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'guard_name' => config('auth.defaults.guard'),
+        ]);
+
+        $role->syncPermissions($validated['permissionIds'] ?? []);
+
+        $this->flushPermissionCache();
 
         return back()->with('success', 'Role created.');
     }
@@ -313,14 +345,25 @@ class UserManagementController extends Controller
     {
         $this->authorize('manageRoles', Roles::class);
 
-        $role->update($request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:100|unique:roles,name,'.$role->id.',id',
             'description' => 'nullable|string',
-        ]));
+            'permissionIds' => 'nullable|array',
+            'permissionIds.*' => 'exists:permissions,id',
+        ]);
 
-        if ($request->filled('permissionIds')) {
-            $role->syncPermissions($request->permissionIds);
+        $role->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        // The matrix always posts its full selection, so an absent key means the
+        // caller is not editing permissions at all and nothing may be revoked.
+        if (array_key_exists('permissionIds', $validated)) {
+            $role->syncPermissions($validated['permissionIds']);
         }
+
+        $this->flushPermissionCache();
 
         return back()->with('success', 'Role updated.');
     }
@@ -328,7 +371,19 @@ class UserManagementController extends Controller
     public function destroyRole(Roles $role): RedirectResponse
     {
         $this->authorize('manageRoles', Roles::class);
+
+        // staff_roles cascades on role delete, so dropping a seated role quietly
+        // strips access from every account that carries it — and dropping the last
+        // SysAdmin locks every administrator out with artisan as the only way back.
+        $seats = $role->staff_roles()->count();
+
+        if ($seats > 0) {
+            return back()->with('error', "Cannot delete: {$seats} staff account(s) still hold the {$role->name} role. Move those accounts to another role first.");
+        }
+
         $role->delete();
+
+        $this->flushPermissionCache();
 
         return back()->with('success', 'Role deleted.');
     }
@@ -354,16 +409,32 @@ class UserManagementController extends Controller
             'module' => 'required|string|max:100',
         ]) + ['guard_name' => config('auth.defaults.guard')]);
 
+        $this->flushPermissionCache();
+
         return back()->with('success', 'Permission created.');
     }
 
     public function updatePermission(Request $request, Permissions $permission): RedirectResponse
     {
         $this->authorize('managePermissions', Permissions::class);
-        $permission->update($request->validate([
+
+        $validated = $request->validate([
             'name' => 'required|string|max:100|unique:permissions,name,'.$permission->id.',id',
             'module' => 'required|string|max:100',
-        ]));
+        ]);
+
+        // Renaming is not a label change: the pivots keep pointing at this row by id,
+        // but every policy checks its permission by name, so a name that code still
+        // asks for stops resolving and hasPermissionTo() throws on those desks.
+        if ($validated['name'] !== $permission->name && $permission->role_permissions()->exists()) {
+            $grantedTo = $permission->role_permissions()->count();
+
+            return back()->with('error', "Cannot rename: {$grantedTo} role(s) still grant {$permission->name}, and the application checks permissions by name. Add the new permission and retire this one instead.");
+        }
+
+        $permission->update($validated);
+
+        $this->flushPermissionCache();
 
         return back()->with('success', 'Permission updated.');
     }
@@ -371,7 +442,19 @@ class UserManagementController extends Controller
     public function destroyPermission(Permissions $permission): RedirectResponse
     {
         $this->authorize('managePermissions', Permissions::class);
+
+        // role_permissions cascades, so deleting a granted permission removes it from
+        // every role that carries it — and the desk that loses it only finds out when
+        // a screen it can no longer open answers with a 403.
+        $grantedTo = $permission->role_permissions()->count();
+
+        if ($grantedTo > 0) {
+            return back()->with('error', "Cannot delete: {$permission->name} is still granted to {$grantedTo} role(s). Revoke it from those roles first.");
+        }
+
         $permission->delete();
+
+        $this->flushPermissionCache();
 
         return back()->with('success', 'Permission deleted.');
     }
@@ -418,5 +501,19 @@ class UserManagementController extends Controller
             'logs' => $logs,
             'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo', 'adminOverride']),
         ]);
+    }
+
+    /**
+     * spatie keeps a cached copy of the permission set, and it refreshes that copy
+     * from its own models only: the trait's give/sync/revoke helpers reset it when
+     * the actor is a spatie Role contract implementation, and the models reset it on
+     * saved/deleted through RefreshesPermissionCache. App\Models\Roles and
+     * App\Models\Permissions are plain Eloquent classes borrowing the trait, so
+     * neither path ever fires and a save here would answer against the old set for
+     * as long as the cache store keeps it.
+     */
+    private function flushPermissionCache(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

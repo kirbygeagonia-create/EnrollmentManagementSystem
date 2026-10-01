@@ -30,8 +30,9 @@ use Tests\TestCase;
  * seeded RBAC, and direct model fixtures. Exercises the item-4 ownership
  * boundaries (Guidance = School Entrance only; the academic department =
  * course-specific only), the BR9 general-pass prerequisite, the BR9 passer
- * transfer surfaced through the exam.students lookup, admission auto-status
- * updates, and the retention exam's move into the Academic Evaluation area.
+ * transfer surfaced through the exam.students lookup, the boundary that an
+ * examination result never decides an application (G-8), and the retention
+ * exam's move into the Academic Evaluation area.
  */
 class ExamControllerTest extends TestCase
 {
@@ -311,7 +312,7 @@ class ExamControllerTest extends TestCase
                 'examDate' => now()->toDateString(),
             ])
             ->assertRedirect(route('exam.index'))
-            ->assertSessionHas('success', 'General entrance exam recorded.');
+            ->assertSessionHas('success', 'General entrance exam recorded. The Admission office decides the application.');
 
         $this->assertDatabaseHas('examresults', [
             'studentId' => $student->studentId,
@@ -343,26 +344,37 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
-    public function general_exam_failure_rejects_admission(): void
+    public function a_failed_general_entrance_exam_leaves_the_application_for_the_admission_office(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $admissionDesk = $this->staffWithRole('AdmissionOfficer', 6);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
-        $this->actingAs($guidance)
-            ->post(route('exam.general.record'), [
-                'studentId' => $student->studentId,
-                'courseId' => $this->entranceCourseId,
-                'termId' => $this->termId,
-                'examResult' => 'fail',
-                'examDate' => now()->toDateString(),
-            ])
-            ->assertRedirect(route('exam.index'));
+        $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'fail');
 
-        $this->assertDatabaseHas('admissions', [
-            'admissionId' => $admission->admissionId,
-            'admissionStatus' => 'rejected',
-        ]);
+        // G-8: this used to bulk-write admissionStatus = rejected. The applicant
+        // disappeared from the Admission queue with no signature and no audit row,
+        // and admission.reject then refused to act because the application was no
+        // longer pending. The examination desk records the result and stops there.
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+        $this->assertSame(0, Enrollments::count());
+
+        // The gate holds where it belongs: the Admission office cannot approve a
+        // failed applicant, and rejecting the application is its own signed act.
+        $this->actingAs($admissionDesk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+
+        $this->actingAs($admissionDesk)
+            ->post(route('admission.reject', $admission))
+            ->assertRedirect();
+
+        $rejected = $admission->fresh();
+        $this->assertSame('rejected', $rejected->admissionStatus->value);
+        $this->assertSame($admissionDesk->userId, (int) $rejected->evaluatedBy);
+        $this->assertNotNull($rejected->evaluatedDate);
     }
 
     #[Test]
@@ -458,17 +470,22 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
-    public function course_specific_pass_approves_admission(): void
+    public function a_passed_course_specific_entrance_exam_hands_the_application_to_admission(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
         $department = $this->staffWithRole('DeptEvaluator', 4);
+        $admissionDesk = $this->staffWithRole('AdmissionOfficer', 6);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
         // Stage 1: Guidance records the general pass.
         $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'pass');
 
-        // Stage 2: the department records its own pass → admission approved.
+        // Stage 2: the department records its own pass. This used to write
+        // admissionStatus = approved on the spot — an approved application with no
+        // enrollment row, which every desk downstream selects against, and which
+        // the Admission office could not repair because approval only accepts a
+        // pending application (G-8).
         $this->actingAs($department)
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $student->studentId,
@@ -479,23 +496,39 @@ class ExamControllerTest extends TestCase
             ])
             ->assertRedirect(route('exam.index'));
 
-        $this->assertDatabaseHas('admissions', [
-            'admissionId' => $admission->admissionId,
-            'admissionStatus' => 'approved',
-        ]);
         $this->assertDatabaseHas('examresults', [
             'studentId' => $student->studentId,
             'examStage' => ExamStage::Entrance->value,
             'examType' => ExamType::CourseSpecific->value,
             'examResult' => 'pass',
         ]);
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+        $this->assertSame(0, Enrollments::where('admissionId', $admission->admissionId)->count());
+
+        // The Admission office approves through its own gate, and approval is the
+        // only path that creates the enrollment stages 5-11 operate on.
+        $this->actingAs($admissionDesk)
+            ->post(route('admission.approve', $admission))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $approved = $admission->fresh();
+        $this->assertSame('approved', $approved->admissionStatus->value);
+        $this->assertSame($admissionDesk->userId, (int) $approved->evaluatedBy);
+
+        $enrollment = Enrollments::where('admissionId', $admission->admissionId)->sole();
+        $this->assertSame($student->studentId, $enrollment->studentId);
+        $this->assertSame($this->entranceCourseId, (int) $enrollment->courseId);
+        $this->assertSame($this->termId, (int) $enrollment->termId);
+        $this->assertSame(EnrollmentStatus::Pending, $enrollment->enrollmentStatus);
     }
 
     #[Test]
-    public function course_specific_failure_rejects_admission(): void
+    public function a_failed_course_specific_entrance_exam_blocks_approval_without_rejecting_the_application(): void
     {
         $guidance = $this->staffWithRole('GuidanceStaff', 7);
         $department = $this->staffWithRole('DeptEvaluator', 4);
+        $admissionDesk = $this->staffWithRole('AdmissionOfficer', 6);
         $student = $this->createStudent();
         $admission = $this->createAdmission($student, $this->entranceCourseId);
 
@@ -511,10 +544,22 @@ class ExamControllerTest extends TestCase
             ])
             ->assertRedirect(route('exam.index'));
 
-        $this->assertDatabaseHas('admissions', [
-            'admissionId' => $admission->admissionId,
-            'admissionStatus' => 'rejected',
-        ]);
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+
+        // A recorded course-specific result must be a pass for approval to go
+        // through (AdmissionPolicy::approve, BR9), so the failing result still
+        // decides the outcome — it just does not sign the application itself.
+        $this->actingAs($admissionDesk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+        $this->assertSame(0, Enrollments::count());
+
+        $this->actingAs($admissionDesk)
+            ->post(route('admission.reject', $admission))
+            ->assertRedirect();
+        $this->assertSame('rejected', $admission->fresh()->admissionStatus->value);
     }
 
     #[Test]

@@ -19,10 +19,11 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-function req(Staffusers $user, string $method, string $uri, array $data = [])
+function req(Staffusers $user, string $method, string $uri, array $data = [], array $files = [])
 {
     $session = app('session.store');
     $session->start();
@@ -32,7 +33,7 @@ function req(Staffusers $user, string $method, string $uri, array $data = [])
     // must be read AFTER login, or ValidateCsrfToken rejects it with 419.
     $token = $session->token();
 
-    $request = Request::create($uri, $method, $data + ['_token' => $token], [], [], [
+    $request = Request::create($uri, $method, $data + ['_token' => $token], [], $files, [
         'HTTP_ACCEPT' => 'text/html',
     ]);
     $request->setLaravelSession($session);
@@ -40,6 +41,27 @@ function req(Staffusers $user, string $method, string $uri, array $data = [])
     Auth::logout(); // keep the session clean for the next actor
 
     return $response;
+}
+
+/**
+ * Write a portrait placeholder to a temp file and hand back an upload the ID
+ * desk will accept. The desk refuses to validate a request with no face photo
+ * on file (IDPolicy::validate), so the demo flow has to capture one first.
+ */
+function demoFaceUpload(string $name = 'face.png'): UploadedFile
+{
+    $path = sys_get_temp_dir().'/ems-face-'.uniqid().'.png';
+    $im = imagecreatetruecolor(300, 360);
+    imagefill($im, 0, 0, imagecolorallocate($im, 226, 232, 240));
+    $ink = imagecolorallocate($im, 100, 116, 139);
+    imagefilledellipse($im, 150, 132, 110, 132, $ink);
+    imagefilledellipse($im, 150, 336, 232, 192, $ink);
+    imagepng($im, $path);
+    imagedestroy($im);
+
+    register_shutdown_function(fn () => @unlink($path));
+
+    return new UploadedFile($path, $name, 'image/png', null, true);
 }
 
 function ok(string $label, $response)
@@ -186,15 +208,18 @@ ok('clinic.record', req($staff(11), 'POST', route('clinic.record', $enrollment),
     'assessmentDate' => now()->toDateString(),
 ]));
 
-// ---------- 9. ID (validation-only flow: intake -> validate -> release) ----------
+// ---------- 9. ID (validation-only flow: intake -> photo -> validate) ----------
 ok('id.create', req($staff(22), 'POST', route('id.create', $enrollment), [
     'requestReason' => 'newStudent', 'emergencyContactName' => 'Maria Dela Cruz',
     'emergencyContactNumber' => '09171234568', 'bloodType' => 'O+',
     'cardPhotoPath' => null,
 ]));
 $idRequest = $enrollment->fresh()->idrequests->first();
+ok('id.photo', req($staff(22), 'POST', route('id.photo', $idRequest), [], [
+    'photo' => demoFaceUpload(),
+]));
 ok('id.validate', req($staff(22), 'POST', route('id.validate', $idRequest)));
-echo "     ID request #{$idRequest->idRequestId} validated\n";
+echo "     ID request #{$idRequest->idRequestId} validated with a face photo on file\n";
 
 // ---------- 10. Continuing student with clearance (2nd demo path) ----------
 $student2 = Students::create([

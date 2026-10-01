@@ -35,6 +35,32 @@ class Enrollments extends Model
     }
 
     /**
+     * Standing and student type live on the enrollment, but the Exam and
+     * Clearance queues are keyed by (student, term) and carry no enrollment
+     * foreign key. This reads the whole page in one query instead of one per row.
+     *
+     * @param  iterable<int, array{0: int, 1: int|null}>  $pairs
+     * @return array<string, self> keyed "{studentId}-{termId}"
+     */
+    public static function standingMapFor(iterable $pairs): array
+    {
+        $pairs = collect($pairs)->filter(fn (array $p) => $p[0] && $p[1]);
+
+        if ($pairs->isEmpty()) {
+            return [];
+        }
+
+        // Oldest first so the later write wins and a pair keeps its newest enrollment.
+        return static::query()
+            ->whereIn('studentId', $pairs->pluck(0)->unique())
+            ->whereIn('termId', $pairs->pluck(1)->unique())
+            ->orderBy('enrollmentId')
+            ->get(['enrollmentId', 'studentId', 'termId', 'studentType', 'academicStanding'])
+            ->keyBy(fn (self $e) => $e->studentId.'-'.$e->termId)
+            ->all();
+    }
+
+    /**
      * @return BelongsTo<Admissions, $this>
      */
     public function admission(): BelongsTo

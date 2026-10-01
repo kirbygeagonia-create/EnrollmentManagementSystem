@@ -8,6 +8,7 @@ const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFracti
 const paymentModeToneMap = {
     cash: 'info',
     online: 'accent',
+    check: 'neutral',
 };
 
 export default function DailyReport({ payments, summary, date }) {

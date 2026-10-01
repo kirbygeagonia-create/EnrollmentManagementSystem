@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Blocking;
 
 use App\Enums\DayOfWeek;
+use App\Enums\DocumentType;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\OfficeId;
+use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Blocks;
@@ -17,6 +19,7 @@ use App\Models\Schedulemeetings;
 use App\Models\Schedules;
 use App\Models\Staffusers;
 use App\Models\Subjects;
+use App\Services\PrintService;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +29,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BlockingController extends Controller
 {
@@ -45,7 +49,7 @@ class BlockingController extends Controller
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
             // Count active (non-dropped) subject rows only — dropped rows would
             // inflate the capacity numbers the Index table shows.
-            ->withCount(['enrolledSubjects' => fn ($q) => $q->where('status', '!=', 'dropped')])
+            ->withCount(['enrolledSubjects' => fn ($q) => $q->where('status', '!=', EnrolledSubjectStatus::Dropped->value)])
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
@@ -73,6 +77,9 @@ class BlockingController extends Controller
             'course', 'term.academicYear',
             'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings',
             'enrolledSubjects.enrollment.student',
+            // The roster table prints each row's subject code; without this the
+            // Subject column renders an em-dash for every assigned student.
+            'enrolledSubjects.subject',
         ]);
 
         $capacity = $block->maxStudents;
@@ -101,7 +108,7 @@ class BlockingController extends Controller
                     return false;
                 }
                 $nextPendingStep = $workflow->workflowsteps()
-                    ->where('stepStatus', 'pending')
+                    ->where('stepStatus', WorkflowStepStatus::Pending->value)
                     ->orderBy('stepOrder')
                     ->first();
 
@@ -181,6 +188,22 @@ class BlockingController extends Controller
     public function destroy(Blocks $block): RedirectResponse
     {
         $this->authorize('blocking.manageBlocks');
+
+        // schedules.blockId and enrolledsubjects.blockId are NOT NULL RESTRICT keys,
+        // so deleting a block that has been scheduled or seated answers with a raw
+        // database error page. This is the desk where blocks are built, so the row on
+        // screen nearly always has children — name them instead. The Reference Data
+        // catalog refuses the same delete for the same reason.
+        $usages = array_filter([
+            'schedule' => $block->schedules()->count(),
+            'enrolled subject' => $block->enrolledSubjects()->count(),
+        ]);
+
+        if ($usages !== []) {
+            $named = collect($usages)->map(fn (int $count, string $label): string => "{$count} {$label}(s)")->implode(', ');
+
+            return back()->with('error', "Cannot delete block {$block->blockName}: it is still named by {$named}. Clear those first.");
+        }
 
         $block->delete();
 
@@ -316,7 +339,7 @@ class BlockingController extends Controller
 
         // Guard: only if no enrolledsubjects reference it (or null them out first)
         $enrolledCount = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
-            ->where('status', '!=', 'dropped')
+            ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
             ->count();
 
         if ($enrolledCount > 0) {
@@ -426,7 +449,7 @@ class BlockingController extends Controller
 
         // Block capacity enforcement (count distinct students, not subject rows)
         $currentEnrolled = Enrolledsubjects::where('blockId', $block->blockId)
-            ->where('status', '!=', 'dropped')
+            ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
             ->distinct('enrollmentId')
             ->count('enrollmentId');
         $requestedCount = count($validated['enrollmentIds']);
@@ -440,7 +463,7 @@ class BlockingController extends Controller
         $room = $schedule->room;
         if ($room) {
             $roomEnrolled = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
-                ->where('status', '!=', 'dropped')
+                ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
                 ->distinct('enrollmentId')
                 ->count('enrollmentId');
             if ($roomEnrolled + $requestedCount > $room->capacity) {
@@ -461,7 +484,7 @@ class BlockingController extends Controller
                 }
 
                 $workflow = $enrollment->enrollmentworkflow;
-                if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
+                if (! $workflow || $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
                     continue;
                 }
 
@@ -474,11 +497,11 @@ class BlockingController extends Controller
                 // subject's second meeting can't be stamped; a per-student
                 // schedule pivot is the upgrade path if that ever matters.
                 $enrollment->enrolledSubjects()
-                    ->where('status', '!=', 'dropped')
+                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
                     ->update(['blockId' => $block->blockId]);
 
                 $enrollment->enrolledSubjects()
-                    ->where('status', '!=', 'dropped')
+                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
                     ->where('subjectId', $schedule->subjectId)
                     ->update(['scheduleId' => $schedule->scheduleId]);
 
@@ -509,7 +532,7 @@ class BlockingController extends Controller
                 $enrollment = Enrollments::findOrFail($enrollmentId);
 
                 $updated = $enrollment->enrolledSubjects()
-                    ->where('status', '!=', 'dropped')
+                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
                     ->where('blockId', $block->blockId)
                     ->update([
                         'blockId' => null,
@@ -528,17 +551,38 @@ class BlockingController extends Controller
     /**
      * Print block & schedule.
      */
-    public function printBlockSchedule(Blocks $block): Response
+    public function printBlockSchedule(Blocks $block, PrintService $printService): Response
     {
         $this->authorize('blocking.printBlockSchedule', $block);
 
         $block->load([
             'course', 'term.academicYear',
             'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings',
+            'enrolledSubjects',
         ]);
+
+        // A window print is a document issue: it has to appear in the trail, or a
+        // printed roster leaves no evidence anyone ever held it.
+        $printService->recordIssue(
+            $block->enrolledSubjects->first()?->enrollmentId,
+            DocumentType::BlockSchedule,
+            Auth::user()->userId
+        );
 
         return Inertia::render('Blocking/PrintSchedule', [
             'block' => $block,
         ]);
+    }
+
+    /**
+     * Download the block & schedule roster as a PDF (landscape, one block).
+     */
+    public function downloadBlockSchedule(Blocks $block, PrintService $printService): BinaryFileResponse
+    {
+        $this->authorize('blocking.printBlockSchedule', $block);
+
+        return $printService
+            ->printBlockSchedule($block, Auth::user()->userId)
+            ->asDownload("block-schedule-{$block->blockName}.pdf");
     }
 }

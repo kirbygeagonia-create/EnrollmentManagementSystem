@@ -22,11 +22,12 @@
         .signature-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 5px; }
         .footer { margin-top: 30px; text-align: center; font-size: 10px; }
         .stamp { border: 2px solid #000; padding: 10px; text-align: center; font-weight: bold; margin: 20px auto; width: 200px; }
+        .stamp-hold { border-style: dashed; }
     </style>
 </head>
 <body>
     <div class="header">
-        <img src="{{ asset('images/logo.png') }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
+        <img src="{{ \App\Support\PrintAssets::logoDataUri() }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
         <div class="school-name">{{ config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY') }}</div>
         <div class="school-address">{{ config('settings.schoolAddress', '') }}</div>
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
@@ -34,6 +35,12 @@
 
     <div class="title">Clearance Slip</div>
 
+    @isset($documentNumber)
+    <div class="info-row">
+        <span class="info-label">Document No.:</span>
+        <span class="info-value">{{ $documentNumber }}</span>
+    </div>
+    @endisset
     <div class="info-row">
         <span class="info-label">Semester:</span>
         <span class="info-value">{{ $clearance->clearancePeriod->term->semester->value }} Semester</span>
@@ -47,8 +54,19 @@
         <span class="info-value">{{ $clearance->student->lastName }}, {{ $clearance->student->firstName }} {{ $clearance->student->middleName ? $clearance->student->middleName[0].'.' : '' }} {{ $clearance->student->suffix }}</span>
     </div>
     <div class="info-row">
+        <span class="info-label">Student ID:</span>
+        <span class="info-value">{{ $clearance->student->schoolIdNumber }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Overall Status:</span>
+        <span class="info-value">{{ ucfirst($clearance->overallStatus->value) }}</span>
+    </div>
+    @php
+        $termEnrollment = $clearance->termEnrollment();
+    @endphp
+    <div class="info-row">
         <span class="info-label">Course & Year:</span>
-        <span class="info-value">{{ $clearance->student->enrollments->first()?->course->courseName ?? 'N/A' }} - {{ $clearance->student->enrollments->first()?->yearLevel ?? 'N/A' }} Year</span>
+        <span class="info-value">{{ $termEnrollment?->course?->courseName ?? 'N/A' }} - {{ $termEnrollment?->yearLevel ?? 'N/A' }} Year</span>
     </div>
     <div class="info-row">
         <span class="info-label">Date to be Signed:</span>
@@ -59,17 +77,19 @@
         <thead>
             <tr>
                 <th style="width: 5%;">#</th>
-                <th style="width: 40%;">Office / Requirement</th>
-                <th style="width: 20%;">Status</th>
-                <th style="width: 20%;">Approved By</th>
-                <th style="width: 15%;">Date</th>
+                <th style="width: 22%;">Office</th>
+                <th style="width: 33%;">Requirement</th>
+                <th style="width: 13%;">Status</th>
+                <th style="width: 17%;">Approved By</th>
+                <th style="width: 10%;">Date</th>
             </tr>
         </thead>
         <tbody>
             @foreach($clearance->approvals as $index => $approval)
             <tr>
                 <td>{{ $index + 1 }}</td>
-                <td>{{ $approval->requirement->office->officeName }}</td>
+                <td>{{ $approval->requirement?->office?->officeName ?? '—' }}</td>
+                <td>{{ $approval->requirement?->requirementName ?? '— no requirement text on file —' }}</td>
                 <td>{{ ucfirst($approval->status->value) }}</td>
                 <td>{{ $approval->approvedBy ? $approval->approvedByUser->firstName.' '.$approval->approvedByUser->lastName : '-' }}</td>
                 <td>{{ $approval->approvalDate ? $approval->approvalDate->format('M d, Y') : '-' }}</td>
@@ -86,13 +106,18 @@
         </div>
     </div>
 
-    <div class="stamp">
-        SEAIT CLEARED
+    @php
+        // A slip is only a clearance once the offices have cleared it; stamping
+        // "SEAIT CLEARED" on a pending slip contradicts the table above it.
+        $cleared = in_array($clearance->overallStatus->value, ['approved', 'waived'], true);
+    @endphp
+    <div class="stamp{{ $cleared ? '' : ' stamp-hold' }}">
+        {{ $cleared ? 'SEAIT CLEARED' : 'HELD — NOT YET CLEARED' }}
     </div>
 
     <div class="footer">
         This clearance slip is valid only for the semester and academic year indicated above. 
-        Lost slip replacement fee: ₱{{ config('settings.clearanceReplacementFee', '100.00') }}.
+        Lost slip replacement fee: ₱{{ number_format(\App\Models\Feetypes::clearanceSlipReplacementFee(), 2) }}.
     </div>
 </body>
 </html>

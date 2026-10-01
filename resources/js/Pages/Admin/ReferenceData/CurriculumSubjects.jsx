@@ -15,6 +15,10 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
         prerequisiteSubjectId: '',
         yearLevel: 1,
         semesterOffered: '1st',
+        is_elective: false,
+        elective_group: '',
+        elective_min_choices: '',
+        elective_max_choices: '',
     });
 
     const semesterOptions = semesters.map(s => ({ value: s.value, label: s.value }));
@@ -26,6 +30,21 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
         { key: 'semesterOffered', label: 'Semester', render: (row) => (
             <Badge tone="info">{row.semesterOffered}</Badge>
         ), className: 'text-center' },
+        { key: 'is_elective', label: 'Category', render: (row) => (
+            row.is_elective
+                ? <Badge tone="warning">Elective{row.elective_group ? ` · ${row.elective_group}` : ''}</Badge>
+                : <Badge tone="neutral">Mandatory</Badge>
+        ), className: 'text-center' },
+        { key: 'elective_max_choices', label: 'Choices', render: (row) => {
+            if (!row.is_elective) return '—';
+            const min = row.elective_min_choices;
+            const max = row.elective_max_choices;
+            if (min === null || min === undefined) {
+                if (max === null || max === undefined) return '—';
+                return `up to ${max}`;
+            }
+            return max === null || max === undefined ? `${min}+` : `${min}–${max}`;
+        }, className: 'text-center' },
         { key: 'subject', label: 'Units', render: (row) => {
             const lec = row.subject?.lectureUnits || 0;
             const lab = row.subject?.labUnits || 0;
@@ -40,6 +59,10 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
             prerequisiteSubjectId: '',
             yearLevel: 1,
             semesterOffered: '1st',
+            is_elective: false,
+            elective_group: '',
+            elective_min_choices: '',
+            elective_max_choices: '',
         });
         setEditingSubject(null);
         setShowModal(true);
@@ -51,6 +74,10 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
             prerequisiteSubjectId: cs.prerequisiteSubjectId || '',
             yearLevel: cs.yearLevel,
             semesterOffered: cs.semesterOffered,
+            is_elective: !!cs.is_elective,
+            elective_group: cs.elective_group || '',
+            elective_min_choices: cs.elective_min_choices ?? '',
+            elective_max_choices: cs.elective_max_choices ?? '',
         });
         setEditingSubject(cs);
         setShowModal(true);
@@ -166,7 +193,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                 show={showModal}
                 onClose={closeModal}
                 title={editingSubject ? 'Edit Curriculum Subject' : 'Add Subject to Curriculum'}
-                subtitle="Choose the subject, year level, semester, and optional prerequisite."
+                subtitle="Choose the subject, year level, semester, optional prerequisite, and whether it is a mandatory or elective subject."
                 icon={
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -235,6 +262,64 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                                 options={semesterOptions}
                             />
                         </FormSection>
+                        <div className="md:col-span-2">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.is_elective}
+                                    onChange={(e) => form.setData('is_elective', e.target.checked)}
+                                    className="form-checkbox"
+                                />
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Elective subject</span>
+                                    <p className="text-xs text-brand-500">
+                                        Electives are chosen from a group; the band below is what the Department
+                                        Evaluation desk checks when the student proposes subjects.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                        {form.data.is_elective && (
+                            <>
+                                <FormSection
+                                    label="Elective Group"
+                                    className="md:col-span-2"
+                                    error={form.errors.elective_group}
+                                    hint="Subjects sharing a group name are offered as one choice set. Leave blank to keep this elective ungrouped."
+                                >
+                                    <input
+                                        type="text"
+                                        value={form.data.elective_group}
+                                        onChange={(e) => form.setData('elective_group', e.target.value)}
+                                        className="form-input"
+                                        placeholder="e.g. Professional Electives"
+                                        maxLength={255}
+                                    />
+                                </FormSection>
+                                <FormSection label="Minimum Choices" error={form.errors.elective_min_choices}>
+                                    <input
+                                        type="number"
+                                        value={form.data.elective_min_choices}
+                                        onChange={(e) => form.setData('elective_min_choices', e.target.value)}
+                                        className="form-input"
+                                        min="0"
+                                        max="255"
+                                        placeholder="No minimum"
+                                    />
+                                </FormSection>
+                                <FormSection label="Maximum Choices" error={form.errors.elective_max_choices}>
+                                    <input
+                                        type="number"
+                                        value={form.data.elective_max_choices}
+                                        onChange={(e) => form.setData('elective_max_choices', e.target.value)}
+                                        className="form-input"
+                                        min="0"
+                                        max="255"
+                                        placeholder="Up to the group size"
+                                    />
+                                </FormSection>
+                            </>
+                        )}
                     </div>
                 </form>
             </Modal>

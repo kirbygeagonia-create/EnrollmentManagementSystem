@@ -13,6 +13,12 @@ use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
+    // Application::configure() turns on listener discovery by default, and discovery
+    // registers every app/Listeners handle() as its own listener. app/Providers/
+    // EventServiceProvider already maps the same listeners in $listen, so each event
+    // was handled twice — one enrollment status change wrote two identical
+    // notifications. Discovery stays off; $listen is the only wiring.
+    ->withEvents(discover: false)
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',

@@ -417,6 +417,15 @@
         @apply bg-brand-200;
     }
 
+    .step-progress-item.returned:not(:last-child)::after {
+        @apply bg-danger-500;
+    }
+
+    .step-progress-item.notApplicable:not(:last-child)::after,
+    .step-progress-item.skipped:not(:last-child)::after {
+        @apply bg-brand-100;
+    }
+
     .step-progress-circle {
         @apply relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-medium transition-all duration-200;
     }
@@ -433,8 +442,20 @@
         @apply bg-white border-brand-300 text-brand-400;
     }
 
+    .step-progress-circle.returned {
+        @apply bg-danger-500 border-danger-500 text-white ring-4 ring-danger-200;
+    }
+
+    .step-progress-circle.skipped {
+        @apply bg-white border-brand-200 text-brand-300;
+    }
+
+    .step-progress-circle.notApplicable {
+        @apply border-dashed border-brand-200 bg-brand-50 text-brand-300;
+    }
+
     .step-progress-label {
-        @apply mt-2 text-xs font-medium text-center max-w-[5rem] leading-tight;
+        @apply mt-2 text-xs font-medium text-center max-w-[6rem] leading-tight;
     }
 
     .step-progress-label.completed {
@@ -447,6 +468,15 @@
 
     .step-progress-label.pending {
         @apply text-brand-400;
+    }
+
+    .step-progress-label.returned {
+        @apply text-danger-700 font-semibold;
+    }
+
+    .step-progress-label.skipped,
+    .step-progress-label.notApplicable {
+        @apply text-brand-400 italic;
     }
 
     /* Modal Overlay */

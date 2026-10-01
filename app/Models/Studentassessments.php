@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -69,5 +70,19 @@ class Studentassessments extends Model
     public function charges(): HasMany
     {
         return $this->hasMany(Charges::class, 'assessmentId');
+    }
+
+    /**
+     * What the student still owes, recomputed from the receipts on file instead of
+     * read from the stored `remainingBalance`. The cashier desk settles accounts on
+     * this figure, so a stale column must never mark an unpaid student as settled.
+     * Only receipts still standing as `Paid` count — a voided OR keeps its row for
+     * the audit trail but no longer covers anything.
+     */
+    public function outstandingBalance(): float
+    {
+        $paid = (float) $this->payments()->where('paymentStatus', PaymentStatus::Paid)->sum('amount');
+
+        return max(0, (float) $this->totalAssessedAmount - (float) $this->totalScholarshipCoverage - (float) $this->totalWaived - $paid);
     }
 }

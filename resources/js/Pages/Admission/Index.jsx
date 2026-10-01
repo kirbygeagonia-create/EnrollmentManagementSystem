@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusOptions = [
@@ -26,6 +26,13 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        // Admission runs before an enrollment exists, so this desk has an
+        // applicant category rather than a student type or a standing.
+        { key: 'applicantType', label: 'Applicant Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.applicantType] || 'neutral'}>
+                {formatStatusLabel(row.applicantType)}
+            </Badge>
+        )},
         { key: 'term', label: 'Term', render: (row) => {
             if (!row.term) return '—';
             const sem = row.term.semester?.value ?? row.term.semester;

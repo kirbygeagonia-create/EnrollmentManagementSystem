@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Clinic;
 
 use App\Enums\ClinicRecordStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\OfficeId;
+use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
@@ -34,9 +36,9 @@ class ClinicController extends Controller
         $query = Enrollments::with(['student', 'course', 'term', 'clinicrecords'])
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                ->where('stepStatus', 'pending')
-                ->where('officeId', 11)
-                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
+                ->where('stepStatus', WorkflowStepStatus::Pending->value)
+                ->where('officeId', OfficeId::Clinic->value)
+                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', [WorkflowStepStatus::Pending->value])
             )
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
@@ -55,7 +57,7 @@ class ClinicController extends Controller
      */
     public function show(Enrollments $enrollment): Response
     {
-        $this->authorize('clinic.view', $enrollment);
+        $this->authorize('clinic.viewAtDesk', $enrollment);
 
         $enrollment->load(['student', 'course', 'term', 'clinicrecords', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
@@ -99,7 +101,7 @@ class ClinicController extends Controller
             // Sign workflow step 7 (Clinic)
             $workflow = $enrollment->enrollmentworkflow;
             if ($workflow) {
-                $this->workflowService->signStepByOffice($workflow, 11, Auth::user());
+                $this->workflowService->signStepByOffice($workflow, OfficeId::Clinic->value, Auth::user());
             }
         });
 

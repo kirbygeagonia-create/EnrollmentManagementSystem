@@ -32,12 +32,13 @@
         .sig-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 3px; font-size: 9px; }
         .standing-checkboxes { display: flex; gap: 30px; margin: 10px 0; }
         .standing-option { display: flex; align-items: center; gap: 5px; }
+        .standing-pending { font-size: 8px; font-style: italic; }
         .standing-option input { width: 15px; height: 15px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <img src="{{ asset('images/logo.png') }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
+        <img src="{{ \App\Support\PrintAssets::logoDataUri() }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
         <div class="school-name">{{ config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY') }}</div>
         <div class="school-address">{{ config('settings.schoolAddress', '') }}</div>
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
@@ -211,14 +212,21 @@
             <span class="value">
                 <div class="standing-checkboxes">
                     <div class="standing-option">
-                        <input type="radio" name="academicStanding" value="regular" {{ $enrollment->academicStanding->value === 'regular' ? 'checked' : '' }} disabled>
+                        <input type="radio" name="academicStanding" value="regular" {{ $enrollment->academicStanding?->value === 'regular' ? 'checked' : '' }} disabled>
                         <label>Regular</label>
                     </div>
                     <div class="standing-option">
-                        <input type="radio" name="academicStanding" value="irregular" {{ $enrollment->academicStanding->value === 'irregular' ? 'checked' : '' }} disabled>
+                        <input type="radio" name="academicStanding" value="irregular" {{ $enrollment->academicStanding?->value === 'irregular' ? 'checked' : '' }} disabled>
                         <label>Irregular</label>
                     </div>
                 </div>
+                {{-- Neither box checked is the honest rendering of a standing the
+                     evaluating department has not decided yet — it is their call
+                     (from the grades on file) and the Registrar's to finalize, so
+                     this form must not imply a box was ticked by someone. --}}
+                @if(! $enrollment->academicStanding)
+                    <div class="standing-pending">To be determined by the Department Evaluation and confirmed by the Registrar.</div>
+                @endif
             </span>
         </div>
         <div class="field">

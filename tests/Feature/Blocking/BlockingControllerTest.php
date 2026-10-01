@@ -3,6 +3,7 @@
 namespace Tests\Feature\Blocking;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\StaffRole;
 use App\Enums\UnitType;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
@@ -122,13 +123,13 @@ class BlockingControllerTest extends TestCase
     }
 
     /**
-     * Create a staff user in the given office with OfficeHead role.
+     * Create a staff user in the given office; defaults to the desk's OfficeHead.
      */
-    private function staffForOffice(int $officeId): Staffusers
+    private function staffForOffice(int $officeId, StaffRole $role = StaffRole::OfficeHead): Staffusers
     {
         $staff = Staffusers::factory()->make([
             'officeId' => $officeId,
-            'role' => 'officeHead',
+            'role' => $role,
             'employeeNo' => 'EMP-TEST-'.uniqid(),
             'username' => 'test_office'.$officeId.'_'.uniqid(),
             'email' => 'test_office'.$officeId.'_'.uniqid().'@example.com',
@@ -136,7 +137,7 @@ class BlockingControllerTest extends TestCase
         unset($staff->remember_token);
         $staff->save();
 
-        $staff->assignRole('OfficeHead');
+        $staff->assignRole(ucfirst($role->value));
 
         return $staff;
     }
@@ -738,5 +739,114 @@ class BlockingControllerTest extends TestCase
             'maxStudents' => 50,
         ])->assertSessionHasNoErrors();
         $this->assertSame(50, $block->fresh()->maxStudents);
+    }
+
+    #[Test]
+    public function test_a_block_created_on_screen_reopens_as_the_same_block(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $response = $this->post(route('blocking.store'), [
+            'courseId' => $this->testCourseId,
+            'termId' => $this->testTermId,
+            'yearLevel' => 1,
+            'blockName' => 'BSCS-1A',
+            'maxStudents' => 40,
+        ]);
+
+        $block = Blocks::where('blockName', 'BSCS-1A')->firstOrFail();
+        $response->assertRedirect(route('blocking.show', $block))->assertSessionHas('success');
+
+        // A new block opens as an editable draft: finalize() and destroy() both
+        // branch on scheduleStatus, so a blank default would lock the desk out.
+        $this->assertSame('draft', $block->scheduleStatus);
+        $this->assertSame(0, $block->schedules()->count());
+
+        $payload = [
+            'courseId' => $this->testCourseId,
+            'termId' => $this->testTermId,
+            'yearLevel' => 1,
+            'blockName' => 'BSCS-1B',
+            'maxStudents' => 40,
+        ];
+
+        foreach (['blockName' => '', 'yearLevel' => 6, 'maxStudents' => 0, 'courseId' => 99999] as $field => $badValue) {
+            $this->from(route('blocking.index'))
+                ->post(route('blocking.store'), array_merge($payload, [$field => $badValue]))
+                ->assertSessionHasErrors($field);
+
+            $this->assertDatabaseMissing('blocks', ['blockName' => 'BSCS-1B']);
+        }
+    }
+
+    #[Test]
+    public function test_a_view_only_desk_cannot_create_or_delete_a_block(): void
+    {
+        // The Staff role holds block.view but not block.manage: reading the roster
+        // must not quietly carry the right to build or dismantle one.
+        $viewer = $this->staffForOffice(5, StaffRole::Staff);
+        $this->actingAs($viewer);
+
+        $fixture = $this->createBlockWithSchedule();
+
+        $this->post(route('blocking.store'), [
+            'courseId' => $this->testCourseId,
+            'termId' => $this->testTermId,
+            'yearLevel' => 1,
+            'blockName' => 'BSCS-1C',
+            'maxStudents' => 40,
+        ])->assertForbidden();
+
+        $this->delete(route('blocking.destroy', $fixture['block']))->assertForbidden();
+
+        $this->assertDatabaseMissing('blocks', ['blockName' => 'BSCS-1C']);
+        $this->assertDatabaseHas('blocks', ['blockId' => $fixture['block']->blockId]);
+    }
+
+    #[Test]
+    public function test_delete_is_refused_while_the_block_still_names_a_schedule_or_a_seated_student(): void
+    {
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+        $schedule = $fixture['schedule'];
+
+        // Scheduled but nobody seated yet: the schedule alone blocks the delete,
+        // because schedules.blockId is a RESTRICT key and would raise a raw
+        // database error page instead of a message.
+        $this->delete(route('blocking.destroy', $block))
+            ->assertRedirect()
+            ->assertSessionHas('error', fn (string $message): bool => str_contains($message, '1 schedule(s)')
+                && ! str_contains($message, 'enrolled subject'));
+
+        $this->assertDatabaseHas('blocks', ['blockId' => $block->blockId]);
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('blocking.assign', $block), [
+            'enrollmentIds' => [$enrollment->enrollmentId],
+            'scheduleId' => $schedule->scheduleId,
+        ])->assertSessionHasNoErrors();
+
+        // Every non-dropped subject row of the seated student carries the blockId
+        $this->delete(route('blocking.destroy', $block))
+            ->assertSessionHas('error', fn (string $message): bool => str_contains($message, '2 enrolled subject(s)'));
+
+        $this->assertDatabaseHas('blocks', ['blockId' => $block->blockId]);
+
+        // Clearing the children in the order the desk works makes the delete legal
+        $this->post(route('blocking.unassign', $block), [
+            'enrollmentIds' => [$enrollment->enrollmentId],
+        ])->assertSessionHasNoErrors();
+
+        $this->delete(route('blocking.schedules.destroy', $schedule))->assertSessionHasNoErrors();
+
+        $this->delete(route('blocking.destroy', $block))
+            ->assertRedirect(route('blocking.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('blocks', ['blockId' => $block->blockId]);
     }
 }

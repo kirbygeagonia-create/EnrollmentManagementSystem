@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Inline icon — queue of records awaiting registrar validation
@@ -14,10 +14,22 @@ export default function Index({ enrollments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}${row.student.middleName ? ' ' + row.student.middleName.charAt(0) + '.' : ''}` : '—'
+        )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `${row.yearLevel}${getYearSuffix(row.yearLevel)} Year` : '—' },
+        { key: 'studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.studentType?.value || row.studentType] || 'neutral'}>
+                {formatStatusLabel(row.studentType?.value || row.studentType)}
+            </Badge>
+        )},
+        { key: 'academicStanding', label: 'Final Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.academicStanding?.value || row.academicStanding)}>
+                {academicStandingLabel(row.academicStanding?.value || row.academicStanding)}
+            </Badge>
+        )},
         { key: 'enrollmentStatus', label: 'Status', render: (row) => (
             <Badge tone={enrollmentStatusTone[row.enrollmentStatus?.value || row.enrollmentStatus] || 'neutral'}>
                 {formatStatusLabel(row.enrollmentStatus?.value || row.enrollmentStatus)}
@@ -103,7 +115,7 @@ export default function Index({ enrollments, filters = {} }) {
                     <StatCard
                         compact
                         label="Workflow Phase"
-                        value="Phase 6"
+                        value="Phase 5"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />

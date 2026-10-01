@@ -16,6 +16,28 @@ use Illuminate\Support\Facades\DB;
 class WorkflowService
 {
     /**
+     * The label of each workflow box, keyed by the office that signs it.
+     *
+     * Keyed by office rather than step order because stepOrder is positional:
+     * the Assessment box is removed for returning students, so an order-keyed
+     * label would describe a different box depending on the student type.
+     *
+     * @return array<int, string>
+     */
+    public static function stepLabels(): array
+    {
+        return [
+            OfficeId::Guidance->value => 'Department Evaluation',
+            OfficeId::Scholarship->value => 'Assessment',
+            OfficeId::Accounting->value => 'Accounting Payment',
+            OfficeId::Registrar->value => 'Registrar Approval',
+            OfficeId::Blocking->value => 'Blocking and Scheduling',
+            OfficeId::Clinic->value => 'Clinic',
+            OfficeId::IdOffice->value => 'ID Validation',
+        ];
+    }
+
+    /**
      * Build the ordered workflow steps for an enrollment.
      *
      * Assessment (officeId 3) is included only for firstYear and transferee
@@ -28,21 +50,26 @@ class WorkflowService
     {
         $includesAssessment = in_array($enrollment->studentType->value, ['firstYear', 'transferee'], true);
 
-        $steps = [
-            1 => [4, 'Department Evaluation'],
-            2 => [3, 'Assessment'],
-            3 => [2, 'Accounting Payment'],
-            4 => [1, 'Registrar Approval'],
-            5 => [5, 'Blocking and Scheduling'],
-            6 => [11, 'Clinic'],
-            7 => [22, 'ID Office'],
+        $boxes = [
+            OfficeId::Guidance->value,
+            OfficeId::Scholarship->value,
+            OfficeId::Accounting->value,
+            OfficeId::Registrar->value,
+            OfficeId::Blocking->value,
+            OfficeId::Clinic->value,
+            OfficeId::IdOffice->value,
         ];
 
         if (! $includesAssessment) {
-            unset($steps[2]);
+            $boxes = array_values(array_filter(
+                $boxes,
+                fn (int $officeId) => $officeId !== OfficeId::Scholarship->value
+            ));
         }
 
-        return array_values($steps);
+        $labels = self::stepLabels();
+
+        return array_map(fn (int $officeId) => [$officeId, $labels[$officeId]], $boxes);
     }
 
     /**
@@ -137,7 +164,7 @@ class WorkflowService
 
         // Check if all steps are done
         $remaining = $workflow->workflowsteps()
-            ->where('stepStatus', '!=', 'completed')
+            ->where('stepStatus', '!=', WorkflowStepStatus::Completed->value)
             ->count();
 
         if ($remaining === 0) {
@@ -180,7 +207,7 @@ class WorkflowService
     public function getCurrentStep(Enrollmentworkflow $workflow): ?Workflowsteps
     {
         return $workflow->workflowsteps()
-            ->where('stepStatus', 'pending')
+            ->where('stepStatus', WorkflowStepStatus::Pending->value)
             ->orderBy('stepOrder')
             ->first();
     }

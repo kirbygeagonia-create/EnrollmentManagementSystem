@@ -13,12 +13,13 @@ use App\Models\Courses;
 use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
 use App\Models\Feetypes;
+use App\Models\Gradescale;
 use App\Models\Majors;
 use App\Models\Offices;
-use App\Models\Religions;
 use App\Models\Rooms;
 use App\Models\Staffusers;
 use App\Models\Subjects;
+use App\Support\ProvisionalClearanceRequirements;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -34,7 +35,7 @@ use Illuminate\Support\Facades\Hash;
  * Run on the dev database only:
  *
  *   php artisan db:seed --class=DevReferenceDataSeeder --force
- *   php artisan db:seed --force   # RbacSeeder + NotificationSeeder
+ *   php artisan db:seed --force   # RbacSeeder + SettingsSeeder + StarterReferenceDataSeeder + NotificationSeeder
  */
 class DevReferenceDataSeeder extends Seeder
 {
@@ -77,7 +78,9 @@ class DevReferenceDataSeeder extends Seeder
         }
 
         // ---------- Religions ----------
-        Religions::firstOrCreate(['religionId' => 1], ['religionName' => 'Roman Catholic']);
+        // Provisional starter list lives in one place so a dev database and an
+        // installed database agree.
+        $this->call(StarterReferenceDataSeeder::class);
 
         // ---------- Academic years + terms (E2E expects term 18 = Summer) ----------
         $year1 = Academicyears::firstOrCreate(
@@ -622,11 +625,15 @@ class DevReferenceDataSeeder extends Seeder
         );
 
         // ---------- Fee types ----------
+        // PROVISIONAL amounts — Registrar to confirm against the tuition fee schedule.
         $fees = [
             ['Tuition Fee (per unit)', 1250.00, FeeUnitBasis::PerUnit],
             ['Miscellaneous Fee', 1500.00, FeeUnitBasis::Flat],
             ['Laboratory Fee', 500.00, FeeUnitBasis::PerUnit],
             ['Library Fee', 250.00, FeeUnitBasis::Flat],
+            // The slip footer prints this row and Accounting charges it, so the two
+            // cannot disagree (BR33).
+            ['Clearance Slip Replacement', 100.00, FeeUnitBasis::Flat],
         ];
         foreach ($fees as [$name, $amount, $basis]) {
             Feetypes::firstOrCreate(
@@ -649,9 +656,44 @@ class DevReferenceDataSeeder extends Seeder
             );
         }
 
-        // ---------- Clearance requirements (one row per office; table only has officeId) ----------
+        // ---------- Clearance requirements (one line per participating office) ----------
+        // PROVISIONAL: the wording comes from ProvisionalClearanceRequirements and is
+        // a placeholder for the Registrar's own list (§28, D-6). It is applied only to
+        // rows whose text is still empty, so an office that has edited a line in
+        // Admin → Reference Data keeps its wording across re-runs. Office 8 is left
+        // nameless on purpose: it stands for no office at all (§28, D-1).
         foreach ([1, 2, 3, 4, 5, 6, 7, 8, 11, 22] as $officeId) {
-            Clearancerequirements::firstOrCreate(['officeId' => $officeId]);
+            $requirement = Clearancerequirements::firstOrNew(['officeId' => $officeId]);
+
+            if ($requirement->requirementName === null) {
+                $requirement->requirementName = ProvisionalClearanceRequirements::NAMES[$officeId] ?? null;
+            }
+
+            $requirement->save();
+        }
+
+        // ---------- Grade scale ----------
+        // PROVISIONAL: the bands below are a placeholder for the institution's
+        // approved scale and MUST be replaced once the Registrar supplies the
+        // real one. They are seeded so the Evaluation desk can derive an
+        // academic standing against "the school's scale" instead of the
+        // hard-coded fallback, and so the pass line is visible/editable in
+        // Admin → Reference Data rather than buried in code.
+        //
+        // The passing ceiling deliberately lands on 3.00 so this row set does
+        // not change prerequisite-satisfaction behaviour that relied on the
+        // previous default.
+        $gradeScale = [
+            [1.00, 1.50, true, 'PROVISIONAL — Excellent. To be confirmed by the Registrar.'],
+            [1.51, 2.50, true, 'PROVISIONAL — Very good. To be confirmed by the Registrar.'],
+            [2.51, 3.00, true, 'PROVISIONAL — Passing. To be confirmed by the Registrar.'],
+            [3.01, 5.00, false, 'PROVISIONAL — Failed; subject must be retaken. To be confirmed by the Registrar.'],
+        ];
+        foreach ($gradeScale as [$min, $max, $passing, $description]) {
+            Gradescale::updateOrCreate(
+                ['minGrade' => $min, 'maxGrade' => $max],
+                ['isPassing' => $passing, 'description' => $description]
+            );
         }
 
         // ---------- Staff (staff8 = admin for AdminAccessSmoke; office heads) ----------

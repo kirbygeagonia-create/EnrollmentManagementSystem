@@ -451,4 +451,24 @@ class WorkflowServiceTest extends TestCase
         // Try to sign step 1 (Department Evaluation - officeId 4) with Registrar staff (officeId 1)
         $this->workflowService->signStepByOffice($workflow, 4, $this->registrarStaff);
     }
+
+    #[Test]
+    public function step_labels_name_the_phase_a_student_is_in_not_the_office_that_signs_it(): void
+    {
+        $labels = WorkflowService::stepLabels();
+
+        // The tracker and the desk notifications print these. They are keyed by
+        // the signing office, but the word a student sees is the phase: the first
+        // box is Department Evaluation even though the Guidance office row signs
+        // it, and the last is ID Validation now that card production is gone.
+        $this->assertSame([4, 3, 2, 1, 5, 11, 22], array_keys($labels));
+        $this->assertSame('Department Evaluation', $labels[4]);
+        $this->assertSame('Assessment', $labels[3]);
+        $this->assertSame('Accounting Payment', $labels[2]);
+        $this->assertSame('Registrar Approval', $labels[1]);
+        $this->assertSame('Blocking and Scheduling', $labels[5]);
+        $this->assertSame('Clinic', $labels[11]);
+        $this->assertSame('ID Validation', $labels[22]);
+        $this->assertNotContains('ID Office', array_values($labels));
+    }
 }

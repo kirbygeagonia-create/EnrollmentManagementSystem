@@ -32,7 +32,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="{{ asset('images/logo.png') }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
+        <img src="{{ \App\Support\PrintAssets::logoDataUri() }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
         <div class="school-name">{{ config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY') }}</div>
         <div class="school-address">{{ config('settings.schoolAddress', '') }}</div>
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
@@ -41,6 +41,12 @@
     <div class="title">Enrollment Certificate</div>
 
     <div class="student-info">
+        @isset($documentNumber)
+        <div class="info-field">
+            <span class="info-label">Document No.:</span>
+            <span class="info-value">{{ $documentNumber }}</span>
+        </div>
+        @endisset
         <div class="info-field">
             <span class="info-label">Name:</span>
             <span class="info-value">{{ $enrollment->student->lastName }}, {{ $enrollment->student->firstName }} {{ $enrollment->student->middleName ? $enrollment->student->middleName[0].'.' : '' }} {{ $enrollment->student->suffix }}</span>
@@ -62,8 +68,16 @@
             <span class="info-value">{{ $enrollment->term->semester->value }}</span>
         </div>
         <div class="info-field">
-            <span class="info-label">Type:</span>
-            <span class="info-value">{{ $enrollment->enrollmentType->value === 'new' ? 'New' : 'Old' }} Student</span>
+            <span class="info-label">Student Type:</span>
+            <span class="info-value">{{ \Illuminate\Support\Str::headline($enrollment->studentType->value) }}</span>
+        </div>
+        <div class="info-field">
+            <span class="info-label">Academic Standing:</span>
+            <span class="info-value">{{ ucfirst($enrollment->academicStanding?->value ?? 'not yet decided') }}</span>
+        </div>
+        <div class="info-field">
+            <span class="info-label">Intake Record:</span>
+            <span class="info-value">{{ $enrollment->enrollmentType->value === 'new' ? 'First enrollment' : 'Returning enrollment' }}</span>
         </div>
     </div>
 

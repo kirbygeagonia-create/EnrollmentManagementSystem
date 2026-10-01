@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Blocks;
 use App\Models\Enrollments;
 use App\Models\Studentclearances;
+use App\Services\ChromiumLocator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Spatie\Browsershot\Browsershot;
@@ -26,23 +27,10 @@ class PrintFidelitySamples extends Command
 
     public function handle(): int
     {
-        $chromeCandidates = [
-            'C:\Program Files\Google\Chrome\Application\chrome.exe',
-            'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-            'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-            'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
-        ];
-
-        $chrome = null;
-        foreach ($chromeCandidates as $candidate) {
-            if (file_exists($candidate)) {
-                $chrome = $candidate;
-                break;
-            }
-        }
+        $chrome = ChromiumLocator::locate();
 
         if (! $chrome) {
-            $this->error('Chrome/Edge not found — Browsershot cannot render PDFs.');
+            $this->error('Chrome/Edge not found — install a browser or set EMS_CHROME_PATH; Browsershot cannot render PDFs.');
 
             return self::FAILURE;
         }
@@ -64,13 +52,24 @@ class PrintFidelitySamples extends Command
         }
 
         if (! $enrollment) {
+            // Prefer a student who is actually blocked into a class: the class
+            // card and subject load only print day, time and room from that
+            // assignment, and a sample with empty time boxes cannot be compared
+            // against the reference images it exists to match.
             $enrollment = Enrollments::with([
                 'student.addresses', 'student.guardians',
                 'course', 'major', 'term.academicYear',
                 'studentassessments.charges.feeType',
                 'enrolledSubjects.subject',
                 'evaluatedByUser', 'registrarProcessedByUser',
-            ])->whereHas('enrolledSubjects')->latest('enrollmentId')->first();
+            ])->whereHas('enrolledSubjects.schedule.meetings')->latest('enrollmentId')->first()
+                ?? Enrollments::with([
+                    'student.addresses', 'student.guardians',
+                    'course', 'major', 'term.academicYear',
+                    'studentassessments.charges.feeType',
+                    'enrolledSubjects.subject',
+                    'evaluatedByUser', 'registrarProcessedByUser',
+                ])->whereHas('enrolledSubjects')->latest('enrollmentId')->first();
         }
 
         if (! $enrollment) {
@@ -84,7 +83,7 @@ class PrintFidelitySamples extends Command
         $templates = [
             'enrollment-form' => fn () => view('prints.enrollment-form', ['enrollment' => $enrollment->load(['student.addresses', 'student.guardians', 'course', 'major', 'term.academicYear', 'enrolledSubjects.subject', 'evaluatedByUser', 'registrarProcessedByUser'])]),
             'enrollment-certificate' => fn () => view('prints.enrollment-certificate', ['enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'enrolledSubjects.subject', 'registrarProcessedByUser'])]),
-            'subject-load' => fn () => view('prints.enrollment-certificate', ['enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'enrolledSubjects.subject', 'registrarProcessedByUser'])]),
+            'subject-load' => fn () => view('prints.subject-load', ['enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'enrolledSubjects.subject', 'enrolledSubjects.schedule.room', 'enrolledSubjects.schedule.instructor', 'enrolledSubjects.schedule.meetings', 'registrarProcessedByUser'])]),
         ];
 
         // Class cards: one per subject of the chosen enrollment
@@ -97,9 +96,12 @@ class PrintFidelitySamples extends Command
             ]);
         }
 
-        // Block schedule: first block with schedules if any
+        // Block schedule: a block whose classes actually meet, since the grid is
+        // built row-per-meeting and a block without meetings prints an empty table.
         $block = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings'])
-            ->whereHas('schedules')->first();
+            ->whereHas('schedules.meetings')->first()
+                ?? Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings'])
+                    ->whereHas('schedules')->first();
         if ($block) {
             $templates['block-schedule'] = fn () => view('prints.block-schedule', ['block' => $block]);
         } else {
@@ -107,7 +109,7 @@ class PrintFidelitySamples extends Command
         }
 
         // Clearance slip: most recent approved clearance if any
-        $clearance = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'approvals.approvedByUser', 'receivedByUser'])
+        $clearance = Studentclearances::with(['student.enrollments.course', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'approvals.approvedByUser', 'receivedByUser'])
             ->latest('studentClearanceId')->first();
         if ($clearance) {
             $templates['clearance-slip'] = fn () => view('prints.clearance-slip', ['clearance' => $clearance]);

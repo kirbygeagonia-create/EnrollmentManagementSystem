@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
+use App\Enums\WorkflowStepStatus;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Idrequests;
@@ -51,7 +52,7 @@ class IDPolicy
 
         // Check workflow step for ID Office (office 22) is current
         $workflow = $enrollment->enrollmentworkflow;
-        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', 'pending')->orderBy('stepOrder')->first()?->officeId !== OfficeId::IdOffice->value) {
+        if (! $workflow || $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId !== OfficeId::IdOffice->value) {
             return false;
         }
 
@@ -99,24 +100,6 @@ class IDPolicy
 
         return $request->status === IdRequestStatus::Pending
             && filled($request->cardPhotoPath);
-    }
-
-    /**
-     * Determine whether the user can release the physical ID card to the
-     * student (cards are printed off-system; release records the handover).
-     */
-    public function release(Staffusers $user, Idrequests $request): bool
-    {
-        if (! $user->hasPermissionTo('id.release')) {
-            return false;
-        }
-
-        // Must be ID Office
-        if ($user->officeId !== OfficeId::IdOffice->value) {
-            return false;
-        }
-
-        return $request->status === IdRequestStatus::Validated;
     }
 
     /**

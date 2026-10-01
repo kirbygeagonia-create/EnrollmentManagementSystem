@@ -69,6 +69,29 @@ class PaymentPolicy
     }
 
     /**
+     * Settle an account that owes nothing.
+     *
+     * `record` above deliberately refuses a zero balance, so an enrollment covered
+     * in full by a scholarship grant or a waiver can never be closed by the desk —
+     * and Accounting's signature on the payment step is what Registrar waits on
+     * before approving. Nothing is collected and no OR is issued here, so it stays
+     * on the same permission and the same office as cash collection.
+     */
+    public function settle(Staffusers $user, Studentassessments $assessment): bool
+    {
+        if (! $user->hasPermissionTo('payment.record')) {
+            return false;
+        }
+
+        // Must be Accounting office (officeId = 2)
+        if ($user->officeId !== OfficeId::Accounting->value) {
+            return false;
+        }
+
+        return $assessment->outstandingBalance() <= 0;
+    }
+
+    /**
      * Determine whether the user can generate daily collection report.
      */
     public function dailyReport(Staffusers $user): bool

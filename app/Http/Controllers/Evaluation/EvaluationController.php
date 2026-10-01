@@ -7,6 +7,9 @@ use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
+use App\Enums\InstitutionType;
+use App\Enums\OfficeId;
+use App\Enums\PassResult;
 use App\Http\Controllers\Controller;
 use App\Models\Addresses;
 use App\Models\Creditedsubjects;
@@ -21,14 +24,17 @@ use App\Models\Guardians;
 use App\Models\Religions;
 use App\Models\Subjects;
 use App\Models\Transferacademicrecords;
+use App\Services\AcademicStandingService;
 use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,7 +45,8 @@ class EvaluationController extends Controller
 
     public function __construct(
         private EnrollmentStateMachine $stateMachine,
-        private WorkflowService $workflowService
+        private WorkflowService $workflowService,
+        private AcademicStandingService $standingService
     ) {}
 
     /**
@@ -83,6 +90,10 @@ class EvaluationController extends Controller
             'enrolledSubjects.subject',
             // Item 6: the credit-transfer panel renders existing credited subjects.
             'creditedsubjects.creditedToSubject',
+            // The desk signs the first box of the workflow form, so it shows the
+            // boxes its own signature opens.
+            'enrollmentworkflow.workflowsteps.office',
+            'enrollmentworkflow.workflowsteps.signedBy',
         ]);
 
         // Item 7: the enrollment stays pinned to the curriculum version the
@@ -122,6 +133,10 @@ class EvaluationController extends Controller
             'unmetPrerequisiteSubjectIds' => $unmetPrerequisiteSubjectIds,
             'religions' => Religions::all(['religionId', 'religionName']),
             'academicStandings' => collect(AcademicStanding::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
+            // The standing is decided here, from the grades already on file — so
+            // the desk sees the evidence and the recommendation it is based on,
+            // not just a dropdown.
+            'standingReport' => $this->standingService->derive($enrollment),
             'retentionExam' => $retentionResult ? [
                 'examId' => $retentionResult->examId,
                 'examResult' => $retentionResult->examResult->value,
@@ -129,7 +144,12 @@ class EvaluationController extends Controller
             ] : null,
             'can' => [
                 'recordRetention' => $request->user()->can('recordRetention', $enrollment),
+                'decideStanding' => $request->user()->can('proposeSubjects', $enrollment),
+                'captureProfile' => $request->user()->can('captureProfile', $enrollment),
             ],
+            // BR32: the checklist the desk has to clear before it can sign, and
+            // the same list sign() refuses on. One definition, two readers.
+            'profileGaps' => $this->missingProfileFields($enrollment),
         ]);
     }
 
@@ -160,8 +180,7 @@ class EvaluationController extends Controller
      */
     private function satisfiedPrerequisites(Enrollments $enrollment): array
     {
-        $passingCeiling = Gradescale::where('isPassing', true)->max('maxGrade');
-        $passingCeiling = $passingCeiling !== null ? (float) $passingCeiling : 3.0;
+        $passingCeiling = Gradescale::passingCeiling();
 
         $bestGrades = Enrolledsubjects::query()
             ->join('enrollments as e2', 'e2.enrollmentId', '=', 'enrolledsubjects.enrollmentId')
@@ -183,6 +202,76 @@ class EvaluationController extends Controller
             ->all();
 
         return array_values(array_unique(array_merge($passed, $credited)));
+    }
+
+    /**
+     * The demographic fields BR32 requires before this desk may forward the form.
+     *
+     * One definition serves both readers — the checklist the screen renders and the
+     * refusal sign() returns — so a desk can never be shown "complete" for what the
+     * server still calls incomplete. The list is captureProfile()'s own required
+     * rules: the form that writes these columns is what defines them.
+     *
+     * @return string[] labels of the fields still missing, in form order
+     */
+    private function missingProfileFields(Enrollments $enrollment): array
+    {
+        $student = $enrollment->student;
+        $missing = [];
+
+        $personFields = [
+            'lastName' => 'Last name',
+            'firstName' => 'First name',
+            'gender' => 'Gender',
+            'birthdate' => 'Birthdate',
+            'birthplace' => 'Birthplace',
+            'citizenship' => 'Citizenship',
+            'religionId' => 'Religion',
+            'civilStatus' => 'Civil status',
+            'contactNumber' => 'Contact number',
+            'email' => 'Email address',
+        ];
+
+        foreach ($personFields as $column => $label) {
+            if ($student === null || blank($student->{$column})) {
+                $missing[] = $label;
+            }
+        }
+
+        // A first-year has completed zero semesters, and zero is real data —
+        // blank(0) is true, so these two are checked against null only.
+        foreach (['semestersCompleted' => 'Semesters completed', 'yearsInInstitution' => 'Years in the institution'] as $column => $label) {
+            if ($student === null || $student->{$column} === null) {
+                $missing[] = $label;
+            }
+        }
+
+        $addresses = $student->addresses ?? collect();
+        if ($addresses->count() < 2) {
+            $missing[] = 'Home and current address';
+        } elseif ($addresses->contains(fn ($address) => blank($address->barangay)
+            || blank($address->cityMunicipality)
+            || blank($address->province)
+            || blank($address->country))) {
+            $missing[] = 'Address barangay, city, province and country';
+        }
+
+        $guardians = $student->guardians ?? collect();
+        if ($guardians->isEmpty()) {
+            $missing[] = 'Parent or guardian';
+        } elseif ($guardians->contains(fn ($guardian) => blank($guardian->fullName) || blank($guardian->contactNumber))) {
+            $missing[] = 'Guardian name and contact number';
+        }
+
+        if (blank($enrollment->academicStanding)) {
+            $missing[] = 'Academic standing';
+        }
+
+        if (blank($enrollment->formIssuedDate)) {
+            $missing[] = 'Form issued date';
+        }
+
+        return $missing;
     }
 
     /**
@@ -234,11 +323,11 @@ class EvaluationController extends Controller
 
         DB::transaction(function () use ($enrollment, $validated) {
             $student = $enrollment->student;
-            $student->update([
+            $student->update(StudentRecordDefaults::person([
                 'lastName' => $validated['lastName'],
                 'firstName' => $validated['firstName'],
-                'middleName' => $validated['middleName'],
-                'suffix' => $validated['suffix'],
+                'middleName' => $validated['middleName'] ?? null,
+                'suffix' => $validated['suffix'] ?? null,
                 'gender' => $validated['gender'],
                 'birthdate' => $validated['birthdate'],
                 'birthplace' => $validated['birthplace'],
@@ -246,24 +335,24 @@ class EvaluationController extends Controller
                 'religionId' => $validated['religionId'],
                 'civilStatus' => $validated['civilStatus'],
                 'contactNumber' => $validated['contactNumber'],
-                'telephoneNumber' => $validated['telephoneNumber'],
+                'telephoneNumber' => $validated['telephoneNumber'] ?? null,
                 'email' => $validated['email'],
                 'semestersCompleted' => $validated['semestersCompleted'],
                 'yearsInInstitution' => $validated['yearsInInstitution'],
-            ]);
+            ]));
 
             // Update addresses (home, current, permanent)
             foreach ($validated['addresses'] as $addr) {
                 Addresses::updateOrCreate(
                     ['studentId' => $student->studentId, 'addressType' => $addr['addressType']],
-                    array_merge($addr, ['studentId' => $student->studentId])
+                    StudentRecordDefaults::address(array_merge($addr, ['studentId' => $student->studentId]))
                 );
             }
 
             // Update guardians
             $student->guardians()->delete();
             foreach ($validated['guardians'] as $guardian) {
-                Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
+                Guardians::create(StudentRecordDefaults::guardian(array_merge($guardian, ['studentId' => $student->studentId])));
             }
 
             $enrollment->update([
@@ -274,6 +363,66 @@ class EvaluationController extends Controller
         });
 
         return back()->with('success', 'Profile captured successfully.');
+    }
+
+    /**
+     * Record the standing and the year level the evaluating department decided.
+     *
+     * BR18: academic standing drives what study load the student may carry, so it
+     * has to be settled here — before the load is proposed — by the desk that can
+     * see the student's grades. Admission no longer guesses it, and the Registrar
+     * still has the last word at approval.
+     *
+     * The level travels with it because this is the only desk that can see the
+     * evidence that sets it (§28 G-2): intake writes 1 for every student, and the
+     * curriculum lookup and the block search both read this column, so a transferee
+     * placed in second year is offered first-year subjects until someone records
+     * the placement. Promoting the level automatically each term is a separate
+     * question the Registrar has still to answer; this is only the capture.
+     *
+     * Gated on `proposeSubjects` rather than a new ability: deciding the standing
+     * is the same academic judgement as prescribing the load for it, it already
+     * restricts the action to the owning evaluator or a delegate, and it already
+     * refuses once the enrollment has left this desk.
+     */
+    public function decideStanding(Request $request, Enrollments $enrollment): RedirectResponse
+    {
+        $this->authorize('proposeSubjects', $enrollment);
+
+        $validated = $request->validate([
+            'academicStanding' => ['required', 'in:'.implode(',', array_column(AcademicStanding::cases(), 'value'))],
+            'yearLevel' => ['required', 'integer', 'min:1', 'max:5'],
+        ]);
+
+        $standing = AcademicStanding::from($validated['academicStanding']);
+        $yearLevel = (int) $validated['yearLevel'];
+        $previousLevel = (int) $enrollment->yearLevel;
+
+        $enrollment->update([
+            'academicStanding' => $standing,
+            'yearLevel' => $yearLevel,
+            'evaluatedBy' => Auth::user()->userId,
+        ]);
+
+        $derived = $this->standingService->derive($enrollment);
+
+        // When the department's call differs from what the records suggest, say so
+        // plainly instead of silently accepting it — the override is legitimate
+        // (the evaluator has the documents, the database does not), but it should
+        // be visible on the desk and to the Registrar.
+        $overrides = $derived['canDerive'] && $derived['derived'] !== $standing->value;
+
+        // The level is what the curriculum lookup and the block search read, so a
+        // placement that moved has to be said out loud: the load proposed before
+        // this change was resolved against the old year.
+        $placed = $previousLevel !== $yearLevel
+            ? " Placement set to year level {$yearLevel} (was {$previousLevel}); re-propose the load if it was drawn against the old year."
+            : '';
+
+        return back()->with('success', ($overrides
+            ? "Standing recorded as {$standing->value}, against the derivation ({$derived['derived']})."
+            : "Standing recorded as {$standing->value}.").$placed
+            .' The Registrar confirms the final call at approval.');
     }
 
     /**
@@ -418,32 +567,59 @@ class EvaluationController extends Controller
     {
         $this->authorize('processCredits', $enrollment);
 
+        // Every rule below is bounded by the column it lands in:
+        // transferacademicrecords.subjectNameAtOldSchool is varchar(150),
+        // unitsAtOldSchool/gradeAtOldSchool are decimal(3,1)/decimal(3,2) and both
+        // NOT NULL, and creditedsubjects.remarks is a NOT NULL text.
         $validated = $request->validate([
             'credits' => 'required|array',
-            'credits.*.previousSubjectName' => 'required|string|max:255',
+            'credits.*.previousSubjectName' => 'required|string|max:150',
             'credits.*.creditedToSubjectId' => 'required|exists:subjects,subjectId',
-            'credits.*.creditedUnits' => 'required|numeric|min:0',
-            'credits.*.institutionName' => 'required|string|max:255',
-            'credits.*.institutionType' => 'required|in:elementary,secondary,seniorHigh,college,graduate',
-            'credits.*.grade' => 'nullable|numeric',
+            'credits.*.creditedUnits' => 'required|numeric|min:0|max:9.9',
+            'credits.*.institutionName' => 'required|string|max:150',
+            'credits.*.institutionType' => ['required', Rule::enum(InstitutionType::class)],
+            'credits.*.cityMunicipality' => 'required|string|max:150',
+            'credits.*.province' => 'required|string|max:150',
+            'credits.*.grade' => 'required|numeric|between:1,5',
             'credits.*.remarks' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($enrollment, $validated) {
+        // The recorded grade decides whether the prior subject was passed; it
+        // cannot be assumed. A credit is what subtracts a mandatory subject from
+        // the load and satisfies a prerequisite, so writing every transfer row as
+        // "passed" exempted subjects the student had actually failed elsewhere.
+        $ceiling = Gradescale::passingCeiling();
+        $credited = 0;
+        $retained = 0;
+
+        DB::transaction(function () use ($enrollment, $validated, $ceiling, &$credited, &$retained) {
             foreach ($validated['credits'] as $credit) {
                 $institution = Educationalinstitutions::firstOrCreate(
                     ['institutionName' => $credit['institutionName']],
-                    ['institutionType' => $credit['institutionType']]
+                    [
+                        'institutionType' => $credit['institutionType'],
+                        'cityMunicipality' => $credit['cityMunicipality'],
+                        'province' => $credit['province'],
+                    ]
                 );
 
+                $passed = (float) $credit['grade'] <= $ceiling;
+
+                // Every prior subject and grade stays on the record, passed or not.
                 $transferRecord = Transferacademicrecords::create([
                     'studentId' => $enrollment->studentId,
                     'institutionId' => $institution->institutionId,
                     'subjectNameAtOldSchool' => $credit['previousSubjectName'],
                     'unitsAtOldSchool' => $credit['creditedUnits'],
                     'gradeAtOldSchool' => $credit['grade'],
-                    'passResult' => 'passed',
+                    'passResult' => ($passed ? PassResult::Passed : PassResult::Failed)->value,
                 ]);
+
+                if (! $passed) {
+                    $retained++;
+
+                    continue;
+                }
 
                 Creditedsubjects::create([
                     'enrollmentId' => $enrollment->enrollmentId,
@@ -451,12 +627,16 @@ class EvaluationController extends Controller
                     'previousSubjectName' => $credit['previousSubjectName'],
                     'creditedToSubjectId' => $credit['creditedToSubjectId'],
                     'creditedUnits' => $credit['creditedUnits'],
-                    'remarks' => $credit['remarks'],
+                    'remarks' => $credit['remarks'] ?? '',
                 ]);
+
+                $credited++;
             }
         });
 
-        return back()->with('success', 'Credits processed successfully.');
+        return back()->with('success', $retained > 0
+            ? "Credits processed: {$credited} credited, {$retained} kept on the record but not credited — the grade is beyond the {$ceiling} passing line."
+            : 'Credits processed successfully.');
     }
 
     /**
@@ -465,6 +645,17 @@ class EvaluationController extends Controller
     public function sign(Request $request, Enrollments $enrollment): RedirectResponse
     {
         $this->authorize('sign', $enrollment);
+
+        // BR32: the form cannot be forwarded while a required demographic field is
+        // missing. The screen disables the button from the same list, so this is the
+        // server holding the same line — a stale page or a direct POST must not push
+        // a profile-less enrollment on to the six desks behind it.
+        $missing = $this->missingProfileFields($enrollment);
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'profile' => 'Capture the profile first — still missing: '.implode(', ', $missing).'.',
+            ]);
+        }
 
         DB::transaction(function () use ($enrollment) {
             $enrollment->update([
@@ -478,7 +669,7 @@ class EvaluationController extends Controller
 
             // Sign the Department Evaluation step (office 4) — the evaluator signs here
             $enrollment->load('enrollmentworkflow');
-            $this->workflowService->signStepByOffice($enrollment->enrollmentworkflow, 4, Auth::user());
+            $this->workflowService->signStepByOffice($enrollment->enrollmentworkflow, OfficeId::Guidance->value, Auth::user());
         });
 
         return back()->with('success', 'Evaluation signed. Workflow created.');

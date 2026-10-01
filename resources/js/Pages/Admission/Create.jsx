@@ -39,23 +39,24 @@ const relationshipOptions = [
 
 const institutionTypeOptions = [
     { value: 'elementary', label: 'Elementary' },
-    { value: 'secondary', label: 'Secondary' },
+    { value: 'juniorHigh', label: 'Junior High' },
     { value: 'seniorHigh', label: 'Senior High' },
+    { value: 'vocational', label: 'Vocational' },
     { value: 'college', label: 'College' },
-    { value: 'graduate', label: 'Graduate' },
 ];
 
 const levelCompletedOptions = [
     { value: 'elementary', label: 'Elementary' },
-    { value: 'secondary', label: 'Secondary' },
+    { value: 'juniorHigh', label: 'Junior High' },
     { value: 'seniorHigh', label: 'Senior High' },
+    { value: 'vocational', label: 'Vocational' },
     { value: 'college', label: 'College' },
-    { value: 'graduate', label: 'Graduate' },
 ];
 
 // Section progress steps (visual navigator — scroll-spy + click-to-jump)
 const sectionSteps = [
     { label: 'Student', anchor: 'section-student' },
+    { label: 'Account', anchor: 'section-account' },
     { label: 'Addresses', anchor: 'section-addresses' },
     { label: 'Guardians', anchor: 'section-guardians' },
     { label: 'Education', anchor: 'section-education' },
@@ -405,7 +406,14 @@ export default function Create({ courses, terms, religions }) {
                                 />
                                 {form.errors.email && <p className="form-error">{form.errors.email}</p>}
                             </FormSection>
+                        </div>
+                    </Card>
+                </div>
 
+                {/* Account Creation — credentials are kept apart from the demographic record */}
+                <div id="section-account" className="scroll-mt-24">
+                    <Card title="Account Creation" subtitle="System login credentials for this student record">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormSection label="Username" required>
                                 <input
                                     type="text"
@@ -681,7 +689,7 @@ export default function Create({ courses, terms, religions }) {
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <FormSection label="Institution Name" required>
+                                    <FormSection label="Institution Name" required error={form.errors[`educationalBackgrounds.${idx}.institutionName`]}>
                                         <input
                                             type="text"
                                             value={bg.institutionName}
@@ -691,7 +699,7 @@ export default function Create({ courses, terms, religions }) {
                                             maxLength={255}
                                         />
                                     </FormSection>
-                                    <FormSection label="Institution Type" required>
+                                    <FormSection label="Institution Type" required error={form.errors[`educationalBackgrounds.${idx}.institutionType`]}>
                                         <Select
                                             value={bg.institutionType}
                                             onChange={(v) => updateEducationalBackground(idx, 'institutionType', v)}
@@ -700,25 +708,27 @@ export default function Create({ courses, terms, religions }) {
                                             required
                                         />
                                     </FormSection>
-                                    <FormSection label="City/Municipality">
+                                    <FormSection label="City/Municipality" required error={form.errors[`educationalBackgrounds.${idx}.cityMunicipality`]}>
                                         <input
                                             type="text"
                                             value={bg.cityMunicipality}
                                             onChange={(e) => updateEducationalBackground(idx, 'cityMunicipality', e.target.value)}
                                             className="form-input"
                                             maxLength={100}
+                                            required
                                         />
                                     </FormSection>
-                                    <FormSection label="Province">
+                                    <FormSection label="Province" required error={form.errors[`educationalBackgrounds.${idx}.province`]}>
                                         <input
                                             type="text"
                                             value={bg.province}
                                             onChange={(e) => updateEducationalBackground(idx, 'province', e.target.value)}
                                             className="form-input"
                                             maxLength={100}
+                                            required
                                         />
                                     </FormSection>
-                                    <FormSection label="Level Completed" required>
+                                    <FormSection label="Level Completed" required error={form.errors[`educationalBackgrounds.${idx}.levelCompleted`]}>
                                         <Select
                                             value={bg.levelCompleted}
                                             onChange={(v) => updateEducationalBackground(idx, 'levelCompleted', v)}
@@ -736,12 +746,13 @@ export default function Create({ courses, terms, religions }) {
                                             maxLength={100}
                                         />
                                     </FormSection>
-                                    <FormSection label="Year Completed">
+                                    <FormSection label="Year Completed" required error={form.errors[`educationalBackgrounds.${idx}.yearCompleted`]}>
                                         <input
                                             type="date"
                                             value={bg.yearCompleted}
                                             onChange={(e) => updateEducationalBackground(idx, 'yearCompleted', e.target.value)}
                                             className="form-input"
+                                            required
                                         />
                                     </FormSection>
                                     <FormSection label="Honors/Certifications" className="sm:col-span-2 lg:col-span-3">

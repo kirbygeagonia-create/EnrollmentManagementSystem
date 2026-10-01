@@ -52,7 +52,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan key:generate
 php artisan migrate --force
-php artisan db:seed --force     # roles, permissions, notifications
+php artisan db:seed --force     # roles, permissions, settings, starter reference data, notifications
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
@@ -88,22 +88,29 @@ stopwaitsecs=3600
 
 or systemd: `php artisan queue:work` with `Restart=always`.
 
-## 6. PDF printing — Puppeteer/Chromium (audit §3.5)
+## 6. PDF printing — Puppeteer + a system browser (audit §3.5)
 
-`app/Services/PrintService.php` uses `spatie/browsershot`. Puppeteer is
-deliberately **not** in `package.json` (Chromium is a heavy dev dependency);
-production must provide it:
+`app/Services/PrintService.php` uses `spatie/browsershot`, whose `bin/browser.cjs`
+does `require('puppeteer')`. Without that module every PDF route fails with
+`MODULE_NOT_FOUND` (the React print pages still print on screen). `puppeteer` is now
+declared in `package.json`, so `npm ci` installs it — and because `.npmrc` sets
+`ignore-scripts=true`, Puppeteer's postinstall never runs, so no bundled Chromium is
+downloaded. The browser binary comes from the machine instead:
 
-```bash
-npm install puppeteer          # downloads a bundled Chromium
-```
+`App\Services\ChromiumLocator` resolves it for both the PDF routes and
+`php artisan ems:print-fidelity`, in this order: `EMS_CHROME_PATH` from `.env`, then
+Chrome/Edge in the usual Windows locations, then `google-chrome`,
+`google-chrome-stable`, `chromium-browser`, `chromium` on Linux. Install Chrome or
+Edge on every desk that prints, or point `EMS_CHROME_PATH` at the binary. If nothing
+is found, Browsershot falls back to Puppeteer's own bundled Chromium (only present if
+the download was allowed).
 
-or point Browsershot at a system Chromium:
-`Browsershot::html(...)->setChromePath('/usr/bin/chromium-browser')`.
+Note that the templates reference the letterhead logo through `asset()`, so an
+absolute `APP_URL` must be reachable from the printing process for the seal to appear.
 
 Verify with the print-fidelity smoke test:
 `php artisan ems:print-fidelity` (renders sample PDFs from real DB data into
-`storage/app/prints/fidelity/`).
+`storage/app/prints/fidelity/`; expect `8/8 rendered`).
 
 ## 7. CI/CD (audit §3.1, §3.2)
 

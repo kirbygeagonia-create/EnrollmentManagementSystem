@@ -14,7 +14,7 @@ class Clearancerequirements extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['officeId'];
+    protected $fillable = ['officeId', 'requirementName'];
 
     /**
      * @return BelongsTo<Offices, $this>

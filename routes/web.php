@@ -48,6 +48,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/admission', [AdmissionController::class, 'index'])->name('admission.index');
     Route::get('/admission/create', [AdmissionController::class, 'create'])->name('admission.create');
     Route::post('/admission', [AdmissionController::class, 'store'])->name('admission.store');
+    // Uploaded requirement documents live on a private disk, so the file itself
+    // needs a route that answers through the same policy as the admission it
+    // belongs to; without it the desk verifies a submission it cannot open.
+    Route::get('/admission/documents/{document}', [AdmissionController::class, 'document'])->name('admission.documents.show');
     Route::get('/admission/{admission}', [AdmissionController::class, 'show'])->name('admission.show');
     Route::post('/admission/{admission}/requirements/{requirement}/submit', [AdmissionController::class, 'submitRequirement'])->name('admission.requirements.submit');
     Route::post('/admission/{admission}/requirements/{requirement}/verify', [AdmissionController::class, 'verifyRequirement'])->name('admission.requirements.verify');
@@ -66,6 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/evaluation', [EvaluationController::class, 'index'])->name('evaluation.index');
     Route::get('/evaluation/{enrollment}', [EvaluationController::class, 'show'])->name('evaluation.show');
     Route::put('/evaluation/{enrollment}/profile', [EvaluationController::class, 'captureProfile'])->name('evaluation.profile.capture');
+    // Item 16: the standing is decided by the evaluating department from the
+    // grades on file, and the Registrar only finalizes it at approval.
+    Route::put('/evaluation/{enrollment}/standing', [EvaluationController::class, 'decideStanding'])->name('evaluation.standing.decide');
     Route::post('/evaluation/{enrollment}/subjects', [EvaluationController::class, 'proposeSubjects'])->name('evaluation.subjects.propose');
     Route::post('/evaluation/{enrollment}/credits', [EvaluationController::class, 'processCredits'])->name('evaluation.credits.process');
     Route::post('/evaluation/{enrollment}/sign', [EvaluationController::class, 'sign'])->name('evaluation.sign');
@@ -86,6 +93,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/accounting/daily-report', [AccountingController::class, 'dailyReport'])->name('accounting.daily-report');
     Route::get('/accounting/{assessment}', [AccountingController::class, 'show'])->name('accounting.show');
     Route::post('/accounting/{assessment}/payment', [AccountingController::class, 'record'])->name('accounting.payment.record');
+    Route::post('/accounting/{assessment}/settle', [AccountingController::class, 'settleNoBalance'])->name('accounting.settle');
     Route::post('/accounting/payments/{payment}/void', [AccountingController::class, 'void'])->name('accounting.payment.void');
 
     /* ==================== Clearance ==================== */
@@ -98,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/clearance/approvals/{approval}', [ClearanceController::class, 'approveRequirement'])->name('clearance.approve');
     Route::post('/clearance/slip/replace', [ClearanceController::class, 'replaceLostSlip'])->name('clearance.slip.replace');
     Route::get('/clearance/{clearance}/print', [ClearanceController::class, 'printSlip'])->name('clearance.print-slip');
+    Route::get('/clearance/{clearance}/print/pdf', [ClearanceController::class, 'downloadSlip'])->name('clearance.download-slip');
 
     /* ==================== Blocking ==================== */
     Route::get('/blocking', [BlockingController::class, 'index'])->name('blocking.index');
@@ -112,6 +121,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/blocking/{block}/assign', [BlockingController::class, 'assignStudents'])->name('blocking.assign');
     Route::post('/blocking/{block}/unassign', [BlockingController::class, 'unassignStudents'])->name('blocking.unassign');
     Route::get('/blocking/{block}/print', [BlockingController::class, 'printBlockSchedule'])->name('blocking.print-schedule');
+    Route::get('/blocking/{block}/print/pdf', [BlockingController::class, 'downloadBlockSchedule'])->name('blocking.download-schedule');
 
     /* ==================== Registrar ==================== */
     Route::get('/registrar', [RegistrarController::class, 'index'])->name('registrar.index');
@@ -119,8 +129,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/registrar/{enrollment}/approve', [RegistrarController::class, 'approve'])->name('registrar.approve');
     Route::post('/registrar/{enrollment}/return', [RegistrarController::class, 'returnToEvaluation'])->name('registrar.return');
     Route::get('/registrar/{enrollment}/print/certificate', [RegistrarController::class, 'printCertificate'])->name('registrar.print-certificate');
+    Route::get('/registrar/{enrollment}/print/certificate/pdf', [RegistrarController::class, 'downloadCertificate'])->name('registrar.download-certificate');
     Route::get('/registrar/{enrollment}/print/class-cards', [RegistrarController::class, 'printClassCards'])->name('registrar.print-class-cards');
+    Route::get('/registrar/{enrollment}/print/class-cards/{enrolledSubject}/pdf', [RegistrarController::class, 'downloadClassCard'])->name('registrar.download-class-card');
     Route::get('/registrar/{enrollment}/print/subject-load', [RegistrarController::class, 'printSubjectLoad'])->name('registrar.print-subject-load');
+    Route::get('/registrar/{enrollment}/print/subject-load/pdf', [RegistrarController::class, 'downloadSubjectLoad'])->name('registrar.download-subject-load');
 
     /* ==================== Clinic ==================== */
     Route::get('/clinic', [ClinicController::class, 'index'])->name('clinic.index');
@@ -134,8 +147,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/id/{enrollment}', [IDController::class, 'show'])->name('id.show');
     Route::post('/id/{enrollment}', [IDController::class, 'create'])->name('id.create');
     Route::post('/id/requests/{idRequest}/photo', [IDController::class, 'attachPhoto'])->name('id.photo');
+    Route::get('/id/requests/{idRequest}/photo', [IDController::class, 'photo'])->name('id.photo.view');
     Route::post('/id/requests/{idRequest}/validate', [IDController::class, 'validate'])->name('id.validate');
-    Route::post('/id/requests/{idRequest}/release', [IDController::class, 'release'])->name('id.release');
 
     /* ==================== Admin / Reference Data ==================== */
     Route::get('/admin/reference-data', [ReferenceDataController::class, 'index'])->name('admin.reference-data.index');
@@ -182,6 +195,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/admin/reference-data/fee-types/{feeType}', [ReferenceDataController::class, 'updateFeeType'])->name('admin.reference-data.fee-types.update');
     Route::delete('/admin/reference-data/fee-types/{feeType}', [ReferenceDataController::class, 'destroyFeeType'])->name('admin.reference-data.fee-types.destroy');
 
+    // Grade Scale
+    Route::get('/admin/reference-data/grade-scale', [ReferenceDataController::class, 'gradeScales'])->name('admin.reference-data.grade-scale');
+    Route::post('/admin/reference-data/grade-scale', [ReferenceDataController::class, 'storeGradeScale'])->name('admin.reference-data.grade-scale.store');
+    Route::patch('/admin/reference-data/grade-scale/{gradeScale}', [ReferenceDataController::class, 'updateGradeScale'])->name('admin.reference-data.grade-scale.update');
+    Route::delete('/admin/reference-data/grade-scale/{gradeScale}', [ReferenceDataController::class, 'destroyGradeScale'])->name('admin.reference-data.grade-scale.destroy');
+
     // Scholarship Types
     Route::get('/admin/reference-data/scholarship-types', [ReferenceDataController::class, 'scholarshipTypes'])->name('admin.reference-data.scholarship-types');
     Route::post('/admin/reference-data/scholarship-types', [ReferenceDataController::class, 'storeScholarshipType'])->name('admin.reference-data.scholarship-types.store');
@@ -215,6 +234,7 @@ Route::middleware('auth')->group(function () {
     // Clearance Requirements
     Route::get('/admin/reference-data/clearance-requirements', [ReferenceDataController::class, 'clearanceRequirements'])->name('admin.reference-data.clearance-requirements');
     Route::post('/admin/reference-data/clearance-requirements', [ReferenceDataController::class, 'storeClearanceRequirement'])->name('admin.reference-data.clearance-requirements.store');
+    Route::patch('/admin/reference-data/clearance-requirements/{req}', [ReferenceDataController::class, 'updateClearanceRequirement'])->name('admin.reference-data.clearance-requirements.update');
     Route::delete('/admin/reference-data/clearance-requirements/{req}', [ReferenceDataController::class, 'destroyClearanceRequirement'])->name('admin.reference-data.clearance-requirements.destroy');
 
     /* ==================== Admin / User Management ==================== */

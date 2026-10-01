@@ -1,14 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-
-const studentTypeToneMap = {
-    firstYear: 'info',
-    continuing: 'success',
-    transferee: 'warning',
-    shifter: 'accent',
-};
 
 export default function Index({ enrollments, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -32,8 +25,13 @@ export default function Index({ enrollments, filters = {} }) {
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'yearLevel', label: 'Year Level', render: (row) => row.yearLevel ? `Year ${row.yearLevel}` : '—' },
         { key: 'studentType', label: 'Student Type', render: (row) => (
-            <Badge tone={studentTypeToneMap[row.studentType] || 'neutral'}>
-                {row.studentType?.replace(/([A-Z])/g, ' $1') || '—'}
+            <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
+                {formatStatusLabel(row.studentType)}
+            </Badge>
+        )},
+        { key: 'academicStanding', label: 'Proposed Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.academicStanding)}>
+                {academicStandingLabel(row.academicStanding)}
             </Badge>
         )},
         { key: 'enrollmentStatus', label: 'Status', render: (row) => (

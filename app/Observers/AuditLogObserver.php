@@ -94,7 +94,7 @@ class AuditLogObserver
             'action' => $action,
             'adminOverride' => $adminOverride,
             'entityTable' => $model->getTable(),
-            'entityId' => $model->getKey(),
+            'entityId' => (string) $model->getKey(),
             'oldValues' => $action === 'updated'
                 ? json_encode($this->redactSensitive($model->getOriginal()))
                 : null,

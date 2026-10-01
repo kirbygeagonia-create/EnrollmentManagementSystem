@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Accounting;
 
+use App\Enums\PaymentMode;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class RecordPaymentRequest extends FormRequest
 {
@@ -16,7 +18,7 @@ class RecordPaymentRequest extends FormRequest
         return [
             'orNumber' => 'required|string|max:50|unique:payments,orNumber',
             'amount' => 'required|numeric|min:0.01',
-            'paymentMode' => 'required|in:cash,check,online',
+            'paymentMode' => ['required', Rule::enum(PaymentMode::class)],
             'paymentDate' => 'required|date',
         ];
     }

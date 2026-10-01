@@ -25,6 +25,15 @@ const submissionStatusToneMap = {
     incomplete: 'warning',
 };
 
+// documents.fileType stores the MIME the uploader sent, not a name.
+const documentKindLabel = (mime) => ({
+    'application/pdf': 'PDF',
+    'image/jpeg': 'JPG',
+    'image/png': 'PNG',
+    'application/msword': 'DOC',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+}[mime] || 'file');
+
 // Status banner styling per admission status
 const statusBannerMap = {
     pending: {
@@ -47,7 +56,7 @@ const statusBannerMap = {
     },
 };
 
-export default function Show({ admission, requirements }) {
+export default function Show({ admission, requirements, approvalBlockers = [] }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [rejectReqModal, setRejectReqModal] = useState({ open: false, requirementId: null, remarks: '' });
@@ -178,6 +187,21 @@ export default function Show({ admission, requirements }) {
                     <div>
                         <p className="font-semibold text-brand-900 text-base">{banner.title}</p>
                         <p className="text-xs text-brand-600">{banner.desc}</p>
+                        {admission.admissionStatus === 'pending' && approvalBlockers.length > 0 && (
+                            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                                    Approval is closed until these are cleared
+                                </p>
+                                <ul className="mt-1.5 space-y-1">
+                                    {approvalBlockers.map((reason) => (
+                                        <li key={reason} className="text-xs text-amber-900 flex items-start gap-1.5">
+                                            <span aria-hidden="true" className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                                            {reason}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -187,7 +211,7 @@ export default function Show({ admission, requirements }) {
                             <button
                                 type="button"
                                 onClick={handleApprove}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || approvalBlockers.length > 0}
                                 className="btn btn-primary btn-sm flex items-center gap-1.5 shadow-sm"
                             >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,7 +385,20 @@ export default function Show({ admission, requirements }) {
 
                                             <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                                                 {hasDocument ? (
-                                                    <span className="badge badge-info text-[10px]">Document attached</span>
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {submission.documents.map((doc) => (
+                                                            <a
+                                                                key={doc.documentId}
+                                                                href={route('admission.documents.show', { document: doc.documentId })}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="badge badge-info text-[10px]"
+                                                                title="Open the uploaded file before verifying this requirement"
+                                                            >
+                                                                Open {documentKindLabel(doc.fileType)}
+                                                            </a>
+                                                        ))}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-[11px] text-slate-400">No file attached</span>
                                                 )}
@@ -425,9 +462,9 @@ export default function Show({ admission, requirements }) {
                     }}
                     cause={`Approving this application accepts ${student?.lastName}, ${student?.firstName} into institutional records.`}
                     effects={[
-                        'Assigns an official SEAIT Student ID Number (e.g. 2026-XXXX) if not already generated.',
-                        'Locks applicant demographic profile and submitted checklist requirements.',
-                        'Queues applicant for Phase 0.5 Guidance Entrance / Retention Exam Lab.',
+                        'Marks the application approved and records you as the approving officer.',
+                        'Creates the pending enrollment record for this course and term — the row the Department Evaluation desk picks up.',
+                        'Leaves the school ID as captured at intake; approval does not generate a student number.',
                     ]}
                     requiresAcknowledgement={false}
                     confirmText="Yes, Approve Admission"

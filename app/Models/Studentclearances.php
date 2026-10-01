@@ -67,4 +67,31 @@ class Studentclearances extends Model
     {
         return $this->hasMany(Clearanceapprovals::class, 'studentClearanceId');
     }
+
+    /**
+     * The enrollment this clearance covers — the student's enrollment in the term the
+     * clearance period belongs to. Reading `student->enrollments` in list order gives
+     * the first enrollment the student ever had, so a student who cleared after
+     * advancing would be printed with their course and year level from years ago.
+     */
+    public function termEnrollment(): ?Enrollments
+    {
+        $this->loadMissing('student.enrollments');
+
+        $enrollments = $this->student->enrollments;
+
+        if ($enrollments->isEmpty()) {
+            return null;
+        }
+
+        $termId = $this->clearancePeriod?->termId;
+        $exact = $termId === null
+            ? null
+            : $enrollments->first(fn (Enrollments $enrollment) => $enrollment->termId === $termId);
+
+        // PROVISIONAL: a slip raised after its term closed has no enrollment in that
+        // term, so the newest enrollment is used rather than printing "N/A". Registrar
+        // to confirm which enrollment a clearance slip should name.
+        return $exact ?? $enrollments->sortByDesc('enrollmentId')->first();
+    }
 }

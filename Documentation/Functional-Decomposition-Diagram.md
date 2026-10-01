@@ -7,7 +7,7 @@
 > utilities (`ems:create-admin`, `ems:benchmark`, `ems:print-fidelity`) are excluded as they are
 > not user-facing system functions.
 >
-> **Status update (2026-09-24):** this tree was generated against commit `c8ea184`. The 15-module structure below is unchanged, but controller methods have since evolved — the ID desk (12.0) is now an ID requests flow (request → photo upload → validate → release) — and the live app serves 166 HTTP routes. The function names below remain current.
+> **Status update (2026-09-30):** this tree was generated against commit `c8ea184`. The 15-module structure below is unchanged, but controller methods have since evolved — the ID desk (12.0) is now an ID validation flow (request → photo upload → validate), and card production and hand-over were removed by owner ruling, so 12.5 no longer exists. The live app currently serves 175 HTTP routes (`php artisan route:list --except-vendor`). The function names below remain current.
 
 **Decomposition levels**
 - **Level 0** — the system as a single process
@@ -245,8 +245,6 @@ display-only — it must never gate exam requirements; the operative gates are
   - 12.3.1 Capture / Upload Face Photo (`id.photo`)
 - **12.4 Validate ID Requests**
   - 12.4.1 Validate Request & Sign Workflow Step (`id.validate`)
-- **12.5 Release ID Cards**
-  - 12.5.1 Record Card Release to Student (`id.release`)
 
 ### 13.0 Manage Student Records (Student 360°)
 
@@ -482,13 +480,11 @@ graph TD
     M12 --> M12b["12.2 Create ID Requests"]
     M12 --> M12c["12.3 Attach Face Photo"]
     M12 --> M12d["12.4 Validate ID Requests"]
-    M12 --> M12e["12.5 Release ID Cards"]
     M12a --> M12a1["List ID Requests by Status"]
     M12a --> M12a2["View Request Details"]
     M12b --> M12b1["Record New ID Request"]
     M12c --> M12c1["Capture / Upload Face Photo"]
     M12d --> M12d1["Validate Request & Sign Workflow Step"]
-    M12e --> M12e1["Record Card Release"]
 
     M13 --> M13a["13.1 Quick-Search Students"]
     M13 --> M13b["13.2 Browse Student Directory"]

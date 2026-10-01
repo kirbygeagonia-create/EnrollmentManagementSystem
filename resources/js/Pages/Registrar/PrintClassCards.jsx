@@ -54,6 +54,15 @@ export default function PrintClassCards({ enrollment }) {
                                 <div className="text-right">
                                     <p className="text-sm text-brand-500 mb-1">Units</p>
                                     <p className="font-medium text-brand-900">{getTotalUnits(es.subject)}</p>
+                                    <a
+                                        href={route('registrar.download-class-card', {
+                                            enrollment: enrollment.enrollmentId,
+                                            enrolledSubject: es.enrolledSubjectId,
+                                        })}
+                                        className="no-print btn btn-secondary btn-sm mt-2 inline-block"
+                                    >
+                                        Download PDF
+                                    </a>
                                 </div>
                             </div>
 

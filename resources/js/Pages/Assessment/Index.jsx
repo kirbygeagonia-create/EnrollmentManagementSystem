@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -22,6 +22,16 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
             return s ? `${s.lastName}, ${s.firstName}` : '—';
         }},
         { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
+        { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
+                {formatStatusLabel(row.enrollment?.studentType)}
+            </Badge>
+        )},
+        { key: 'enrollment.academicStanding', label: 'Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.enrollment?.academicStanding)}>
+                {academicStandingLabel(row.enrollment?.academicStanding)}
+            </Badge>
+        )},
         { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
             <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
         )},

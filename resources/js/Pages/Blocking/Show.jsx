@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, StatCard, DataTable, Badge, Modal, EmptyState, FormSection, Select, CauseEffectModal, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -195,6 +195,16 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             return `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} ${s.suffix || ''}`.trim();
         }},
         { key: 'subject', label: 'Subject', render: (row) => row.subject?.subjectCode || '—' },
+        { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
+                {formatStatusLabel(row.enrollment?.studentType)}
+            </Badge>
+        )},
+        { key: 'enrollment.academicStanding', label: 'Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.enrollment?.academicStanding)}>
+                {academicStandingLabel(row.enrollment?.academicStanding)}
+            </Badge>
+        )},
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={getStatusTone(row.status)}>
                 {formatStatusLabel(row.status)}
@@ -631,7 +641,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 </Card>
 
                 {/* Assigned Students Section */}
-                <Card title="Assigned Students" subtitle={`${sortedStudents.length} student(s) assigned to this block`} actions={
+                <Card title="Assigned Students" subtitle={`${new Set(sortedStudents.map((row) => row.enrollmentId)).size} student(s) · ${sortedStudents.length} subject row(s) assigned to this block`} actions={
                     <button
                         onClick={() => setShowAssignModal(true)}
                         disabled={sortedSchedules.length === 0}

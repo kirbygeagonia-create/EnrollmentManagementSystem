@@ -49,8 +49,10 @@ export default function Results({ exams, filters = {}, can = {} }) {
     }, [rows]);
 
     const columns = useMemo(() => [
-        { key: 'studentIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name' },
+        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', render: (row) => (
+            row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
+        )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'examType', label: 'Exam', render: (row) => (
             <Badge tone={typeToneMap[row.examType] || 'neutral'}>

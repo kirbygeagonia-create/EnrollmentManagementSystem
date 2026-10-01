@@ -288,7 +288,7 @@ export default function Show({ enrollment, clinicRecord }) {
 
             {/* Enrollment Workflow Progress */}
             <Card title="Enrollment Workflow Progress" subtitle="The enrollment workflow form — signed offices and pending steps" className="mb-5">
-                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
             </Card>
 
             {/* Split Screen Medical Chart */}

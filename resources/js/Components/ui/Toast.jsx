@@ -24,6 +24,17 @@ const variants = {
             </svg>
         ),
     },
+    info: {
+        label: 'Notice',
+        accent: 'bg-info-500',
+        iconWrap: 'bg-info-100 text-info-700',
+        border: 'border-info-200',
+        icon: (
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        ),
+    },
     error: {
         label: 'Error',
         accent: 'bg-danger-500',
@@ -42,11 +53,11 @@ export default function Toast({ duration = 4500 }) {
     const [toast, setToast] = useState(null);
     const lastShown = useRef('');
 
-    // Surface a server flash message (set via with('success'|'warning'|'error'))
+    // Surface a server flash message (set via with('success'|'warning'|'error'|'info'))
     useEffect(() => {
         if (!flash) return;
 
-        const type = ['success', 'warning', 'error'].find((key) => flash[key]);
+        const type = ['success', 'warning', 'error', 'info'].find((key) => flash[key]);
         if (!type) return;
 
         const raw = flash[type];

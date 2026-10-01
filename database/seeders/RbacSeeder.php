@@ -96,12 +96,11 @@ class RbacSeeder extends Seeder
                 'exam.verify.general',
             ],
 
-            // ID module (5) — validation-only flow (card-making removed)
+            // ID module (4) — validation-only flow (card-making removed)
             'id' => [
                 'id.view',
                 'id.request.create',
                 'id.validate',
-                'id.release',
                 'id.sign',
             ],
 
@@ -113,7 +112,7 @@ class RbacSeeder extends Seeder
                 'payment.report.daily',
             ],
 
-            // Reference Data module (14)
+            // Reference Data module (15)
             'refdata' => [
                 'refdata.view',
                 'refdata.courses.manage',
@@ -123,6 +122,7 @@ class RbacSeeder extends Seeder
                 'refdata.subjects.manage',
                 'refdata.terms.manage',
                 'refdata.feeTypes.manage',
+                'refdata.gradeScale.manage',
                 'refdata.scholarshipTypes.manage',
                 'refdata.offices.manage',
                 'refdata.rooms.manage',
@@ -180,8 +180,20 @@ class RbacSeeder extends Seeder
 
         $this->command->info('Created '.count($createdPermissions).' permissions across '.count($permissions).' modules.');
 
+        // Retire permissions this seeder no longer declares (e.g. `id.release`,
+        // dropped when card production and handover were removed). Without
+        // this, an old row survives a reseed and still appears in the Roles
+        // permission matrix, where nothing can grant it meaningfully again.
+        $obsolete = Permission::where('guard_name', 'web')
+            ->whereNotIn('name', array_keys($createdPermissions))
+            ->pluck('name');
+        if ($obsolete->isNotEmpty()) {
+            Permission::where('guard_name', 'web')->whereNotIn('name', array_keys($createdPermissions))->delete();
+            $this->command->info('Retired '.$obsolete->count().' obsolete permission(s): '.$obsolete->implode(', '));
+        }
+
         // ===========================================
-        // 2. CREATE ALL 13 DESK ROLES AND ASSIGN PERMISSIONS
+        // 2. CREATE ALL DESK AND FACULTY ROLES AND ASSIGN PERMISSIONS
         // ===========================================
 
         // SysAdmin - ALL permissions
@@ -315,6 +327,11 @@ class RbacSeeder extends Seeder
             'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
             'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'dashboard.view', 'user.view',
             'students.view',
+            // The Registrar finalizes academic standing, so the grade scale those
+            // standings are derived against is maintained here rather than by a
+            // seeder edit. refdata.view opens the catalog hub; the hub then lists
+            // only the catalogs this role actually manages (grade scale).
+            'refdata.view', 'refdata.gradeScale.manage',
         ]);
 
         // BlockingCoordinator - Phase 6
@@ -340,10 +357,10 @@ class RbacSeeder extends Seeder
         // IdOfficer - Phase 8
         $idOfficer = Role::firstOrCreate(
             ['name' => 'IdOfficer', 'guard_name' => 'web'],
-            ['description' => 'ID Office staff for ID requests, face-photo validation, and card release']
+            ['description' => 'ID Office staff for ID requests and face-photo validation']
         );
         $idOfficer->syncPermissions([
-            'id.view', 'id.request.create', 'id.validate', 'id.release', 'id.sign',
+            'id.view', 'id.request.create', 'id.validate', 'id.sign',
             'dashboard.view', 'user.view', 'students.view',
         ]);
 
@@ -364,7 +381,7 @@ class RbacSeeder extends Seeder
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
             'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'id.request.create', 'id.validate', 'id.release', 'id.sign',
+            'id.request.create', 'id.validate', 'id.sign',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
@@ -396,7 +413,7 @@ class RbacSeeder extends Seeder
             'print.classCard', 'print.subjectLoad', 'block.view', 'dashboard.view', 'user.view',
         ]);
 
-        $this->command->info('Created all 14 functional desk and faculty roles with module permissions.');
+        $this->command->info('Created '.Role::count().' desk and faculty roles with module permissions.');
 
         // ===========================================
         // 3. ASSIGN REALISTIC DESK ROLES TO STAFF USERS

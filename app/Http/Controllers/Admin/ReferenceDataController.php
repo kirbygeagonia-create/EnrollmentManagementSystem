@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AppliesTo;
 use App\Enums\CoverageType;
 use App\Enums\FeeUnitBasis;
+use App\Enums\OfficeId;
 use App\Enums\Semester;
 use App\Enums\SemesterOffered;
 use App\Enums\SubjectType;
@@ -20,14 +21,17 @@ use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
 use App\Models\Enrollments;
 use App\Models\Feetypes;
+use App\Models\Gradescale;
 use App\Models\Majors;
 use App\Models\Offices;
 use App\Models\Rooms;
 use App\Models\Scholarshiptypes;
 use App\Models\Subjects;
+use App\Support\ReferenceDataSections;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,11 +43,12 @@ class ReferenceDataController extends Controller
     /**
      * Display reference data dashboard.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Courses::class);
 
         return Inertia::render('Admin/ReferenceData/Index', [
+            'manageable' => ReferenceDataSections::manageable($request->user()),
             'stats' => [
                 'courses' => Courses::count(),
                 'majors' => Majors::count(),
@@ -51,6 +56,7 @@ class ReferenceDataController extends Controller
                 'subjects' => Subjects::count(),
                 'terms' => Academicterms::count(),
                 'feeTypes' => Feetypes::count(),
+                'gradeScale' => Gradescale::count(),
                 'scholarshipTypes' => Scholarshiptypes::count(),
                 'offices' => Offices::count(),
                 'rooms' => Rooms::count(),
@@ -88,13 +94,21 @@ class ReferenceDataController extends Controller
 
         // Audit §4.5: create() must consume the validated array — never the
         // raw $request->all() — so the safe field list cannot silently drift.
-        Courses::create($request->validate([
-            'unitId' => 'required|exists:academicunits,unitId',
-            'courseName' => 'required|string|max:255',
-            'courseCode' => 'required|string|max:50|unique:courses,courseCode',
-            'requiresEntranceExam' => 'boolean',
-            'requiresRetentionExam' => 'boolean',
-        ]));
+        // The two exam flags are NOT NULL, and an unchecked box is simply absent
+        // from the payload, so they are read through boolean() rather than rule-passed.
+        Courses::create(array_merge(
+            $request->validate([
+                'unitId' => 'required|exists:academicunits,unitId',
+                'courseName' => 'required|string|max:255',
+                'courseCode' => 'required|string|max:50|unique:courses,courseCode',
+                'requiresEntranceExam' => 'boolean',
+                'requiresRetentionExam' => 'boolean',
+            ]),
+            [
+                'requiresEntranceExam' => $request->boolean('requiresEntranceExam'),
+                'requiresRetentionExam' => $request->boolean('requiresRetentionExam'),
+            ]
+        ));
 
         return back()->with('success', 'Course created.');
     }
@@ -103,13 +117,19 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
 
-        $course->update($request->validate([
-            'unitId' => 'required|exists:academicunits,unitId',
-            'courseName' => 'required|string|max:255',
-            'courseCode' => 'required|string|max:50|unique:courses,courseCode,'.$course->courseId.',courseId',
-            'requiresEntranceExam' => 'boolean',
-            'requiresRetentionExam' => 'boolean',
-        ]));
+        $course->update(array_merge(
+            $request->validate([
+                'unitId' => 'required|exists:academicunits,unitId',
+                'courseName' => 'required|string|max:255',
+                'courseCode' => 'required|string|max:50|unique:courses,courseCode,'.$course->courseId.',courseId',
+                'requiresEntranceExam' => 'boolean',
+                'requiresRetentionExam' => 'boolean',
+            ]),
+            [
+                'requiresEntranceExam' => $request->boolean('requiresEntranceExam'),
+                'requiresRetentionExam' => $request->boolean('requiresRetentionExam'),
+            ]
+        ));
 
         return back()->with('success', 'Course updated.');
     }
@@ -117,6 +137,18 @@ class ReferenceDataController extends Controller
     public function destroyCourse(Courses $course): RedirectResponse
     {
         $this->authorize('manageCourses', Courses::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'enrollment' => DB::table('enrollments')->where('courseId', $course->courseId)->count(),
+            'admission' => DB::table('admissions')->where('courseId', $course->courseId)->count(),
+            'block' => DB::table('blocks')->where('courseId', $course->courseId)->count(),
+            'major' => DB::table('majors')->where('courseId', $course->courseId)->count(),
+            'curriculum' => DB::table('curriculums')->where('courseId', $course->courseId)->count(),
+            'exam result' => DB::table('examresults')->where('courseId', $course->courseId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $course->delete();
 
         return back()->with('success', 'Course deleted.');
@@ -165,6 +197,14 @@ class ReferenceDataController extends Controller
     public function destroyMajor(Majors $major): RedirectResponse
     {
         $this->authorize('manageMajors', Majors::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'curriculum' => DB::table('curriculums')->where('majorId', $major->majorId)->count(),
+            'enrollment' => DB::table('enrollments')->where('majorId', $major->majorId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $major->delete();
 
         return back()->with('success', 'Major deleted.');
@@ -267,12 +307,9 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCurriculumSubjects', Curriculumsubjects::class);
 
-        Curriculumsubjects::create(array_merge($request->validate([
-            'subjectId' => 'required|exists:subjects,subjectId',
-            'prerequisiteSubjectId' => 'nullable|exists:subjects,subjectId',
-            'yearLevel' => 'required|integer|min:1|max:5',
-            'semesterOffered' => 'required|in:1st,2nd,Summer',
-        ]), ['curriculumId' => $curriculum->curriculumId]));
+        $validated = $this->normalizeElective($request->validate($this->curriculumSubjectRules()));
+
+        Curriculumsubjects::create(array_merge($validated, ['curriculumId' => $curriculum->curriculumId]));
 
         return back()->with('success', 'Curriculum subject added.');
     }
@@ -280,14 +317,59 @@ class ReferenceDataController extends Controller
     public function updateCurriculumSubject(Request $request, Curriculumsubjects $cs): RedirectResponse
     {
         $this->authorize('manageCurriculumSubjects', Curriculumsubjects::class);
-        $cs->update($request->validate([
+
+        $cs->update($this->normalizeElective($request->validate($this->curriculumSubjectRules())));
+
+        return back()->with('success', 'Curriculum subject updated.');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function curriculumSubjectRules(): array
+    {
+        return [
             'subjectId' => 'required|exists:subjects,subjectId',
             'prerequisiteSubjectId' => 'nullable|exists:subjects,subjectId',
             'yearLevel' => 'required|integer|min:1|max:5',
             'semesterOffered' => 'required|in:1st,2nd,Summer',
-        ]));
+            'is_elective' => 'nullable|boolean',
+            'elective_group' => 'nullable|string|max:255',
+            'elective_min_choices' => 'nullable|integer|min:0|max:255',
+            'elective_max_choices' => 'nullable|integer|min:0|max:255',
+        ];
+    }
 
-        return back()->with('success', 'Curriculum subject updated.');
+    /**
+     * The elective band only means something while the subject is an elective, and
+     * EvaluationController reads one band per group — so clear the leftovers on a
+     * subject switched back to mandatory, and refuse a band that cannot be satisfied.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeElective(array $validated): array
+    {
+        $validated['is_elective'] = (bool) ($validated['is_elective'] ?? false);
+
+        if (! $validated['is_elective']) {
+            $validated['elective_group'] = null;
+            $validated['elective_min_choices'] = null;
+            $validated['elective_max_choices'] = null;
+
+            return $validated;
+        }
+
+        $min = $validated['elective_min_choices'] ?? 0;
+        $max = $validated['elective_max_choices'] ?? 255;
+
+        if ($min > $max) {
+            throw ValidationException::withMessages([
+                'elective_max_choices' => "The maximum choices ({$max}) cannot be lower than the minimum ({$min}).",
+            ]);
+        }
+
+        return $validated;
     }
 
     public function destroyCurriculumSubject(Curriculumsubjects $cs): RedirectResponse
@@ -354,6 +436,19 @@ class ReferenceDataController extends Controller
     public function destroySubject(Subjects $subject): RedirectResponse
     {
         $this->authorize('manageSubjects', Subjects::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'curriculum listing' => DB::table('curriculumsubjects')
+                ->where('subjectId', $subject->subjectId)
+                ->orWhere('prerequisiteSubjectId', $subject->subjectId)
+                ->count(),
+            'schedule' => DB::table('schedules')->where('subjectId', $subject->subjectId)->count(),
+            'enrolled subject' => DB::table('enrolledsubjects')->where('subjectId', $subject->subjectId)->count(),
+            'credited subject' => DB::table('creditedsubjects')->where('creditedToSubjectId', $subject->subjectId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $subject->delete();
 
         return back()->with('success', 'Subject deleted.');
@@ -388,7 +483,7 @@ class ReferenceDataController extends Controller
 
         Academicterms::create($request->validate([
             'academicYearId' => 'required|exists:academicyears,academicYearId',
-            'semester' => 'required|in:1st,2nd,summer',
+            'semester' => 'required|in:1st,2nd,Summer',
             'startDate' => 'required|date',
             'endDate' => 'required|date|after:startDate',
         ]));
@@ -401,7 +496,7 @@ class ReferenceDataController extends Controller
         $this->authorize('manageTerms', Academicterms::class);
         $term->update($request->validate([
             'academicYearId' => 'required|exists:academicyears,academicYearId',
-            'semester' => 'required|in:1st,2nd,summer',
+            'semester' => 'required|in:1st,2nd,Summer',
             'startDate' => 'required|date',
             'endDate' => 'required|date|after:startDate',
         ]));
@@ -412,6 +507,18 @@ class ReferenceDataController extends Controller
     public function destroyTerm(Academicterms $term): RedirectResponse
     {
         $this->authorize('manageTerms', Academicterms::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'enrollment' => DB::table('enrollments')->where('termId', $term->termId)->count(),
+            'admission' => DB::table('admissions')->where('termId', $term->termId)->count(),
+            'block' => DB::table('blocks')->where('termId', $term->termId)->count(),
+            'clearance period' => DB::table('clearanceperiods')->where('termId', $term->termId)->count(),
+            'exam result' => DB::table('examresults')->where('termId', $term->termId)->count(),
+            'scholarship grant' => DB::table('studentscholarships')->where('termId', $term->termId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $term->delete();
 
         return back()->with('success', 'Term deleted.');
@@ -464,9 +571,110 @@ class ReferenceDataController extends Controller
     public function destroyFeeType(Feetypes $feeType): RedirectResponse
     {
         $this->authorize('manageFeeTypes', Feetypes::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'charge' => DB::table('charges')->where('feeTypeId', $feeType->feeTypeId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $feeType->delete();
 
         return back()->with('success', 'Fee type deleted.');
+    }
+
+    // ============ GRADE SCALE ============
+    public function gradeScales(Request $request): Response
+    {
+        $this->authorize('manageGradeScales', Gradescale::class);
+
+        $bands = Gradescale::query()
+            ->when($request->search, fn ($q, $search) => $q->where('description', 'like', "%{$search}%"))
+            ->when($request->filled('isPassing'), fn ($q) => $q->where('isPassing', $request->boolean('isPassing')))
+            ->orderBy('minGrade')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('Admin/ReferenceData/GradeScales', [
+            'bands' => $bands,
+            'passingCeiling' => Gradescale::passingCeiling(),
+            'hasGradeScale' => Gradescale::isConfigured(),
+            'filters' => $request->only(['search', 'isPassing']),
+        ]);
+    }
+
+    public function storeGradeScale(Request $request): RedirectResponse
+    {
+        $this->authorize('manageGradeScales', Gradescale::class);
+
+        Gradescale::create($this->validatedGradeScale($request));
+
+        return back()->with('success', 'Grade band created.');
+    }
+
+    public function updateGradeScale(Request $request, Gradescale $gradeScale): RedirectResponse
+    {
+        $this->authorize('manageGradeScales', Gradescale::class);
+
+        $validated = $this->validatedGradeScale($request);
+
+        if ($gradeScale->isPassing && ! $validated['isPassing']) {
+            $this->requireAnotherPassingBand($gradeScale);
+        }
+
+        $gradeScale->update($validated);
+
+        return back()->with('success', 'Grade band updated.');
+    }
+
+    public function destroyGradeScale(Gradescale $gradeScale): RedirectResponse
+    {
+        $this->authorize('manageGradeScales', Gradescale::class);
+
+        if ($gradeScale->isPassing) {
+            $this->requireAnotherPassingBand($gradeScale);
+        }
+
+        $gradeScale->delete();
+
+        return back()->with('success', 'Grade band deleted.');
+    }
+
+    /**
+     * @return array{minGrade: string, maxGrade: string, isPassing: bool, description: string}
+     */
+    private function validatedGradeScale(Request $request): array
+    {
+        $validated = $request->validate([
+            'minGrade' => ['required', 'numeric', 'between:0,9.99', 'lte:maxGrade'],
+            'maxGrade' => ['required', 'numeric', 'between:0,9.99'],
+            'isPassing' => ['required', 'boolean'],
+            'description' => ['required', 'string', 'max:150'],
+        ]);
+
+        $validated['isPassing'] = $request->boolean('isPassing');
+
+        return $validated;
+    }
+
+    /**
+     * Academic standing is derived against the passing ceiling of this table, and
+     * an empty passing set silently falls back to an assumed 3.00 — which would
+     * reclassify every student without anyone deciding to. A band may therefore
+     * only stop being passing when another passing band is already on file.
+     */
+    private function requireAnotherPassingBand(Gradescale $gradeScale): void
+    {
+        $anotherPassingBand = Gradescale::query()
+            ->where('gradeScaleId', '!=', $gradeScale->gradeScaleId)
+            ->where('isPassing', true)
+            ->exists();
+
+        if (! $anotherPassingBand) {
+            throw ValidationException::withMessages([
+                'isPassing' => 'At least one passing band must stay on file, otherwise every standing falls back to the assumed 3.00 ceiling.',
+            ]);
+        }
     }
 
     // ============ SCHOLARSHIP TYPES ============
@@ -516,6 +724,13 @@ class ReferenceDataController extends Controller
     public function destroyScholarshipType(Scholarshiptypes $type): RedirectResponse
     {
         $this->authorize('manageScholarshipTypes', Scholarshiptypes::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'scholarship grant' => DB::table('studentscholarships')->where('scholarshipTypeId', $type->scholarshipTypeId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $type->delete();
 
         return back()->with('success', 'Scholarship type deleted.');
@@ -528,14 +743,48 @@ class ReferenceDataController extends Controller
 
         $offices = Offices::query()
             ->when($request->search, fn ($q, $search) => $q->where('officeName', 'like', "%{$search}%"))
-            ->orderByDesc('officeId')
+            ->orderBy('officeId')
             ->paginate(20)
             ->withQueryString();
 
+        // §28 X-3: this table is data, but App\Enums\OfficeId is the authority the
+        // policies and workflow comparisons actually read, so a row and a desk can
+        // drift apart silently. Each is shown as it is used: named by the enum, or
+        // a name no code path can reach.
+        $usedBy = $this->officeUsage();
+
         return Inertia::render('Admin/ReferenceData/Offices', [
-            'offices' => $offices,
+            'offices' => $offices->through(fn (Offices $office) => [
+                'officeId' => $office->officeId,
+                'officeName' => $office->officeName,
+                'workflowName' => OfficeId::tryFrom($office->officeId)?->name,
+                'staffCount' => $usedBy['staff'][$office->officeId] ?? 0,
+                'requirementCount' => $usedBy['requirements'][$office->officeId] ?? 0,
+                'stepCount' => $usedBy['steps'][$office->officeId] ?? 0,
+            ]),
             'filters' => $request->only(['search']),
         ]);
+    }
+
+    /**
+     * Rows in each table that points at an office, grouped by that office.
+     *
+     * @return array{staff: array<int, int>, requirements: array<int, int>, steps: array<int, int>}
+     */
+    private function officeUsage(): array
+    {
+        $countBy = fn (string $table) => DB::table($table)
+            ->select('officeId', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('officeId')
+            ->groupBy('officeId')
+            ->pluck('total', 'officeId')
+            ->all();
+
+        return [
+            'staff' => $countBy('staffusers'),
+            'requirements' => $countBy('clearancerequirements'),
+            'steps' => $countBy('workflowsteps'),
+        ];
     }
 
     public function storeOffice(Request $request): RedirectResponse
@@ -543,7 +792,7 @@ class ReferenceDataController extends Controller
         $this->authorize('manageOffices', Offices::class);
         Offices::create($request->validate(['officeName' => 'required|string|max:255']));
 
-        return back()->with('success', 'Office created.');
+        return back()->with('success', 'Office created. No desk in the application uses it yet — a new office becomes a workflow step only when its id is added to App\Enums\OfficeId, which is a code change, not a screen action.');
     }
 
     public function updateOffice(Request $request, Offices $office): RedirectResponse
@@ -551,12 +800,36 @@ class ReferenceDataController extends Controller
         $this->authorize('manageOffices', Offices::class);
         $office->update($request->validate(['officeName' => 'required|string|max:255']));
 
-        return back()->with('success', 'Office updated.');
+        return back()->with('success', 'Office updated. Documents print this name; authorization compares the id, so the rename changes no one\'s access.');
     }
 
     public function destroyOffice(Offices $office): RedirectResponse
     {
         $this->authorize('manageOffices', Offices::class);
+
+        $desk = OfficeId::tryFrom($office->officeId);
+
+        // Deleting a row the enum names would leave every office-scope policy
+        // comparing against an id that no longer exists.
+        if ($desk !== null) {
+            return back()->with('error', "Office {$office->officeId} is a desk the application is wired to (OfficeId::{$desk->name}). Its id cannot be retired from this screen.");
+        }
+
+        // staffusers, clearancerequirements and workflowsteps all point at offices
+        // with a RESTRICT foreign key, so an attached row would answer the delete
+        // with a database error instead of a reason.
+        $usedBy = $this->officeUsage();
+        $attached = [
+            'staff account' => $usedBy['staff'][$office->officeId] ?? 0,
+            'clearance requirement' => $usedBy['requirements'][$office->officeId] ?? 0,
+            'workflow step' => $usedBy['steps'][$office->officeId] ?? 0,
+        ];
+        if (array_sum($attached) > 0) {
+            $listed = collect($attached)->filter()->keys()->implode(', ');
+
+            return back()->with('error', "This office still has {$listed} attached, so deleting it would orphan them.");
+        }
+
         $office->delete();
 
         return back()->with('success', 'Office deleted.');
@@ -585,11 +858,18 @@ class ReferenceDataController extends Controller
     public function storeRoom(Request $request): RedirectResponse
     {
         $this->authorize('manageRooms', Rooms::class);
-        Rooms::create($request->validate([
+        $validated = $request->validate([
             'roomName' => 'required|string|max:100',
             'capacity' => 'required|integer|min:1',
             'building' => 'nullable|string|max:100',
-        ]));
+        ]);
+
+        Rooms::create([
+            'roomName' => $validated['roomName'],
+            'capacity' => $validated['capacity'],
+            // rooms.building is NOT NULL; an empty or absent building still has to insert.
+            'building' => $validated['building'] ?? '',
+        ]);
 
         return back()->with('success', 'Room created.');
     }
@@ -597,11 +877,18 @@ class ReferenceDataController extends Controller
     public function updateRoom(Request $request, Rooms $room): RedirectResponse
     {
         $this->authorize('manageRooms', Rooms::class);
-        $room->update($request->validate([
+
+        $validated = $request->validate([
             'roomName' => 'required|string|max:100',
             'capacity' => 'required|integer|min:1',
             'building' => 'nullable|string|max:100',
-        ]));
+        ]);
+
+        $room->update([
+            'roomName' => $validated['roomName'],
+            'capacity' => $validated['capacity'],
+            'building' => $validated['building'] ?? '',
+        ]);
 
         return back()->with('success', 'Room updated.');
     }
@@ -609,6 +896,13 @@ class ReferenceDataController extends Controller
     public function destroyRoom(Rooms $room): RedirectResponse
     {
         $this->authorize('manageRooms', Rooms::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'schedule' => DB::table('schedules')->where('roomId', $room->roomId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $room->delete();
 
         return back()->with('success', 'Room deleted.');
@@ -666,6 +960,14 @@ class ReferenceDataController extends Controller
     public function destroyBlock(Blocks $block): RedirectResponse
     {
         $this->authorize('manageBlocks', Blocks::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'schedule' => DB::table('schedules')->where('blockId', $block->blockId)->count(),
+            'enrolled subject' => DB::table('enrolledsubjects')->where('blockId', $block->blockId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $block->delete();
 
         return back()->with('success', 'Block deleted.');
@@ -695,11 +997,15 @@ class ReferenceDataController extends Controller
     public function storeAdmissionRequirement(Request $request): RedirectResponse
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
-        Admissionrequirements::create($request->validate([
-            'requirementName' => 'required|string|max:255',
-            'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
-            'isRequired' => 'boolean',
-        ]));
+        // isRequired is NOT NULL and an unchecked box is absent from the payload.
+        Admissionrequirements::create(array_merge(
+            $request->validate([
+                'requirementName' => 'required|string|max:255',
+                'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
+                'isRequired' => 'boolean',
+            ]),
+            ['isRequired' => $request->boolean('isRequired')]
+        ));
 
         return back()->with('success', 'Requirement created.');
     }
@@ -707,11 +1013,14 @@ class ReferenceDataController extends Controller
     public function updateAdmissionRequirement(Request $request, Admissionrequirements $req): RedirectResponse
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
-        $req->update($request->validate([
-            'requirementName' => 'required|string|max:255',
-            'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
-            'isRequired' => 'boolean',
-        ]));
+        $req->update(array_merge(
+            $request->validate([
+                'requirementName' => 'required|string|max:255',
+                'appliesTo' => 'required|in:firstYear,transferee,continuing,shifter,all',
+                'isRequired' => 'boolean',
+            ]),
+            ['isRequired' => $request->boolean('isRequired')]
+        ));
 
         return back()->with('success', 'Requirement updated.');
     }
@@ -719,6 +1028,13 @@ class ReferenceDataController extends Controller
     public function destroyAdmissionRequirement(Admissionrequirements $req): RedirectResponse
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
+
+        if ($blocked = $this->blockedDeletionMessage([
+            'submitted requirement' => DB::table('studentrequirementsubmissions')->where('requirementId', $req->requirementId)->count(),
+        ])) {
+            return back()->with('error', $blocked);
+        }
+
         $req->delete();
 
         return back()->with('success', 'Requirement deleted.');
@@ -730,8 +1046,14 @@ class ReferenceDataController extends Controller
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
 
         $requirements = Clearancerequirements::with('office')
-            ->when($request->search, fn ($q, $search) => $q->whereHas('office', fn ($oq) => $oq->where('officeName', 'like', "%{$search}%")))
-            ->orderByDesc('clearanceRequirementId')
+            ->when($request->search, function ($q, $search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('requirementName', 'like', "%{$search}%")
+                        ->orWhereHas('office', fn ($oq) => $oq->where('officeName', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('officeId')
+            ->orderBy('clearanceRequirementId')
             ->paginate(20)
             ->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
@@ -748,16 +1070,56 @@ class ReferenceDataController extends Controller
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
         Clearancerequirements::create($request->validate([
             'officeId' => 'required|exists:offices,officeId',
+            'requirementName' => 'required|string|max:150',
         ]));
 
         return back()->with('success', 'Clearance requirement created.');
     }
 
+    public function updateClearanceRequirement(Request $request, Clearancerequirements $req): RedirectResponse
+    {
+        $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
+        $req->update($request->validate([
+            'officeId' => 'required|exists:offices,officeId',
+            'requirementName' => 'required|string|max:150',
+        ]));
+
+        return back()->with('success', 'Clearance requirement updated.');
+    }
+
     public function destroyClearanceRequirement(Clearancerequirements $req): RedirectResponse
     {
         $this->authorize('manageClearanceRequirements', Clearancerequirements::class);
+
+        // clearanceapprovals rows point at the requirement and the FK refuses a delete,
+        // so a slip that has already been signed keeps its line. Saying so beats a raw
+        // constraint violation on the screen that only wanted to tidy the list.
+        if ($req->clearanceapprovals()->exists()) {
+            return back()->with('error', 'This requirement has already been signed on a clearance slip and cannot be deleted.');
+        }
+
         $req->delete();
 
         return back()->with('success', 'Clearance requirement deleted.');
+    }
+
+    /**
+     * Reference-data rows are named by transactional rows through foreign keys that
+     * either refuse the delete outright or null the reference out. Either way a
+     * Delete click on a row in use answers with a database error, or quietly un-pins
+     * the enrollments that recorded it. Say what still points at the row instead.
+     *
+     * @param  array<string, int>  $usages  label => rows still attached
+     */
+    private function blockedDeletionMessage(array $usages): ?string
+    {
+        $attached = collect($usages)
+            ->filter(fn ($count) => $count > 0)
+            ->map(fn ($count, $label) => "{$count} {$label}(s)")
+            ->implode(', ');
+
+        return $attached === ''
+            ? null
+            : "Cannot delete: this record is still named by {$attached}. Detach those first.";
     }
 }

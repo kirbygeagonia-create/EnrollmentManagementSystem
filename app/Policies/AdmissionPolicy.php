@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\AdmissionStatus;
+use App\Enums\ExamType;
 use App\Models\Admissions;
 use App\Models\Staffusers;
 
@@ -50,19 +51,40 @@ class AdmissionPolicy
             return false;
         }
 
+        return $this->approvalBlockers($admission) === [];
+    }
+
+    /**
+     * The readiness half of approve(), as the reasons an approval is refused.
+     *
+     * The gate used to answer every one of these with the same bare 403, which
+     * told the admission officer nothing about which document to verify or which
+     * exam to record. The desk prints this list instead of letting the officer
+     * discover it by clicking.
+     *
+     * @return list<string>
+     */
+    public function approvalBlockers(Admissions $admission): array
+    {
+        $blockers = [];
+
         // Only pending admissions can be approved
         if ($admission->admissionStatus !== AdmissionStatus::Pending) {
-            return false;
+            $blockers[] = 'Only a pending application can be approved — this one is '
+                .$admission->admissionStatus->value.'.';
         }
 
         // Check if all required documents are submitted and verified (BR32)
         $requiredSubmissions = $admission->studentrequirementsubmissions()
+            ->with('requirement')
             ->whereHas('requirement', fn ($q) => $q->where('isRequired', true))
             ->get();
 
         foreach ($requiredSubmissions as $submission) {
             if ($submission->submissionStatus->value !== 'verified') {
-                return false;
+                $blockers[] = 'Required document "'
+                    .($submission->requirement->requirementName ?? 'Requirement #'.$submission->requirementId)
+                    .'" is '.$submission->submissionStatus->value.', not verified.';
             }
         }
 
@@ -72,25 +94,29 @@ class AdmissionPolicy
         if ($admission->course->requiresEntranceExam) {
             $generalExam = $admission->examresults()
                 ->where('examStage', 'entrance')
-                ->where('examType', 'general')
+                ->where('examType', ExamType::General->value)
                 ->first();
 
-            if (! $generalExam || $generalExam->examResult->value !== 'pass') {
-                return false;
+            if (! $generalExam) {
+                $blockers[] = 'No General Entrance Exam result on record for this applicant.';
+            } elseif ($generalExam->examResult->value !== 'pass') {
+                $blockers[] = 'The General Entrance Exam result on file is '
+                    .$generalExam->examResult->value.', not pass.';
             }
 
             // Only enforce course-specific exam if one was administered
             $courseExam = $admission->examresults()
                 ->where('examStage', 'entrance')
-                ->where('examType', 'courseSpecific')
+                ->where('examType', ExamType::CourseSpecific->value)
                 ->first();
 
             if ($courseExam && $courseExam->examResult->value !== 'pass') {
-                return false;
+                $blockers[] = 'The Course-Specific Entrance Exam result on file is '
+                    .$courseExam->examResult->value.', not pass.';
             }
         }
 
-        return true;
+        return $blockers;
     }
 
     /**

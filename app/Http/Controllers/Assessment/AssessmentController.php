@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Assessment;
 
 use App\Enums\CoverageType;
+use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\FeeUnitBasis;
+use App\Enums\OfficeId;
 use App\Enums\PaymentStatus;
 use App\Enums\ScholarshipStatus;
 use App\Http\Controllers\Controller;
@@ -84,7 +86,17 @@ class AssessmentController extends Controller
     {
         $this->authorize('view', $assessment);
 
-        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType', 'payments']);
+        $assessment->load([
+            'enrollment.student',
+            'enrollment.course',
+            'enrollment.term',
+            'charges.feeType',
+            'scholarships.scholarshipType',
+            'payments',
+            // The desk needs to see which box it is standing at, not only the bill.
+            'enrollment.enrollmentworkflow.workflowsteps.office',
+            'enrollment.enrollmentworkflow.workflowsteps.signedBy',
+        ]);
 
         return Inertia::render('Assessment/Show', [
             'assessment' => $assessment,
@@ -99,7 +111,7 @@ class AssessmentController extends Controller
      */
     public function compute(Request $request, Enrollments $enrollment): RedirectResponse
     {
-        $this->authorize('assessment.compute', $enrollment);
+        $this->authorize('assessment.computeAtDesk', $enrollment);
 
         // Idempotency check: prevent duplicate assessments (DI-1)
         $existing = Studentassessments::where('enrollmentId', $enrollment->enrollmentId)->first();
@@ -108,7 +120,7 @@ class AssessmentController extends Controller
         }
 
         $enrolledUnits = $enrollment->enrolledSubjects()
-            ->where('status', '!=', 'dropped')
+            ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
             ->with('subject')
             ->get()
             ->sum(fn ($es) => $es->subject->lectureUnits + $es->subject->labUnits);
@@ -176,9 +188,28 @@ class AssessmentController extends Controller
         ]);
 
         $scholarshipType = Scholarshiptypes::findOrFail($validated['scholarshipTypeId']);
+        $enrollment = $assessment->enrollment;
 
-        // Check if student already has full scholarship
-        $existingFull = $assessment->scholarships()
+        // studentscholarships carries a unique (studentId, scholarshipTypeId, termId).
+        // Re-picking the same grant from the screen — the usual double-click — died
+        // with a raw duplicate-key error page, so the pair is refused by name first.
+        $alreadyHeld = Studentscholarships::where('studentId', $enrollment->studentId)
+            ->where('termId', $enrollment->termId)
+            ->where('scholarshipTypeId', $scholarshipType->scholarshipTypeId)
+            ->exists();
+
+        if ($alreadyHeld) {
+            return back()->withErrors([
+                'scholarshipTypeId' => "{$scholarshipType->scholarshipName} is already awarded to this student for this term.",
+            ]);
+        }
+
+        // A 100% grant is exclusive per student per term. The scope is the term: a
+        // continuing student who held a full grant last term must be able to be
+        // granted again this one, and the cap below is measured against this term's
+        // assessment anyway.
+        $existingFull = Studentscholarships::where('studentId', $enrollment->studentId)
+            ->where('termId', $enrollment->termId)
             ->whereHas('scholarshipType', fn ($q) => $q->where('coverageType', CoverageType::Full))
             ->exists();
 
@@ -191,6 +222,17 @@ class AssessmentController extends Controller
             ? $assessment->remainingBalance
             : min($assessment->remainingBalance, $assessment->totalAssessedAmount * ($scholarshipType->coveragePercent / 100));
 
+        // A grant that awards nothing is not a grant. Once the account is fully
+        // covered (or fully paid) the remaining balance is 0, so every award from
+        // here on computes to ₱0 — yet still filed an Active row on the student's
+        // record. That is BR19's 100% cap seen from the other side: the cap is
+        // already reached, so there is nothing left to attach.
+        if ((float) $coverageAmount <= 0) {
+            return back()->withErrors([
+                'scholarshipTypeId' => 'This account has no remaining balance to cover (₱'.number_format((float) $assessment->remainingBalance, 2).'), so the grant would award nothing.',
+            ]);
+        }
+
         // Check 100% cap
         $newTotalCoverage = $assessment->totalScholarshipCoverage + $coverageAmount;
         if ($newTotalCoverage > $assessment->totalAssessedAmount) {
@@ -198,9 +240,9 @@ class AssessmentController extends Controller
         }
 
         Studentscholarships::create([
-            'studentId' => $assessment->enrollment->studentId,
+            'studentId' => $enrollment->studentId,
             'scholarshipTypeId' => $scholarshipType->scholarshipTypeId,
-            'termId' => $assessment->enrollment->termId,
+            'termId' => $enrollment->termId,
             'status' => ScholarshipStatus::Active,
             'approvedBy' => Auth::user()->userId,
             'awardedBeforeEnrollment' => false,
@@ -282,7 +324,9 @@ class AssessmentController extends Controller
             // Sign the Assessment step (office 3) — null-safe: skipped for continuing/shifter students
             $workflow = $assessment->enrollment->enrollmentworkflow;
             if ($workflow) {
-                $this->workflowService->signStepByOffice($workflow, 3, Auth::user());
+                // Office 3's record name is Scholarship; the workflow label for the
+                // same box is Assessment.
+                $this->workflowService->signStepByOffice($workflow, OfficeId::Scholarship->value, Auth::user());
             }
         });
 

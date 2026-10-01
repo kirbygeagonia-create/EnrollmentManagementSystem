@@ -1,7 +1,7 @@
-export default function PrintLayout({ title, subtitle, date, children, className = '', headerContent, footerContent }) {
+export default function PrintLayout({ title, subtitle, date, children, className = '', headerContent, footerContent, downloadUrl }) {
     return (
         <div className={`print-layout ${className}`}>
-            <div className="no-print mb-4 flex justify-end">
+            <div className="no-print mb-4 flex justify-end gap-2">
                 <button
                     onClick={() => window.print()}
                     className="btn btn-primary"
@@ -11,6 +11,14 @@ export default function PrintLayout({ title, subtitle, date, children, className
                     </svg>
                     Print
                 </button>
+                {downloadUrl && (
+                    <a href={downloadUrl} className="btn btn-secondary">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+                        </svg>
+                        Download PDF
+                    </a>
+                )}
             </div>
 
             <header className="print-header">

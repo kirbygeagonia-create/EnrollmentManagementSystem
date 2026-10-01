@@ -28,6 +28,7 @@ export default function PrintSubjectLoad({ enrollment }) {
         <PrintLayout
             title="Subject Load"
             subtitle={`${enrollment.course?.courseName} — ${termLabel}`}
+            downloadUrl={route('registrar.download-subject-load', { enrollment: enrollment.enrollmentId })}
             headerContent={
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
                     <div className="sm:col-span-2">

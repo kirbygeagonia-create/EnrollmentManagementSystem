@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 
@@ -211,6 +211,17 @@ export default function Show({ assessment, scholarshipTypes }) {
                     </div>
                 </div>
             </Card>
+
+            {/* Workflow progress — where this desk sits in the enrollment form */}
+            {enrollment?.enrollmentworkflow && (
+                <Card
+                    className="mb-6"
+                    title="Enrollment Workflow Progress"
+                    subtitle="The offices the record still has to pass, with the signature already on each step"
+                >
+                    <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
+                </Card>
+            )}
 
             {/* Assessment Summary StatCards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">

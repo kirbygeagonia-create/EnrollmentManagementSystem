@@ -7,7 +7,7 @@
 > **Specification Standard:** UML 2.5 compliant notation with strict **Action-Verb Format**  
 > **Source of Truth:** Verified against routes (`routes/web.php`, `routes/auth.php`), Eloquent models (`app/Models/**`), RBAC permissions (`database/seeders/RbacSeeder.php`), and controller methods (`app/Http/Controllers/**`).
 >
-> **Status update (2026-09-24):** the counts in this guide were verified at commit `c8ea184`. The live app now serves **166 HTTP routes** and the RBAC layer holds **17 roles** (14 functional desk roles + OfficeHead, Staff, Instructor). Desk 10 is now the **Student ID Hub** — an ID requests flow (request → photo upload → validate → release; no PVC/QR production). The use case names and methodology below remain current.
+> **Status update (2026-09-30):** the counts in this guide were verified at commit `c8ea184`. The live app currently serves **175 HTTP routes** (`php artisan route:list --except-vendor`) and the RBAC layer holds **17 roles** (14 functional desk roles + OfficeHead, Staff, Instructor). Desk 10 is the **Student ID Validation Desk** — an ID requests flow (request → photo upload → validate); card production and hand-over were removed by owner ruling, so validation is the terminal action. The use case names and methodology below remain current.
 
 ---
 
@@ -32,7 +32,7 @@
    - [Desk 07: Curriculum Scheduling & Block Assignment Desk](#desk-07-curriculum-scheduling--block-assignment-desk)
    - [Desk 08: Office of the University Registrar Desk](#desk-08-office-of-the-university-registrar-desk)
    - [Desk 09: Campus Health & Medical Clinic Desk](#desk-09-campus-health--medical-clinic-desk)
-   - [Desk 10: Student ID Production & Validation Desk](#desk-10-student-id-production--validation-desk)
+   - [Desk 10: Student ID Validation Desk](#desk-10-student-id-validation-desk)
    - [Desk 11: Student 360° Digital Dossier & Directory Desk](#desk-11-student-360-digital-dossier--directory-desk)
    - [Desk 12: System Administration, Security & Audit Desk](#desk-12-system-administration-security--audit-desk)
 5. [Formal Use Case Specifications (Deep-Dive Templates)](#5-formal-use-case-specifications-deep-dive-templates)
@@ -167,7 +167,7 @@ When modeling enterprise ERP and Student Information Systems, use this standardi
 | **Computation** | `Compute`, `Recalculate`, `Estimate`, `Adjust` | `Math`, `Calculate`, `Count` | `Compute Itemized Tuition Fees`, `Adjust Individual Fee Charges` |
 | **Financial Execution** | `Post`, `Collect`, `Disburse`, `Void` | `Pay`, `Money`, `Bill` | `Post Student Payment Transaction`, `Void Erroneous Payment` |
 | **Academic Scheduling** | `Assign`, `Unassign`, `Schedule`, `Override` | `Set`, `Block`, `Put` | `Assign Enrolled Students to Block`, `Schedule Class Room Assignment` |
-| **Document Output** | `Generate`, `Print`, `Issue` | `Make`, `Export`, `Get` | `Print Certificate of Matriculation`, `Release ID Card` |
+| **Document Output** | `Generate`, `Print`, `Issue` | `Make`, `Export`, `Get` | `Print Certificate of Matriculation`, `Print Student Clearance Slip` |
 | **Administrative Control**| `Configure`, `Toggle`, `Deactivate`, `Audit` | `Maintain`, `Administer`, `Do` | `Assign Spatie Security Roles`, `Audit Institutional Activity Logs` |
 
 ---
@@ -258,7 +258,7 @@ flowchart LR
             UC_AppReg(["Approve Final Student Enrollment"])
             UC_PrtCom(["Print Certificate of Matriculation"])
             UC_ScrCli(["Screen Physical Health Vitals"])
-            UC_PrdIDC(["Produce Secure Student ID Card"])
+            UC_ValIDR(["Validate Student ID Request"])
         end
 
         subgraph S5 ["05. Governance & Audit"]
@@ -285,14 +285,14 @@ flowchart LR
     A_Reg --- UC_AppReg
     A_Reg --- UC_PrtCom
     A_Cli --- UC_ScrCli
-    A_IDO --- UC_PrdIDC
+    A_IDO --- UC_ValIDR
     A_AdmStaff --- UC_MngUsr
     A_AdmStaff --- UC_AudAct
 
     %% Secondary Connections
     UC_AdmApp --- A_Stud
     UC_PrtCom --- A_Stud
-    UC_PrdIDC --- A_Stud
+    UC_ValIDR --- A_Stud
     UC_PosPay --- A_Stud
     UC_AppReg -.->|"<<include>>"| UC_AudAct
     UC_AppAdm -.->|"<<extend>>\n[Sends Notice]"| A_SMS
@@ -701,9 +701,9 @@ flowchart LR
 
 ---
 
-### Desk 10: Student ID Validation & Release Desk
+### Desk 10: Student ID Validation Desk
 
-The Student ID Office validates ID requests with face-photo capture, signs the final workflow step, and records release of the printed ID cards (cards are printed off-system).
+The Student ID Office validates ID requests with face-photo capture and signs the final workflow step. Card production and hand-over are outside the EMS (owner ruling, 2026-09-30), so validation is the last action recorded at this desk.
 
 ```mermaid
 flowchart LR
@@ -714,15 +714,13 @@ flowchart LR
         UC_ID01(["Initiate Student ID Request"])
         UC_ID02(["Capture / Upload Face Photo"])
         UC_ID03(["Validate ID Request"])
-        UC_ID04(["Release ID Card to Student"])
     end
 
     A_IDO --- UC_ID01
     A_IDO --- UC_ID02
     A_IDO --- UC_ID03
-    A_IDO --- UC_ID04
 
-    A_Stud --- UC_ID04
+    A_Stud --- UC_ID01
 
     UC_ID03 -.->|"<<include>>"| UC_ID02
 ```
@@ -733,8 +731,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **UC-IDM-01** | `Initiate Student ID Request` | ID Officer | Student | Student completes official enrollment | Enrollment status is `Enrolled` | ID request created in status `Pending` |
 | **UC-IDM-02** | `Capture / Upload Face Photo` | ID Officer | Student | ID request is pending and awaiting validation | Live camera available or photo file on hand | Face photo attached to the ID request |
-| **UC-IDM-03** | `Validate ID Request` | ID Officer | None | Request is `Pending` with the face photo attached | Photo attached; workflow at the ID Office step | Request transitioned to `Validated` with validator and timestamp; workflow step signed |
-| **UC-IDM-04** | `Release ID Card to Student` | ID Officer | Student | Student presents claim stub at ID counter | Card is in `Validated` status | Release recorded; status `Released` |
+| **UC-IDM-03** | `Validate ID Request` | ID Officer | None | Request is `Pending` with the face photo attached | Photo attached; workflow at the ID Validation step | Request transitioned to `Validated` with validator and timestamp; workflow step signed; request locked |
 
 ---
 

@@ -356,8 +356,12 @@ class EnrollmentWalkthroughTest extends TestCase
         );
 
         // --- Registrar approval ---
+        // Item 16: the standing the department recorded is only official once this
+        // office states it, so approval cannot be granted without the choice.
         $this->actingAs($staff['registrar'])
-            ->post(route('registrar.approve', $enrollment))
+            ->post(route('registrar.approve', $enrollment), [
+                'academicStanding' => $enrollment->fresh()->academicStanding?->value ?? 'regular',
+            ])
             ->assertSessionHasNoErrors();
 
         $this->assertEquals(
@@ -446,7 +450,9 @@ class EnrollmentWalkthroughTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Stage 2: Course-specific entrance exam (owning department = office 7
-        // per the OfficeId enum, carrying DeptEvaluator) → auto-approves admission
+        // per the OfficeId enum, carrying DeptEvaluator). The department records
+        // its result and stops — deciding the application is the Admission office's
+        // act, and only its approval creates the enrollment (G-8).
         $this->actingAs($this->staffForOffice(7, 'DeptEvaluator'))
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $admission->studentId,
@@ -459,13 +465,26 @@ class EnrollmentWalkthroughTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $admission->refresh();
-        $this->assertEquals('approved', $admission->admissionStatus->value, 'Admission auto-approved after passing course-specific exam');
+        $this->assertEquals('pending', $admission->admissionStatus->value, 'An exam result must not decide the application');
+        $this->assertSame(0, Enrollments::where('admissionId', $admission->admissionId)->count(), 'No enrollment before the Admission office acts');
+
+        // --- Admission approval (office 6), the only path that opens the pipeline ---
+        $this->actingAs($this->staffForOffice(6, 'AdmissionOfficer'))
+            ->post(route('admission.approve', $admission))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $admission->refresh();
+        $this->assertEquals('approved', $admission->admissionStatus->value);
 
         // --- Evaluation (office 4) ---
-        $evaluator = $this->staffForOffice(4);
+        // The approval stamped evaluatedBy with the Admission officer, so the
+        // department works this enrollment through its evaluation.*.any abilities.
+        $evaluator = $this->staffForOffice(4, 'DeptEvaluator');
 
-        // --- Enrollment (system-created; evaluatedBy = the evaluator) ---
-        $enrollment = $this->createEnrollment($admission, 'firstYear', 1, $evaluator->userId);
+        // --- Enrollment (created by the approval; evaluatedBy stamped at capture) ---
+        $enrollment = Enrollments::where('admissionId', $admission->admissionId)->sole();
+        $this->assertEquals(EnrollmentStatus::Pending, $enrollment->enrollmentStatus);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -494,6 +513,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'academicStanding' => 'regular',
                 'formIssuedDate' => now()->toDateString(),
             ])
+            ->assertRedirect()
             ->assertSessionHasNoErrors();
 
         // Propose subjects (transitions pending → evaluated)
@@ -502,6 +522,7 @@ class EnrollmentWalkthroughTest extends TestCase
             ->post(route('evaluation.subjects.propose', $enrollment), [
                 'subjects' => collect($subjectIds)->map(fn ($id) => ['subjectId' => $id])->all(),
             ])
+            ->assertRedirect()
             ->assertSessionHasNoErrors();
 
         $this->assertEquals(
@@ -513,6 +534,7 @@ class EnrollmentWalkthroughTest extends TestCase
         // Sign evaluation (creates workflow, signs office-4 step)
         $this->actingAs($evaluator)
             ->post(route('evaluation.sign', $enrollment))
+            ->assertRedirect()
             ->assertSessionHasNoErrors();
 
         $workflow = $enrollment->fresh()->enrollmentworkflow;
@@ -722,6 +744,8 @@ class EnrollmentWalkthroughTest extends TestCase
                         'creditedUnits' => 3,
                         'institutionName' => 'Old University',
                         'institutionType' => 'college',
+                        'cityMunicipality' => 'Biñan',
+                        'province' => 'Laguna',
                         'grade' => 1.5, // 1.0-5.0 scale (decimal(3,2)), NOT percentage
                         'remarks' => 'E2E credit transfer',
                     ],
@@ -844,6 +868,8 @@ class EnrollmentWalkthroughTest extends TestCase
                         'creditedUnits' => 3,
                         'institutionName' => 'SEAIT',
                         'institutionType' => 'college',
+                        'cityMunicipality' => 'Santa Rosa',
+                        'province' => 'Laguna',
                         'grade' => 1.5, // 1.0-5.0 scale (decimal(3,2)), NOT percentage
                         'remarks' => 'E2E shifter credit transfer',
                     ],

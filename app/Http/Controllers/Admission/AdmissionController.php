@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admission;
 
 use App\Enums\AdmissionStatus;
+use App\Enums\ApplicantType;
 use App\Enums\EnrollmentStatus;
+use App\Enums\InstitutionType;
+use App\Enums\LevelCompleted;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Addresses;
@@ -18,13 +21,18 @@ use App\Models\Religions;
 use App\Models\Studenteducationalbackgrounds;
 use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
+use App\Policies\AdmissionPolicy;
+use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdmissionController extends Controller
 {
@@ -104,7 +112,7 @@ class AdmissionController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'courseId' => 'required|exists:courses,courseId',
             'termId' => 'required|exists:academicterms,termId',
-            'applicantType' => 'required|in:firstYear,transferee,continuing,shifter',
+            'applicantType' => ['required', Rule::enum(ApplicantType::class)],
             'addresses' => 'required|array|min:1',
             'addresses.*.addressType' => 'required|in:home,current,permanent',
             'addresses.*.houseBuildingNo' => 'nullable|string|max:100',
@@ -126,22 +134,25 @@ class AdmissionController extends Controller
             'guardians.*.isAuthorizedToActOnBehalf' => 'boolean',
             'educationalBackgrounds' => 'nullable|array',
             'educationalBackgrounds.*.institutionName' => 'required_with:educationalBackgrounds|string|max:255',
-            'educationalBackgrounds.*.institutionType' => 'required_with:educationalBackgrounds|in:elementary,secondary,seniorHigh,college,graduate',
-            'educationalBackgrounds.*.cityMunicipality' => 'nullable|string|max:100',
-            'educationalBackgrounds.*.province' => 'nullable|string|max:100',
-            'educationalBackgrounds.*.levelCompleted' => 'required_with:educationalBackgrounds|in:elementary,secondary,seniorHigh,college,graduate',
+            'educationalBackgrounds.*.institutionType' => ['required_with:educationalBackgrounds', Rule::enum(InstitutionType::class)],
+            // educationalinstitutions.cityMunicipality / .province are NOT NULL, so a
+            // background row cannot be stored without them.
+            'educationalBackgrounds.*.cityMunicipality' => 'required_with:educationalBackgrounds|string|max:100',
+            'educationalBackgrounds.*.province' => 'required_with:educationalBackgrounds|string|max:100',
+            'educationalBackgrounds.*.levelCompleted' => ['required_with:educationalBackgrounds', Rule::enum(LevelCompleted::class)],
             'educationalBackgrounds.*.strandTrack' => 'nullable|string|max:100',
-            'educationalBackgrounds.*.yearCompleted' => 'nullable|date',
+            // studenteducationalbackgrounds.yearCompleted is a NOT NULL date.
+            'educationalBackgrounds.*.yearCompleted' => 'required_with:educationalBackgrounds|date',
             'educationalBackgrounds.*.honorsCertifications' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($validated) {
-            $student = Students::create([
+            $student = Students::create(StudentRecordDefaults::person([
                 'schoolIdNumber' => $validated['schoolIdNumber'],
                 'lastName' => $validated['lastName'],
                 'firstName' => $validated['firstName'],
-                'middleName' => $validated['middleName'],
-                'suffix' => $validated['suffix'],
+                'middleName' => $validated['middleName'] ?? null,
+                'suffix' => $validated['suffix'] ?? null,
                 'gender' => $validated['gender'],
                 'birthdate' => $validated['birthdate'],
                 'birthplace' => $validated['birthplace'],
@@ -149,21 +160,21 @@ class AdmissionController extends Controller
                 'religionId' => $validated['religionId'],
                 'civilStatus' => $validated['civilStatus'],
                 'contactNumber' => $validated['contactNumber'],
-                'telephoneNumber' => $validated['telephoneNumber'],
+                'telephoneNumber' => $validated['telephoneNumber'] ?? null,
                 'email' => $validated['email'],
                 'username' => $validated['username'],
                 'passwordHash' => bcrypt($validated['password']),
                 'status' => 'active',
                 'semestersCompleted' => 0,
                 'yearsInInstitution' => 0,
-            ]);
+            ]));
 
             foreach ($validated['addresses'] as $addr) {
-                Addresses::create(array_merge($addr, ['studentId' => $student->studentId]));
+                Addresses::create(StudentRecordDefaults::address(array_merge($addr, ['studentId' => $student->studentId])));
             }
 
             foreach ($validated['guardians'] as $guardian) {
-                Guardians::create(array_merge($guardian, ['studentId' => $student->studentId]));
+                Guardians::create(StudentRecordDefaults::guardian(array_merge($guardian, ['studentId' => $student->studentId])));
             }
 
             if (! empty($validated['educationalBackgrounds'])) {
@@ -193,7 +204,7 @@ class AdmissionController extends Controller
                 'courseId' => $validated['courseId'],
                 'termId' => $validated['termId'],
                 'applicantType' => $validated['applicantType'],
-                'admissionStatus' => 'pending',
+                'admissionStatus' => AdmissionStatus::Pending->value,
             ]);
 
             // Create requirement submissions
@@ -218,7 +229,7 @@ class AdmissionController extends Controller
     /**
      * Show admission details with requirements.
      */
-    public function show(Admissions $admission): Response
+    public function show(Admissions $admission, AdmissionPolicy $admissionPolicy): Response
     {
         $this->authorize('view', $admission);
 
@@ -229,6 +240,7 @@ class AdmissionController extends Controller
             'course',
             'term.academicYear',
             'requirementSubmissions.requirement',
+            'requirementSubmissions.documents',
             'documents',
             'examResults',
         ]);
@@ -238,7 +250,31 @@ class AdmissionController extends Controller
             'requirements' => Admissionrequirements::where('appliesTo', $admission->applicantType)
                 ->orWhere('appliesTo', 'all')
                 ->get(),
+            // The gate's own readiness list. Approve is closed until this is
+            // empty, and the desk prints these reasons rather than letting the
+            // officer discover them by clicking into a 403.
+            'approvalBlockers' => $admissionPolicy->approvalBlockers($admission),
         ]);
+    }
+
+    /**
+     * Stream one uploaded requirement document.
+     *
+     * Uploads go to the default disk, which is private: it is served only with a
+     * signed URL, so a plain link to the stored path cannot work. Answering here
+     * keeps the file behind the same policy as its admission, which is what lets
+     * the desk open the paper before it signs the requirement off.
+     */
+    public function document(Documents $document): StreamedResponse
+    {
+        $admission = $document->submission?->admission;
+        abort_unless($admission !== null, 404, 'This document no longer belongs to an admission.');
+        $this->authorize('view', $admission);
+
+        $disk = Storage::disk(config('filesystems.default'));
+        abort_unless(filled($document->fileUrl) && $disk->exists($document->fileUrl), 404, 'The stored file is missing from disk.');
+
+        return $disk->response($document->fileUrl);
     }
 
     /**
@@ -274,7 +310,7 @@ class AdmissionController extends Controller
             $submission->update([
                 'submissionStatus' => 'submitted',
                 'submittedDate' => now(),
-                'remarks' => $validated['remarks'],
+                'remarks' => $validated['remarks'] ?? null,
             ]);
         });
 
@@ -319,6 +355,12 @@ class AdmissionController extends Controller
             // Ensure an Enrollment record is created for this admission (SM-1)
             $existingEnrollment = Enrollments::where('admissionId', $admission->admissionId)->first();
             if (! $existingEnrollment) {
+                // academicStanding is deliberately left out: whether the student is
+                // regular or irregular is an academic judgement the Department
+                // Evaluation desk makes from the grades on file, and the Registrar
+                // confirms it at approval. Stamping "regular" here pre-decided it
+                // on an admission officer's say-so and made every document that
+                // prints the standing report an unverified default.
                 Enrollments::create([
                     'studentId' => $admission->studentId,
                     'courseId' => $admission->courseId,
@@ -327,7 +369,6 @@ class AdmissionController extends Controller
                     'yearLevel' => 1,
                     'studentType' => $admission->applicantType->value,
                     'enrollmentType' => 'new',
-                    'academicStanding' => 'regular',
                     'evaluatedBy' => Auth::user()->userId,
                     'enrollmentStatus' => EnrollmentStatus::Pending,
                 ]);

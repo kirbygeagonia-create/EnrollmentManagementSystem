@@ -11,12 +11,17 @@ const checklistSteps = [
     { key: 'registrarApprovalPending', label: 'Registrar Ready' },
 ];
 
-export default function Show({ enrollment, checklist, allValid }) {
+export default function Show({ enrollment, checklist, allValid, standingReport = null }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [returnOpen, setReturnOpen] = useState(false);
 
+    // Item 16: the standing the evaluating department recorded is a proposal
+    // until this office confirms it, so approval carries the Registrar's own
+    // call — pre-filled with the department's decision (or the derivation when
+    // there is none) but never auto-approved behind their back.
     const form = useForm({
         _method: 'post',
+        academicStanding: enrollment.academicStanding || standingReport?.derived || '',
     });
 
     // Item 8: registrar hold — return a paid enrollment to Department
@@ -142,7 +147,7 @@ export default function Show({ enrollment, checklist, allValid }) {
 
             {/* Enrollment Workflow Progress */}
             <Card title="Enrollment Workflow Progress" subtitle="Signed offices and pending steps per enrollment type" className="mb-5">
-                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
             </Card>
 
             {/* Split Screen Registrar Suite */}
@@ -197,6 +202,63 @@ export default function Show({ enrollment, checklist, allValid }) {
                             })}
                         </div>
 
+                        {/* Final Academic Standing Decision (Item 16) — the office
+                            that certifies the student also owns the label. */}
+                        <div className="pt-5 border-t border-slate-100 mt-5">
+                            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                                <h4 className="font-heading font-bold text-slate-900 text-xs uppercase tracking-wider">
+                                    Final Academic Standing
+                                </h4>
+                                <span className="text-[10px] text-slate-500">
+                                    Department recorded:{' '}
+                                    <span className="font-bold text-slate-700">
+                                        {enrollment.academicStanding ? enrollment.academicStanding : 'nothing yet'}
+                                    </span>
+                                    {standingReport?.derived && (
+                                        <>
+                                            {' '}· records derive:{' '}
+                                            <span className="font-bold text-slate-700">{standingReport.derived}</span>
+                                        </>
+                                    )}
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
+                                {standingReport?.headline || 'Standing evidence is unavailable.'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Final academic standing">
+                                {['regular', 'irregular'].map((value) => {
+                                    const selected = form.data.academicStanding === value;
+                                    const isRegular = value === 'regular';
+                                    return (
+                                        <label
+                                            key={value}
+                                            className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+                                                selected
+                                                    ? (isRegular
+                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500/20'
+                                                        : 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500/20')
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="finalAcademicStanding"
+                                                value={value}
+                                                checked={selected}
+                                                disabled={isEnrolled}
+                                                onChange={() => form.setData('academicStanding', value)}
+                                                className="sr-only"
+                                            />
+                                            {isRegular ? 'Regular' : 'Irregular'}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {form.errors.academicStanding && (
+                                <p className="form-error mt-1.5">{form.errors.academicStanding}</p>
+                            )}
+                        </div>
+
                         {/* Approval Button */}
                         <div className="pt-5 border-t border-slate-100 mt-5">
                             {!isEnrolled ? (
@@ -204,8 +266,8 @@ export default function Show({ enrollment, checklist, allValid }) {
                                     <button
                                         type="button"
                                         onClick={handleApprove}
-                                        disabled={!allValid || form.processing || isReturned}
-                                        title={isReturned ? 'On hold — returned to Department Evaluation. Approvable again once the evaluation is resubmitted.' : undefined}
+                                        disabled={!allValid || form.processing || isReturned || !form.data.academicStanding}
+                                        title={isReturned ? 'On hold — returned to Department Evaluation. Approvable again once the evaluation is resubmitted.' : (!form.data.academicStanding ? 'Set the final academic standing first' : undefined)}
                                         className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-seait-600 to-amber-700 hover:from-seait-500 hover:to-amber-600 text-white font-heading font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +377,9 @@ export default function Show({ enrollment, checklist, allValid }) {
                             </div>
                             <div>
                                 <span className="text-slate-400 font-semibold block">Year Level & Standing:</span>
-                                <span className="font-bold text-slate-900">Year {enrollment.yearLevel} ({enrollment.academicStanding || 'Regular'})</span>
+                                <span className="font-bold text-slate-900">
+                                    Year {enrollment.yearLevel} ({form.data.academicStanding || 'Not yet decided'})
+                                </span>
                             </div>
                         </div>
 
@@ -381,9 +445,10 @@ export default function Show({ enrollment, checklist, allValid }) {
                     value: studentName,
                     badge: enrollment.course?.courseCode || 'PROGRAM',
                 }}
-                cause={`Approving this record officially certifies ${studentName} as a bona fide matriculated student for ${termLabel}.`}
+                cause={`Approving this record officially certifies ${studentName} as a bona fide ${form.data.academicStanding || 'undetermined-standing'} student for ${termLabel}.`}
                 effects={[
                     'Updates enrollment status to ENROLLED and applies the institutional watermark seal to the official Certificate of Enrollment.',
+                    `Records ${form.data.academicStanding || 'the selected'} academic standing as the institution's final call, overriding what the evaluating department recorded.`,
                     'Unlocks student class cards and assigns permanent seats in the official section masterlist.',
                     'Commits student units to CHED Institutional Annual Reports and active student directory files.',
                     'Sends automated clearance to the Student ID Processing Center (Phase 8) and School Health Clinic (Phase 7).',

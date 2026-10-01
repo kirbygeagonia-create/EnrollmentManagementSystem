@@ -53,10 +53,11 @@ function FlashMessages({ flash }) {
     );
 }
 
-export default function Show({ assessment }) {
+export default function Show({ assessment, paymentModes = [], can = {}, outstandingBalance = 0 }) {
     const { flash } = usePage().props;
     const [showVoidConfirm, setShowVoidConfirm] = useState(false);
     const [paymentToVoid, setPaymentToVoid] = useState(null);
+    const [showSettleConfirm, setShowSettleConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const enrollment = assessment.enrollment;
@@ -117,6 +118,21 @@ export default function Show({ assessment }) {
             onError: () => setIsSubmitting(false),
         });
     };
+
+    // Settling is not collecting: no cash is tendered and no OR number is consumed,
+    // but the Accounting signature it writes is the same one a payment would earn —
+    // without it the enrollment sits in `assessed` and never reaches Registrar.
+    const confirmSettleNoBalance = () => {
+        setIsSubmitting(true);
+        router.post(route('accounting.settle', { assessment: assessment.assessmentId }), {}, {
+            onSuccess: () => setShowSettleConfirm(false),
+            onFinish: () => setIsSubmitting(false),
+        });
+    };
+
+    // `outstandingBalance` is recomputed from the receipts on file by the server and
+    // is the figure the settle policy checks; the stored column can lag behind it.
+    const awaitingSignOff = Number(outstandingBalance || 0) <= 0 && enrollment?.enrollmentStatus === 'assessed';
 
     const chargeColumns = useMemo(() => [
         { key: 'feeType.feeName', label: 'Fee Item', render: (row) => <span className="font-semibold text-slate-800">{row.feeType?.feeName || '—'}</span> },
@@ -219,7 +235,7 @@ export default function Show({ assessment }) {
 
             {/* Enrollment Workflow Progress */}
             <Card title="Enrollment Workflow Progress" subtitle="The enrollment workflow form — signed offices and pending steps" className="mb-5">
-                <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+                <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
             </Card>
 
             {/* Split Screen POS Terminal View */}
@@ -404,9 +420,9 @@ export default function Show({ assessment }) {
                                         className="w-full rounded-xl bg-slate-800/90 border border-slate-700 text-white text-xs px-3 py-2 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                                         required
                                     >
-                                        <option value="cash">Cash Payment</option>
-                                        <option value="online">Online / G-Cash</option>
-                                        <option value="check">Bank Check</option>
+                                        {paymentModes.map((mode) => (
+                                            <option key={mode.value} value={mode.value}>{mode.label}</option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -458,7 +474,7 @@ export default function Show({ assessment }) {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-500">Method:</span>
-                                <span className="uppercase font-semibold">{data.paymentMode}</span>
+                                <span className="font-semibold">{paymentModes.find((m) => m.value === data.paymentMode)?.label ?? data.paymentMode}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-500">Date:</span>
@@ -473,7 +489,33 @@ export default function Show({ assessment }) {
                             *** Valid Official Institutional Receipt ***
                         </p>
                     </div>
-                    </>) : (
+                    </>) : awaitingSignOff ? (
+                        <Card title="Nothing To Collect" subtitle="Fees are fully covered — this account still needs the cashier sign-off">
+                            <div className="space-y-4 text-xs text-slate-600">
+                                <p>
+                                    Grants and waivers cover the full assessment of{' '}
+                                    <span className="font-semibold text-slate-900">{peso(totalAssessed)}</span>, leaving{' '}
+                                    <span className="font-semibold text-slate-900">₱0.00</span> to collect. No Official Receipt is due.
+                                </p>
+                                <p className="flex items-start gap-2">
+                                    <Badge tone="pending">Assessed</Badge>
+                                    <span>The Accounting step of the workflow is still unsigned, so the enrollment cannot reach Registrar until it is settled here.</span>
+                                </p>
+                                {can.settleNoBalance ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => setShowSettleConfirm(true)}
+                                        disabled={isSubmitting}
+                                    >
+                                        Settle Account — No Balance Due
+                                    </button>
+                                ) : (
+                                    <p className="text-slate-500">Only the Accounting desk can sign this account off.</p>
+                                )}
+                            </div>
+                        </Card>
+                    ) : (
                         <Card title="Payment Status" subtitle="Settlement status of this assessment">
                             <p className="text-sm font-medium text-emerald-700 py-6 text-center">✓ Fully Paid — no further payments required. Issued receipts are listed in Transaction History.</p>
                         </Card>
@@ -505,6 +547,33 @@ export default function Show({ assessment }) {
                 acknowledgementText="I confirm that this official receipt is being voided due to an error, and I acknowledge the financial impact."
                 confirmText="Yes, Permanently Void Receipt"
                 cancelText="Keep Receipt Active"
+                loading={isSubmitting}
+            />
+
+            {/* Zero-Balance Settlement Cause & Effect Confirmation Modal */}
+            <CauseEffectModal
+                show={showSettleConfirm}
+                onClose={() => setShowSettleConfirm(false)}
+                onConfirm={confirmSettleNoBalance}
+                title="Settle Account With No Balance Due"
+                subtitle="Closes the account without collecting cash or issuing an Official Receipt"
+                tone="warning"
+                entityContext={{
+                    label: 'Assessment #',
+                    value: String(assessment.assessmentId),
+                    badge: `Balance ${peso(0)}`,
+                }}
+                cause={`Settling closes ${studentName}'s enrollment as fully paid because a scholarship grant or an approved waiver already covers the assessed fees of ${peso(totalAssessed)}.`}
+                effects={[
+                    'Moves the enrollment to Paid and signs the Accounting step — the signature Registrar waits for before approving.',
+                    'No cash is collected and no Official Receipt number is issued or consumed.',
+                    'The settlement is recorded in the audit trail under your cashier ID with today’s date.',
+                    'If a waiver or grant is later reversed, the account returns to the Balance Due queue and must be collected from again.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I confirm the assessed fees on this account are fully covered by a grant or an approved waiver, and that no cash is due."
+                confirmText="Yes, Settle Account — No Balance Due"
+                cancelText="Leave It Unsigned"
                 loading={isSubmitting}
             />
         </AuthenticatedLayout>

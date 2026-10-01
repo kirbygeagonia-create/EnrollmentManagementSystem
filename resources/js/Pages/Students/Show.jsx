@@ -75,7 +75,7 @@ function EnrollmentCard({ enrollment }) {
                 </Badge>
             </div>
 
-            <WorkflowStepper workflow={enrollment.enrollmentworkflow} />
+            <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
 
             <div className="mt-5 pt-4 border-t border-brand-100">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -478,7 +478,7 @@ export default function Show({ student }) {
 
                 {/* Tab Content: Credentials & IDs */}
                 {(activeTab === 'credentials' || activeTab === 'all') && (
-                    <Card title="ID Request History" subtitle="ID desk requests — identity validation and card release">
+                    <Card title="ID Request History" subtitle="ID desk requests — face-photo capture and desk validation">
                         {student.idrequests?.length ? (
                             <div className="space-y-3">
                                 {student.idrequests.map((id) => (

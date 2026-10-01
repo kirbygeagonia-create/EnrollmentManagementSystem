@@ -100,16 +100,16 @@ const deskConfigs = {
         badgeColor: 'bg-slate-700/10 text-slate-800 border-slate-300',
         tabs: [
             { name: 'Reference Catalogs', route: 'admin.reference-data.index' },
-            { name: 'User Management', route: 'admin.users.index' },
-            { name: 'Role Permissions', route: 'admin.users.roles' },
-            { name: 'System Settings', route: 'admin.users.settings' },
-            { name: 'Audit Logs', route: 'admin.users.audit-logs' },
+            { name: 'User Management', route: 'admin.users.index', adminOnly: true },
+            { name: 'Role Permissions', route: 'admin.users.roles', adminOnly: true },
+            { name: 'System Settings', route: 'admin.users.settings', adminOnly: true },
+            { name: 'Audit Logs', route: 'admin.users.audit-logs', adminOnly: true },
         ],
     },
 };
 
 export default function DeskSubNav() {
-    const { url } = usePage();
+    const { url, props } = usePage();
 
     // Determine which desk is currently active based on route path
     const activeKey = Object.keys(deskConfigs).find((key) => {
@@ -119,7 +119,13 @@ export default function DeskSubNav() {
 
     const activeDesk = activeKey ? deskConfigs[activeKey] : null;
 
-    if (!activeDesk || activeDesk.tabs.length <= 1) {
+    // The Reference Catalogs hub is opened by permission (the Registrar maintains
+    // the grade scale there), so the rest of the admin suite must not appear as
+    // tabs for someone who cannot use them.
+    const isAdminSuite = props.auth?.user?.role === 'admin';
+    const tabs = activeDesk ? activeDesk.tabs.filter((tab) => !tab.adminOnly || isAdminSuite) : [];
+
+    if (!activeDesk || tabs.length <= 1) {
         return null;
     }
 
@@ -129,7 +135,7 @@ export default function DeskSubNav() {
                 <div className="flex items-center justify-between overflow-x-auto scrollbar-thin py-1.5 gap-4">
                     {/* Tabs */}
                     <nav className="flex items-center gap-1 sm:gap-2 min-w-max" aria-label="Sub-navigation">
-                        {activeDesk.tabs.map((tab, idx) => {
+                        {tabs.map((tab, idx) => {
                             const tabPath = route(tab.route).split('?')[0];
                             const isActive = url === tabPath || url.startsWith(tabPath + '/');
                             return (

@@ -22,6 +22,8 @@ class SendEnrollmentNotification implements ShouldQueue
             'paid' => 'Payment received. Proceed to Registrar for approval.',
             'enrolled' => 'Congratulations! You are now officially enrolled.',
             'dropped' => 'Your enrollment has been dropped.',
+            'returnedToEvaluation' => 'The Registrar returned your enrollment to Department Evaluation'
+                .($event->remarks ? ": {$event->remarks}" : ' for correction.'),
             default => "Enrollment status changed from {$event->fromStatus} to {$event->toStatus}.",
         };
 
@@ -30,14 +32,14 @@ class SendEnrollmentNotification implements ShouldQueue
             'type' => 'enrollment_status_changed',
             'notifiable_type' => 'App\Models\Students',
             'notifiable_id' => $student->studentId,
-            'data' => json_encode([
+            'data' => [
                 'message' => $message,
                 'enrollmentId' => $enrollment->enrollmentId,
                 'fromStatus' => $event->fromStatus,
                 'toStatus' => $event->toStatus,
                 'changedBy' => $event->changedBy?->firstName.' '.$event->changedBy?->lastName,
                 'remarks' => $event->remarks,
-            ]),
+            ],
         ]);
     }
 }

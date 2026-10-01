@@ -688,14 +688,13 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
-    public function test_release_sets_request_released(): void
+    public function test_card_release_action_is_gone_and_validation_is_terminal(): void
     {
         $idStaff = $this->staffForOffice(22);
         $this->actingAs($idStaff);
 
         $enrollment = $this->createEnrollment();
 
-        // Create ID request
         $this->post(route('id.create', $enrollment), [
             'requestReason' => 'newStudent',
             'emergencyContactName' => 'Contact',
@@ -704,18 +703,20 @@ class IDControllerTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $idRequest = $enrollment->fresh()->idrequests->first();
-
-        // Attach photo, then validate (sets to Validated)
         $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
         $this->post(route('id.validate', $idRequest))->assertSessionHasNoErrors();
 
-        // Release (moves to Released)
-        $response = $this->post(route('id.release', $idRequest));
+        // Card production and handover were removed from the system: the
+        // release route, its permission and the Released status are all gone,
+        // and nothing can re-open a validated request.
+        $this->assertFalse(app('router')->getRoutes()->hasNamedRoute('id.release'));
+        $this->assertNull(DB::table('permissions')->where('name', 'id.release')->first());
+        $this->assertNull(IdRequestStatus::tryFrom('released'));
 
-        $response->assertSessionHasNoErrors();
-        $response->assertSessionHas('success', 'ID released to student.');
+        $this->post(route('id.photo', $idRequest), [
+            'photo' => UploadedFile::fake()->image('retake.jpg'),
+        ])->assertForbidden();
 
-        $idRequest->refresh();
-        $this->assertEquals(IdRequestStatus::Released, $idRequest->status);
+        $this->assertEquals(IdRequestStatus::Validated, $idRequest->fresh()->status);
     }
 }

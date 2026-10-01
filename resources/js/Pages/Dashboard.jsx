@@ -50,7 +50,7 @@ const quickLinks = [
     { name: 'Registrar', category: 'records', desc: 'Enrollment & official records', route: 'registrar.index', icon: RegistrarIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [1] },
     { name: 'Blocking', category: 'records', desc: 'Timetables & section loads', route: 'blocking.index', icon: BlockingIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [5] },
     { name: 'Clinic', category: 'records', desc: 'Student medical & health', route: 'clinic.index', icon: ClinicIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [11] },
-    { name: 'ID Office', category: 'records', desc: 'ID requests & card release', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
+    { name: 'ID Office', category: 'records', desc: 'ID requests & validation', route: 'id.index', icon: IdIcon, roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin'], offices: [22] },
     { name: 'Reference Data', category: 'admin', desc: 'Curricula, terms & courses', route: 'admin.reference-data.index', icon: DatabaseIcon, roles: ['admin'], offices: [] },
     { name: 'User Management', category: 'admin', desc: 'Staff accounts & permissions', route: 'admin.users.index', icon: UsersIcon, roles: ['admin'], offices: [] },
 ];
@@ -299,7 +299,7 @@ export default function Dashboard() {
                                                         </div>
                                                         <p className="text-[11px] font-medium text-slate-500 mt-1 truncate leading-tight">
                                                             {t.courseCode || '—'} · {t.totalSteps > 0 ? `${t.completedSteps}/${t.totalSteps} steps signed` : 'workflow not started'}
-                                                            {t.currentOffice ? ` · at ${t.currentOffice}` : done ? ' · complete' : ''}
+                                                            {t.currentPhase ? ` · next: ${t.currentPhase}` : done ? ' · complete' : ''}
                                                         </p>
                                                     </div>
                                                 </Link>

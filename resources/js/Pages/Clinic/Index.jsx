@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 export default function Index({ enrollments, filters = {} }) {
@@ -20,6 +20,16 @@ export default function Index({ enrollments, filters = {} }) {
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
+                {formatStatusLabel(row.studentType)}
+            </Badge>
+        )},
+        { key: 'academicStanding', label: 'Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.academicStanding)}>
+                {academicStandingLabel(row.academicStanding)}
+            </Badge>
+        )},
         { key: 'clinicStatus', label: 'Clinic Status', render: (row) => {
             const hasRecord = row.clinicrecords && row.clinicrecords.length > 0;
             const status = hasRecord ? 'Completed' : 'Pending';

@@ -7,7 +7,7 @@ const approvalStatusToneMap = {
     waived: 'info',
 };
 
-export default function PrintSlip({ clearance }) {
+export default function PrintSlip({ clearance, termEnrollment, documentNumber }) {
     const student = clearance.student;
     const period = clearance.clearancePeriod;
     const approvals = clearance.approvals || [];
@@ -20,19 +20,24 @@ export default function PrintSlip({ clearance }) {
             title="Clearance Slip"
             subtitle={student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : 'Student Clearance'}
             date={academicYear ? `${academicYear.yearLabel} ${term?.semester?.value || term?.semester || ''}`.trim() : undefined}
+            downloadUrl={route('clearance.download-slip', { clearance: clearance.studentClearanceId })}
             headerContent={
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
                     <div>
                         <p className="font-medium">School ID:</p>
                         <p>{student?.schoolIdNumber || '—'}</p>
                     </div>
                     <div>
                         <p className="font-medium">Course:</p>
-                        <p>{student?.enrollments?.[0]?.course?.courseName || '—'}</p>
+                        <p>{termEnrollment?.course?.courseName || '—'}</p>
                     </div>
                     <div>
                         <p className="font-medium">Year Level:</p>
-                        <p>{student?.enrollments?.[0]?.yearLevel || '—'}</p>
+                        <p>{termEnrollment?.yearLevel || '—'}</p>
+                    </div>
+                    <div>
+                        <p className="font-medium">Document No.:</p>
+                        <p className="font-mono">{documentNumber || '—'}</p>
                     </div>
                 </div>
             }
@@ -56,7 +61,7 @@ export default function PrintSlip({ clearance }) {
                                         <span className="font-mono text-sm text-brand-500 w-8 text-center">{index + 1}.</span>
                                         <div>
                                             <p className="font-medium text-brand-900">{office?.officeName || 'Unknown Office'}</p>
-                                            <p className="text-sm text-brand-500">{req?.office?.officeName || 'Clearance Requirement'}</p>
+                                            <p className="text-sm text-brand-500">{req?.requirementName || 'No requirement text on file'}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4 sm:ml-auto">

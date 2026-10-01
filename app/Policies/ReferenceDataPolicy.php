@@ -71,6 +71,14 @@ class ReferenceDataPolicy
     }
 
     /**
+     * Determine whether the user can manage the grade scale.
+     */
+    public function manageGradeScales(Staffusers $user): bool
+    {
+        return $user->hasPermissionTo('refdata.gradeScale.manage');
+    }
+
+    /**
      * Determine whether the user can manage scholarship types.
      */
     public function manageScholarshipTypes(Staffusers $user): bool

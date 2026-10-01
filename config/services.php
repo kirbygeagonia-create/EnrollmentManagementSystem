@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Local Chrome / Edge binary used by Browsershot for PDF printing
+    |--------------------------------------------------------------------------
+    |
+    | Optional. Leave unset to let ChromiumLocator probe the usual install
+    | locations; set it when the browser lives somewhere else. The npm
+    | `puppeteer` package is not required.
+    |
+    */
+
+    'chrome_path' => env('EMS_CHROME_PATH'),
+
 ];

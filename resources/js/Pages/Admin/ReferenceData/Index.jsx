@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
-import { PageHeader, Card, StatCard, Badge } from '@/Components/ui';
+import { PageHeader, Card, StatCard, Badge, EmptyState } from '@/Components/ui';
 
 const referenceDataItems = [
     { name: 'Courses', route: 'admin.reference-data.courses', icon: CourseIcon, count: 'courses', description: 'Academic programs offered', color: 'brand' },
@@ -10,6 +10,7 @@ const referenceDataItems = [
     { name: 'Subjects', route: 'admin.reference-data.subjects', icon: SubjectIcon, count: 'subjects', description: 'Individual course subjects', color: 'warning' },
     { name: 'Academic Terms', route: 'admin.reference-data.terms', icon: TermIcon, count: 'terms', description: 'Semesters and school years', color: 'accent' },
     { name: 'Fee Types', route: 'admin.reference-data.fee-types', icon: FeeIcon, count: 'feeTypes', description: 'Tuition and miscellaneous fees', color: 'danger' },
+    { name: 'Grade Scale', route: 'admin.reference-data.grade-scale', icon: GradeIcon, count: 'gradeScale', description: 'Passing bands academic standing is derived against', color: 'accent' },
     { name: 'Scholarship Types', route: 'admin.reference-data.scholarship-types', icon: ScholarshipIcon, count: 'scholarshipTypes', description: 'Available scholarship programs', color: 'info' },
     { name: 'Offices', route: 'admin.reference-data.offices', icon: OfficeIcon, count: 'offices', description: 'Administrative offices', color: 'brand' },
     { name: 'Rooms', route: 'admin.reference-data.rooms', icon: RoomIcon, count: 'rooms', description: 'Classrooms and facilities', color: 'success' },
@@ -36,6 +37,9 @@ function TermIcon({ className }) {
 function FeeIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }
+function GradeIcon({ className }) {
+    return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+}
 function ScholarshipIcon({ className }) {
     return <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 }
@@ -61,7 +65,11 @@ const colorClasses = {
     danger: { bg: 'bg-danger-100', text: 'text-danger-700', iconBg: 'bg-danger-100', iconText: 'text-danger-700', badge: 'badge-danger' },
 };
 
-export default function Index({ stats = {} }) {
+export default function Index({ stats = {}, manageable = [] }) {
+    // Every catalog links only for the desk that maintains it — the hub used to
+    // offer twelve links to everyone with refdata.view and eleven of them 403'd.
+    const visibleItems = referenceDataItems.filter((item) => manageable.includes(item.route));
+
     return (
         <AuthenticatedLayout
             header={
@@ -152,34 +160,42 @@ export default function Index({ stats = {} }) {
 
             {/* Management Cards */}
             <Card title="Data Management" subtitle="Click a card to manage that reference data">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {referenceDataItems.map((item) => {
-                        const colors = colorClasses[item.color] || colorClasses.brand;
-                        const count = stats[item.count] || 0;
-                        return (
-                            <Link
-                                key={item.route}
-                                href={route(item.route)}
-                                className="card p-5 hover:shadow-card-hover hover:border-brand-300 transition-all duration-200 group"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className={`${colors.iconBg} ${colors.iconText} h-12 w-12 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
-                                        <item.icon className="h-6 w-6" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-semibold text-brand-900 group-hover:text-brand-700 transition-colors">
-                                                {item.name}
-                                            </h3>
-                                            <Badge tone={item.color === 'brand' ? 'neutral' : item.color}>{count}</Badge>
+                {visibleItems.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {visibleItems.map((item) => {
+                            const colors = colorClasses[item.color] || colorClasses.brand;
+                            const count = stats[item.count] || 0;
+
+                            return (
+                                <Link
+                                    key={item.route}
+                                    href={route(item.route)}
+                                    className="card p-5 hover:shadow-card-hover hover:border-brand-300 transition-all duration-200 group"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className={`${colors.iconBg} ${colors.iconText} h-12 w-12 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
+                                            <item.icon className="h-6 w-6" />
                                         </div>
-                                        <p className="text-sm text-brand-500 mt-1">{item.description}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="font-semibold text-brand-900 group-hover:text-brand-700 transition-colors">
+                                                    {item.name}
+                                                </h3>
+                                                <Badge tone={item.color === 'brand' ? 'neutral' : item.color}>{count}</Badge>
+                                            </div>
+                                            <p className="text-sm text-brand-500 mt-1">{item.description}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <EmptyState
+                        title="No catalogs to maintain"
+                        message="Your role can review reference data, but no catalog is assigned to it for maintenance."
+                    />
+                )}
             </Card>
         </AuthenticatedLayout>
     );

@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
-import { formatStatusLabel, idRequestStatusTone } from '@/Components/ui/statusLabel';
+import { formatStatusLabel, idRequestStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui/statusLabel';
 import { useState, useMemo } from 'react';
 
 export default function Index({ enrollments, stats = {}, filters = {} }) {
@@ -13,6 +13,16 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
+                {formatStatusLabel(row.studentType)}
+            </Badge>
+        )},
+        { key: 'academicStanding', label: 'Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.academicStanding)}>
+                {academicStandingLabel(row.academicStanding)}
+            </Badge>
+        )},
         { key: 'idStatus', label: 'ID Status', render: (row) => {
             const status = row.idrequests?.[0]?.status;
 
@@ -57,8 +67,8 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Student ID Processing & Validation"
-                    subtitle="Validate ID requests with face-photo capture, then track card release to students"
+                    title="Student ID Validation"
+                    subtitle="Capture the face photo, validate the ID request, and sign the ID Validation workflow step"
                     phaseBadge="Phase 8 · ID Office"
                     officeBadge="ID Validation Desk"
                 />
@@ -67,7 +77,7 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
             <Head title="ID Requests" />
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                 <StatCard
                     compact
                     label="Pending Validation"
@@ -87,17 +97,6 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    }
-                />
-                <StatCard
-                    compact
-                    label="Released"
-                    value={stats.released ?? 0}
-                    iconBg="success"
-                    icon={
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                     }
                 />

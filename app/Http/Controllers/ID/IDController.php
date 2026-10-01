@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestReason;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
+use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
@@ -15,8 +16,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IDController extends Controller
 {
@@ -36,7 +39,7 @@ class IDController extends Controller
         $base = Enrollments::query()
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                ->where('stepStatus', 'pending')
+                ->where('stepStatus', WorkflowStepStatus::Pending->value)
                 ->where('officeId', OfficeId::IdOffice->value)
                 ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
             )
@@ -62,7 +65,6 @@ class IDController extends Controller
             'stats' => [
                 'pending' => (int) ($idStats[IdRequestStatus::Pending->value] ?? 0),
                 'validated' => (int) ($idStats[IdRequestStatus::Validated->value] ?? 0),
-                'released' => (int) ($idStats[IdRequestStatus::Released->value] ?? 0),
             ],
             'filters' => $request->only(['search']),
         ]);
@@ -74,7 +76,7 @@ class IDController extends Controller
      */
     public function show(Enrollments $enrollment): Response
     {
-        $this->authorize('id.view', $enrollment);
+        $this->authorize('id.viewAtDesk', $enrollment);
 
         $enrollment->load(['student', 'course', 'term', 'idrequests.validatedBy', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
@@ -145,6 +147,24 @@ class IDController extends Controller
     }
 
     /**
+     * Stream the captured face photo back to the desk.
+     *
+     * The stored path is relative to the private default disk, which the
+     * framework only serves through a signed URL, so an <img> pointed at it
+     * cannot load. This answers on the same policy as the request screen that
+     * shows the photo.
+     */
+    public function photo(Idrequests $idRequest): StreamedResponse
+    {
+        $this->authorize('view', $idRequest);
+
+        $disk = Storage::disk(config('filesystems.default'));
+        abort_unless(filled($idRequest->cardPhotoPath) && $disk->exists($idRequest->cardPhotoPath), 404, 'No face photo is stored for this request.');
+
+        return $disk->response($idRequest->cardPhotoPath);
+    }
+
+    /**
      * Validate ID: mark the request validated and sign the ID Office
      * workflow step.
      */
@@ -167,19 +187,5 @@ class IDController extends Controller
         });
 
         return back()->with('success', 'ID validated successfully.');
-    }
-
-    /**
-     * Release the physical ID card to the student.
-     */
-    public function release(Request $request, Idrequests $idRequest): RedirectResponse
-    {
-        $this->authorize('id.releaseRequest', $idRequest);
-
-        $idRequest->update([
-            'status' => IdRequestStatus::Released,
-        ]);
-
-        return back()->with('success', 'ID released to student.');
     }
 }

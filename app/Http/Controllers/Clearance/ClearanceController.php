@@ -12,11 +12,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Clearanceapprovals;
 use App\Models\Clearanceperiods;
 use App\Models\Clearancerequirements;
-use App\Models\Documentprintlog;
+use App\Models\Enrollments;
 use App\Models\Feetypes;
 use App\Models\Payments;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Services\PrintService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ClearanceController extends Controller
 {
@@ -45,6 +47,19 @@ class ClearanceController extends Controller
             ->orderByDesc('studentClearanceId');
 
         $clearances = $query->paginate(20)->withQueryString();
+
+        // Standing is recorded on the enrollment, and a clearance row carries no
+        // enrollmentId — only (studentId, period → termId). One lookup for the
+        // page, then the queue reads like every other desk's.
+        $standings = Enrollments::standingMapFor(
+            $clearances->getCollection()
+                ->map(fn (Studentclearances $c) => [$c->studentId, $c->clearancePeriod?->termId])
+        );
+        $clearances->getCollection()->each(function (Studentclearances $c) use ($standings) {
+            $match = $standings[$c->studentId.'-'.$c->clearancePeriod?->termId] ?? null;
+            $c->setAttribute('studentType', $match?->studentType?->value);
+            $c->setAttribute('academicStanding', $match?->academicStanding?->value);
+        });
 
         // Full-dataset status counts for the summary tiles (m2): counting
         // client-side from clearances.data understates the dataset beyond
@@ -236,8 +251,8 @@ class ClearanceController extends Controller
     }
 
     /**
-     * Process lost slip replacement (₱100 at Accounting).
-     * BR33: Lost slip costs ₱100 before reissue
+     * Process lost slip replacement. BR33 requires payment before a slip is reissued;
+     * the amount comes from the fee table rather than a constant in this method.
      */
     public function replaceLostSlip(Request $request): RedirectResponse
     {
@@ -265,12 +280,10 @@ class ClearanceController extends Controller
 
         DB::transaction(function () use ($validated, $clearance) {
             // Record payment
-            $feeType = Feetypes::where('feeName', 'Clearance Slip Replacement')->first();
-
             Payments::create([
                 'enrollmentId' => null, // No enrollment for clearance replacement
                 'orNumber' => $validated['orNumber'],
-                'amount' => $feeType->defaultAmount ?? 100,
+                'amount' => Feetypes::clearanceSlipReplacementFee(),
                 'paymentDate' => now(),
                 'paymentMode' => PaymentMode::Cash,
                 'processedBy' => Auth::user()->userId,
@@ -285,28 +298,35 @@ class ClearanceController extends Controller
     }
 
     /**
-     * Print clearance slip (PDF).
+     * Print clearance slip (browser print screen).
      */
-    public function printSlip(Studentclearances $clearance): Response
+    public function printSlip(Studentclearances $clearance, PrintService $printService): Response
     {
         $this->authorize('view', $clearance);
 
         $clearance->load(['student.enrollments.course', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser']);
 
+        $termEnrollment = $clearance->termEnrollment();
+
         // Log print (BR: every print inserts a documentprintlog row)
-        $enrollmentId = $clearance->student?->enrollments?->first()?->enrollmentId;
-        Documentprintlog::create([
-            'enrollmentId' => $enrollmentId,
-            'documentType' => DocumentType::ClearanceSlip,
-            'printedDate' => now(),
-            'printedBy' => Auth::user()->userId,
-            'documentNumber' => Documentprintlog::where('documentType', DocumentType::ClearanceSlip)
-                ->when($enrollmentId, fn ($q) => $q->where('enrollmentId', $enrollmentId), fn ($q) => $q->whereNull('enrollmentId'))
-                ->count() + 1,
-        ]);
+        $printLog = $printService->recordIssue($termEnrollment?->enrollmentId, DocumentType::ClearanceSlip, Auth::user()->userId);
 
         return Inertia::render('Clearance/PrintSlip', [
             'clearance' => $clearance,
+            'termEnrollment' => $termEnrollment,
+            'documentNumber' => $printLog->documentNumber,
         ]);
+    }
+
+    /**
+     * Download the clearance slip as a PDF.
+     */
+    public function downloadSlip(Studentclearances $clearance, PrintService $printService): BinaryFileResponse
+    {
+        $this->authorize('view', $clearance);
+
+        return $printService
+            ->printClearanceSlip($clearance, Auth::user()->userId)
+            ->asDownload("clearance-slip-{$clearance->student?->schoolIdNumber}.pdf");
     }
 }

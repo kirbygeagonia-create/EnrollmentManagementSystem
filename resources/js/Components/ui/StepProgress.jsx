@@ -16,7 +16,13 @@ export default function StepProgress({ steps, className = '', onStepClick }) {
                             {step.status === 'current' && (
                                 <span className="text-xs font-bold">•</span>
                             )}
-                            {step.status === 'pending' && (
+                            {step.status === 'returned' && (
+                                <span className="text-xs font-bold">!</span>
+                            )}
+                            {step.status === 'notApplicable' && (
+                                <span className="text-xs font-bold">—</span>
+                            )}
+                            {(step.status === 'pending' || step.status === 'skipped') && (
                                 <span className="text-xs font-bold">{index + 1}</span>
                             )}
                         </div>

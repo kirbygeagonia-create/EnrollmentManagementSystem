@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
 use App\Enums\PaymentStatus;
+use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Admissions;
 use App\Models\Courses;
@@ -17,6 +18,7 @@ use App\Models\Payments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Services\WorkflowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -39,23 +41,33 @@ class DashboardController extends Controller
         $progressTracking = [];
         $user = $request->user();
         if ($user !== null && $user->role->value === 'admin' && $user->can('viewAny', Students::class)) {
-            $progressTracking = Enrollments::with(['student', 'course', 'enrollmentworkflow.workflowsteps.office'])
+            $progressTracking = Enrollments::with(['student', 'course', 'enrollmentworkflow.workflowsteps'])
                 ->latest('enrollmentId')
                 ->limit(8)
                 ->get()
-                ->map(fn (Enrollments $e) => [
-                    'enrollmentId' => $e->enrollmentId,
-                    'studentId' => $e->studentId,
-                    'studentName' => $e->student
-                        ? $e->student->lastName.', '.$e->student->firstName
-                        : '—',
-                    'courseCode' => $e->course?->courseCode,
-                    'enrollmentStatus' => $e->enrollmentStatus->value,
-                    'totalSteps' => $e->enrollmentworkflow?->workflowsteps->count() ?? 0,
-                    'completedSteps' => $e->enrollmentworkflow?->workflowsteps->where('stepStatus', 'completed')->count() ?? 0,
-                    'currentOffice' => $e->enrollmentworkflow?->workflowsteps
-                        ->firstWhere('stepStatus', 'pending')?->office?->officeName,
-                ])
+                ->map(function (Enrollments $e) {
+                    // stepStatus is cast to an enum, so these must compare enum
+                    // instances — a string comparison against the cast value never
+                    // matched, which left every row reading "0/N steps signed" with
+                    // no phase on it.
+                    $steps = $e->enrollmentworkflow?->workflowsteps->sortBy('stepOrder') ?? collect();
+                    $pendingStep = $steps->first(fn ($step) => $step->stepStatus === WorkflowStepStatus::Pending);
+
+                    return [
+                        'enrollmentId' => $e->enrollmentId,
+                        'studentId' => $e->studentId,
+                        'studentName' => $e->student
+                            ? $e->student->lastName.', '.$e->student->firstName
+                            : '—',
+                        'courseCode' => $e->course?->courseCode,
+                        'enrollmentStatus' => $e->enrollmentStatus->value,
+                        'totalSteps' => $steps->count(),
+                        'completedSteps' => $steps->filter(fn ($step) => $step->stepStatus === WorkflowStepStatus::Completed)->count(),
+                        'currentPhase' => $pendingStep === null
+                            ? null
+                            : (WorkflowService::stepLabels()[$pendingStep->officeId] ?? null),
+                    ];
+                })
                 ->values()
                 ->all();
         }
@@ -100,14 +112,14 @@ class DashboardController extends Controller
                 // the desk whose step is first — not in both queues.
                 'blocking' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
                     ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                        ->where('stepStatus', 'pending')
+                        ->where('stepStatus', WorkflowStepStatus::Pending->value)
                         ->where('officeId', OfficeId::Blocking->value)
                         ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
                     )
                     ->count(),
                 'clinic' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
                     ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                        ->where('stepStatus', 'pending')
+                        ->where('stepStatus', WorkflowStepStatus::Pending->value)
                         ->where('officeId', OfficeId::Clinic->value)
                         ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
                     )

@@ -182,14 +182,15 @@ intake end and **Juan** (fully processed) for everything after.
     findings (FDD 11.2–11.3).
 13. **(12.0 Student IDs)** **Desks & Apps → Student ID Hub.** Juan's ID:
     request **validated** with the **face photo on file**. That's FDD
-    12.1–12.5 end-to-end.
+    12.1–12.4 end-to-end. Validation is the desk's last action — the EMS no
+    longer records card production or hand-over.
 
 ### Cross-cutting modules (FDD 13.0 → 15.0)
 14. **(13.0 Student 360°)** Press **Ctrl+K**, type `Dela`, open Juan —
     **the student's whole life on one page**: admission history, exams,
-    enrollment, subjects, payments, clearances, clinic records, ID card,
-    documents (FDD 13.1–13.4). This is also your fastest navigation tool
-    all demo long.
+    enrollment, subjects, payments, clearances, clinic records, ID request
+    validation, documents (FDD 13.1–13.4). This is also your fastest
+    navigation tool all demo long.
 15. **(14.0 Reference Data)** **Desks & Apps → Reference Catalogs** (admin
     section). Show 3–4 catalogs quickly — Courses, Fee Types, Blocks,
     Admission Requirements — and point out search/filters run server-side

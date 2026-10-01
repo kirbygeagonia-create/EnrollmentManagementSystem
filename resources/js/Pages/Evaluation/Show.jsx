@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, CauseEffectModal, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone } from '@/Components/ui';
+import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 
@@ -11,14 +12,41 @@ const studentTypeToneMap = {
     shifter: 'accent',
 };
 
-export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, can = {} }) {
+export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, standingReport = null, religions = [], academicStandings = [], profileGaps = [], can = {} }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [profileOpenRequest, setProfileOpenRequest] = useState(0);
+
+    // BR32: the enrollment form cannot be forwarded while a required demographic
+    // field is missing. The server refuses the signature too — this only keeps the
+    // desk from clicking a button that would come back as an error.
+    const gaps = profileGaps || [];
+    const signBlockedByProfile = gaps.length > 0;
 
     // Item 4: the retention exam lives in the Academic Evaluation area (BR10)
     // — handled and viewed only by the owning academic department.
     const canRecordRetention = can.recordRetention ?? false;
     const requiresRetentionExam = Boolean(enrollment.course?.requiresRetentionExam);
+
+    // Item 16: the standing is this desk's call, made from the grades on file.
+    // It starts on whatever the records derive (or the department's earlier
+    // decision once one is recorded) and only becomes official when the
+    // Registrar confirms it at approval.
+    const canDecideStanding = can.decideStanding ?? false;
+    const standingForm = useForm({
+        academicStanding: enrollment.academicStanding || standingReport?.derived || '',
+        // Intake writes 1 for every student, so this is where a transferee or a
+        // returning student's real placement is recorded. Nothing promotes it
+        // automatically — that rule is still the Registrar's to set.
+        yearLevel: Number(enrollment.yearLevel) || 1,
+    });
+
+    const handleSaveStanding = (e) => {
+        e.preventDefault();
+        standingForm.put(route('evaluation.standing.decide', { enrollment: enrollment.enrollmentId }), {
+            preserveScroll: true,
+        });
+    };
 
     // Item 6: credit-transfer intake for transferee/shifter students.
     const creditForm = useForm({
@@ -27,6 +55,8 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
         creditedUnits: 3,
         institutionName: '',
         institutionType: 'college',
+        cityMunicipality: '',
+        province: '',
         grade: '',
         remarks: '',
     });
@@ -116,7 +146,11 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     setShowConfirmSign(false);
                     setIsSubmitting(false);
                 },
-                onError: () => setIsSubmitting(false),
+                onError: (errors) => {
+                    setIsSubmitting(false);
+                    setShowConfirmSign(false);
+                    if (errors?.profile) setProfileOpenRequest((n) => n + 1);
+                },
             }
         );
     };
@@ -170,8 +204,10 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     <button
                         type="button"
                         onClick={() => setShowConfirmSign(true)}
-                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated' || !!enrollment.formSignedDate}
-                        title={enrollment.formSignedDate || enrollment.enrollmentStatus === 'evaluated' ? undefined : 'Signable once the evaluation status reaches Evaluated'}
+                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated' || !!enrollment.formSignedDate || signBlockedByProfile}
+                        title={signBlockedByProfile
+                            ? `Cannot sign while the profile is incomplete: ${gaps.join(', ')}`
+                            : (enrollment.formSignedDate || enrollment.enrollmentStatus === 'evaluated' ? undefined : 'Signable once the evaluation status reaches Evaluated')}
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,10 +299,218 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                         <div>
                             <h3 className="font-heading font-bold text-slate-900 text-sm">First-Year Flow</h3>
                             <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                                Propose the prescribed curriculum load below, capture the demographic profile, then sign — the record advances to Assessment automatically.
+                                Capture the demographic profile above, propose the prescribed curriculum load below, then sign — the record advances to Assessment automatically.
                             </p>
                         </div>
                     </div>
+                )}
+            </div>
+
+            {/* Demographic Enrollment Profile — BR32 is captured on this desk.
+                A server-side refusal bumps the key so the panel remounts open on
+                the fields that fix it, rather than leaving an error line behind. */}
+            <EnrollmentProfileForm
+                key={`profile-${profileOpenRequest}`}
+                startOpen={profileOpenRequest > 0}
+                enrollment={enrollment}
+                religions={religions}
+                academicStandings={academicStandings}
+                gaps={gaps}
+                canCapture={can.captureProfile ?? false}
+            />
+
+            {/* Workflow progress — the boxes this desk's signature opens (Item 27) */}
+            {enrollment.enrollmentworkflow && (
+                <Card
+                    title="Enrollment Workflow Progress"
+                    subtitle="Every office the record still has to pass, with the signature already on each step"
+                    className="mb-8"
+                >
+                    <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
+                </Card>
+            )}
+
+            {/* Academic Standing Determination — this desk's call, the Registrar's to finalize (Item 16) */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs mb-8">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-3 flex-wrap">
+                    <div>
+                        <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-teal-600" />
+                            Academic Standing Determination
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            Decided by the evaluating department from the student's record; the Registrar gives the final approval at enrollment.
+                        </p>
+                    </div>
+                    <Badge tone={enrollment.academicStanding === 'irregular' ? 'danger' : enrollment.academicStanding === 'regular' ? 'success' : 'pending'}>
+                        {enrollment.academicStanding ? formatStatusLabel(enrollment.academicStanding) : 'Not yet decided'}
+                    </Badge>
+                </div>
+
+                {/* What the records on file say */}
+                <div className={`rounded-xl border px-4 py-3 mb-4 ${
+                    standingReport?.derived === 'irregular'
+                        ? 'bg-red-50 border-red-200'
+                        : standingReport?.derived === 'regular'
+                            ? 'bg-emerald-50 border-emerald-200'
+                            : 'bg-slate-50 border-slate-200'
+                }`}>
+                    <p className="text-xs font-semibold text-slate-800 leading-relaxed">
+                        {standingReport?.headline || 'Standing evidence is unavailable for this enrollment.'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                        {standingReport?.gradedSubjectCount ?? 0} graded subject(s) from previous terms
+                        {standingReport?.gradedSubjectCount
+                            ? ` · passing line ${Number(standingReport.passingCeiling).toFixed(2)}${standingReport?.hasGradeScale ? ' (school grade scale)' : ' (assumed default — no scale on file)'}`
+                            : ''}
+                        . A grade worse than the passing line counts as failed on the 1.00–5.00 scale.
+                    </p>
+                </div>
+
+                {(standingReport?.failedSubjects?.length ?? 0) > 0 && (
+                    <div className="mb-4 overflow-hidden rounded-xl border border-red-200">
+                        <table className="w-full text-xs">
+                            <thead className="bg-red-50 text-left text-[10px] uppercase font-bold text-red-800">
+                                <tr>
+                                    <th className="px-3 py-2">Failed Subject</th>
+                                    <th className="px-3 py-2">Term</th>
+                                    <th className="px-3 py-2">Yr</th>
+                                    <th className="px-3 py-2 text-right">Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-red-100 bg-white">
+                                {standingReport.failedSubjects.map((row) => (
+                                    <tr key={`${row.enrollmentId}-${row.subjectCode}`}>
+                                        <td className="px-3 py-2">
+                                            <span className="font-mono font-bold text-slate-900">{row.subjectCode}</span>
+                                            <span className="text-slate-500 block">{row.subjectName}</span>
+                                        </td>
+                                        <td className="px-3 py-2 text-slate-600">{row.termLabel}</td>
+                                        <td className="px-3 py-2 text-slate-600">{row.yearLevel}</td>
+                                        <td className="px-3 py-2 text-right font-mono font-bold text-red-700">{row.grade.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {(standingReport?.retakenSubjects?.length ?? 0) > 0 && (
+                    <p className="text-[11px] text-slate-500 mb-4">
+                        Repeated on record: {standingReport.retakenSubjects.map((r) => r.subjectCode).join(', ')} — shown as
+                        evidence only; no documented rule makes a repeat decide the standing.
+                    </p>
+                )}
+
+                {(standingReport?.advisories?.length ?? 0) > 0 && (
+                    <ul className="mb-4 space-y-1 list-disc pl-5">
+                        {standingReport.advisories.map((note) => (
+                            <li key={note} className="text-[11px] text-amber-800">{note}</li>
+                        ))}
+                    </ul>
+                )}
+
+                {enrollment.academicStanding && standingReport?.derived && enrollment.academicStanding !== standingReport.derived && (
+                    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[11px] text-amber-900">
+                        This desk recorded <span className="font-bold">{enrollment.academicStanding}</span> while the records
+                        derive <span className="font-bold">{standingReport.derived}</span>. The override stands until the
+                        Registrar rules on it at approval.
+                    </div>
+                )}
+
+                {canDecideStanding ? (
+                    <form onSubmit={handleSaveStanding} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                Department Decision *
+                            </label>
+                            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Academic standing">
+                                {['regular', 'irregular'].map((value) => {
+                                    const selected = standingForm.data.academicStanding === value;
+                                    const isRegular = value === 'regular';
+                                    const suggested = standingReport?.derived === value;
+                                    return (
+                                        <label
+                                            key={value}
+                                            className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                                                selected
+                                                    ? (isRegular
+                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500/20'
+                                                        : 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500/20')
+                                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="academicStanding"
+                                                value={value}
+                                                checked={selected}
+                                                onChange={() => standingForm.setData('academicStanding', value)}
+                                                className="sr-only"
+                                            />
+                                            <span className="capitalize">{value}</span>
+                                            {suggested && (
+                                                <span className="text-[10px] font-normal text-slate-500">matches the records</span>
+                                            )}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {standingForm.errors.academicStanding && (
+                                <p className="form-error mt-1.5">{standingForm.errors.academicStanding}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="yearLevel"
+                                className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5"
+                            >
+                                Year Level *
+                            </label>
+                            <select
+                                id="yearLevel"
+                                value={standingForm.data.yearLevel}
+                                onChange={(e) => standingForm.setData('yearLevel', Number(e.target.value))}
+                                className="form-select"
+                            >
+                                {[1, 2, 3, 4, 5].map((level) => (
+                                    <option key={level} value={level}>{`Year ${level}`}</option>
+                                ))}
+                            </select>
+                            {standingForm.errors.yearLevel && (
+                                <p className="form-error mt-1.5">{standingForm.errors.yearLevel}</p>
+                            )}
+                            <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                                Recorded from the credentials on this desk. The prescribed load and the section
+                                search are resolved against it, so change it before proposing subjects.
+                            </p>
+                        </div>
+                        <div className="md:pt-6">
+                            <button
+                                type="submit"
+                                disabled={standingForm.processing || !standingForm.data.academicStanding}
+                                title={!standingForm.data.academicStanding ? 'Choose Regular or Irregular first' : undefined}
+                                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-700 hover:from-teal-500 hover:to-emerald-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {standingForm.processing
+                                    ? 'Recording…'
+                                    : (enrollment.academicStanding ? 'Update Department Decision' : 'Record Standing Decision')}
+                            </button>
+                            <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                                Recording the standing here does not finalize it — the Registrar confirms or changes it when they
+                                approve the enrollment.
+                            </p>
+                        </div>
+                    </form>
+                ) : (
+                    <p className="text-xs text-slate-500">
+                        {enrollment.academicStanding
+                            ? 'Recorded by the evaluating department — shown here for reference.'
+                            : 'No standing has been recorded yet. The assigned evaluator or a dean records it from the evidence above.'}
+                    </p>
                 )}
             </div>
 
@@ -611,6 +855,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 placeholder="e.g., STI College"
                                 className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
                             />
+                            {creditForm.errors['credits.0.institutionName'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.institutionName']}</p>}
                         </div>
                         <div>
                             <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Type *</label>
@@ -620,14 +865,37 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
                             >
                                 <option value="elementary">Elementary</option>
-                                <option value="secondary">Secondary</option>
+                                <option value="juniorHigh">Junior High</option>
                                 <option value="seniorHigh">Senior High</option>
+                                <option value="vocational">Vocational</option>
                                 <option value="college">College</option>
-                                <option value="graduate">Graduate</option>
                             </select>
+                            {creditForm.errors['credits.0.institutionType'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.institutionType']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Grade (optional)</label>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution City / Municipality *</label>
+                            <input
+                                type="text"
+                                value={creditForm.data.cityMunicipality}
+                                onChange={(e) => creditForm.setData('cityMunicipality', e.target.value)}
+                                placeholder="e.g., Santa Cruz"
+                                className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            {creditForm.errors['credits.0.cityMunicipality'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.cityMunicipality']}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Province *</label>
+                            <input
+                                type="text"
+                                value={creditForm.data.province}
+                                onChange={(e) => creditForm.setData('province', e.target.value)}
+                                placeholder="e.g., Laguna"
+                                className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            {creditForm.errors['credits.0.province'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.province']}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Grade *</label>
                             <input
                                 type="number"
                                 min="1"
@@ -638,15 +906,16 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 placeholder="1.00–5.00"
                                 className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
                             />
+                            {creditForm.errors['credits.0.grade'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.grade']}</p>}
                         </div>
                     </div>
 
                     <button
                         type="button"
                         onClick={handleRecordCredit}
-                        disabled={creditForm.processing || !creditForm.data.previousSubjectName || !creditForm.data.creditedToSubjectId || !creditForm.data.institutionName}
+                        disabled={creditForm.processing || !creditForm.data.previousSubjectName || !creditForm.data.creditedToSubjectId || !creditForm.data.institutionName || !creditForm.data.cityMunicipality || !creditForm.data.province || !creditForm.data.grade}
                         className="w-full mt-4 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-heading font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        title={!creditForm.data.previousSubjectName || !creditForm.data.creditedToSubjectId || !creditForm.data.institutionName ? 'Complete the required fields first' : undefined}
+                        title={!creditForm.data.previousSubjectName || !creditForm.data.creditedToSubjectId || !creditForm.data.institutionName || !creditForm.data.cityMunicipality || !creditForm.data.province || !creditForm.data.grade ? 'Complete the required fields first' : undefined}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />

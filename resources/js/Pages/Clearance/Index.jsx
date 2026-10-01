@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Overall clearance status → badge tone
@@ -183,6 +183,16 @@ export default function Index({ clearances, periods, students = [], filters = {}
             const ay = cp.term?.academicYear;
             return ay ? `${ay.yearStart}-${ay.yearEnd} ${cp.term?.semester}` : '—';
         }},
+        { key: 'studentType', label: 'Student Type', render: (row) => (
+            <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
+                {titleCase(row.studentType)}
+            </Badge>
+        )},
+        { key: 'academicStanding', label: 'Standing', render: (row) => (
+            <Badge tone={academicStandingToneFor(row.academicStanding)}>
+                {academicStandingLabel(row.academicStanding)}
+            </Badge>
+        )},
         { key: 'overallStatus', label: 'Clearance Status', render: (row) => (
             <Badge tone={overallStatusToneMap[row.overallStatus] || 'neutral'}>
                 {titleCase(row.overallStatus)}

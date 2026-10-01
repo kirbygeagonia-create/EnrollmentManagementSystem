@@ -5,6 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $guard_name
+ * @property string|null $module
+ */
 class Permissions extends Model
 {
     protected $table = 'permissions';

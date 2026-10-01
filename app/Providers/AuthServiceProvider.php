@@ -18,6 +18,7 @@ use App\Models\Curriculumsubjects;
 use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Feetypes;
+use App\Models\Gradescale;
 use App\Models\Idrequests;
 use App\Models\Majors;
 use App\Models\Offices;
@@ -73,6 +74,7 @@ class AuthServiceProvider extends ServiceProvider
         Subjects::class => ReferenceDataPolicy::class,
         Academicterms::class => ReferenceDataPolicy::class,
         Feetypes::class => ReferenceDataPolicy::class,
+        Gradescale::class => ReferenceDataPolicy::class,
         Scholarshiptypes::class => ReferenceDataPolicy::class,
         Offices::class => ReferenceDataPolicy::class,
         Rooms::class => ReferenceDataPolicy::class,
@@ -109,9 +111,6 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('blocking.manageBlocks', function ($user) {
             return app(BlockingPolicy::class)->manageBlocks($user);
         });
-        Gate::define('block.manage', function ($user) {
-            return app(BlockingPolicy::class)->manageBlocks($user);
-        });
 
         /*
         |--------------------------------------------------------------------------
@@ -145,19 +144,30 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         // Assessment compute acts on the enrollment, not the assessment (AssessmentPolicy
-        // owns compute, but Enrollments maps to EvaluationPolicy).
-        Gate::define('assessment.compute', function ($user, $enrollment) {
+        // owns compute, but Enrollments maps to EvaluationPolicy). Named `...AtDesk`
+        // because Spatie's Gate::before auto-grants any ability that shares a
+        // permission name, which would skip the office-2/3 scope in the policy body.
+        Gate::define('assessment.computeAtDesk', function ($user, $enrollment) {
             return app(AssessmentPolicy::class)->compute($user, $enrollment);
         });
 
         // Payment recording acts on an assessment (PaymentPolicy owns record, but
-        // Studentassessments maps to AssessmentPolicy).
-        Gate::define('payment.record', function ($user, $assessment) {
+        // Studentassessments maps to AssessmentPolicy). Same collision rule as above:
+        // `payment.record` is a permission, so the ability could not carry that name.
+        Gate::define('payment.recordAtDesk', function ($user, $assessment) {
             return app(PaymentPolicy::class)->record($user, $assessment);
         });
 
+        // Zero-balance settlement acts on an assessment for the same reason (see
+        // payment.record above). The ability is named `payment.settle`, not
+        // `payment.record`, because the two are opposites: recording requires an
+        // outstanding balance, settling requires that there is none.
+        Gate::define('payment.settle', function ($user, $assessment) {
+            return app(PaymentPolicy::class)->settle($user, $assessment);
+        });
+
         // Clinic: view/record act on the enrollment.
-        Gate::define('clinic.view', function ($user) {
+        Gate::define('clinic.viewAtDesk', function ($user) {
             return $user->hasPermissionTo('clinic.view');
         });
         // NOTE: the ability is intentionally named `clinic.recordAssessment`,
@@ -165,17 +175,17 @@ class AuthServiceProvider extends ServiceProvider
         // name matches a permission the user holds — OfficeHead holds the
         // `clinic.record` permission, which would bypass ClinicPolicy::record's
         // office-11 scoping and let ANY office head record clinic assessments.
-        // Same collision-avoidance pattern as id.validateCard / id.releaseCard.
+        // Same collision-avoidance pattern as id.validateRequest.
         Gate::define('clinic.recordAssessment', function ($user, $enrollment) {
             return app(ClinicPolicy::class)->record($user, $enrollment);
         });
 
-        // ID: create acts on the enrollment; validate/release/attachPhoto act
+        // ID: create acts on the enrollment; validate/attachPhoto act
         // on the idrequest. Note: the ability names must NOT collide with
         // permission names — Spatie's Gate::before auto-grants any ability
         // matching a permission the user holds, which would bypass the
         // office-22 scope check below (the permission is shared by all OfficeHeads).
-        Gate::define('id.view', function ($user) {
+        Gate::define('id.viewAtDesk', function ($user) {
             return $user->hasPermissionTo('id.view');
         });
         Gate::define('id.create', function ($user, $enrollment) {
@@ -186,9 +196,6 @@ class AuthServiceProvider extends ServiceProvider
         });
         Gate::define('id.validateRequest', function ($user, $idRequest) {
             return app(IDPolicy::class)->validate($user, $idRequest);
-        });
-        Gate::define('id.releaseRequest', function ($user, $idRequest) {
-            return app(IDPolicy::class)->release($user, $idRequest);
         });
 
         // Blocking: Blocks maps to ReferenceDataPolicy (refdata manage), so all

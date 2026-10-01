@@ -717,8 +717,8 @@ class ClinicControllerTest extends TestCase
 
         $response = $this->get(route('clinic.show', $enrollment));
 
-        // The gate 'clinic.view' only checks hasPermissionTo('clinic.view')
-        // OfficeHead has this permission, so access is allowed
+        // The 'clinic.viewAtDesk' ability only checks the clinic.view permission,
+        // so OfficeHead — which holds it in every office — is allowed.
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Clinic/Show')
             ->has('enrollment')

@@ -2,7 +2,7 @@ import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
 import { Badge, formatStatusLabel } from '@/Components/ui';
 
-export default function PrintCertificate({ enrollment }) {
+export default function PrintCertificate({ enrollment, documentNumber, issuedDate }) {
     const studentName = enrollment.student
         ? `${enrollment.student.lastName}, ${enrollment.student.firstName}${enrollment.student.middleName ? ` ${enrollment.student.middleName.charAt(0)}.` : ''}${enrollment.student.suffix ? ` ${enrollment.student.suffix}` : ''}`
         : '—';
@@ -23,6 +23,7 @@ export default function PrintCertificate({ enrollment }) {
         <PrintLayout
             title="Enrollment Certificate"
             subtitle={`Certificate of Enrollment for ${termLabel}`}
+            downloadUrl={route('registrar.download-certificate', { enrollment: enrollment.enrollmentId })}
             headerContent={
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -41,7 +42,11 @@ export default function PrintCertificate({ enrollment }) {
                         <p className="font-medium text-brand-900">Major:</p>
                         <p>{enrollment.major?.majorName || '—'}</p>
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
+                        <p className="font-medium text-brand-900">Year Level:</p>
+                        <p>{enrollment.yearLevel ? `Year ${enrollment.yearLevel}` : '—'}</p>
+                    </div>
+                    <div>
                         <p className="font-medium text-brand-900">Term:</p>
                         <p>{termLabel}</p>
                     </div>
@@ -107,14 +112,17 @@ export default function PrintCertificate({ enrollment }) {
                         <div className="text-center w-1/3">
                             <div className="border-t border-brand-400 mb-1"></div>
                             <p className="text-sm text-brand-600">Registrar</p>
+                            <p className="text-sm font-medium text-brand-900">{processedBy}</p>
                         </div>
                         <div className="text-center w-1/3">
                             <div className="border-t border-brand-400 mb-1"></div>
                             <p className="text-sm text-brand-600">Date Issued</p>
+                            <p className="text-sm font-medium text-brand-900">{issuedDate || '—'}</p>
                         </div>
                         <div className="text-center w-1/3">
                             <div className="border-t border-brand-400 mb-1"></div>
                             <p className="text-sm text-brand-600">Document No.</p>
+                            <p className="text-sm font-mono font-medium text-brand-900">{documentNumber || '—'}</p>
                         </div>
                     </div>
                 </div>

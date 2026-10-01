@@ -166,7 +166,7 @@ const subSystems = [
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-slate-700 to-slate-900',
                 textColor: 'text-slate-700 bg-slate-100 border-slate-300',
-                description: 'ID request intake, face-photo capture, desk validation, and card release.',
+                description: 'ID request intake, face-photo capture, and desk validation.',
                 icon: (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
@@ -247,6 +247,7 @@ const subSystems = [
 export default function MegaAppLauncher({ isOpen, onClose, user }) {
     const { props } = usePage();
     const canStudentsView = props.can?.studentsView ?? false;
+    const canRefdataHub = props.can?.refdataHub ?? false;
     const [filterQuery, setFilterQuery] = useState('');
     const inputRef = useRef(null);
 
@@ -268,6 +269,10 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         if (user?.role === 'admin') return true;
         // Student 360 requires the students.view permission (audit §2.2)
         if (item.route === 'students.index' && !canStudentsView) return false;
+        // Reference catalogs are opened by permission, not by the admin role:
+        // the Registrar maintains the grade scale, so it needs this entry without
+        // becoming an administrator.
+        if (item.route === 'admin.reference-data.index') return canRefdataHub;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
             // Item 4 — some modules serve two offices (the Exam module is
@@ -344,7 +349,7 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
                     {/* Body */}
                     <div className="p-6 lg:p-8 max-h-[75vh] overflow-y-auto space-y-8 bg-slate-50/50">
                         {subSystems.map((section, sIdx) => {
-                            if (section.adminOnly && user?.role !== 'admin') return null;
+                            if (section.adminOnly && user?.role !== 'admin' && !canRefdataHub) return null;
 
                             const visibleItems = section.items.filter((item) => {
                                 if (!isAuthorized(item)) return false;

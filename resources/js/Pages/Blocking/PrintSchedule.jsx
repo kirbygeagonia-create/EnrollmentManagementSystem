@@ -24,6 +24,7 @@ export default function PrintSchedule({ block }) {
             title="Block Schedule"
             subtitle={`${block.course?.courseName} - ${block.blockName}`}
             date={termLabel}
+            downloadUrl={route('blocking.download-schedule', { block: block.blockId })}
             headerContent={
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
                     <div>

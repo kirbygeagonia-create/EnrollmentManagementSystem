@@ -7,14 +7,19 @@ import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Mod
 export default function ClearanceRequirements({ requirements, offices, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [showModal, setShowModal] = useState(false);
+    const [editingRequirement, setEditingRequirement] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     const form = useForm({
         officeId: '',
+        requirementName: '',
     });
 
     const columns = useMemo(() => [
         { key: 'office.officeName', label: 'Office', render: (row) => row.office?.officeName || '—' },
+        { key: 'requirementName', label: 'Requirement', render: (row) => row.requirementName || (
+            <span className="text-warning-700">Not yet worded — the slip prints an office name in place of a requirement</span>
+        ) },
     ], []);
 
     const handleFilter = (e) => {
@@ -28,21 +33,39 @@ export default function ClearanceRequirements({ requirements, offices, filters =
     };
 
     const openCreateModal = () => {
-        form.reset({ officeId: '' });
+        form.reset({ officeId: '', requirementName: '' });
+        setEditingRequirement(null);
+        setShowModal(true);
+    };
+
+    const openEditModal = (req) => {
+        form.reset({
+            officeId: req.officeId,
+            requirementName: req.requirementName || '',
+        });
+        setEditingRequirement(req);
         setShowModal(true);
     };
 
     const closeModal = () => {
         setShowModal(false);
+        setEditingRequirement(null);
         form.clearErrors();
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        form.post(route('admin.reference-data.clearance-requirements.store'), {
-            onSuccess: closeModal,
-            preserveScroll: true,
-        });
+        if (editingRequirement) {
+            form.patch(route('admin.reference-data.clearance-requirements.update', editingRequirement.clearanceRequirementId), {
+                onSuccess: closeModal,
+                preserveScroll: true,
+            });
+        } else {
+            form.post(route('admin.reference-data.clearance-requirements.store'), {
+                onSuccess: closeModal,
+                preserveScroll: true,
+            });
+        }
     };
 
     const confirmDelete = (req) => {
@@ -61,6 +84,15 @@ export default function ClearanceRequirements({ requirements, offices, filters =
     const renderActions = (row) => (
         <div className="flex items-center gap-2">
             <button
+                onClick={() => openEditModal(row)}
+                className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
+                aria-label="Edit requirement"
+            >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </button>
+            <button
                 onClick={() => confirmDelete(row)}
                 className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
                 aria-label="Delete requirement"
@@ -77,7 +109,7 @@ export default function ClearanceRequirements({ requirements, offices, filters =
             header={
                 <PageHeader
                     title="Clearance Requirements"
-                    subtitle="Manage clearance requirements per office"
+                    subtitle="The obligation lines every clearance slip prints, and the office that signs each one off"
                     actions={
                         <button onClick={openCreateModal} className="btn btn-primary">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +129,7 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by office name..."
+                        placeholder="Search by requirement or office name..."
                         className="form-input"
                     />
                 </FilterBarField>
@@ -129,8 +161,8 @@ export default function ClearanceRequirements({ requirements, offices, filters =
             <Modal
                 show={showModal}
                 onClose={closeModal}
-                title="Create Clearance Requirement"
-                subtitle="Select an office to add to the clearance workflow."
+                title={editingRequirement ? 'Edit Clearance Requirement' : 'Create Clearance Requirement'}
+                subtitle="Write the obligation the student must clear, then name the office that signs it off."
                 icon={
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -143,12 +175,22 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                             Cancel
                         </button>
                         <button type="submit" form="clearance-req-form" className="btn btn-primary" disabled={form.processing}>
-                            {form.processing ? 'Saving...' : 'Create'}
+                            {form.processing ? 'Saving...' : (editingRequirement ? 'Update' : 'Create')}
                         </button>
                     </div>
                 }
             >
                 <form id="clearance-req-form" onSubmit={handleSubmit}>
+                    <FormSection label="Requirement" error={form.errors.requirementName} required>
+                        <input
+                            type="text"
+                            value={form.data.requirementName}
+                            onChange={(e) => form.setData('requirementName', e.target.value)}
+                            className={`form-input ${form.errors.requirementName ? 'form-input-error' : ''}`}
+                            placeholder="e.g., Return borrowed books"
+                            required
+                        />
+                    </FormSection>
                     <FormSection label="Office" error={form.errors.officeId} required>
                         <Select
                             value={form.data.officeId}
@@ -168,7 +210,7 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                 onClose={() => setDeleteConfirm(null)}
                 onConfirm={handleDelete}
                 title="Delete Requirement"
-                message={`Are you sure you want to delete the clearance requirement for "${deleteConfirm?.office?.officeName || 'this office'}"? This action cannot be undone.`}
+                message={`Are you sure you want to delete "${deleteConfirm?.requirementName || deleteConfirm?.office?.officeName || 'this requirement'}"? A requirement already signed on a slip cannot be deleted. This action cannot be undone.`}
                 confirmText="Delete"
                 variant="danger"
             />

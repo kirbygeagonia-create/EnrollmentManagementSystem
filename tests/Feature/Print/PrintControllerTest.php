@@ -28,7 +28,10 @@ use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
+use App\Services\PrintedDocument;
+use App\Services\PrintService;
 use Database\Seeders\RbacSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -418,6 +421,54 @@ class PrintControllerTest extends TestCase
     }
 
     #[Test]
+    public function reprinting_class_cards_numbers_the_copies_instead_of_reusing_card_positions(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        $print = route('registrar.print-class-cards', $enrollment);
+        $this->actingAs($registrarStaff)->get($print)->assertStatus(200);
+        $this->actingAs($registrarStaff)->get($print)->assertStatus(200);
+
+        $numbers = Documentprintlog::where('enrollmentId', $enrollment->enrollmentId)
+            ->where('documentType', DocumentType::ClassCard)
+            ->orderBy('printLogId')
+            ->pluck('documentNumber')
+            ->map(fn ($number) => (int) $number)
+            ->all();
+
+        // Two prints of the same two-card load are four copies handed out, not the
+        // numbers 1 and 2 written twice. Numbering by card position made every repeat
+        // print collide, so the trail could not count copies for a student at all.
+        $this->assertSame([1, 2, 3, 4], $numbers);
+    }
+
+    #[Test]
+    public function the_print_trail_refuses_two_copies_sharing_one_issuance_number(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        $this->actingAs($registrarStaff)
+            ->get(route('registrar.print-certificate', $enrollment))
+            ->assertStatus(200);
+
+        // Copy #1 for this enrollment and document type is taken; the database, not
+        // just the counting code, is what says a second one cannot be filed.
+        $this->expectException(QueryException::class);
+
+        Documentprintlog::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'documentType' => DocumentType::Certificate,
+            'printedDate' => now(),
+            'printedBy' => $registrarStaff->userId,
+            'documentNumber' => 1,
+        ]);
+    }
+
+    #[Test]
     public function test_registrar_can_print_subject_load(): void
     {
         $student = $this->createStudent();
@@ -493,8 +544,12 @@ class PrintControllerTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('Blocking/PrintSchedule')
             ->has('block'));
 
-        // Note: BlockingController::printBlockSchedule does NOT write a Documentprintlog row
-        // (verified in controller code - it only renders the Inertia page)
+        // BR: every print inserts a log row — a block schedule printed from the
+        // desk must be as visible in the trail as one rendered to PDF.
+        $this->assertDatabaseHas('documentprintlog', [
+            'documentType' => DocumentType::BlockSchedule->value,
+            'printedBy' => $blockingStaff->userId,
+        ]);
     }
 
     #[Test]
@@ -512,5 +567,115 @@ class PrintControllerTest extends TestCase
             ->get(route('registrar.print-certificate', $enrollment));
 
         $response->assertStatus(403);
+    }
+
+    #[Test]
+    public function test_registrar_can_download_the_certificate_pdf(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($registrarStaff)
+            ->get(route('registrar.download-certificate', $enrollment))
+            ->assertStatus(200)
+            ->assertDownload("certificate-{$student->schoolIdNumber}-{$enrollment->enrollmentId}.pdf");
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'documentType' => DocumentType::Certificate,
+            'printedBy' => $registrarStaff->userId,
+            'documentNumber' => 1,
+        ]);
+
+        // A second saved copy is a second issuance, numbered after the first.
+        $this->actingAs($registrarStaff)
+            ->get(route('registrar.download-certificate', $enrollment))
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'documentType' => DocumentType::Certificate,
+            'documentNumber' => 2,
+        ]);
+    }
+
+    #[Test]
+    public function test_a_download_of_another_students_class_card_is_not_found(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $otherEnrollment = $this->createEnrolledEnrollment($this->createStudent());
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        $this->bindFakePrintService();
+
+        $foreignCard = $otherEnrollment->enrolledSubjects->first();
+
+        $this->actingAs($registrarStaff)
+            ->get(route('registrar.download-class-card', [
+                'enrollment' => $enrollment->enrollmentId,
+                'enrolledSubject' => $foreignCard->enrolledSubjectId,
+            ]))
+            ->assertStatus(404);
+
+        $this->assertDatabaseMissing('documentprintlog', [
+            'documentType' => DocumentType::ClassCard,
+            'enrollmentId' => $enrollment->enrollmentId,
+        ]);
+    }
+
+    #[Test]
+    public function test_unauthorized_user_cannot_download(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $unauthorizedStaff = $this->createStaffWithoutPrintPermissions(1);
+
+        $this->actingAs($unauthorizedStaff)
+            ->get(route('registrar.download-subject-load', $enrollment))
+            ->assertStatus(403);
+    }
+
+    /**
+     * Swap in a PrintService that writes a stand-in file instead of driving a
+     * browser, so the suite covers the download routes' authorization and audit
+     * behaviour without depending on a local Chrome install.
+     */
+    private function bindFakePrintService(): void
+    {
+        $fake = new class extends PrintService
+        {
+            public function printEnrollmentCertificate(Enrollments $enrollment, int $printedBy): PrintedDocument
+            {
+                return new PrintedDocument(
+                    $this->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, $printedBy),
+                    $this->placeholder('certificate')
+                );
+            }
+
+            public function printClassCard(
+                Enrollments $enrollment,
+                Enrolledsubjects $enrolledSubject,
+                int $printedBy
+            ): PrintedDocument {
+                return new PrintedDocument(
+                    $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy),
+                    $this->placeholder('class-card')
+                );
+            }
+
+            private function placeholder(string $prefix): string
+            {
+                $path = storage_path("app/prints/{$prefix}-".uniqid().'.pdf');
+                file_put_contents($path, '%PDF-1.4 placeholder');
+
+                return $path;
+            }
+        };
+
+        $this->app->instance(PrintService::class, $fake);
     }
 }
