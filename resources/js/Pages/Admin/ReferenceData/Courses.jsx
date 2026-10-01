@@ -16,6 +16,7 @@ export default function Courses({ courses, units, filters = {} }) {
         courseName: '',
         courseCode: '',
         requiresEntranceExam: false,
+        requiresCourseSpecificExam: false,
         requiresRetentionExam: false,
     });
 
@@ -26,6 +27,11 @@ export default function Courses({ courses, units, filters = {} }) {
         { key: 'requiresEntranceExam', label: 'Entrance Exam', render: (row) => (
             <Badge tone={row.requiresEntranceExam ? 'success' : 'neutral'}>
                 {row.requiresEntranceExam ? 'Required' : 'Not Required'}
+            </Badge>
+        )},
+        { key: 'requiresCourseSpecificExam', label: 'Course-Specific Exam', render: (row) => (
+            <Badge tone={row.requiresCourseSpecificExam ? 'success' : 'neutral'}>
+                {row.requiresCourseSpecificExam ? 'Required' : 'Not Required'}
             </Badge>
         )},
         { key: 'requiresRetentionExam', label: 'Retention Exam', render: (row) => (
@@ -58,6 +64,7 @@ export default function Courses({ courses, units, filters = {} }) {
             courseName: course.courseName,
             courseCode: course.courseCode,
             requiresEntranceExam: course.requiresEntranceExam,
+            requiresCourseSpecificExam: course.requiresCourseSpecificExam,
             requiresRetentionExam: course.requiresRetentionExam,
         });
         setEditingCourse(course);
@@ -250,6 +257,18 @@ export default function Courses({ courses, units, filters = {} }) {
                                 <div>
                                     <span className="text-sm font-medium text-brand-800">Requires Entrance Exam</span>
                                     <p className="text-xs text-brand-500">Applicants must pass an entrance exam before admission.</p>
+                                </div>
+                            </label>
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.requiresCourseSpecificExam}
+                                    onChange={(e) => form.setData('requiresCourseSpecificExam', e.target.checked)}
+                                    className="form-checkbox"
+                                />
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Requires Course-Specific Exam</span>
+                                    <p className="text-xs text-brand-500">The owning department also examines the applicant, after the general exam is passed.</p>
                                 </div>
                             </label>
                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">

@@ -88,9 +88,15 @@ class AdmissionPolicy
             }
         }
 
-        // For board courses, check entrance exam passed (BR9)
-        // General exam is always required. Course-specific exam is only
-        // required when one has actually been recorded for this applicant.
+        // Two examinations, two flags (BR9, and §28 G-6/C-5).
+        //
+        // The school-wide General examination is the first one every applicant
+        // takes, before an enrollment can exist. The departmental examination is
+        // a second, program-level screen — and until it had its own flag a
+        // program that sets requiresEntranceExam could refuse an applicant for
+        // the general result while waving through one who never sat the board
+        // test at all, because an absent course-specific result was treated as
+        // "not administered" rather than as a missing requirement.
         if ($admission->course->requiresEntranceExam) {
             $generalExam = $admission->examresults()
                 ->where('examStage', 'entrance')
@@ -103,17 +109,23 @@ class AdmissionPolicy
                 $blockers[] = 'The General Entrance Exam result on file is '
                     .$generalExam->examResult->value.', not pass.';
             }
+        }
 
-            // Only enforce course-specific exam if one was administered
-            $courseExam = $admission->examresults()
-                ->where('examStage', 'entrance')
-                ->where('examType', ExamType::CourseSpecific->value)
-                ->first();
+        // A recorded departmental result always decides the outcome; a missing one
+        // only does so where the program actually requires the examination.
+        $courseExam = $admission->examresults()
+            ->where('examStage', 'entrance')
+            ->where('examType', ExamType::CourseSpecific->value)
+            ->first();
 
-            if ($courseExam && $courseExam->examResult->value !== 'pass') {
-                $blockers[] = 'The Course-Specific Entrance Exam result on file is '
-                    .$courseExam->examResult->value.', not pass.';
+        if (! $courseExam) {
+            if ($admission->course->requiresCourseSpecificExam) {
+                $blockers[] = 'No Course-Specific Entrance Exam result on record for this applicant, and '
+                    .$admission->course->courseCode.' requires one.';
             }
+        } elseif ($courseExam->examResult->value !== 'pass') {
+            $blockers[] = 'The Course-Specific Entrance Exam result on file is '
+                .$courseExam->examResult->value.', not pass.';
         }
 
         return $blockers;

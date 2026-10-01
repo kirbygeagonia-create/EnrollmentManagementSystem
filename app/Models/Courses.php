@@ -14,12 +14,13 @@ class Courses extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['courseId', 'unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresRetentionExam'];
+    protected $fillable = ['courseId', 'unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresCourseSpecificExam', 'requiresRetentionExam'];
 
     protected function casts(): array
     {
         return [
             'requiresEntranceExam' => 'boolean',
+            'requiresCourseSpecificExam' => 'boolean',
             'requiresRetentionExam' => 'boolean',
         ];
     }

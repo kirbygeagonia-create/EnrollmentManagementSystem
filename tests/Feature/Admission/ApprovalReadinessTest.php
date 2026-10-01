@@ -273,4 +273,55 @@ class ApprovalReadinessTest extends TestCase
                 ->where('approvalBlockers.0', 'Only a pending application can be approved — this one is rejected.')
             );
     }
+
+    #[Test]
+    public function a_program_that_also_examines_the_department_refuses_an_applicant_who_never_sat_it(): void
+    {
+        // §28 G-6/C-5: the departmental examination used to be checked only "if
+        // one was administered", so the applicant who simply never sat it was
+        // admitted on the strength of the general result alone.
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+        $this->generalExam($student, 'pass');
+
+        Courses::where('courseId', $this->boardCourseId)->update(['requiresCourseSpecificExam' => true]);
+        $admission->unsetRelation('course');
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page
+                ->where('approvalBlockers.0', 'No Course-Specific Entrance Exam result on record for this applicant, and '.$this->boardCourseCode().' requires one.')
+            );
+
+        Examresults::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->boardCourseId,
+            'termId' => $this->termId,
+            'examStage' => ExamStage::Entrance,
+            'examType' => ExamType::CourseSpecific,
+            'examResult' => ExamResult::Pass,
+            'examDate' => now(),
+        ]);
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page->has('approvalBlockers', 0));
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('approved', $admission->fresh()->admissionStatus->value);
+    }
+
+    private function boardCourseCode(): string
+    {
+        return Courses::where('courseId', $this->boardCourseId)->value('courseCode');
+    }
 }
