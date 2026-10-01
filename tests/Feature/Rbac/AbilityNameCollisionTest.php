@@ -100,7 +100,13 @@ class AbilityNameCollisionTest extends TestCase
     #[Test]
     public function only_the_accounting_or_scholarship_office_may_compute_an_assessment(): void
     {
-        $evaluated = new Enrollments(['enrollmentStatus' => EnrollmentStatus::Evaluated]);
+        // Signed, because this test isolates the office scope. An unsigned
+        // evaluation is refused for a different reason entirely, and
+        // ComputeRequiresSignatureTest pins that one.
+        $evaluated = new Enrollments([
+            'enrollmentStatus' => EnrollmentStatus::Evaluated,
+            'formSignedDate' => now(),
+        ]);
 
         $registrarHead = $this->staffInOffice(OfficeId::Registrar->value, 'OfficeHead');
         $officer = $this->staffInOffice(OfficeId::Scholarship->value, 'ScholarshipOfficer');
