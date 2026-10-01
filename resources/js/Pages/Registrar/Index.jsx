@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Inline icon — queue of records awaiting registrar validation
@@ -10,7 +10,7 @@ const QueueIcon = () => (
     </svg>
 );
 
-export default function Index({ enrollments, filters = {} }) {
+export default function Index({ enrollments, readiness = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
     const columns = useMemo(() => [
@@ -35,8 +35,24 @@ export default function Index({ enrollments, filters = {} }) {
                 {formatStatusLabel(row.enrollmentStatus?.value || row.enrollmentStatus)}
             </Badge>
         )},
+        { key: 'readiness', label: 'Approval Readiness', render: (row) => {
+            const state = readiness[row.enrollmentId];
+            if (!state) return '—';
+            const ready = state.met === state.total;
+
+            return (
+                <div className="space-y-1">
+                    <Badge tone={ready ? 'success' : 'pending'}>{`${state.met} of ${state.total} gates`}</Badge>
+                    <p className={`text-[11px] ${ready ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {ready
+                            ? 'Approvable now'
+                            : `Waiting on ${state.waiting.map((gate) => registrarGateLabels[gate] || gate).join(', ')}`}
+                    </p>
+                </div>
+            );
+        }},
         { key: 'term', label: 'Term', render: (row) => row.term ? `${row.term.semester?.value || row.term.semester} ${row.term.academicYear?.yearLabel || ''}`.trim() : '—' },
-    ], []);
+    ], [readiness]);
 
     const handleFilter = (e) => {
         e.preventDefault();

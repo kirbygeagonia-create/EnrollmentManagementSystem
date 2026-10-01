@@ -52,8 +52,8 @@ class RegistrarController extends Controller
 
         $query = Enrollments::with([
             'student', 'course', 'major', 'term',
-            'studentassessments', 'enrollmentworkflow',
-            'enrolledSubjects.subject',
+            'studentassessments', 'enrollmentworkflow.workflowsteps',
+            'enrolledSubjects.subject', 'payments',
         ])
             ->whereIn('enrollmentStatus', [EnrollmentStatus::Assessed, EnrollmentStatus::Paid])
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
@@ -61,8 +61,24 @@ class RegistrarController extends Controller
 
         $enrollments = $query->paginate(20)->withQueryString();
 
+        // The desk used to have to open every record to learn whether it could
+        // be approved. This prints the same five gates beside each row, keyed by
+        // enrollment, naming the ones still outstanding.
+        $openPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
+        $readiness = collect($enrollments->getCollection())
+            ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod) {
+                $gates = $this->checklist($enrollment, $openPeriod);
+
+                return [$enrollment->enrollmentId => [
+                    'met' => collect($gates)->filter()->count(),
+                    'total' => count($gates),
+                    'waiting' => array_keys(array_filter($gates, fn ($passed) => ! $passed)),
+                ]];
+            });
+
         return Inertia::render('Registrar/Index', [
             'enrollments' => $enrollments,
+            'readiness' => $readiness,
             'filters' => $request->only(['search']),
         ]);
     }
@@ -88,18 +104,9 @@ class RegistrarController extends Controller
             'payments',
         ]);
 
-        $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
-            || ($enrollment->studentassessments?->remainingBalance <= 0)
-            || $enrollment->payments->where('paymentStatus', PaymentStatus::Paid)->isNotEmpty();
-
-        // Validation checklist
-        $checklist = [
-            'evaluation_signed' => (bool) $enrollment->evaluatedBy,
-            'assessment_completed' => (bool) $enrollment->studentassessments,
-            'payment_completed' => $paymentCompleted,
-            'clearance_verified' => $this->checkClearance($enrollment),
-            'registrarApprovalPending' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
-        ];
+        // Validation checklist — the same five gates the approval enforces and
+        // the queue prints beside each record.
+        $checklist = $this->checklist($enrollment);
 
         $allValid = collect($checklist)->every(fn ($v) => $v);
 
@@ -116,21 +123,58 @@ class RegistrarController extends Controller
     }
 
     /**
+     * The five gates a record must clear before the Registrar signs it, in the
+     * order the desks actually clear them.
+     *
+     * Shared by the queue, the desk and the approval itself so the list can
+     * never offer what the server would refuse.
+     *
+     * @return array<string, bool>
+     */
+    private function checklist(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null): array
+    {
+        $assessment = $enrollment->studentassessments;
+
+        // A missing fee sheet used to read as "owes nothing", because null
+        // compares below zero. Payment now passes only on a settled assessment
+        // or a receipt — which matters once each gate is printed on its own.
+        $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
+            || ($assessment !== null && $assessment->remainingBalance <= 0)
+            || $enrollment->payments->contains(fn ($payment) => $payment->paymentStatus === PaymentStatus::Paid);
+
+        $nextPendingOffice = $enrollment->enrollmentworkflow
+            ?->workflowsteps
+            ->sortBy('stepOrder')
+            ->first(fn ($step) => $step->stepStatus === WorkflowStepStatus::Pending)
+            ?->officeId;
+
+        return [
+            'evaluation_signed' => (bool) $enrollment->evaluatedBy,
+            'assessment_completed' => $assessment !== null,
+            'payment_completed' => $paymentCompleted,
+            'clearance_verified' => $this->checkClearance($enrollment, $openPeriod),
+            'registrarApprovalPending' => $nextPendingOffice === OfficeId::Registrar->value,
+        ];
+    }
+
+    /**
      * Check clearance for continuing students.
      */
-    private function checkClearance(Enrollments $enrollment): bool
+    private function checkClearance(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null): bool
     {
-        if (! in_array($enrollment->studentType->value, ['continuing', 'shifter'])) {
+        if (! in_array($enrollment->studentType->value, ['continuing', 'shifter'], true)) {
             return true; // First-year and transferee don't need clearance
         }
 
-        $currentPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
-        if (! $currentPeriod) {
+        // The whole queue shares one open period, so the list resolves it once
+        // and hands it down instead of asking per row.
+        $openPeriod ??= Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
+        if (! $openPeriod) {
             return true; // No open period
         }
 
         $clearance = Studentclearances::where('studentId', $enrollment->studentId)
-            ->where('clearancePeriodId', $currentPeriod->clearancePeriodId)
+            ->where('clearancePeriodId', $openPeriod->clearancePeriodId)
             ->first();
 
         return $clearance
@@ -156,22 +200,9 @@ class RegistrarController extends Controller
             'academicStanding' => ['required', 'in:'.implode(',', array_column(AcademicStanding::cases(), 'value'))],
         ]);
 
-        $paymentCompleted = $enrollment->enrollmentStatus === EnrollmentStatus::Paid
-            || ($enrollment->studentassessments?->remainingBalance <= 0)
-            || $enrollment->payments()->where('paymentStatus', PaymentStatus::Paid)->exists();
-
-        // Validate prerequisites
-        $checklist = [
-            'evaluation_signed' => (bool) $enrollment->evaluatedBy,
-            'assessment_completed' => (bool) $enrollment->studentassessments,
-            'payment_completed' => $paymentCompleted,
-            'clearance_verified' => $this->checkClearance($enrollment),
-            // Fifth gate the Show page displays ("Registrar Ready"): the next
-            // pending workflow step must belong to the Registrar's office.
-            // Keeps server-side validation in lockstep with the 5-gate
-            // checklist rendered in the UI (M4) instead of validating only 4.
-            'registrar_ready' => (bool) ($enrollment->enrollmentworkflow?->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId === OfficeId::Registrar->value),
-        ];
+        // Validate prerequisites — the identical five gates the desk displays,
+        // read from one method so the two cannot drift apart.
+        $checklist = $this->checklist($enrollment);
 
         if (collect($checklist)->contains(false)) {
             return back()->withErrors(['validation' => 'Not all prerequisites are met.']);

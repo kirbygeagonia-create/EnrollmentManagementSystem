@@ -14,7 +14,7 @@ export { default as EmptyState } from './EmptyState';
 export { default as FormSection } from './FormSection';
 export { default as Select } from './Select';
 export { default as RadioCards } from './RadioCards';
-export { formatStatusLabel, formatYearLevel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, idRequestReasonLabel, idRequestStatusTone } from './statusLabel';
+export { formatStatusLabel, formatYearLevel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, idRequestReasonLabel, idRequestStatusTone, registrarGateLabels } from './statusLabel';
 export { default as PrintLayout } from './PrintLayout';
 export { default as StepProgress } from './StepProgress';
 export { default as WorkflowStepper } from './WorkflowStepper';

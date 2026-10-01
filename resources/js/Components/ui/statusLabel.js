@@ -56,6 +56,17 @@ export function formatYearLevel(level) {
     return level ? `Year ${level}` : '—';
 }
 
+// The five gates RegistrarController::checklist() enforces, in the order a
+// record clears them. Key order is the signing order, and the queue and the
+// desk both read it from here so neither can rename a gate the other still shows.
+export const registrarGateLabels = {
+    evaluation_signed: 'Dept. Evaluation Signed',
+    assessment_completed: 'Assessment Computed',
+    payment_completed: 'Cashier Payment Settled',
+    clearance_verified: 'Campus Clearance Verified',
+    registrarApprovalPending: 'Registrar Ready',
+};
+
 // Keys match App\Enums\IdRequestReason values; labels match the ID desk's
 // own vocabulary (IDController::show maps the same cases).
 export const idRequestReasonLabel = {

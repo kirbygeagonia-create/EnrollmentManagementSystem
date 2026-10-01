@@ -1,15 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState } from 'react';
 
-const checklistSteps = [
-    { key: 'evaluation_signed', label: 'Dept. Evaluation Signed' },
-    { key: 'assessment_completed', label: 'Assessment Computed' },
-    { key: 'payment_completed', label: 'Cashier Payment Settled' },
-    { key: 'clearance_verified', label: 'Campus Clearance Verified' },
-    { key: 'registrarApprovalPending', label: 'Registrar Ready' },
-];
+const checklistSteps = Object.entries(registrarGateLabels).map(([key, label]) => ({ key, label }));
 
 export default function Show({ enrollment, checklist, allValid, standingReport = null }) {
     const [confirmOpen, setConfirmOpen] = useState(false);

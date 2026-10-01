@@ -277,4 +277,28 @@ class QueueStandingColumnsTest extends TestCase
         $this->assertSame('irregular', $row['academicStanding']);
         $this->assertSame('transferee', $row['studentType']);
     }
+
+    #[Test]
+    public function the_registrar_queue_names_the_gates_a_record_has_not_cleared(): void
+    {
+        $student = $this->student('Readiness');
+        $enrollment = $this->enrollment($student, AcademicStanding::Irregular, StudentType::Transferee);
+        Enrollments::query()->update(['enrollmentStatus' => EnrollmentStatus::Paid->value]);
+
+        // The desk used to open every row to find out whether it could be
+        // approved. The queue now carries the same five gates the approval
+        // enforces, and says which are still outstanding.
+        $page = $this->actingAs($this->staffWithRole('RegistrarApprover', 1))
+            ->get(route('registrar.index'))
+            ->assertOk()
+            ->assertViewHas('page')['page'];
+
+        $readiness = $page['props']['readiness'][$enrollment->enrollmentId];
+
+        $this->assertSame(5, $readiness['total']);
+        $this->assertContains('assessment_completed', $readiness['waiting']);
+        $this->assertContains('registrarApprovalPending', $readiness['waiting']);
+        $this->assertNotContains('evaluation_signed', $readiness['waiting']);
+        $this->assertSame($readiness['total'] - count($readiness['waiting']), $readiness['met']);
+    }
 }
