@@ -17,6 +17,8 @@ const bloodTypeOptions = [
 export default function Show({ enrollment, idRequest, requestReasons }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showValidateConfirm, setShowValidateConfirm] = useState(false);
+    const [showRemarkModal, setShowRemarkModal] = useState(false);
+    const [remarkText, setRemarkText] = useState(idRequest?.mismatchRemark || '');
     const [cameraActive, setCameraActive] = useState(false);
     const [cameraError, setCameraError] = useState('');
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -380,6 +382,23 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                                             {validateBlockReason}
                                         </p>
                                     )}
+                                    {requestIsPending && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRemarkModal(true)}
+                                            className="w-full py-2.5 px-4 rounded-xl font-heading font-bold text-xs border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.02 13.87A1.5 1.5 0 003.57 20h16.86a1.5 1.5 0 001.32-2.27L13.71 3.86a1.5 1.5 0 00-2.64 0z" />
+                                            </svg>
+                                            {idRequest.mismatchRemark ? 'Update the recorded mismatch' : 'Flag a mismatch'}
+                                        </button>
+                                    )}
+                                    {idRequest.mismatchRemark && (
+                                        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                                            <span className="font-bold">Flagged: </span>{idRequest.mismatchRemark}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </Card>
@@ -482,6 +501,46 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                 confirmText="Yes, Validate ID"
                 cancelText="Keep Pending"
             />
+
+            {/* Mismatch remark — the desk's only other outcome */}
+            <Modal
+                show={showRemarkModal}
+                onClose={() => setShowRemarkModal(false)}
+                title="Flag a mismatch on this ID request"
+                description="Record what did not match. This does not sign or close anything — the request stays pending until you validate it."
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        router.post(
+                            route('id.remark', { idRequest: idRequest.idRequestId }),
+                            { mismatchRemark: remarkText },
+                            { preserveScroll: true, onSuccess: () => setShowRemarkModal(false) }
+                        );
+                    }}
+                    className="space-y-4"
+                >
+                    <FormSection label="What did not match?" error={''} required>
+                        <textarea
+                            value={remarkText}
+                            onChange={(e) => setRemarkText(e.target.value)}
+                            rows={3}
+                            maxLength={255}
+                            placeholder="Photo does not match the student at the window; emergency contact number is disconnected."
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-seait-500"
+                            required
+                        />
+                    </FormSection>
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setShowRemarkModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600">
+                            Cancel
+                        </button>
+                        <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700">
+                            Record mismatch
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

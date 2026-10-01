@@ -15,7 +15,7 @@ class Idrequests extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'requestDate', 'status', 'validatedBy', 'validatedDate'];
+    protected $fillable = ['enrollmentId', 'requestReason', 'emergencyContactName', 'emergencyContactNumber', 'bloodType', 'cardPhotoPath', 'requestDate', 'status', 'mismatchRemark', 'validatedBy', 'validatedDate'];
 
     protected function casts(): array
     {

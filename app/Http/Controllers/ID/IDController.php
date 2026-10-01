@@ -188,4 +188,27 @@ class IDController extends Controller
 
         return back()->with('success', 'ID validated successfully.');
     }
+
+    /**
+     * Record what did not match on an open request.
+     *
+     * Validation is the desk's only affirmative act, and until now it was its
+     * only act: an officer who found the face at the window did not match the
+     * file, or the emergency contact was wrong, had nowhere on the record to say
+     * so. This writes that note against the request while it is still pending,
+     * so the correction is attributed to the desk that saw it rather than
+     * inventing a "held" status no workflow box can represent.
+     */
+    public function recordRemark(Request $request, Idrequests $idRequest): RedirectResponse
+    {
+        $this->authorize('id.remarkRequest', $idRequest);
+
+        $validated = $request->validate([
+            'mismatchRemark' => ['required', 'string', 'max:255'],
+        ]);
+
+        $idRequest->update(['mismatchRemark' => $validated['mismatchRemark']]);
+
+        return back()->with('success', 'Mismatch recorded on the ID request.');
+    }
 }

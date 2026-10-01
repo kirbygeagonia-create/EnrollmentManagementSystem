@@ -84,6 +84,28 @@ class IDPolicy
     }
 
     /**
+     * Determine whether the user can record a mismatch against the request.
+     *
+     * The desk's only other outcome was "validated", so an officer who found the
+     * face at the window did not match the file had no way to say so on the
+     * record. A remark is allowed while the request is still open and not after:
+     * validation closes the request, and annotating a closed one would suggest
+     * the note was seen before the signature.
+     */
+    public function remark(Staffusers $user, Idrequests $request): bool
+    {
+        if (! $user->hasPermissionTo('id.validate')) {
+            return false;
+        }
+
+        if ($user->officeId !== OfficeId::IdOffice->value) {
+            return false;
+        }
+
+        return $request->status === IdRequestStatus::Pending;
+    }
+
+    /**
      * Determine whether the user can validate the ID request.
      * Strict validation: the request must carry the captured face photo.
      */

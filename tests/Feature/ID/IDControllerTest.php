@@ -719,4 +719,95 @@ class IDControllerTest extends TestCase
 
         $this->assertEquals(IdRequestStatus::Validated, $idRequest->fresh()->status);
     }
+
+    #[Test]
+    public function test_record_remark_stores_what_did_not_match_on_an_open_request(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        $this->post(route('id.remark', $idRequest), [
+            'mismatchRemark' => 'Photo does not match the student at the window.',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            'Photo does not match the student at the window.',
+            $idRequest->fresh()->mismatchRemark
+        );
+        $this->assertEquals(IdRequestStatus::Pending, $idRequest->fresh()->status, 'A remark must not decide anything.');
+    }
+
+    #[Test]
+    public function test_record_remark_refuses_an_empty_reason(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ]);
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        $this->post(route('id.remark', $idRequest), ['mismatchRemark' => ''])
+            ->assertSessionHasErrors('mismatchRemark');
+
+        $this->assertNull($idRequest->fresh()->mismatchRemark);
+    }
+
+    #[Test]
+    public function test_a_closed_request_cannot_be_annotated_afterwards(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ]);
+        $idRequest = $enrollment->fresh()->idrequests->first();
+        $idRequest->update(['status' => IdRequestStatus::Validated]);
+
+        $this->post(route('id.remark', $idRequest), ['mismatchRemark' => 'Wrong face.'])
+            ->assertForbidden();
+
+        $this->assertNull($idRequest->fresh()->mismatchRemark, 'A note on a signed request would read as though it was seen before validation.');
+    }
+
+    #[Test]
+    public function test_only_the_id_office_can_record_a_mismatch(): void
+    {
+        $otherOffice = $this->staffForOffice(1);
+        $this->actingAs($otherOffice);
+
+        $enrollment = $this->createEnrollment();
+        $idRequest = Idrequests::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+            'requestDate' => now(),
+            'status' => IdRequestStatus::Pending,
+        ]);
+
+        $this->post(route('id.remark', $idRequest), ['mismatchRemark' => 'Wrong face.'])
+            ->assertForbidden();
+    }
 }

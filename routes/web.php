@@ -149,6 +149,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/id/requests/{idRequest}/photo', [IDController::class, 'attachPhoto'])->name('id.photo');
     Route::get('/id/requests/{idRequest}/photo', [IDController::class, 'photo'])->name('id.photo.view');
     Route::post('/id/requests/{idRequest}/validate', [IDController::class, 'validate'])->name('id.validate');
+    Route::post('/id/requests/{idRequest}/remark', [IDController::class, 'recordRemark'])->name('id.remark');
 
     /* ==================== Admin / Reference Data ==================== */
     Route::get('/admin/reference-data', [ReferenceDataController::class, 'index'])->name('admin.reference-data.index');

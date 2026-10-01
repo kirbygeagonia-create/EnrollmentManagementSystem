@@ -197,6 +197,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('id.validateRequest', function ($user, $idRequest) {
             return app(IDPolicy::class)->validate($user, $idRequest);
         });
+        // Same collision rule as id.validateRequest: `id.remark` is not a
+        // permission, but the ability is named apart anyway so a future
+        // permission of that name cannot silently grant office-22 scope.
+        Gate::define('id.remarkRequest', function ($user, $idRequest) {
+            return app(IDPolicy::class)->remark($user, $idRequest);
+        });
 
         // Blocking: Blocks maps to ReferenceDataPolicy (refdata manage), so all
         // blocking-module abilities are explicit gates.
