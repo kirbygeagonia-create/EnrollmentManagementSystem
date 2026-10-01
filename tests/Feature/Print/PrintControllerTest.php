@@ -669,7 +669,15 @@ class PrintControllerTest extends TestCase
 
             private function placeholder(string $prefix): string
             {
-                $path = storage_path("app/prints/{$prefix}-".uniqid().'.pdf');
+                // The real PrintService creates this folder before writing; the
+                // fake has to as well, or the download tests only pass on a
+                // developer machine that already ran the fidelity command.
+                $dir = storage_path('app/prints');
+                if (! is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+
+                $path = $dir.'/'.$prefix.'-'.uniqid().'.pdf';
                 file_put_contents($path, '%PDF-1.4 placeholder');
 
                 return $path;
