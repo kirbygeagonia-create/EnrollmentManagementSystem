@@ -12,16 +12,19 @@ const studentTypeToneMap = {
     shifter: 'accent',
 };
 
-export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, standingReport = null, religions = [], academicStandings = [], profileGaps = [], can = {} }) {
+export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [profileOpenRequest, setProfileOpenRequest] = useState(0);
 
-    // BR32: the enrollment form cannot be forwarded while a required demographic
-    // field is missing. The server refuses the signature too — this only keeps the
-    // desk from clicking a button that would come back as an error.
+    // BR32 and concern #14: the form cannot be forwarded while a required
+    // demographic field is missing, or while a returning student in a program
+    // that examines retention has no passing result for this term. The server
+    // refuses on the same keyed list — this only keeps the desk from clicking a
+    // button that would come straight back as an error.
     const gaps = profileGaps || [];
-    const signBlockedByProfile = gaps.length > 0;
+    const blockers = Object.values(signBlockers || {});
+    const retentionBlocker = signBlockers?.retention || null;
 
     // Item 4: the retention exam lives in the Academic Evaluation area (BR10)
     // — handled and viewed only by the owning academic department.
@@ -204,9 +207,9 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     <button
                         type="button"
                         onClick={() => setShowConfirmSign(true)}
-                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated' || !!enrollment.formSignedDate || signBlockedByProfile}
-                        title={signBlockedByProfile
-                            ? `Cannot sign while the profile is incomplete: ${gaps.join(', ')}`
+                        disabled={isSubmitting || enrollment.enrollmentStatus !== 'evaluated' || !!enrollment.formSignedDate || blockers.length > 0}
+                        title={blockers.length > 0
+                            ? blockers.join(' ')
                             : (enrollment.formSignedDate || enrollment.enrollmentStatus === 'evaluated' ? undefined : 'Signable once the evaluation status reaches Evaluated')}
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-heading font-bold text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                     >
@@ -235,6 +238,11 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     {enrollment.enrollmentStatus === 'evaluated' && !enrollment.formSignedDate && (
                         <p className="text-xs text-slate-500 w-full text-right">
                             Computation waits for the signature: nothing is priced until the department stands behind this load.
+                        </p>
+                    )}
+                    {retentionBlocker && (
+                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 w-full text-right">
+                            {retentionBlocker}
                         </p>
                     )}
                     {enrollment.enrollmentStatus !== 'evaluated' && !enrollment.formSignedDate && (

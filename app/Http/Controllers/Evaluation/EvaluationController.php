@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Evaluation;
 use App\Enums\AcademicStanding;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Enums\InstitutionType;
 use App\Enums\OfficeId;
 use App\Enums\PassResult;
+use App\Enums\StudentType;
 use App\Http\Controllers\Controller;
 use App\Models\Addresses;
 use App\Models\Creditedsubjects;
@@ -148,8 +150,10 @@ class EvaluationController extends Controller
                 'captureProfile' => $request->user()->can('captureProfile', $enrollment),
             ],
             // BR32: the checklist the desk has to clear before it can sign, and
-            // the same list sign() refuses on. One definition, two readers.
+            // the same list sign() refuses on. One definition, two readers. Keyed
+            // so the screen can name each reason where that field is shown.
             'profileGaps' => $this->missingProfileFields($enrollment),
+            'signBlockers' => $this->signBlockers($enrollment),
         ]);
     }
 
@@ -646,15 +650,16 @@ class EvaluationController extends Controller
     {
         $this->authorize('sign', $enrollment);
 
-        // BR32: the form cannot be forwarded while a required demographic field is
-        // missing. The screen disables the button from the same list, so this is the
-        // server holding the same line — a stale page or a direct POST must not push
-        // a profile-less enrollment on to the six desks behind it.
-        $missing = $this->missingProfileFields($enrollment);
-        if ($missing !== []) {
-            throw ValidationException::withMessages([
-                'profile' => 'Capture the profile first — still missing: '.implode(', ', $missing).'.',
-            ]);
+        // BR32: the form cannot be forwarded while a required demographic field
+        // is missing, and concern #14: a continuing student cannot be forwarded
+        // up a year level without the retention examination this department has
+        // recorded as passed. The screen disables the button from the same list,
+        // so this is the server holding the identical line — a stale page or a
+        // direct POST cannot push an unproven enrollment on to the desks behind
+        // it, which is how a fee sheet used to get computed on top of it.
+        $blockers = $this->signBlockers($enrollment);
+        if ($blockers !== []) {
+            throw ValidationException::withMessages($blockers);
         }
 
         DB::transaction(function () use ($enrollment) {
@@ -673,6 +678,64 @@ class EvaluationController extends Controller
         });
 
         return back()->with('success', 'Evaluation signed. Workflow created.');
+    }
+
+    /**
+     * Every reason this enrollment cannot be signed yet, keyed by the field the
+     * desk has to fix. One definition for the server and the screen, so the
+     * button can never offer what the POST will refuse.
+     *
+     * @return array<string, string>
+     */
+    private function signBlockers(Enrollments $enrollment): array
+    {
+        $blockers = [];
+
+        $missing = $this->missingProfileFields($enrollment);
+        if ($missing !== []) {
+            $blockers['profile'] = 'Capture the profile first — still missing: '.implode(', ', $missing).'.';
+        }
+
+        if (($retention = $this->retentionBlocker($enrollment)) !== null) {
+            $blockers['retention'] = $retention;
+        }
+
+        return $blockers;
+    }
+
+    /**
+     * Concern #14, verbatim: "other students continuing takes the retention exam
+     * as a proof that they really learned anything before proceeding to higher
+     * year level". Until this the result was recorded and displayed but gated
+     * nothing, so a continuing student with a fail — or with no examination at
+     * all — moved forward exactly like one who had passed.
+     */
+    private function retentionBlocker(Enrollments $enrollment): ?string
+    {
+        $isReturning = in_array($enrollment->studentType->value, [StudentType::Continuing->value, StudentType::Shifter->value], true);
+
+        if (! $isReturning || ! $enrollment->course?->requiresRetentionExam) {
+            return null;
+        }
+
+        // Read against this enrollment's own term: a pass from an earlier term
+        // proves fitness to have continued then, not now.
+        $retention = Examresults::where('studentId', $enrollment->studentId)
+            ->where('courseId', $enrollment->courseId)
+            ->where('termId', $enrollment->termId)
+            ->where('examStage', ExamStage::Retention->value)
+            ->orderByDesc('examId')
+            ->first();
+
+        if (! $retention) {
+            return 'No retention examination recorded for this term — a returning student in a program that examines retention must pass it before the form is forwarded.';
+        }
+
+        if ($retention->examResult !== ExamResult::Pass) {
+            return 'The retention examination on file reads '.$retention->examResult->value.', not pass.';
+        }
+
+        return null;
     }
 
     /**

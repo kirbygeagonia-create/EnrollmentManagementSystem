@@ -18,6 +18,9 @@ use App\Enums\ApplicationMode;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\ExamResult;
+use App\Enums\ExamStage;
+use App\Enums\ExamType;
 use App\Enums\OfficeId;
 use App\Enums\StudentType;
 use App\Enums\WorkflowStatus;
@@ -1700,6 +1703,48 @@ foreach (DB::table('studentassessments as a')
 }
 
 echo "\n";
+
+// -------------------------------------------------------------
+// 10j. RETENTION EXAMINATION — the proof a returning student moves up
+// -------------------------------------------------------------
+// Concern #14 made this result a precondition of the Department Evaluation
+// signature: a continuing or shifting student in a program that examines
+// retention now stops at that desk without a pass recorded for the term. The
+// demo needs both halves of that rule, so every returning student in such a
+// program is recorded as passing except the newest, which the desk can show
+// being refused and then clear by recording the examination.
+$retentionSeats = DB::table('enrollments as e')
+    ->join('courses as c', 'c.courseId', '=', 'e.courseId')
+    ->where('e.termId', $termId)
+    ->whereIn('e.studentType', [StudentType::Continuing->value, StudentType::Shifter->value])
+    ->where('c.requiresRetentionExam', 1)
+    ->orderBy('e.enrollmentId')
+    ->select('e.enrollmentId', 'e.studentId', 'e.courseId')
+    ->get();
+
+$heldBack = $retentionSeats->last();
+$retentionPassed = 0;
+foreach ($retentionSeats as $seat) {
+    if ($heldBack && $seat->enrollmentId === $heldBack->enrollmentId) {
+        continue;
+    }
+
+    DB::table('examresults')->updateOrInsert([
+        'studentId' => $seat->studentId,
+        'courseId' => $seat->courseId,
+        'termId' => $termId,
+        'examStage' => ExamStage::Retention->value,
+    ], [
+        'examType' => ExamType::CourseSpecific->value,
+        'examResult' => ExamResult::Pass->value,
+        'examDate' => now()->toDateString(),
+    ]);
+    $retentionPassed++;
+}
+
+echo $retentionPassed > 0
+    ? '✔ Department Evaluation: '.$retentionPassed.' passing retention result(s) recorded'.($heldBack ? ', 1 held back so the gate is visible' : '')."\n"
+    : "  ! Department Evaluation: no returning student sits a program that examines retention — the gate will not show\n";
 
 // -------------------------------------------------------------
 // 11. DESK QUEUE REPORT — what each screen shows after this run
