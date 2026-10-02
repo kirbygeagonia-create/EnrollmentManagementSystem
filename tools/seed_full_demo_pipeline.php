@@ -1729,6 +1729,39 @@ DB::table('studentrequirementsubmissions as s')
     ->update(['submissionStatus' => 'verified']);
 
 // -------------------------------------------------------------
+// 10j2. RETENTION PATHWAY — returning students in a program that examines them
+// -------------------------------------------------------------
+// Concern #14 gates the Department Evaluation signature on a passing retention
+// examination, but only for a continuing or shifting student in a program flagged
+// requiresRetentionExam — and every returning demo student sat BSIT, a program the
+// reference data deliberately does not flag. The gate therefore had nothing to
+// demonstrate: the desk signed straight through and a reviewer could not tell the
+// rule existed at all. Two Criminology students are seated here, one per outcome the
+// rule produces; the next section records the pass for the older and leaves the
+// newest unexamined so both halves are on the desk at once.
+foreach ([
+    ['DEMO-2026-024', 'Iñigo', 'Barrameda', 'demo_inigo', 'demo.inigo@example.com', 'male'],
+    ['DEMO-2026-025', 'Relinda', 'Sabla', 'demo_relinda', 'demo.relinda@example.com', 'female'],
+] as [$schoolId, $first, $last, $username, $email, $gender]) {
+    $returning = createDemoStudent($schoolId, $first, $last, $username, $email, $gender);
+
+    if (! Enrollments::where('studentId', $returning->studentId)->where('termId', $termId)->exists()) {
+        Enrollments::create([
+            'studentId' => $returning->studentId,
+            'courseId' => 3, // BSCrim — flagged requiresRetentionExam in the reference data
+            'termId' => $termId,
+            'yearLevel' => 2,
+            'studentType' => StudentType::Continuing,
+            'enrollmentType' => EnrollmentType::Old,
+            'academicStanding' => null,
+            'evaluatedBy' => 5,
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+        ]);
+        echo "✔ Department Evaluation: seated {$last}, {$first} ({$schoolId}) — BSCrim year 2, retention pathway\n";
+    }
+}
+
+// -------------------------------------------------------------
 // 10k. RETENTION EXAMINATION — the proof a returning student moves up
 // -------------------------------------------------------------
 // Concern #14 made this result a precondition of the Department Evaluation
