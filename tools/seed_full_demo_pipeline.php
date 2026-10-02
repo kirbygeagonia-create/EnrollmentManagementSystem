@@ -1705,7 +1705,31 @@ foreach (DB::table('studentassessments as a')
 echo "\n";
 
 // -------------------------------------------------------------
-// 10j. RETENTION EXAMINATION — the proof a returning student moves up
+// 10j. REGISTRAR — the documents its own checklist now demands
+// -------------------------------------------------------------
+// Concerns #28/#32 added two gates to the Registrar's checklist: every document the
+// applicant's admission required must be verified, and no subject on the approved
+// load may sit behind an unmet prerequisite. Records that had already travelled the
+// whole pipeline were seated before the first existed, so the desk would suddenly
+// find its approvable seat unapprovable. Only the submissions behind enrollments
+// actually standing in the Registrar's queue are settled here — an application still
+// at the Admission desk keeps its unverified document, because that is the work that
+// desk is demoed doing.
+DB::table('studentrequirementsubmissions as s')
+    ->join('admissions as a', 'a.admissionId', '=', 's.admissionId')
+    ->join('admissionrequirements as r', 'r.requirementId', '=', 's.requirementId')
+    ->whereIn('a.admissionStatus', ['pending', 'approved'])
+    ->where('r.isRequired', 1)
+    ->where('submissionStatus', '!=', 'verified')
+    ->whereExists(fn ($query) => $query
+        ->select(DB::raw(1))->from('enrollments as e')
+        ->whereColumn('e.admissionId', 'a.admissionId')
+        ->where('e.termId', $termId)
+        ->whereIn('e.enrollmentStatus', [EnrollmentStatus::Assessed->value, EnrollmentStatus::Paid->value]))
+    ->update(['submissionStatus' => 'verified']);
+
+// -------------------------------------------------------------
+// 10k. RETENTION EXAMINATION — the proof a returning student moves up
 // -------------------------------------------------------------
 // Concern #14 made this result a precondition of the Department Evaluation
 // signature: a continuing or shifting student in a program that examines

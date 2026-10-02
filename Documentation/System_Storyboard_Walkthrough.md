@@ -1,6 +1,6 @@
 # SEAIT Enrollment Management System — Complete Workflow & Process Storyboard
 
-> **Last Verified:** September 24, 2026  
+> **Last Verified:** October 1, 2026  
 > **System Version:** Laravel 13 + React (Inertia.js)  
 > **Test Suite Status:** ✅ 274 tests passed, 1,638 assertions (0 failures)  
 
@@ -51,7 +51,7 @@ flowchart LR
 | **Guidance Counselor** | Administers standardized entrance exams | `Exam/Index.jsx`, `Exam/Create.jsx`, `Exam/Results.jsx` | General Entrance Examination Answer Sheets |
 | **College Dean / Evaluator** | Advises curriculum load, evaluates prior grades & retention | `Evaluation/Index.jsx`, `Evaluation/Show.jsx` | Enrollment Form (Demographics + Subject Load), Retention Exams |
 | **Scholarship / Assessment** | Computes tuition grants and itemized school fees | `Assessment/Index.jsx`, `Assessment/Show.jsx` | Scholarship Grant Vouchers, Assessment Slips |
-| **Accounting Cashier** | Collects cash/online payments, enforces fee policies | `Accounting/Index.jsx`, `Accounting/Show.jsx`, `Accounting/DailyReport.jsx` | Official Receipt (OR), Cash Ledger |
+| **Accounting Cashier** | Collects cash payments at the window, enforces fee policies | `Accounting/Index.jsx`, `Accounting/Show.jsx`, `Accounting/DailyReport.jsx` | Official Receipt (OR), Cash Ledger |
 | **Registrar Officer** | Official custodian of academic records & university seal | `Registrar/Index.jsx`, `Registrar/Show.jsx` | Certificate of Matriculation, Official Class Cards |
 | **Department Scheduler** | Manages section cohorts, instructors, and physical rooms | `Blocking/Index.jsx`, `Blocking/Show.jsx` | Master Schedule, Room Directory, Class Block Sheets |
 | **Clinic Physician / Nurse** | Conducts physical exam, manages PhilHealth compliance | `Clinic/Index.jsx`, `Clinic/Show.jsx` | Medical Records, PhilHealth Enrollment Forms |

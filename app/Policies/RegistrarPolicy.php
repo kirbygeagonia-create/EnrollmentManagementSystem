@@ -12,6 +12,7 @@ use App\Models\Clearanceperiods;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
+use App\Support\EnrollmentReadiness;
 
 class RegistrarPolicy
 {
@@ -80,6 +81,20 @@ class RegistrarPolicy
                     return false;
                 }
             }
+        }
+
+        // Concerns #28/#32, enforced here as well as displayed on the checklist:
+        // the applicant's own required documents must be verified, and no subject
+        // on the confirmed load may sit behind an unmet prerequisite. Both were
+        // checked only at their own desks, so a record could reach this one
+        // carrying an unverified certificate or an unentitled load and still be
+        // approvable.
+        if (! EnrollmentReadiness::documentsVerified($enrollment)) {
+            return false;
+        }
+
+        if (! EnrollmentReadiness::prerequisitesMet($enrollment)) {
+            return false;
         }
 
         return true;

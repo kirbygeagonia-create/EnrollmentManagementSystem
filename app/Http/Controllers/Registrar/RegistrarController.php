@@ -24,6 +24,7 @@ use App\Services\AcademicStandingService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\PrintService;
 use App\Services\WorkflowService;
+use App\Support\EnrollmentReadiness;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -154,6 +155,12 @@ class RegistrarController extends Controller
             'payment_completed' => $paymentCompleted,
             'clearance_verified' => $this->checkClearance($enrollment, $openPeriod),
             'registrarApprovalPending' => $nextPendingOffice === OfficeId::Registrar->value,
+            // Concerns #28/#32: the two checks this desk was meant to make and
+            // did not — that the applicant's own required documents were actually
+            // verified, and that the load being approved is one the student is
+            // entitled to take.
+            'documents_verified' => EnrollmentReadiness::documentsVerified($enrollment),
+            'prerequisites_met' => EnrollmentReadiness::prerequisitesMet($enrollment),
         ];
     }
 

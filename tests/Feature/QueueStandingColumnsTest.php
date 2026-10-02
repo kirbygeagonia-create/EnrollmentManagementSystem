@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\AcademicStanding;
+use App\Enums\AdmissionStatus;
+use App\Enums\ApplicantType;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrollmentStatus;
@@ -11,10 +13,13 @@ use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Enums\StudentType;
+use App\Enums\SubmissionStatus;
 use App\Enums\UnitType;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
+use App\Models\Admissionrequirements;
+use App\Models\Admissions;
 use App\Models\Clearanceperiods;
 use App\Models\Courses;
 use App\Models\Enrollments;
@@ -23,6 +28,7 @@ use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
+use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -285,8 +291,31 @@ class QueueStandingColumnsTest extends TestCase
         $enrollment = $this->enrollment($student, AcademicStanding::Irregular, StudentType::Transferee);
         Enrollments::query()->update(['enrollmentStatus' => EnrollmentStatus::Paid->value]);
 
+        // Concerns #28/#32: an admission document the student submitted but the
+        // Admission desk never verified is now a gate of its own, named here.
+        $admission = Admissions::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->courseId,
+            'termId' => $this->termId,
+            'applicantType' => ApplicantType::Transferee,
+            'admissionStatus' => AdmissionStatus::Approved,
+        ]);
+        $requirement = Admissionrequirements::create([
+            'requirementName' => 'Good Moral Certificate',
+            'appliesTo' => 'transferee',
+            'isRequired' => true,
+        ]);
+        Studentrequirementsubmissions::create([
+            'admissionId' => $admission->admissionId,
+            'requirementId' => $requirement->requirementId,
+            'submissionStatus' => SubmissionStatus::Submitted,
+            'submittedDate' => now(),
+            'remarks' => '',
+        ]);
+        $enrollment->update(['admissionId' => $admission->admissionId]);
+
         // The desk used to open every row to find out whether it could be
-        // approved. The queue now carries the same five gates the approval
+        // approved. The queue now carries the same gates the approval
         // enforces, and says which are still outstanding.
         $page = $this->actingAs($this->staffWithRole('RegistrarApprover', 1))
             ->get(route('registrar.index'))
@@ -295,9 +324,11 @@ class QueueStandingColumnsTest extends TestCase
 
         $readiness = $page['props']['readiness'][$enrollment->enrollmentId];
 
-        $this->assertSame(5, $readiness['total']);
+        $this->assertSame(7, $readiness['total']);
         $this->assertContains('assessment_completed', $readiness['waiting']);
         $this->assertContains('registrarApprovalPending', $readiness['waiting']);
+        $this->assertContains('documents_verified', $readiness['waiting']);
+        $this->assertNotContains('prerequisites_met', $readiness['waiting'], 'With no curriculum pinned to the record there is no prerequisite the load can breach.');
         $this->assertNotContains('evaluation_signed', $readiness['waiting']);
         $this->assertSame($readiness['total'] - count($readiness['waiting']), $readiness['met']);
     }
