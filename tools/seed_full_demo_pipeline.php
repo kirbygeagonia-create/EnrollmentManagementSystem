@@ -7,9 +7,9 @@
 
 require 'vendor/autoload.php';
 $app = require 'bootstrap/app.php';
-// Spelled out rather than imported: a `use` statement only takes effect from its
-// own line onward, and every import in this file sits below this bootstrap call.
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+// The kernel is booted below the import block, not here: this file's classes are
+// resolved by the `use` statements further down, and a `use` only takes effect from
+// its own line onward. Bootstrapping above them makes the tool fatal on line 1.
 
 use App\Enums\AcademicStanding;
 use App\Enums\AdmissionStatus;
@@ -41,6 +41,8 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+
+$app->make(Kernel::class)->bootstrap();
 
 echo "=======================================================\n";
 echo " SEAIT EMS — COMPREHENSIVE WORKFLOW DEMO-DAY SEEDER   \n";
@@ -1809,6 +1811,51 @@ echo $retentionPassed > 0
 // The demo is judged on whether a desk has something real to do, so the tool
 // prints the queue each screen will list instead of leaving that to be checked
 // by hand before the defense.
+// A slip is printed for a student in a term. When a clearance names a student who has no
+// enrollment for its own period's term, the issue row has no enrollment to attribute itself
+// to: it lands with enrollmentId NULL, the unique index cannot reject a repeat across NULLs,
+// and two students' slips can carry the same document number (§25.10). Named here rather than
+// repaired here — creating an enrollment to make a count look good would invent history.
+$unattributedSlips = DB::table('studentclearances as sc')
+    ->join('clearanceperiods as cp', 'cp.clearancePeriodId', '=', 'sc.clearancePeriodId')
+    ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('enrollments as e')
+        ->whereColumn('e.studentId', 'sc.studentId')
+        ->whereColumn('e.termId', 'cp.termId'))
+    ->get(['sc.studentClearanceId', 'sc.studentId', 'cp.termId']);
+
+// Kept apart from $ledgerWarnings on purpose: that array is counted as
+// "receipts exceeding the assessment", so folding a different kind of finding into it
+// would silently report the ledger as broken when it is not.
+$deskIntegrity = [];
+
+foreach ($unattributedSlips as $orphan) {
+    $deskIntegrity[] = "Clearance #{$orphan->studentClearanceId} (student {$orphan->studentId}) has no enrollment for term {$orphan->termId}: "
+        .'its slip prints with no enrollment to attribute the issue row to, so its document number is not unique';
+}
+
+// A Department Evaluation screen can only propose what the pinned curriculum offers at the
+// enrollment's own year level and term semester. When it offers nothing there, the load on
+// file could not have been produced by the desk, the mandatory-subject and elective-band
+// validations pass by absence, and the Registrar's prerequisites gate reads true for the
+// same reason. Counted, not repaired: which subjects a program offers in a special term is
+// the Registrar's curriculum decision, not something this tool may invent.
+$noOfferings = DB::table('enrollments as e')
+    ->join('academicterms as t', 't.termId', '=', 'e.termId')
+    ->join('curriculums as cu', 'cu.courseId', '=', 'e.courseId')
+    ->whereNotIn('e.enrollmentStatus', ['dropped', 'cancelled'])
+    ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('curriculumsubjects as cs')
+        ->whereColumn('cs.curriculumId', 'cu.curriculumId')
+        ->whereColumn('cs.yearLevel', 'e.yearLevel')
+        ->whereColumn('cs.semesterOffered', 't.semester'))
+    ->groupBy('e.courseId', 'e.yearLevel', 't.semester')
+    ->get(['e.courseId', 'e.yearLevel', 't.semester', DB::raw('COUNT(*) n')]);
+
+foreach ($noOfferings as $gap) {
+    $deskIntegrity[] = "Evaluation: {$gap->n} active enrollment(s) sit ".DB::table('courses')->where('courseId', $gap->courseId)->value('courseCode')
+        ." year {$gap->yearLevel} in {$gap->semester} — that curriculum offers no subject at that level and semester, "
+        .'so the desk could not have proposed their load and the load-based validations pass by absence';
+}
+
 $queuedFor = [
     'Admission — applications' => DB::table('admissions')->where('admissionStatus', 'pending')->count(),
     'Evaluation — loads to decide' => DB::table('enrollments')->where('termId', $termId)->whereIn('enrollmentStatus', ['pending', 'returnedToEvaluation'])->count(),
@@ -1852,6 +1899,8 @@ $queuedFor = [
             ->whereRaw("ws.stepOrder = (SELECT MIN(ws2.stepOrder) FROM workflowsteps ws2 WHERE ws2.workflowId = ws.workflowId AND ws2.stepStatus = 'pending')"))
         ->count(),
     'Clearance — slips in progress' => DB::table('studentclearances')->where('overallStatus', 'pending')->count(),
+    'Clearance — slips with no enrollment in the period term' => count($unattributedSlips),
+    'Evaluation — enrolled at a level/term the curriculum offers nothing for' => (int) $noOfferings->sum('n'),
     'Ledger — enrolled with no fee sheet' => DB::table('enrollments as e')
         ->where('e.termId', $termId)
         ->whereIn('e.enrollmentStatus', ['paid', 'enrolled'])
@@ -1874,7 +1923,7 @@ foreach ($queuedFor as $desk => $count) {
     printf("  %-40s %d\n", $desk, $count);
 }
 
-foreach ($ledgerWarnings as $warning) {
+foreach ([...$ledgerWarnings, ...$deskIntegrity] as $warning) {
     echo "  ! {$warning}\n";
 }
 
