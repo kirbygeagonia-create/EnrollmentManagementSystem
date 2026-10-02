@@ -136,8 +136,26 @@ class PrintFidelitySamples extends Command
             }
         }
 
+        // A run writes one class card per subject, so the folder keeps an extra card
+        // whenever the chosen enrollment's load shrinks — and this directory is what a
+        // human compares against the reference images. Drop only files this command
+        // owns and did not write today; anything else a person put here stays.
+        $written = array_map(fn (string $name) => "{$name}.pdf", array_keys($templates));
+        $stale = 0;
+        foreach (glob("{$outDir}/*.pdf") ?: [] as $existing) {
+            $base = basename($existing);
+            if (in_array($base, $written, true)) {
+                continue;
+            }
+            if (preg_match('/^(class-card|block-schedule|clearance-slip|enrollment-certificate|enrollment-form|subject-load)(-\d+)?\.pdf$/', $base)) {
+                unlink($existing);
+                $this->line("  pruned stale {$base}");
+                $stale++;
+            }
+        }
+
         $this->newLine();
-        $this->info("Done: {$rendered}/".count($templates).' rendered in '.str_replace(base_path(), '.', $outDir));
+        $this->info("Done: {$rendered}/".count($templates).' rendered in '.str_replace(base_path(), '.', $outDir).($stale ? ", {$stale} stale sample(s) pruned" : ''));
         $this->line('Compare against: EnrollmentSystem/Documentation/Images/ (Clearance Slip, Class Card, Subject Load, Class Block and Schedule).');
 
         return self::SUCCESS;
