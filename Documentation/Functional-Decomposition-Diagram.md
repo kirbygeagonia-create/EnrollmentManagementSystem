@@ -245,6 +245,8 @@ display-only — it must never gate exam requirements; the operative gates are
   - 12.3.1 Capture / Upload Face Photo (`id.photo`)
 - **12.4 Validate ID Requests**
   - 12.4.1 Validate Request & Sign Workflow Step (`id.validate`)
+- **12.5 Record What Did Not Match**
+  - 12.5.1 Write a mismatch remark against an open request (`id.remark`) — validation is terminal, so an officer who finds the face at the window does not match the file says so on the record instead of inventing a status
 
 ### 13.0 Manage Student Records (Student 360°)
 

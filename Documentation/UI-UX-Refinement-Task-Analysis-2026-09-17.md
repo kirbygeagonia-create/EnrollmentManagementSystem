@@ -6,6 +6,8 @@
 
 > **Status update (2026-09-24):** this analysis guided the refinement pass that followed — the headline items have since landed in the codebase (GZEL removal, the two-stage exam split, the ID-validation desk conversion dropping card-making in `ced3b0a`, and the return-to-evaluation hold state). The item-by-item verdicts below are kept as the analysis record.
 
+> **Status update (2026-10-02):** item 2's recommendation — "keep validation + release" — was overruled by the owner on 2026-09-30 in favour of validation only. `id.release` no longer exists as a route, permission, gate or status; recording the validating officer and timestamp is the desk's last act, and the fourth step on the desk screen is now the mismatch remark (`id.remarkRequest`, `idrequests.mismatchRemark`). Read lines 85 and 88 as the state on 2026-09-17.
+
 ## Verdict up front
 
 The list is **correct and sensible in substance** — every premise checked against the code verified, and the instincts are the right ones (no parallel status concepts, reuse optimized queries, extend the state machine rather than invent a mechanism, OCR as a later phase). Four items need adjustment before execution, two of them because their premise describes the *current* state rather than the target, and there is one internal contradiction in the scope statement.

@@ -202,4 +202,4 @@
 2. **Step 2: Document Intake & Checklist**: Submission of SHS diploma/report cards, PSA birth certificate, certificate of good moral character.
 3. **Step 3: SEAIT College Admission Test (SCAT)**: General aptitude evaluation & department-specific cutoff exam (especially for CCJE Criminology and BSSW Social Work board tracks).
 4. **Step 4: Interview & Evaluation**: Academic load advisement and interview by the College Dean / Program Head / Assigned Faculty Evaluator.
-5. **Step 5: Official Enrollment & Confirmation**: Registrar validation, ID card issuance, and freshman orientation scheduling.
+5. **Step 5: Official Enrollment & Confirmation**: Registrar validation, ID validation, and freshman orientation scheduling. (The system's ID desk validates the request and records the officer; card production and hand-over are outside the software — owner ruling, 2026-09-30.)
