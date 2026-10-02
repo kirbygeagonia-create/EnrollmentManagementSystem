@@ -117,6 +117,28 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
     const totalLabUnits = selectedCurriculumSubjects.reduce((sum, cs) => sum + Number(cs.subject?.labUnits || 0), 0);
     const totalAcademicUnits = totalLectureUnits + totalLabUnits;
 
+    // The elective band is configured in Reference Data and enforced by the server
+    // (EvaluationController.php:470-476, which refuses a proposal outside min–max). Until
+    // now the desk learned the range only from that refusal, after pressing propose; the
+    // same two numbers are read here, with the same fallbacks, so the band is visible
+    // while the evaluator is still choosing.
+    const electiveGroups = useMemo(() => {
+        const grouped = new Map();
+        (curriculumSubjects || [])
+            .filter((cs) => cs.is_elective && cs.elective_group)
+            .forEach((cs) => {
+                if (!grouped.has(cs.elective_group)) grouped.set(cs.elective_group, []);
+                grouped.get(cs.elective_group).push(cs);
+            });
+        return [...grouped.entries()].map(([name, rows]) => ({
+            name,
+            options: rows.length,
+            min: rows[0].elective_min_choices ?? 0,
+            max: rows[0].elective_max_choices ?? rows.length,
+            chosen: rows.filter((cs) => selectedSubjectIds.includes(cs.subjectId)).length,
+        }));
+    }, [curriculumSubjects, selectedSubjectIds]);
+
     const handleProposeSelectedSubjects = (e) => {
         e.preventDefault();
         if (selectedSubjectIds.length === 0) {
@@ -664,6 +686,22 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
                                     {curriculumSubjects?.length || 0} Available
                                 </span>
+                                {electiveGroups.map((group) => {
+                                    const withinBand = group.chosen >= group.min && group.chosen <= group.max;
+                                    return (
+                                        <span
+                                            key={group.name}
+                                            title={`Elective group "${group.name}" requires ${group.min}-${group.max} of ${group.options} subjects`}
+                                            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
+                                                withinBand
+                                                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                                    : 'text-red-700 bg-red-50 border-red-200'
+                                            }`}
+                                        >
+                                            {group.name}: {group.chosen} of {group.min}-{group.max}
+                                        </span>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -696,6 +734,11 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-mono text-xs font-bold text-slate-900">{subj?.subjectCode}</span>
+                                                    {cs.is_elective && cs.elective_group && (
+                                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-700">
+                                                            elective · {cs.elective_group}
+                                                        </span>
+                                                    )}
                                                     {cs.prerequisiteSubject && (
                                                         <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded border ${
                                                             isLocked
