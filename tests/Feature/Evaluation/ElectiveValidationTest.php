@@ -4,6 +4,7 @@ namespace Tests\Feature\Evaluation;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Models\Curriculumsubjects;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
@@ -38,6 +39,8 @@ class ElectiveValidationTest extends TestCase
     private int $religionId;
 
     private Staffusers $evaluator;
+
+    private int $guidanceOfficeId;
 
     private array $subjectIds = [];
 
@@ -83,6 +86,14 @@ class ElectiveValidationTest extends TestCase
         $office = DB::table('offices')->insertGetId([
             'officeName' => 'Evaluation Office',
         ]);
+
+        // Evaluation belongs to Guidance (office 4): the policy scopes a record to that
+        // office, so showing the desk its page requires its staff to sit there.
+        $this->guidanceOfficeId = (int) (DB::table('offices')->where('officeId', OfficeId::Guidance->value)->value('officeId')
+            ?? DB::table('offices')->insertGetId([
+                'officeId' => OfficeId::Guidance->value,
+                'officeName' => 'Guidance Office',
+            ]));
 
         // Course & Major
         $this->courseId = DB::table('courses')->insertGetId([
@@ -400,6 +411,39 @@ class ElectiveValidationTest extends TestCase
             ]);
 
         $response->assertSessionHasNoErrors();
+    }
+
+    #[Test]
+    public function the_picker_is_given_the_band_the_save_is_checked_against(): void
+    {
+        // The Evaluation screen renders each elective group's min–max from the
+        // curriculumSubjects rows the controller shares, and the same two numbers decide
+        // whether the propose request is refused. If the share ever narrows — a select()
+        // added, a column renamed — the chips would silently stop showing and the desk
+        // would go back to discovering the range from the refusal.
+        $this->evaluator->update(['officeId' => $this->guidanceOfficeId]);
+
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrollment($student);
+
+        $rows = collect($this->actingAs($this->evaluator)
+            ->get(route('evaluation.show', $enrollment))
+            ->assertOk()
+            ->viewData('page')['props']['curriculumSubjects']);
+
+        $byGroup = $rows->groupBy('elective_group');
+
+        $this->assertSame(3, $byGroup->get('ELECTIVE_A')->count());
+        $this->assertSame([1, 2], [
+            $byGroup->get('ELECTIVE_A')->first()['elective_min_choices'],
+            $byGroup->get('ELECTIVE_A')->first()['elective_max_choices'],
+        ]);
+        $this->assertSame([2, 3], [
+            $byGroup->get('ELECTIVE_B')->first()['elective_min_choices'],
+            $byGroup->get('ELECTIVE_B')->first()['elective_max_choices'],
+        ]);
+        $this->assertTrue($rows->filter(fn ($r) => $r['elective_group'] !== null)->every(fn ($r) => $r['is_elective'] === true));
+        $this->assertTrue($rows->where('elective_group', null)->every(fn ($r) => $r['is_elective'] === false));
     }
 
     #[Test]
