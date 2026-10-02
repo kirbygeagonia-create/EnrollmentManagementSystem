@@ -47,9 +47,12 @@ class BlockingController extends Controller
         $this->authorize('blocking.viewAny');
 
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
-            // Count active (non-dropped) subject rows only — dropped rows would
-            // inflate the capacity numbers the Index table shows.
-            ->withCount(['enrolledSubjects' => fn ($q) => $q->where('status', '!=', EnrolledSubjectStatus::Dropped->value)])
+            // A block's places are students, not subject rows: two students carrying
+            // three subjects each fill two seats, not six, and this is the number
+            // assignStudents() weighs against maxStudents. Dropped rows are excluded so
+            // a leave-out does not keep a seat reserved.
+            ->withCount(['enrolledSubjects as students_in_block_count' => fn ($q) => $q->select(DB::raw('count(distinct enrollmentId)'))
+                ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)])
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
@@ -83,10 +86,12 @@ class BlockingController extends Controller
         ]);
 
         $capacity = $block->maxStudents;
-        // Active (non-dropped) subject rows only — matches the capacity
-        // enforcement in assignStudents.
+        // Seats are students: two subjects apiece fill one place, not two. Dropped rows
+        // are excluded, and the count is taken the same way assignStudents() takes it.
         $enrolled = $block->enrolledSubjects
             ->filter(fn ($es) => $es->status !== EnrolledSubjectStatus::Dropped)
+            ->pluck('enrollmentId')
+            ->unique()
             ->count();
         $available = $capacity - $enrolled;
 

@@ -60,12 +60,12 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         }},
         { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'capacity', label: 'Capacity', render: (row) => {
-            const enrolled = row.enrolled_subjects_count ?? 0;
+            const enrolled = row.students_in_block_count ?? 0;
             const capacity = row.maxStudents;
             return `${enrolled} / ${capacity}`;
         }},
         { key: 'available', label: 'Available', render: (row) => {
-            const enrolled = row.enrolled_subjects_count ?? 0;
+            const enrolled = row.students_in_block_count ?? 0;
             const capacity = row.maxStudents;
             const available = capacity - enrolled;
             const hasAvailable = available > 0;
@@ -118,7 +118,7 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
     // Summary stats
     const totalBlocks = blocks?.total ?? blocks?.data?.length ?? 0;
     const totalCapacity = (blocks?.data || []).reduce((sum, b) => sum + (b.maxStudents || 0), 0);
-    const totalEnrolled = (blocks?.data || []).reduce((sum, b) => sum + (b.enrolled_subjects_count ?? 0), 0);
+    const totalEnrolled = (blocks?.data || []).reduce((sum, b) => sum + (b.students_in_block_count ?? 0), 0);
     const totalAvailable = Math.max(0, totalCapacity - totalEnrolled);
 
     return (

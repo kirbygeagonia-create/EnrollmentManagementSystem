@@ -849,4 +849,43 @@ class BlockingControllerTest extends TestCase
 
         $this->assertDatabaseMissing('blocks', ['blockId' => $block->blockId]);
     }
+
+    #[Test]
+    public function the_roster_counts_one_seat_per_student_not_per_subject_row(): void
+    {
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule(maxStudents: 40);
+        $block = $fixture['block'];
+        $schedule = $fixture['schedule'];
+
+        // Two students, each carrying the block's two subjects. Counting rows would
+        // report four of forty seats gone and then refuse students the block can still
+        // hold, because assignStudents() measures maxStudents in students.
+        $seated = [$this->createEnrollment(), $this->createEnrollment()];
+        foreach ($seated as $enrollment) {
+            Enrolledsubjects::where('enrollmentId', $enrollment->enrollmentId)
+                ->update(['blockId' => $block->blockId, 'scheduleId' => $schedule->scheduleId]);
+        }
+        $this->assertSame(4, Enrolledsubjects::where('blockId', $block->blockId)->count());
+
+        // A student who left the block reserves nothing.
+        $left = $this->createEnrollment();
+        Enrolledsubjects::where('enrollmentId', $left->enrollmentId)
+            ->update(['blockId' => $block->blockId, 'scheduleId' => $schedule->scheduleId, 'status' => 'dropped']);
+
+        $row = collect($this->get(route('blocking.index'))
+            ->assertOk()
+            ->viewData('page')['props']['blocks']['data'])
+            ->firstWhere('blockId', $block->blockId);
+
+        $this->assertSame(2, $row['students_in_block_count']);
+
+        // The detail page reads the same two seats, not the four rows behind them.
+        $this->get(route('blocking.show', $block))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('enrolled', 2)
+                ->where('capacity', 40));
+    }
 }

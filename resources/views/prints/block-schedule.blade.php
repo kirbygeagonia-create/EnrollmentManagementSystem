@@ -97,7 +97,16 @@
     </table>
 
     <div class="footer">
-        Generated on {{ now()->format('F d, Y H:i') }} | Block Capacity: {{ $block->enrolledSubjects->count() }}/{{ $block->maxStudents }}
+        @php
+            // A block's places are students, not subject rows, and a dropped row reserves
+            // nothing — the same reading the desk screen and assignStudents() use.
+            $seatsTaken = $block->enrolledSubjects
+                ->reject(fn ($es) => $es->status === \App\Enums\EnrolledSubjectStatus::Dropped)
+                ->pluck('enrollmentId')
+                ->unique()
+                ->count();
+        @endphp
+        Generated on {{ now()->format('F d, Y H:i') }} | Block Capacity: {{ $seatsTaken }}/{{ $block->maxStudents }}
     </div>
 </body>
 </html>
