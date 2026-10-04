@@ -44,7 +44,7 @@ class ClearancePeriodTest extends TestCase
 
         $this->seed(RbacSeeder::class);
 
-        foreach ([1, 2, 3, 4, 5, 8, 11, 22] as $officeId) {
+        foreach ([1, 2, 3, 4, 5, 11, 22] as $officeId) {
             Offices::firstOrCreate(['officeId' => $officeId], ['officeName' => 'Office '.$officeId]);
         }
 
@@ -66,7 +66,7 @@ class ClearancePeriodTest extends TestCase
 
         // OfficeHead is the role the seater gives a clearance office head, and it is
         // the only seeded role carrying clearance.periods.manage.
-        $this->officer = $this->staffInOffice(8, 'OfficeHead');
+        $this->officer = $this->staffInOffice(1, 'OfficeHead');
     }
 
     private function staffInOffice(int $officeId, string $spatieRole): Staffusers
@@ -187,7 +187,7 @@ class ClearancePeriodTest extends TestCase
     #[Test]
     public function a_desk_without_the_period_permission_cannot_open_or_close_one(): void
     {
-        $viewer = $this->staffInOffice(8, 'Staff');
+        $viewer = $this->staffInOffice(1, 'Staff');
         $period = Clearanceperiods::create($this->periodPayload());
 
         $this->actingAs($viewer)
@@ -370,7 +370,7 @@ class ClearancePeriodTest extends TestCase
     #[Test]
     public function a_desk_without_the_period_permission_cannot_extend_one(): void
     {
-        $viewer = $this->staffInOffice(8, 'Staff');
+        $viewer = $this->staffInOffice(1, 'Staff');
         $period = Clearanceperiods::create($this->periodPayload());
 
         $this->actingAs($viewer)

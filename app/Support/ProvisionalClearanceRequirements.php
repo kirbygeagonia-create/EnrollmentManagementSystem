@@ -14,9 +14,12 @@ use App\Enums\OfficeId;
  *
  * The wording below is NOT approved institutional policy. It exists so the demo slip
  * reads as a real form; every line is a proposal pending the Registrar's own list of
- * clearance requirements (§28, D-6). Office 8 ("Clearance") is deliberately absent:
- * it is the legacy row that stands for no office at all (§28, D-1), and giving it a
- * sentence would invent an obligation for a department the school does not have.
+ * clearance requirements (§28, D-6).
+ *
+ * These keys are also the offices the checklist is seeded for, so a line cannot exist
+ * without words behind it. Legacy office 8 ("Clearance") is absent because ruling 12
+ * folded that department into the Registrar (D-1): it owned no obligation of its own, and
+ * its checklist line had no text to sign against.
  */
 class ProvisionalClearanceRequirements
 {

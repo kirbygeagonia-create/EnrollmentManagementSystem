@@ -76,7 +76,6 @@ class PrintControllerTest extends TestCase
             5 => 'Blocking and Scheduling',
             6 => 'Admission Office',
             7 => 'Guidance / Entrance Exam',
-            8 => 'Clearance Office',
             11 => 'Clinic',
             22 => 'ID Office',
         ];
@@ -193,7 +192,7 @@ class PrintControllerTest extends TestCase
         $this->scheduleIds = [$schedule1->scheduleId, $schedule2->scheduleId];
 
         // Clearance requirements (one per office for clearance test)
-        $clearanceOffices = [1, 2, 3, 4, 5, 8, 11, 22];
+        $clearanceOffices = [1, 2, 3, 4, 5, 11, 22];
         foreach ($clearanceOffices as $officeId) {
             Clearancerequirements::firstOrCreate(
                 ['officeId' => $officeId],
@@ -505,8 +504,9 @@ class PrintControllerTest extends TestCase
         $student = $this->createStudent();
         $clearance = $this->createClearanceSlip($student);
 
-        // Clearance staff (office 8) - OfficeHead role has clearance.view permission
-        $clearanceStaff = $this->createStaffForOffice(8);
+        // The clearance counter is the Registrar's office (1) since ruling 12 folded the
+        // legacy Clearance department into it; OfficeHead holds clearance.view either way.
+        $clearanceStaff = $this->createStaffForOffice(1);
 
         $this->assertTrue($clearanceStaff->hasPermissionTo('clearance.view'));
 
@@ -642,7 +642,7 @@ class PrintControllerTest extends TestCase
     #[Test]
     public function a_slip_printed_before_any_enrollment_exists_is_still_counted_against_its_student(): void
     {
-        $clearanceStaff = $this->createStaffForOffice(8);
+        $clearanceStaff = $this->createStaffForOffice(1);
         $print = fn (Studentclearances $c) => $this->actingAs($clearanceStaff)->get(route('clearance.print-slip', $c));
 
         // The clearance desk draws a slip for a student in a period. Nothing in that
@@ -685,7 +685,7 @@ class PrintControllerTest extends TestCase
     #[Test]
     public function a_fresh_issue_never_repeats_a_number_an_unattributable_row_already_printed(): void
     {
-        $clearanceStaff = $this->createStaffForOffice(8);
+        $clearanceStaff = $this->createStaffForOffice(1);
 
         // The legacy pile: issuance rows carrying no enrollment, student or block key,
         // which ruling 6 keeps and no scope counts. Without the skip, a new student's

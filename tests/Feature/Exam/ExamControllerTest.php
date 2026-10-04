@@ -74,7 +74,6 @@ class ExamControllerTest extends TestCase
             ['officeId' => 5, 'officeName' => 'Blocking and Scheduling'],
             ['officeId' => 6, 'officeName' => 'Admission Office'],
             ['officeId' => 7, 'officeName' => 'Guidance / Entrance Exam'],
-            ['officeId' => 8, 'officeName' => 'Clearance Office'],
             ['officeId' => 11, 'officeName' => 'Clinic'],
             ['officeId' => 22, 'officeName' => 'ID Office'],
         ]);

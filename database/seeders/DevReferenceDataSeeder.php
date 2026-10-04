@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\FeeUnitBasis;
+use App\Enums\OfficeId;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
@@ -21,6 +22,7 @@ use App\Models\Staffusers;
 use App\Models\Subjects;
 use App\Support\ProvisionalClearanceRequirements;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -50,12 +52,61 @@ class DevReferenceDataSeeder extends Seeder
             5 => 'Blocking',
             6 => 'Admission',
             7 => 'Academic Department',
-            8 => 'Clearance',
             11 => 'Clinic',
             22 => 'ID Office',
         ];
         foreach ($offices as $id => $name) {
             Offices::firstOrCreate(['officeId' => $id], ['officeName' => $name]);
+        }
+
+        // ---------- D-1, ruling 12: retire legacy office 8 "Clearance" ----------
+        //
+        // The school has no clearance department: the counter that opens the window,
+        // generates the slip and receipts it is the Registrar's, and receipting is already
+        // scoped to office 1 in ClearancePolicy. Office 8 survived as an id with no
+        // OfficeId case, one staff account, and one clearance requirement row that was
+        // deliberately left nameless because there was no office to describe — so every
+        // student's checklist carried an eleventh line nobody could read or sign against.
+        //
+        // Its obligation row folds into the Registrar's own line rather than becoming a
+        // second one: the Registrar already owns "No unreturned Registrar documents,
+        // credentials, or ID", and giving the fold a sentence of its own would invent an
+        // obligation the school never stated. The order below is the one the RESTRICT
+        // foreign keys require — staff first, then the approvals hanging off the
+        // requirement, then the requirement, then the office.
+        $legacyClearanceOffice = 8;
+
+        $staffMoved = DB::table('staffusers')
+            ->where('officeId', $legacyClearanceOffice)
+            ->update([
+                'officeId' => OfficeId::Registrar->value,
+                // A head whose title names a department that no longer exists would tell
+                // the Registrar desk the record still belongs somewhere else.
+                'firstName' => 'Registrar Head',
+            ]);
+
+        $legacyRequirement = DB::table('clearancerequirements')
+            ->where('officeId', $legacyClearanceOffice)
+            ->pluck('clearanceRequirementId');
+
+        $approvalsRemoved = 0;
+
+        if ($legacyRequirement->isNotEmpty()) {
+            $approvalsRemoved = DB::table('clearanceapprovals')
+                ->whereIn('clearanceRequirementId', $legacyRequirement)
+                ->delete();
+
+            DB::table('clearancerequirements')
+                ->whereIn('clearanceRequirementId', $legacyRequirement)
+                ->delete();
+        }
+
+        $officeRemoved = DB::table('offices')->where('officeId', $legacyClearanceOffice)->delete();
+
+        if ($staffMoved + $approvalsRemoved + $officeRemoved > 0) {
+            $this->command?->info('DevReferenceDataSeeder: legacy office 8 folded into the Registrar — '
+                ."{$staffMoved} staff reseated, {$approvalsRemoved} unnamed approval row(s) and "
+                ."{$officeRemoved} office row removed.");
         }
 
         // ---------- Academic units (explicit IDs 1-6 so course refs stay stable).
@@ -660,9 +711,13 @@ class DevReferenceDataSeeder extends Seeder
         // PROVISIONAL: the wording comes from ProvisionalClearanceRequirements and is
         // a placeholder for the Registrar's own list (§28, D-6). It is applied only to
         // rows whose text is still empty, so an office that has edited a line in
-        // Admin → Reference Data keeps its wording across re-runs. Office 8 is left
-        // nameless on purpose: it stands for no office at all (§28, D-1).
-        foreach ([1, 2, 3, 4, 5, 6, 7, 8, 11, 22] as $officeId) {
+        // Admin → Reference Data keeps its wording across re-runs.
+        //
+        // The offices listed here are the ones that line carries text for, so a checklist
+        // can no longer grow a line with no office and no words behind it — the unnamed
+        // row for legacy office 8 was exactly that, and it is retired above (D-1,
+        // ruling 12).
+        foreach (array_keys(ProvisionalClearanceRequirements::NAMES) as $officeId) {
             $requirement = Clearancerequirements::firstOrNew(['officeId' => $officeId]);
 
             if ($requirement->requirementName === null) {
@@ -713,10 +768,14 @@ class DevReferenceDataSeeder extends Seeder
             ]
         );
 
+        // One head per seeded office. Office 8 ("Clearance") is gone: ruling 12 folds the
+        // legacy clearance department into the Registrar, and its account was reseated
+        // there rather than deleted — a head the school already employs is not evidence
+        // the school can be deleted with.
         $officeHeadRoles = [
             1 => 'Registrar Head', 2 => 'Accounting Head', 3 => 'Scholarship Head',
             4 => 'Guidance Head', 5 => 'Blocking Head', 6 => 'Admission Head',
-            7 => 'Academic Head', 8 => 'Clearance Head', 11 => 'Clinic Head', 22 => 'ID Head',
+            7 => 'Academic Head', 11 => 'Clinic Head', 22 => 'ID Head',
         ];
         $i = 1;
         foreach ($officeHeadRoles as $officeId => $displayName) {
