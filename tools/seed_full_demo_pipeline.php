@@ -35,6 +35,7 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Workflowsteps;
 use App\Services\AcademicStandingService;
+use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use Illuminate\Contracts\Console\Kernel;
@@ -48,11 +49,89 @@ echo "=======================================================\n";
 echo " SEAIT EMS — COMPREHENSIVE WORKFLOW DEMO-DAY SEEDER   \n";
 echo "=======================================================\n\n";
 
-$termId = 18; // 2025-2026 Summer
+// G-9, ruling 1: the demo term is one the pinned curriculum actually covers. Every program
+// offers subjects at 1st and 2nd semester; the Summer enum offers two rows for one
+// curriculum, so a load proposed there cannot be weighed against the mandatory-subject,
+// elective-band or prerequisite rules — those gates pass because there is nothing to check.
+// The dataset used to sit on 2025-2026 Summer (18) with 2nd semester (11) as its prior term;
+// the relocation below moves it once and then never runs again.
+$termId = 11; // 2025-2026 2nd semester — every program offers at this level and semester
+$relocatedFromTermId = 18; // 2025-2026 Summer — retired as a demo term by ruling 1
+$priorTermId = 10; // 2025-2026 1st semester — completed, covered, distinct from $termId
+$relocatedPriorFromTermId = 11; // the term that was the prior before the dataset moved up
 $defaultPassword = Hash::make('password123');
 $adminUser = Staffusers::where('username', 'staff8')->first() ?? Staffusers::first();
 $workflowService = app(WorkflowService::class);
 $standingService = app(AcademicStandingService::class);
+
+/*
+ * G-9: relocate a dataset still sitting on the retired Summer term.
+ *
+ * Two moves, in this order, because the old history rows occupy the term the current load
+ * is moving on to: move them off first or they would be dragged forward with the load they
+ * precede.
+ *
+ * The guard is deliberately "does the retired term still hold enrollments", nothing looser.
+ * Keying it on the destination term instead re-fires on every later run — the dataset is
+ * meant to live there — and each firing would move the demo one term further into the past.
+ * Once this has run, term 18 holds no enrollments and the block is dead code for good.
+ */
+$relocatedTables = [
+    'enrollments', 'admissions', 'blocks', 'examresults', 'studentscholarships', 'clearanceperiods',
+];
+
+if (DB::table('enrollments')->where('termId', $relocatedFromTermId)->exists()) {
+    echo "G-9: the demo dataset is being relocated — term {$relocatedFromTermId} (Summer) is retired, term {$termId} (2nd semester) is the demo term\n";
+
+    DB::transaction(function () use ($relocatedTables, $relocatedPriorFromTermId, $relocatedFromTermId, $priorTermId, $termId) {
+        // 1. the old prior history off 11 and onto 10, so 11 is free to receive the load
+        $prior = DB::table('enrollments')->where('termId', $relocatedPriorFromTermId)->pluck('enrollmentId');
+        DB::table('enrollments')->where('termId', $relocatedPriorFromTermId)->update(['termId' => $priorTermId]);
+        echo '  • prior-term enrollments '.$relocatedPriorFromTermId.' -> '.$priorTermId.': '.$prior->count()." moved\n";
+
+        // 2. the current dataset off the retired Summer term and onto the demo term
+        foreach ($relocatedTables as $table) {
+            $count = DB::table($table)->where('termId', $relocatedFromTermId)->count();
+
+            if ($count === 0) {
+                continue;
+            }
+
+            DB::table($table)->where('termId', $relocatedFromTermId)->update(['termId' => $termId]);
+            echo '  • '.$table.' '.$relocatedFromTermId.' -> '.$termId.': '.$count." row(s) moved\n";
+        }
+
+        // 3. a clearance window whose term changed has to state that term's calendar, or the
+        //    paper the desk prints carries dates from a term it no longer belongs to.
+        $window = DB::table('academicterms')->where('termId', $termId)->first();
+
+        if ($window !== null) {
+            $periods = DB::table('clearanceperiods')->where('termId', $termId)->count();
+            DB::table('clearanceperiods')->where('termId', $termId)->update([
+                'clearanceStartDate' => $window->startDate,
+                'clearanceEndDate' => $window->endDate,
+            ]);
+            echo "  • clearance window re-dated to {$window->startDate} -> {$window->endDate}: {$periods} period(s)\n";
+        }
+    });
+
+    // Ruling 3's seat rule, asserted against the moved rows rather than trusted: a student
+    // with two active loads in one term would otherwise be seeded quietly by the move.
+    $collisions = DB::table('enrollments')
+        ->selectRaw('studentId, termId, COUNT(*) n')
+        ->whereNotIn('enrollmentStatus', ['dropped', 'cancelled'])
+        ->groupBy('studentId', 'termId')
+        ->havingRaw('COUNT(*) > 1')
+        ->get();
+
+    if ($collisions->isNotEmpty()) {
+        foreach ($collisions as $c) {
+            echo '  ! seat collision: student '.$c->studentId.' holds '.$c->n." active enrollments in term {$c->termId} — the move stopped short of a clean dataset\n";
+        }
+    } else {
+        echo "  ✔ no student holds two active enrollments in one term after the move\n";
+    }
+}
 
 /**
  * Write a portrait placeholder onto the same private disk the ID desk stores
@@ -208,7 +287,7 @@ if (! $admAna) {
 // 3. CLEARANCE DESK — MULTI-OFFICE IN PROGRESS (DEMO-2026-007)
 // -------------------------------------------------------------
 $rico = createDemoStudent('DEMO-2026-007', 'Rico', 'Navarro', 'demo_rico', 'demo.rico@example.com');
-$period = Clearanceperiods::where('periodStatus', 'open')->first();
+$period = Clearanceperiods::accepting()->first();
 if ($period) {
     $clrRico = Studentclearances::where('studentId', $rico->studentId)->where('clearancePeriodId', $period->clearancePeriodId)->first();
     if (! $clrRico) {
@@ -293,9 +372,10 @@ if (! $enrRafael) {
 //   3 clean passes        -> derived REGULAR
 //   no institutional past -> cannot derive, the evaluator decides on their own
 // -------------------------------------------------------------
-$priorTermId = 11; // 2nd semester 2025-2026 — a completed term, distinct from $termId
+// $priorTermId is set with $termId at the top of the file, so the two terms cannot drift
+// apart — the relocation block and this section have to agree on which term is history.
 
-// DEMO-2026-004 Liza Bautista already owns a term-11 enrollment; grade it with
+// DEMO-2026-004 Liza Bautista already owns a prior-term enrollment; grade it with
 // one failed subject, then queue her for the same year level again.
 $liza = Students::where('schoolIdNumber', 'DEMO-2026-004')->first();
 $lizaPrior = Enrollments::where('studentId', $liza->studentId)->where('termId', $priorTermId)->first();
@@ -306,7 +386,7 @@ if ($lizaPrior) {
             ['status' => 'confirmed', 'blockId' => null, 'scheduleId' => null, 'grade' => $grade]
         );
     }
-    echo "✔ Standing evidence: graded Liza Bautista's term-11 record (MATH101 = 4.50, below the pass line)\n";
+    echo "✔ Standing evidence: graded Liza Bautista's prior-term record (MATH101 = 4.50, below the pass line)\n";
 }
 
 $enrLiza = Enrollments::where('studentId', $liza->studentId)->where('termId', $termId)->first();
@@ -325,7 +405,7 @@ if (! $enrLiza) {
     echo "✔ Evaluation Desk: Seeded Liza Bautista (DEMO-2026-004) - PENDING, repeating the year level\n";
 }
 
-// DEMO-2026-018 Marco Villanueva — clean term-11 record, now queued for year 2.
+// DEMO-2026-018 Marco Villanueva — clean prior-term record, now queued for year 2.
 $marco = createDemoStudent('DEMO-2026-018', 'Marco', 'Villanueva', 'demo_marco', 'demo.marco@example.com');
 $marcoPrior = Enrollments::where('studentId', $marco->studentId)->where('termId', $priorTermId)->first();
 if (! $marcoPrior) {
@@ -347,7 +427,7 @@ if (! $marcoPrior) {
             ['status' => 'confirmed', 'blockId' => null, 'scheduleId' => null, 'grade' => $grade]
         );
     }
-    echo "✔ Standing evidence: Marco Villanueva's term-11 record (all subjects pass)\n";
+    echo "✔ Standing evidence: Marco Villanueva's prior-term record (all subjects pass)\n";
 }
 
 $enrMarco = Enrollments::where('studentId', $marco->studentId)->where('termId', $termId)->first();
@@ -963,7 +1043,7 @@ $seatedForRegistrar = array_values(array_filter(array_map(
 //      requirement — that checklist is what the Clearance desk prints. The
 //      multi-office demo clearance lost its rows (it predates this tool writing
 //      them), which left the desk with an empty checklist.
-$openPeriod = Clearanceperiods::where('periodStatus', 'open')->first();
+$openPeriod = Clearanceperiods::accepting()->first();
 
 foreach (Studentclearances::with('approvals')->get() as $clearance) {
     $covered = $clearance->approvals->pluck('clearanceRequirementId')->all();
@@ -990,6 +1070,96 @@ foreach (Studentclearances::with('approvals')->get() as $clearance) {
 
     if ($outstanding > 0) {
         echo "✔ Clearance: seeded {$outstanding} approval row(s) on clearance {$clearance->studentClearanceId}\n";
+    }
+}
+
+// 10b-1. A clearance slip with no enrollment behind it.
+//
+//      Some demo students were seeded holding a clearance in the accepting window and
+//      have never held an enrollment in any term. The consequence is not cosmetic: the
+//      slip template reads the student's enrollment for program, year level and term, so
+//      the paper prints blanks, and the Registrar has receipted a clearance that can never
+//      be attached to a load — which is precisely the record ruling 4's gate and ruling 5's
+//      confirmation are written to act on.
+//
+//      They are seated the way the other returning students were: a completed prior-term
+//      record, then a live load in the window's term issued through EnrollmentIssuer so
+//      the one-seat rule applies to them too. The current load is left PENDING with no
+//      subjects, because that is the state the Evaluation desk needs to demonstrate — the
+//      term now offers seven subjects at their level, so the list it picks from is real.
+//      One of the two holds an approved, receipted slip and becomes approvable once the
+//      department confirms it below; the other is still pending, so the block stays
+//      demonstrable as well.
+if ($openPeriod !== null) {
+    $evaluationDesk = Staffusers::find($deskSigners[OfficeId::Guidance->value]);
+    $issuer = app(EnrollmentIssuer::class);
+    $slipStudentsSeated = 0;
+
+    foreach (Studentclearances::where('clearancePeriodId', $openPeriod->clearancePeriodId)->get() as $slip) {
+        $holdsAnyEnrollment = Enrollments::where('studentId', $slip->studentId)->exists();
+        $holdsWindowEnrollment = Enrollments::where('studentId', $slip->studentId)
+            ->where('termId', $openPeriod->termId)
+            ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+            ->exists();
+
+        if ($holdsWindowEnrollment || $holdsAnyEnrollment) {
+            continue;
+        }
+
+        $student = Students::find($slip->studentId);
+
+        if ($student === null) {
+            echo "  ! clearance {$slip->studentClearanceId} names no student row — nothing to seat\n";
+
+            continue;
+        }
+
+        // The program is chosen so the seat lands in a block that already exists on the
+        // demo term; a load with no block would only move the orphaning to Blocking.
+        $program = DB::table('blocks')
+            ->where('termId', $openPeriod->termId)
+            ->orderBy('courseId')
+            ->first();
+
+        if ($program === null) {
+            echo "  ! no block exists on term {$openPeriod->termId} — {$student->schoolIdNumber} cannot be seated inside a real section\n";
+
+            continue;
+        }
+
+        $prior = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => $program->courseId,
+            'termId' => $priorTermId,
+            'yearLevel' => $program->yearLevel,
+            'studentType' => StudentType::Continuing,
+            'enrollmentType' => EnrollmentType::Old,
+            'academicStanding' => 'regular',
+            'enrollmentStatus' => EnrollmentStatus::Enrolled,
+            'evaluatedBy' => $evaluationDesk?->userId,
+            'enrolledDate' => now(),
+            'formIssuedDate' => now()->toDateString(),
+            'formSignedDate' => now(),
+        ]);
+        $proposeSubjects($prior, [1, 2, 4], 'confirmed');
+        $completeWorkflow($prior);
+
+        $current = $issuer->issue([
+            'studentId' => $student->studentId,
+            'courseId' => $program->courseId,
+            'termId' => $openPeriod->termId,
+            'yearLevel' => $program->yearLevel,
+            'studentType' => StudentType::Continuing,
+            'academicStanding' => null,
+        ], $evaluationDesk);
+
+        $slipStudentsSeated++;
+        echo "✔ Clearance: {$student->schoolIdNumber} seated — enrollment {$current->enrollmentId} on term {$openPeriod->termId} is the record slip {$slip->studentClearanceId} clears"
+            ." (prior term {$priorTermId} record {$prior->enrollmentId} completed)\n";
+    }
+
+    if ($slipStudentsSeated === 0) {
+        echo "  • Clearance: every slip in the accepting window already names an enrollment\n";
     }
 }
 
@@ -1047,6 +1217,53 @@ foreach ($seatedForRegistrar as $seat) {
 
     echo "✔ Clearance: {$student->schoolIdNumber} released — all offices cleared, slip received at the Registrar desk\n";
 }
+
+// 10b-2. Ruling 5: the pass slip is confirmed at Department Evaluation, and the
+//        Registrar's clearance gate reads that confirmation. A returning student whose
+//        offices all cleared but whose paper was never acknowledged at the department is
+//        correctly held — so the demo has to show the department doing the act, or the
+//        Registrar desk has nothing to approve on demo day.
+//
+//        Scoped to the window's term on purpose. The confirmation is the department
+//        acknowledging the slip the student handed in for THIS load; a completed record
+//        from an earlier term is history no desk will act on again, and counting it here
+//        would tell the department it has work it cannot actually do.
+$confirmedNow = 0;
+$heldForConfirmation = 0;
+
+if ($openPeriod !== null) {
+    foreach (Enrollments::whereIn('studentType', [StudentType::Continuing->value, StudentType::Shifter->value])
+        ->where('termId', $openPeriod->termId)
+        ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+        ->get() as $returning) {
+        $slip = Studentclearances::where('studentId', $returning->studentId)
+            ->where('clearancePeriodId', $openPeriod->clearancePeriodId)
+            ->where('overallStatus', ClearanceOverallStatus::Approved)
+            ->first();
+
+        if ($slip === null) {
+            continue;
+        }
+
+        if ($returning->clearanceConfirmedBy === null) {
+            $returning->update([
+                'clearanceConfirmedBy' => $deskSigners[OfficeId::Guidance->value] ?? 1,
+                'clearanceConfirmedAt' => now(),
+            ]);
+            $confirmedNow++;
+        }
+    }
+
+    $heldForConfirmation = Enrollments::whereIn('studentType', [StudentType::Continuing->value, StudentType::Shifter->value])
+        ->where('termId', $openPeriod->termId)
+        ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+        ->whereNull('clearanceConfirmedBy')
+        ->count();
+}
+
+echo $confirmedNow > 0
+    ? "✔ Department Evaluation: pass slip confirmed on {$confirmedNow} returning enrollment(s) so the Registrar can read the clearance\n"
+    : "  • Department Evaluation: every returning enrollment already has its pass slip confirmed\n";
 
 // 10c. Assessment desk — a proposed first-year load waiting to be costed.
 $angelica = createDemoStudent('DEMO-2026-019', 'Angelica', 'Reyes', 'demo_angelica', 'demo.angelica@example.com', 'female');
@@ -1812,10 +2029,12 @@ echo $retentionPassed > 0
 // prints the queue each screen will list instead of leaving that to be checked
 // by hand before the defense.
 // A slip is printed for a student in a term. When a clearance names a student who has no
-// enrollment for its own period's term, the issue row has no enrollment to attribute itself
-// to: it lands with enrollmentId NULL, the unique index cannot reject a repeat across NULLs,
-// and two students' slips can carry the same document number (§25.10). Named here rather than
-// repaired here — creating an enrollment to make a count look good would invent history.
+// enrollment for its own period's term, the issue row is filed with no enrollment to point
+// at. That used to mean two students' slips could carry the same document number, because
+// MySQL treats distinct NULLs as unrelated; the print log now also carries studentId and
+// blockId (§22 ruling 6), so such a slip is counted against its own student and the number
+// is unique again. What remains is the data defect itself, named here rather than repaired
+// here — creating an enrollment to make a count look good would invent history.
 $unattributedSlips = DB::table('studentclearances as sc')
     ->join('clearanceperiods as cp', 'cp.clearancePeriodId', '=', 'sc.clearancePeriodId')
     ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('enrollments as e')
@@ -1830,7 +2049,7 @@ $deskIntegrity = [];
 
 foreach ($unattributedSlips as $orphan) {
     $deskIntegrity[] = "Clearance #{$orphan->studentClearanceId} (student {$orphan->studentId}) has no enrollment for term {$orphan->termId}: "
-        .'its slip prints with no enrollment to attribute the issue row to, so its document number is not unique';
+        .'its slip prints for a student the term has no record of, so the desk cannot show which load the slip covers';
 }
 
 // A Department Evaluation screen can only propose what the pinned curriculum offers at the
@@ -1874,14 +2093,20 @@ $queuedFor = [
         ->where('e.enrollmentStatus', 'assessed')
         ->where('a.remainingBalance', '<=', 0)->count(),
     'Registrar — paid, awaiting approval' => DB::table('enrollments')->where('termId', $termId)->where('enrollmentStatus', 'paid')->count(),
+    // Both Blocking counts describe the demo term, like the Accounting and Registrar
+    // counters beside them: an archived load from an earlier term is not this desk's
+    // to-do list. (The desk screen itself only filters when the user picks a term — the
+    // counter states what a demo term needs, not what an unfiltered page lists.)
     'Blocking — students awaiting assignment' => DB::table('enrollments as e')
         ->join('enrollmentworkflow as w', 'w.enrollmentId', '=', 'e.enrollmentId')
         ->where('e.enrollmentStatus', 'enrolled')
+        ->where('e.termId', $termId)
         ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('enrolledsubjects as es')
             ->whereColumn('es.enrollmentId', 'e.enrollmentId')->whereNotNull('es.blockId')->where('es.status', '!=', 'dropped'))
         ->count(),
     'Blocking — students inside a block' => DB::table('enrollments as e')
         ->where('e.enrollmentStatus', 'enrolled')
+        ->where('e.termId', $termId)
         ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('enrolledsubjects as es')
             ->whereColumn('es.enrollmentId', 'e.enrollmentId')->whereNotNull('es.blockId')->where('es.status', '!=', 'dropped'))
         ->count(),
@@ -1899,7 +2124,10 @@ $queuedFor = [
             ->whereRaw("ws.stepOrder = (SELECT MIN(ws2.stepOrder) FROM workflowsteps ws2 WHERE ws2.workflowId = ws.workflowId AND ws2.stepStatus = 'pending')"))
         ->count(),
     'Clearance — slips in progress' => DB::table('studentclearances')->where('overallStatus', 'pending')->count(),
+    'Evaluation — returning records not yet confirmed' => $heldForConfirmation,
     'Clearance — slips with no enrollment in the period term' => count($unattributedSlips),
+    'Print trail — issue rows carrying no key at all' => DB::table('documentprintlog')
+        ->whereNull('enrollmentId')->whereNull('studentId')->whereNull('blockId')->count(),
     'Evaluation — enrolled at a level/term the curriculum offers nothing for' => (int) $noOfferings->sum('n'),
     'Ledger — enrolled with no fee sheet' => DB::table('enrollments as e')
         ->where('e.termId', $termId)

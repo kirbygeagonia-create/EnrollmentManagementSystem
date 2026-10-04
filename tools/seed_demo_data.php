@@ -233,7 +233,7 @@ $student2 = Students::create([
 ]);
 echo "     continuing student #{$student2->studentId} created\n";
 
-$period = Clearanceperiods::where('periodStatus', 'open')->first();
+$period = Clearanceperiods::accepting()->first();
 if ($period) {
     ok('clearance.slip.generate', req($staff(1), 'POST', route('clearance.slip.generate'), [
         'studentId' => $student2->studentId, 'clearancePeriodId' => $period->clearancePeriodId,
