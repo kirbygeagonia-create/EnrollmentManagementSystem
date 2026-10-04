@@ -14,7 +14,7 @@ class Documentprintlog extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['enrollmentId', 'documentType', 'printedDate', 'printedBy', 'documentNumber'];
+    protected $fillable = ['enrollmentId', 'studentId', 'blockId', 'documentType', 'printedDate', 'printedBy', 'documentNumber'];
 
     protected function casts(): array
     {
@@ -30,6 +30,22 @@ class Documentprintlog extends Model
     public function enrollment(): BelongsTo
     {
         return $this->belongsTo(Enrollments::class, 'enrollmentId');
+    }
+
+    /**
+     * @return BelongsTo<Students, $this>
+     */
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Students::class, 'studentId');
+    }
+
+    /**
+     * @return BelongsTo<Blocks, $this>
+     */
+    public function block(): BelongsTo
+    {
+        return $this->belongsTo(Blocks::class, 'blockId');
     }
 
     /**

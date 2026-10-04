@@ -22,6 +22,7 @@ use App\Models\Studenteducationalbackgrounds;
 use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
 use App\Policies\AdmissionPolicy;
+use App\Services\EnrollmentIssuer;
 use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -345,37 +346,46 @@ class AdmissionController extends Controller
     {
         $this->authorize('approve', $admission);
 
-        DB::transaction(function () use ($admission) {
+        $enrollment = DB::transaction(function () use ($admission) {
             $admission->update([
                 'admissionStatus' => 'approved',
                 'evaluatedBy' => Auth::user()->userId,
                 'evaluatedDate' => now(),
             ]);
 
-            // Ensure an Enrollment record is created for this admission (SM-1)
-            $existingEnrollment = Enrollments::where('admissionId', $admission->admissionId)->first();
-            if (! $existingEnrollment) {
-                // academicStanding is deliberately left out: whether the student is
-                // regular or irregular is an academic judgement the Department
-                // Evaluation desk makes from the grades on file, and the Registrar
-                // confirms it at approval. Stamping "regular" here pre-decided it
-                // on an admission officer's say-so and made every document that
-                // prints the standing report an unverified default.
-                Enrollments::create([
-                    'studentId' => $admission->studentId,
-                    'courseId' => $admission->courseId,
-                    'termId' => $admission->termId,
-                    'admissionId' => $admission->admissionId,
-                    'yearLevel' => 1,
-                    'studentType' => $admission->applicantType->value,
-                    'enrollmentType' => 'new',
-                    'evaluatedBy' => Auth::user()->userId,
-                    'enrollmentStatus' => EnrollmentStatus::Pending,
-                ]);
+            // Ruling 3 (G-4): one active enrollment per student per term, read at every
+            // creation point. The lookup is by student and term rather than by admission,
+            // because the defect was two active rows holding one seat — not two rows for
+            // one application. A dropped record does not hold the seat, so a student the
+            // Registrar dropped (ruling 17) can be enrolled in the term again.
+            $standing = EnrollmentIssuer::seatHolder((int) $admission->studentId, (int) $admission->termId);
+
+            if ($standing !== null) {
+                return $standing;
             }
+
+            // academicStanding is deliberately left out: whether the student is
+            // regular or irregular is an academic judgement the Department
+            // Evaluation desk makes from the grades on file, and the Registrar
+            // confirms it at approval. Stamping "regular" here pre-decided it
+            // on an admission officer's say-so and made every document that
+            // prints the standing report an unverified default.
+            return Enrollments::create([
+                'studentId' => $admission->studentId,
+                'courseId' => $admission->courseId,
+                'termId' => $admission->termId,
+                'admissionId' => $admission->admissionId,
+                'yearLevel' => 1,
+                'studentType' => $admission->applicantType->value,
+                'enrollmentType' => 'new',
+                'evaluatedBy' => Auth::user()->userId,
+                'enrollmentStatus' => EnrollmentStatus::Pending,
+            ]);
         });
 
-        return back()->with('success', 'Admission approved and student moved to Evaluation queue.');
+        return back()->with('success', $enrollment->wasRecentlyCreated
+            ? 'Admission approved and student moved to Evaluation queue.'
+            : "Admission approved — this student already holds enrollment #{$enrollment->enrollmentId} in the term, so no second enrollment was created.");
     }
 
     /**

@@ -20,6 +20,7 @@ use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Models\Workflowsteps;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -713,11 +714,41 @@ class IDControllerTest extends TestCase
         $this->assertNull(DB::table('permissions')->where('name', 'id.release')->first());
         $this->assertNull(IdRequestStatus::tryFrom('released'));
 
+        // Ruling 13 takes 'cancelled' with it — no action in app/ writes it since
+        // card-making went, and live `ems` held no row carrying it.
+        $this->assertNull(IdRequestStatus::tryFrom('cancelled'));
+        $this->assertSame(['pending', 'validated'], array_column(IdRequestStatus::cases(), 'value'));
+
         $this->post(route('id.photo', $idRequest), [
             'photo' => UploadedFile::fake()->image('retake.jpg'),
         ])->assertForbidden();
 
         $this->assertEquals(IdRequestStatus::Validated, $idRequest->fresh()->status);
+    }
+
+    #[Test]
+    public function a_retired_id_card_state_cannot_be_written_to_the_request(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        // The vocabulary is retired in storage, not only in PHP: the column narrowed on
+        // MySQL and its check constraint on SQLite, so a request in a state no desk can
+        // act on cannot be filed by anything that bypasses the policy.
+        $this->expectException(QueryException::class);
+
+        DB::table('idrequests')->where('idRequestId', $idRequest->idRequestId)->update(['status' => 'cancelled']);
     }
 
     #[Test]

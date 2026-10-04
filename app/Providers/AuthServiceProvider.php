@@ -28,10 +28,12 @@ use App\Models\Roles;
 use App\Models\Rooms;
 use App\Models\Scholarshiptypes;
 use App\Models\Settings;
+use App\Models\Shiftingrequests;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Models\Studentscholarships;
 use App\Models\Subjects;
 use App\Policies\AdmissionPolicy;
 use App\Policies\AssessmentPolicy;
@@ -44,6 +46,7 @@ use App\Policies\IDPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\ReferenceDataPolicy;
 use App\Policies\RegistrarPolicy;
+use App\Policies\ShiftRequestPolicy;
 use App\Policies\StudentPolicy;
 use App\Policies\UserManagementPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -62,9 +65,13 @@ class AuthServiceProvider extends ServiceProvider
         Studentclearances::class => ClearancePolicy::class,
         Enrollments::class => EvaluationPolicy::class,
         Studentassessments::class => AssessmentPolicy::class,
+        // A grant is withdrawn by the desk that awarded it, so its ability lives with the
+        // assessment policy rather than in a one-model policy of its own.
+        Studentscholarships::class => AssessmentPolicy::class,
         Payments::class => PaymentPolicy::class,
         Clinicrecords::class => ClinicPolicy::class,
         Idrequests::class => IDPolicy::class,
+        Shiftingrequests::class => ShiftRequestPolicy::class,
         Courses::class => ReferenceDataPolicy::class,
         Staffusers::class => UserManagementPolicy::class,
         // Reference-data models share the ReferenceDataPolicy (viewAny/manage* abilities)
@@ -107,6 +114,9 @@ class AuthServiceProvider extends ServiceProvider
         // explicit gates so controllers can call authorize('registrar.approve', $enrollment).
         Gate::define('registrar.approve', function ($user, $enrollment) {
             return app(RegistrarPolicy::class)->approve($user, $enrollment);
+        });
+        Gate::define('registrar.drop', function ($user, $enrollment) {
+            return app(RegistrarPolicy::class)->drop($user, $enrollment);
         });
         Gate::define('blocking.manageBlocks', function ($user) {
             return app(BlockingPolicy::class)->manageBlocks($user);

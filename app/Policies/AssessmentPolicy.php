@@ -4,10 +4,12 @@ namespace App\Policies;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\OfficeId;
+use App\Enums\ScholarshipStatus;
 use App\Models\Charges;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
+use App\Models\Studentscholarships;
 
 class AssessmentPolicy
 {
@@ -67,6 +69,29 @@ class AssessmentPolicy
 
         // Must be Scholarship office (officeId = 3)
         return $user->officeId === OfficeId::Scholarship->value;
+    }
+
+    /**
+     * Determine whether the desk can withdraw a grant — revoke it (the eligibility was
+     * mistaken or forfeited) or let it expire (ruling 15).
+     *
+     * Applying a grant and taking one back are the same custody of the same number, so the
+     * right stays with the Scholarship office. An active grant is the only thing that can be
+     * withdrawn: a withdrawn one has already cost the student their coverage, and writing
+     * over a closed decision is how an audit trail stops being one.
+     */
+    public function withdrawScholarship(Staffusers $user, Studentscholarships $grant): bool
+    {
+        if (! $user->hasPermissionTo('assessment.scholarships.withdraw')) {
+            return false;
+        }
+
+        // Must be Scholarship office (officeId = 3)
+        if ($user->officeId !== OfficeId::Scholarship->value) {
+            return false;
+        }
+
+        return $grant->status === ScholarshipStatus::Active;
     }
 
     /**

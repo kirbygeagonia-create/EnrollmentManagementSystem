@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Enums\ClearanceApprovalStatus;
 use App\Enums\ClearanceOverallStatus;
-use App\Enums\ClearancePeriodStatus;
 use App\Enums\OfficeId;
 use App\Models\Clearanceapprovals;
 use App\Models\Clearanceperiods;
@@ -48,8 +47,8 @@ class ClearancePolicy
             return false;
         }
 
-        // Period must be open
-        if ($period->periodStatus !== ClearancePeriodStatus::Open) {
+        // The window must be accepting slips: open, or extended past its end date.
+        if (! $period->isAccepting()) {
             return false;
         }
 
@@ -114,8 +113,9 @@ class ClearancePolicy
     }
 
     /**
-     * Determine whether the user can process lost slip replacement (₱100).
-     * BR33: Lost slip costs ₱100 at Accounting before reissue
+     * Determine whether the user can process a lost slip replacement.
+     * BR33: a replacement is paid for at Accounting before the slip is reissued — the
+     * amount is the Reference Data replacement fee type, not a figure fixed here.
      */
     public function replaceLostSlip(Staffusers $user, Students $student, Clearanceperiods $period): bool
     {
@@ -123,8 +123,11 @@ class ClearancePolicy
             return false;
         }
 
-        // Must be Accounting office (officeId = 2)
-        if ($user->officeId !== OfficeId::Accounting->value) {
+        // Ruling 8 puts this act with Accounting and with Clearance, and the counter that
+        // takes a lost slip is the Registrar's since ruling 12 folded the legacy Clearance
+        // office into it. The action files the replacement OR as it reissues, so either
+        // office is recording the fee rather than relying on someone else to have done it.
+        if (! in_array($user->officeId, [OfficeId::Accounting->value, OfficeId::Registrar->value], true)) {
             return false;
         }
 

@@ -50,8 +50,18 @@ class PermissionMatrixTest extends TestCase
             'Dean' => 'dean',
             'ProgramHead' => 'programHead',
             // DeptEvaluator is a Spatie-only desk role (no StaffRole enum case)
-            // — the `role` column value is display-only.
+            // — the `role` column value is display-only. So are the other desk
+            // roles below, which is why they all seat as plain `staff`.
             'DeptEvaluator' => 'staff',
+            'RegistrarApprover' => 'staff',
+            'RegistrarDesk' => 'staff',
+            'AdmissionOfficer' => 'staff',
+            'AccountingStaff' => 'staff',
+            'ScholarshipOfficer' => 'staff',
+            'GuidanceStaff' => 'staff',
+            'BlockingCoordinator' => 'staff',
+            'ClinicStaff' => 'staff',
+            'IdOfficer' => 'staff',
             'Staff' => 'staff',
         ];
 
@@ -444,7 +454,7 @@ class PermissionMatrixTest extends TestCase
         // OfficeHead view permissions (all)
         $viewPerms = [
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
-            'payment.view', 'clearance.view', 'enrollment.approve', 'block.view',
+            'payment.view', 'clearance.view', 'block.view',
             'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
         ];
         foreach ($viewPerms as $perm) {
@@ -456,16 +466,22 @@ class PermissionMatrixTest extends TestCase
         // recording is NOT a desk-head permission — the School Entrance
         // Examination is Guidance-only, and course-specific and retention
         // exams belong to the owning academic department.
+        //
+        // Ruling 7 took the five signature rights out of this list: a head used to be
+        // able to sign at any desk in the building. What remains is what a head answers
+        // for in their own counter — windows, receipts, blocking, computing, printing —
+        // plus `clearance.approve`, which is office-scoped to the signer's own
+        // requirement row and so is genuinely a head-of-office act.
         $actionPerms = [
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
-            'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'id.request.create', 'id.validate', 'id.sign',
+            'clinic.record', 'clinic.update', 'clinic.reopen',
+            'id.request.create', 'id.validate',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
-            'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
-            'admission.create', 'admission.update', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
+            'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process',
+            'admission.create', 'admission.update', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
             'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
         ];
         foreach ($actionPerms as $perm) {
@@ -475,17 +491,70 @@ class PermissionMatrixTest extends TestCase
 
         // OfficeHead does NOT have these (admin-only / refdata manage / user
         // manage), plus the item-4 exam-recording boundary — Guidance owns the
-        // School Entrance exam, departments own course-specific and retention.
+        // School Entrance exam, departments own course-specific and retention —
+        // plus ruling 7's five signature rights.
         $notOfficeHead = [
             'assessment.charges.adjust', 'payment.void',
             'refdata.courses.manage', 'refdata.majors.manage',
             'user.create', 'user.roles.assign', 'user.roles.manage',
             'block.capacity.check', 'clearance.slip.replace',
             'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
+            'enrollment.approve', 'admission.approve', 'evaluation.sign', 'clinic.sign', 'id.sign',
         ];
         foreach ($notOfficeHead as $perm) {
             $this->assertFalse($officeHead->hasPermissionTo($perm),
                 "OfficeHead should NOT have {$perm} per RbacSeeder");
+        }
+    }
+
+    /**
+     * Ruling 7 (X-4): every signature right left on OfficeHead has moved to the desk that
+     * owns the box it signs — so the authority to sign a record is a question of which
+     * desk a record is standing at, not of which title a person holds.
+     */
+    #[Test]
+    public function each_sign_right_sits_with_the_desk_that_owns_the_box(): void
+    {
+        $owners = [
+            'enrollment.approve' => ['RegistrarApprover'],
+            'admission.approve' => ['AdmissionOfficer'],
+            'evaluation.sign' => ['DeptEvaluator', 'Dean', 'ProgramHead'],
+            'clinic.sign' => ['ClinicStaff'],
+            'id.sign' => ['IdOfficer'],
+        ];
+
+        foreach ($owners as $permission => $roles) {
+            foreach ($roles as $role) {
+                $staff = $this->createStaffWithRole($role);
+
+                $this->assertTrue($staff->hasPermissionTo($permission),
+                    "{$role} must hold {$permission} — it is the desk that signs that box");
+            }
+
+            // The right must not be reachable by the generalist title any more.
+            $this->assertFalse($this->createStaffWithRole('OfficeHead')->hasPermissionTo($permission),
+                "OfficeHead must not hold {$permission} after the ruling 7 split");
+            $this->assertFalse($this->createStaffWithRole('Staff')->hasPermissionTo($permission),
+                "Bare Staff must not hold {$permission}");
+        }
+    }
+
+    /**
+     * Ruling 8 (P-12): the lost-slip replacement is held by the cashier who records the
+     * fee and the counter that takes the slip, and by nobody else.
+     */
+    #[Test]
+    public function the_lost_slip_replacement_sits_with_accounting_and_the_clearance_counter(): void
+    {
+        foreach (['AccountingStaff', 'RegistrarDesk'] as $role) {
+            $this->assertTrue($this->createStaffWithRole($role)->hasPermissionTo('clearance.slip.replace'),
+                "{$role} must hold clearance.slip.replace per ruling 8");
+        }
+
+        // The offices that neither take a lost slip nor file its OR.
+        foreach (['OfficeHead', 'ClinicStaff', 'IdOfficer', 'DeptEvaluator', 'BlockingCoordinator'] as $role) {
+            $this->assertFalse($this->createStaffWithRole($role)->hasPermissionTo('clearance.slip.replace'),
+                "{$role} must not hold clearance.slip.replace");
         }
     }
 

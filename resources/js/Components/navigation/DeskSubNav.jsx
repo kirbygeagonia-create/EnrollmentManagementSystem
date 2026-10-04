@@ -18,6 +18,8 @@ const deskConfigs = {
             { name: 'Exam Queue', route: 'exam.index' },
             { name: 'Record Entrance Exam', route: 'exam.create' },
             { name: 'Pass / Fail Results', route: 'exam.results' },
+            // The Guidance Councillor's signature on a shift is the final call (ruling 11).
+            { name: 'Shift Decisions', route: 'shift.index' },
         ],
     },
     clearance: {
@@ -35,6 +37,8 @@ const deskConfigs = {
         badgeColor: 'bg-blue-500/10 text-blue-700 border-blue-300',
         tabs: [
             { name: 'Evaluation Queue', route: 'evaluation.index' },
+            // G-7: a program change is filed at this desk, not at Admissions.
+            { name: 'Shift Requests', route: 'shift.index' },
         ],
     },
     assessment: {

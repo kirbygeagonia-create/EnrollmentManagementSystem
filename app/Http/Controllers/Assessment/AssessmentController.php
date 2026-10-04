@@ -7,7 +7,6 @@ use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\FeeUnitBasis;
 use App\Enums\OfficeId;
-use App\Enums\PaymentStatus;
 use App\Enums\ScholarshipStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Charges;
@@ -102,6 +101,11 @@ class AssessmentController extends Controller
             'assessment' => $assessment,
             'feeTypes' => Feetypes::all(['feeTypeId', 'feeName', 'defaultAmount', 'unitBasis']),
             'scholarshipTypes' => Scholarshiptypes::all(['scholarshipTypeId', 'scholarshipName', 'coverageType', 'coveragePercent']),
+            'can' => [
+                // Which grants can be taken back is the row's status, and the screen checks
+                // that; whether this desk holds the right at all is here (ruling 15).
+                'withdrawScholarship' => Auth::user()->can('assessment.scholarships.withdraw'),
+            ],
         ]);
     }
 
@@ -249,7 +253,7 @@ class AssessmentController extends Controller
         ]);
 
         $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
-            ->where('paymentStatus', PaymentStatus::Paid)
+            ->held()
             ->sum('amount');
 
         $assessment->update([
@@ -258,6 +262,104 @@ class AssessmentController extends Controller
         ]);
 
         return back()->with('success', 'Scholarship applied.');
+    }
+
+    /**
+     * Revoke or expire a grant, then recompute what the student owes (ruling 15).
+     *
+     * A grant is not a note on the student's record — it is a number inside the assessment.
+     * Taking one back therefore has to move the money: coverage recomputed from the grants
+     * still active, the balance reopened, and an account that now owes pulled back out of
+     * `paid` or even out of Registrar approval, because a student the school has un-funded
+     * cannot be certified as settled. Signatures already given stay as history — this desk
+     * reverses a coverage figure, not another office's signature, which is the same rule
+     * the payment void and the refund follow.
+     */
+    public function withdrawScholarship(Request $request, Studentscholarships $grant): RedirectResponse
+    {
+        $this->authorize('withdrawScholarship', $grant);
+
+        $validated = $request->validate([
+            'decision' => 'required|in:revoke,expire',
+            'reason' => 'required|string|min:10|max:500',
+        ]);
+
+        $grant->update([
+            'status' => $validated['decision'] === 'expire' ? ScholarshipStatus::Expired : ScholarshipStatus::Revoked,
+            'statusChangedBy' => Auth::user()->userId,
+            'statusChangedAt' => now(),
+            'statusReason' => $validated['reason'],
+        ]);
+
+        // The grant is scoped to a student and a term, so that is where the money it
+        // covered lives. No fee sheet for that term means nothing was ever discounted by
+        // it, and the withdrawal is then simply the record of that.
+        $enrollment = Enrollments::where('studentId', $grant->studentId)
+            ->where('termId', $grant->termId)
+            ->latest('enrollmentId')
+            ->first();
+
+        $assessment = $enrollment?->studentassessments;
+
+        if ($assessment === null) {
+            return back()->with('success', 'Grant withdrawn — no fee sheet exists for that term, so nothing was recomputed.');
+        }
+
+        $reopened = DB::transaction(function () use ($assessment, $enrollment, $grant, $validated) {
+            $assessed = (float) $assessment->totalAssessedAmount;
+
+            // BR19 re-read from the other side: a full grant covers the whole assessment,
+            // and partial grants stack against it up to 100%. The grants still standing
+            // decide the new coverage — the withdrawn one stops counting the moment it is
+            // taken back, which is the whole point of the act. Each standing grant is
+            // re-read at its own percentage of the assessed total rather than at the amount
+            // it was credited with, because a grant carries no amount of its own and the
+            // award-time figure was clamped by the grant that has just gone. The percentage
+            // is the only reproducible number, and it makes the result independent of the
+            // order the grants happened to be awarded in.
+            $remaining = Studentscholarships::where('studentId', $grant->studentId)
+                ->where('termId', $grant->termId)
+                ->where('status', ScholarshipStatus::Active)
+                ->with('scholarshipType')
+                ->get();
+
+            $coverage = $remaining->contains(fn (Studentscholarships $g) => $g->scholarshipType?->coverageType === CoverageType::Full)
+                ? $assessed
+                : min($assessed, $remaining->sum(function (Studentscholarships $g) use ($assessed) {
+                    $type = $g->scholarshipType;
+
+                    return $type === null ? 0.0 : $assessed * ((float) $type->coveragePercent / 100);
+                }));
+
+            $held = (float) $assessment->payments()->held()->sum('amount');
+            $newBalance = max(0, $assessed - $coverage - (float) $assessment->totalWaived - $held);
+
+            $assessment->update([
+                'totalScholarshipCoverage' => $coverage,
+                'remainingBalance' => $newBalance,
+            ]);
+
+            if ($newBalance > 0 && in_array($enrollment->enrollmentStatus, [EnrollmentStatus::Paid, EnrollmentStatus::Enrolled], true)) {
+                $this->stateMachine->transition(
+                    $enrollment,
+                    EnrollmentStatus::Assessed,
+                    Auth::user(),
+                    'Grant withdrawn ('.$validated['decision'].'): '
+                        .$grant->scholarshipType->scholarshipName
+                        .' — the account owes ₱'.number_format($newBalance, 2).' again. Reason: '.$validated['reason']
+                );
+
+                return $newBalance;
+            }
+
+            // Nothing was pulled back out of a settled state: the account simply costs
+            // more than it did, wherever it currently stands in the pipeline.
+            return null;
+        });
+
+        return back()->with('success', $reopened === null
+            ? 'Grant withdrawn and the assessment recomputed — the balance is now ₱'.number_format((float) $assessment->fresh()->remainingBalance, 2).'.'
+            : 'Grant withdrawn and the assessment recomputed — the account owes ₱'.number_format($reopened, 2).' again and is back with Accounting.');
     }
 
     /**
@@ -289,7 +391,7 @@ class AssessmentController extends Controller
             $totalWaived = $assessment->charges->sum('waivedAmount');
 
             $totalPaid = Payments::where('enrollmentId', $assessment->enrollmentId)
-                ->where('paymentStatus', PaymentStatus::Paid)
+                ->held()
                 ->sum('amount');
 
             $assessment->update([

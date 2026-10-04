@@ -5,6 +5,8 @@ namespace Tests\Feature\Evaluation;
 use App\Enums\AcademicStanding;
 use App\Enums\AdmissionStatus;
 use App\Enums\ApplicantType;
+use App\Enums\ClearanceOverallStatus;
+use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
@@ -16,6 +18,7 @@ use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
 use App\Models\Admissions;
+use App\Models\Clearanceperiods;
 use App\Models\Courses;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
@@ -24,6 +27,7 @@ use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
+use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
 use App\Services\AcademicStandingService;
@@ -224,6 +228,37 @@ class AcademicStandingOwnershipTest extends TestCase
             'totalWaived' => 5000,
             'remainingBalance' => 0,
             'assessmentDate' => now()->toDateString(),
+        ]);
+
+        // Ruling 4 stopped the clearance gate passing when no window exists, so an
+        // approvable continuing student now needs the slip the desk will actually read:
+        // approved by the offices and received at the Registrar desk (BR34). Reused
+        // rather than re-created, because two accepting windows would leave the gate
+        // reading one while the slip sits in the other.
+        $window = Clearanceperiods::accepting()->first() ?? Clearanceperiods::create([
+            'termId' => $this->currentTerm->termId,
+            'clearanceStartDate' => now()->subWeek()->toDateString(),
+            'clearanceEndDate' => now()->addWeek()->toDateString(),
+            'periodStatus' => ClearancePeriodStatus::Open,
+        ]);
+
+        Studentclearances::updateOrCreate(
+            [
+                'studentId' => $enrollment->studentId,
+                'clearancePeriodId' => $window->clearancePeriodId,
+            ],
+            [
+                'overallStatus' => ClearanceOverallStatus::Approved,
+                'receivedBy' => $this->registrar->userId,
+                'receivedDate' => now(),
+            ]
+        );
+
+        // Ruling 5 adds the other half: the department confirms the pass slip it was
+        // handed, and the Registrar reads that confirmation as part of the same gate.
+        $enrollment->update([
+            'clearanceConfirmedBy' => $this->evaluator->userId,
+            'clearanceConfirmedAt' => now(),
         ]);
 
         $enrollment->update(['enrollmentStatus' => EnrollmentStatus::Paid]);

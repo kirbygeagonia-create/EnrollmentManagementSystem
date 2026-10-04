@@ -160,7 +160,9 @@ class RegistrarReturnTest extends TestCase
     #[Test]
     public function registrar_can_return_a_paid_enrollment_with_a_reason(): void
     {
-        $registrar = $this->staffForOffice(1);
+        // Ruling 7: the return reuses the approval right, and the approval right is the
+        // Registrar desk's (RegistrarApprover), no longer every office head's.
+        $registrar = $this->staffForOffice(1, 'RegistrarApprover');
         $enrollment = $this->paidEnrollment();
 
         $response = $this->actingAs($registrar)->post(route('registrar.return', $enrollment), [
@@ -184,7 +186,7 @@ class RegistrarReturnTest extends TestCase
     #[Test]
     public function return_requires_a_reason(): void
     {
-        $registrar = $this->staffForOffice(1);
+        $registrar = $this->staffForOffice(1, 'RegistrarApprover');
         $enrollment = $this->paidEnrollment();
 
         $this->actingAs($registrar)
@@ -197,7 +199,7 @@ class RegistrarReturnTest extends TestCase
     #[Test]
     public function return_is_rejected_when_enrollment_is_not_paid(): void
     {
-        $registrar = $this->staffForOffice(1);
+        $registrar = $this->staffForOffice(1, 'RegistrarApprover');
         $enrollment = $this->paidEnrollment(status: 'assessed');
 
         $this->actingAs($registrar)
@@ -212,7 +214,11 @@ class RegistrarReturnTest extends TestCase
     #[Test]
     public function non_registrar_offices_cannot_return_enrollments(): void
     {
-        $admissionStaff = $this->staffForOffice(6);
+        // Same role, different office: after ruling 7 the Admission head could be refused
+        // merely for lacking the approval right, so the test seats a RegistrarApprover in
+        // office 6 — the permission is present and the office scope is what refuses.
+        $admissionStaff = $this->staffForOffice(6, 'RegistrarApprover');
+        $this->assertTrue($admissionStaff->hasPermissionTo('enrollment.approve'));
         $enrollment = $this->paidEnrollment();
 
         $this->actingAs($admissionStaff)

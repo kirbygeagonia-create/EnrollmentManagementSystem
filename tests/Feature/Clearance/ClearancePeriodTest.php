@@ -2,12 +2,17 @@
 
 namespace Tests\Feature\Clearance;
 
+use App\Enums\ClearanceOverallStatus;
+use App\Enums\ClearancePeriodStatus;
 use App\Enums\StaffRole;
 use App\Models\Academicterms;
 use App\Models\Academicyears;
 use App\Models\Clearanceperiods;
 use App\Models\Offices;
+use App\Models\Religions;
 use App\Models\Staffusers;
+use App\Models\Studentclearances;
+use App\Models\Students;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -21,7 +26,9 @@ use Tests\TestCase;
  *
  * `updatePeriod` deliberately accepts only the status: the screen shows the dates
  * read-only, and a posted date is ignored rather than written — pinned below so a
- * future edit cannot silently re-open a closed window through this route.
+ * future edit cannot silently re-open a closed window through this route. Moving a
+ * date is its own action (ruling 13's extend), which is refused while the window is
+ * closed, and closing itself waits for the offices to finish (ruling 16).
  */
 class ClearancePeriodTest extends TestCase
 {
@@ -40,6 +47,9 @@ class ClearancePeriodTest extends TestCase
         foreach ([1, 2, 3, 4, 5, 8, 11, 22] as $officeId) {
             Offices::firstOrCreate(['officeId' => $officeId], ['officeName' => 'Office '.$officeId]);
         }
+
+        // A student row needs a religion on MySQL, where the foreign key is enforced.
+        Religions::firstOrCreate(['religionId' => 1], ['religionName' => 'Roman Catholic']);
 
         $year = Academicyears::create([
             'yearLabel' => '2026-2027',
@@ -211,5 +221,181 @@ class ClearancePeriodTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame(2, Clearanceperiods::where('termId', $this->term->termId)->count());
+    }
+
+    // ------------------------------------------------------------- close & extend
+
+    private function slipIn(Clearanceperiods $period, ClearanceOverallStatus $status = ClearanceOverallStatus::Pending): Studentclearances
+    {
+        $student = Students::create([
+            'schoolIdNumber' => 'PERIOD-'.uniqid(),
+            'lastName' => 'Period',
+            'firstName' => 'Student',
+            'middleName' => 'P',
+            'suffix' => 'N/A',
+            'gender' => 'male',
+            'birthdate' => '2004-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'civilStatus' => 'single',
+            'religionId' => 1,
+            'contactNumber' => '09171234567',
+            'semestersCompleted' => 1,
+            'yearsInInstitution' => 1,
+            'email' => 'period_student_'.uniqid().'@example.com',
+            'username' => 'period_student_'.uniqid(),
+            'passwordHash' => bcrypt('password123'),
+            'status' => 'active',
+        ]);
+
+        return Studentclearances::create([
+            'studentId' => $student->studentId,
+            'clearancePeriodId' => $period->clearancePeriodId,
+            'overallStatus' => $status,
+        ]);
+    }
+
+    #[Test]
+    public function closing_is_refused_while_clearances_in_the_window_are_still_pending(): void
+    {
+        $period = Clearanceperiods::create($this->periodPayload());
+        $this->slipIn($period);
+        $this->slipIn($period);
+
+        // Ruling 16: a window does not close on top of the offices' unfinished work,
+        // and the refusal says how many are unfinished rather than leaving the desk
+        // to count them.
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.update', $period), ['periodStatus' => 'closed'])
+            ->assertSessionHasErrors('periodStatus');
+
+        $this->assertStringContainsString(
+            '2 clearance(s)',
+            session('errors')->first('periodStatus')
+        );
+        $this->assertSame('open', $period->fresh()->periodStatus->value);
+    }
+
+    #[Test]
+    public function a_window_whose_clearances_are_all_decided_closes_and_reopens(): void
+    {
+        $period = Clearanceperiods::create($this->periodPayload());
+        $this->slipIn($period, ClearanceOverallStatus::Approved);
+        $this->slipIn($period, ClearanceOverallStatus::Rejected);
+
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.update', $period), ['periodStatus' => 'closed'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('closed', $period->fresh()->periodStatus->value);
+
+        // Only Pending work holds the window open; a decided slip of any outcome does not.
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.update', $period), ['periodStatus' => 'open'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('open', $period->fresh()->periodStatus->value);
+    }
+
+    #[Test]
+    public function extending_a_window_moves_the_end_date_out_and_keeps_it_taking_slips(): void
+    {
+        $period = Clearanceperiods::create($this->periodPayload());
+
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.extend', $period), ['clearanceEndDate' => '2026-12-20'])
+            ->assertSessionHasNoErrors();
+
+        $period->refresh();
+        $this->assertSame('extended', $period->periodStatus->value);
+        $this->assertSame('2026-12-20', $period->clearanceEndDate->toDateString());
+        $this->assertTrue($period->isAccepting());
+
+        // The point of the extension: the desk still draws slips in this window.
+        $student = Students::create([
+            'schoolIdNumber' => 'EXT-'.uniqid(),
+            'lastName' => 'Extended',
+            'firstName' => 'Student',
+            'middleName' => 'E',
+            'suffix' => 'N/A',
+            'gender' => 'male',
+            'birthdate' => '2004-01-01',
+            'birthplace' => 'Test City',
+            'citizenship' => 'Filipino',
+            'civilStatus' => 'single',
+            'religionId' => 1,
+            'contactNumber' => '09171234567',
+            'semestersCompleted' => 1,
+            'yearsInInstitution' => 1,
+            'email' => 'ext_student_'.uniqid().'@example.com',
+            'username' => 'ext_student_'.uniqid(),
+            'passwordHash' => bcrypt('password123'),
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($this->officer)
+            ->post(route('clearance.slip.generate'), [
+                'studentId' => $student->studentId,
+                'clearancePeriodId' => $period->clearancePeriodId,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('studentclearances', [
+            'studentId' => $student->studentId,
+            'clearancePeriodId' => $period->clearancePeriodId,
+        ]);
+    }
+
+    #[Test]
+    public function an_extension_has_to_move_the_date_forward_and_a_closed_window_is_reopened_first(): void
+    {
+        $period = Clearanceperiods::create($this->periodPayload());
+
+        // Not later than where the window already stops is a shortening wearing the
+        // word "extend".
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.extend', $period), ['clearanceEndDate' => '2026-10-31'])
+            ->assertSessionHasErrors('clearanceEndDate');
+        $this->assertSame('open', $period->fresh()->periodStatus->value);
+
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.extend', $period), ['clearanceEndDate' => ''])
+            ->assertSessionHasErrors('clearanceEndDate');
+
+        $closed = Clearanceperiods::create($this->periodPayload(['periodStatus' => 'closed']));
+        $this->actingAs($this->officer)
+            ->patch(route('clearance.periods.extend', $closed), ['clearanceEndDate' => '2027-01-31'])
+            ->assertSessionHasErrors('clearanceEndDate');
+        $this->assertSame('closed', $closed->fresh()->periodStatus->value);
+    }
+
+    #[Test]
+    public function a_desk_without_the_period_permission_cannot_extend_one(): void
+    {
+        $viewer = $this->staffInOffice(8, 'Staff');
+        $period = Clearanceperiods::create($this->periodPayload());
+
+        $this->actingAs($viewer)
+            ->patch(route('clearance.periods.extend', $period), ['clearanceEndDate' => '2026-12-20'])
+            ->assertForbidden();
+
+        $this->assertSame('open', $period->fresh()->periodStatus->value);
+        $this->assertSame('2026-10-31', $period->fresh()->clearanceEndDate->toDateString());
+    }
+
+    #[Test]
+    public function an_extended_window_is_the_window_the_desk_and_the_registrar_read(): void
+    {
+        $this->actingAs($this->officer)
+            ->post(route('clearance.periods.store'), $this->periodPayload())
+            ->assertSessionHasNoErrors();
+
+        $period = Clearanceperiods::sole();
+        $period->update(['periodStatus' => ClearancePeriodStatus::Extended]);
+
+        // One lookup answers "is clearance season?" for every desk, so an extension
+        // cannot be invisible to the gate that blocks on a missing window (ruling 4).
+        $this->assertSame($period->clearancePeriodId, Clearanceperiods::accepting()->sole()->clearancePeriodId);
+
+        $period->update(['periodStatus' => ClearancePeriodStatus::Closed]);
+        $this->assertSame(0, Clearanceperiods::accepting()->count());
     }
 }

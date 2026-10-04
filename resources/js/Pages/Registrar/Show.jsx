@@ -1,13 +1,19 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState } from 'react';
 
 const checklistSteps = Object.entries(registrarGateLabels).map(([key, label]) => ({ key, label }));
 
-export default function Show({ enrollment, checklist, allValid, standingReport = null }) {
+// The statuses ruling 17 lets this desk drop. Below assessed nothing has reached
+// Accounting or the Registrar's counter yet, so the department still owns the record.
+const DROPPABLE_STATUSES = ['assessed', 'paid', 'enrolled'];
+
+export default function Show({ enrollment, checklist, allValid, blockingReasons = {}, standingReport = null }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [returnOpen, setReturnOpen] = useState(false);
+    const [dropOpen, setDropOpen] = useState(false);
+    const canDrop = usePage().props.can?.enrollmentDrop === true;
 
     // Item 16: the standing the evaluating department recorded is a proposal
     // until this office confirms it, so approval carries the Registrar's own
@@ -44,6 +50,21 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
         });
     };
 
+    // Ruling 17: dropping needs a reason, and the reason is the record's defence when a
+    // panelist asks why four desks' signatures stopped meaning anything.
+    const dropForm = useForm({
+        dropReason: '',
+    });
+
+    const confirmDrop = () => {
+        dropForm.post(route('registrar.drop', { enrollment: enrollment.enrollmentId }), {
+            onSuccess: () => {
+                setDropOpen(false);
+                dropForm.reset();
+            },
+        });
+    };
+
     const termLabel = enrollment.term
         ? `${enrollment.term.semester?.value || enrollment.term.semester} ${enrollment.term.academicYear?.yearLabel || ''}`.trim()
         : '—';
@@ -55,6 +76,9 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
     const isEnrolled = enrollment.enrollmentStatus === 'enrolled' || enrollment.enrollmentStatus?.value === 'enrolled';
     const isPaid = enrollment.enrollmentStatus === 'paid' || enrollment.enrollmentStatus?.value === 'paid';
     const isReturned = enrollment.enrollmentStatus === 'returnedToEvaluation' || enrollment.enrollmentStatus?.value === 'returnedToEvaluation';
+    const statusValue = enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus;
+    const isDropped = statusValue === 'dropped';
+    const droppable = canDrop && DROPPABLE_STATUSES.includes(statusValue);
 
     const enrolledSubjects = enrollment.enrolledSubjects || [];
     const totalUnits = enrolledSubjects.reduce((sum, es) => {
@@ -182,7 +206,14 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
                                             >
                                                 {isPassed ? '✓' : '—'}
                                             </div>
-                                            <span className="text-xs font-bold">{item.label}</span>
+                                            <div>
+                                                <span className="text-xs font-bold">{item.label}</span>
+                                                {!isPassed && blockingReasons[item.key] && (
+                                                    <p className="text-[11px] font-medium text-slate-600 mt-0.5 max-w-md">
+                                                        {blockingReasons[item.key]}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
                                             isPassed
@@ -255,7 +286,15 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
 
                         {/* Approval Button */}
                         <div className="pt-5 border-t border-slate-100 mt-5">
-                            {!isEnrolled ? (
+                            {isDropped ? (
+                                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                                    <span className="font-bold block mb-0.5">Dropped by the Registrar — this record is closed.</span>
+                                    {enrollment.dropReason || 'No reason recorded.'}
+                                    <span className="block mt-1 text-rose-700">
+                                        The seat in the term is released, so the student may be re-enrolled on a fresh record.
+                                    </span>
+                                </div>
+                            ) : !isEnrolled ? (
                                 <>
                                     <button
                                         type="button"
@@ -282,11 +321,34 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
                                             Return to Department Evaluation
                                         </button>
                                     )}
+                                    {droppable && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDropOpen(true)}
+                                            disabled={dropForm.processing}
+                                            className="w-full mt-2.5 py-3 px-4 rounded-xl border-2 border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 font-heading font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                            </svg>
+                                            Drop Enrollment (reason required)
+                                        </button>
+                                    )}
                                 </>
                             ) : (
                                 <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold text-xs flex items-center justify-center gap-2">
                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                                     Officially Enrolled by Registrar on {enrollment.enrolledDate ? new Date(enrollment.enrolledDate).toLocaleDateString('en-PH') : 'Recent'}
+                                    {droppable && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDropOpen(true)}
+                                            disabled={dropForm.processing}
+                                            className="ml-2 py-1 px-2.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 font-bold text-[10px] uppercase tracking-wide transition-colors"
+                                        >
+                                            Drop
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -505,6 +567,68 @@ export default function Show({ enrollment, checklist, allValid, standingReport =
                     {returnForm.data.returnReason.trim().length > 0 && returnForm.data.returnReason.trim().length < 10 && (
                         <p className="text-xs text-slate-500 mt-1">
                             Minimum 10 characters — {10 - returnForm.data.returnReason.trim().length} more needed.
+                        </p>
+                    )}
+                </div>
+            </Modal>
+            {/* Drop Enrollment — Required Reason Modal (ruling 17).
+                The reason is mandatory on the server too; this only stops an
+                obviously empty one from reaching it. */}
+            <Modal
+                show={dropOpen}
+                onClose={() => {
+                    setDropOpen(false);
+                    dropForm.reset();
+                }}
+                title="Drop This Enrollment"
+                subtitle={`${studentName} — the record closes and the seat in the term is released`}
+                size="sm"
+                footer={
+                    <div className="flex items-center justify-end gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDropOpen(false);
+                                dropForm.reset();
+                            }}
+                            className="btn btn-ghost btn-sm"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmDrop}
+                            disabled={dropForm.processing || dropForm.data.dropReason.trim().length < 10}
+                            title={dropForm.data.dropReason.trim().length < 10 ? 'Drop reason must be at least 10 characters' : undefined}
+                            className="btn btn-danger btn-sm disabled:opacity-50"
+                        >
+                            {dropForm.processing ? 'Dropping…' : 'Confirm Drop'}
+                        </button>
+                    </div>
+                }
+            >
+                <div>
+                    <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
+                        Dropping erases what the desks signed. The department signature, the assessment,
+                        the receipt and this office&rsquo;s approval stop counting from the moment it is
+                        dropped, so the reason is required and kept on the record.
+                    </div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Drop Reason <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={dropForm.data.dropReason}
+                        onChange={(e) => dropForm.setData('dropReason', e.target.value)}
+                        placeholder="e.g., Student withdrew from the term; documented withdrawal letter received."
+                        className="w-full text-sm rounded-xl border-slate-300 focus:border-rose-500 focus:ring-rose-500"
+                    />
+                    {dropForm.errors.dropReason && (
+                        <p className="form-error mt-1">{dropForm.errors.dropReason}</p>
+                    )}
+                    {dropForm.data.dropReason.trim().length > 0 && dropForm.data.dropReason.trim().length < 10 && (
+                        <p className="text-[11px] text-amber-600 mt-1">
+                            Minimum 10 characters — {10 - dropForm.data.dropReason.trim().length} more needed.
                         </p>
                     )}
                 </div>

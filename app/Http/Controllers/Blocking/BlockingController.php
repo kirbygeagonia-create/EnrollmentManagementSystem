@@ -567,11 +567,14 @@ class BlockingController extends Controller
         ]);
 
         // A window print is a document issue: it has to appear in the trail, or a
-        // printed roster leaves no evidence anyone ever held it.
+        // printed roster leaves no evidence anyone ever held it. The issue belongs to
+        // the block, not to whichever enrollment is listed first inside it.
         $printService->recordIssue(
-            $block->enrolledSubjects->first()?->enrollmentId,
+            null,
             DocumentType::BlockSchedule,
-            Auth::user()->userId
+            Auth::user()->userId,
+            null,
+            $block->blockId
         );
 
         return Inertia::render('Blocking/PrintSchedule', [

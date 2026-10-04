@@ -22,7 +22,9 @@ const approvalToneMap = {
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
 
-export default function Index({ clearances, periods, students = [], filters = {}, stats: serverStats = null }) {
+const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export default function Index({ clearances, periods, students = [], filters = {}, stats: serverStats = null, replacementFee = null, replacementFeeName = '' }) {
     const [search, setSearch] = useState(filters.search || '');
     const [periodId, setPeriodId] = useState(filters.periodId || '');
     const [status, setStatus] = useState(filters.status || '');
@@ -34,10 +36,14 @@ export default function Index({ clearances, periods, students = [], filters = {}
     const [receiptConfirm, setReceiptConfirm] = useState(null); // { clearance }
     const [isReceiving, setIsReceiving] = useState(false);
 
+    // The replacement amount is the fee table's, read on the page load — null means the
+    // Registrar has not created the fee type yet, and nothing can be charged.
+    const replacementFeeLabel = replacementFee === null ? null : peso(replacementFee);
+
     // Inline form for per-requirement approve/waive/reject
     const approveForm = useForm({ status: 'approved', remarks: '' });
 
-    // Lost slip replacement form (₱100 at Accounting)
+    // Lost slip replacement form (charged the Reference Data replacement fee type)
     const lostSlipForm = useForm({
         studentId: '',
         clearancePeriodId: '',
@@ -382,22 +388,25 @@ export default function Index({ clearances, periods, students = [], filters = {}
                     onClose={() => setSelectedId(null)}
                     onAct={openConfirm}
                     onLostSlip={() => openLostSlipReplacement(selected)}
+                    lostSlipLabel={replacementFeeLabel}
                 />
             )}
 
-            {/* Lost Slip Replacement Modal (₱100 fee) */}
+            {/* Lost Slip Replacement Modal (fee comes from Reference Data) */}
             <Modal
                 show={showLostSlipModal}
                 onClose={() => setShowLostSlipModal(false)}
                 title="Process Lost Clearance Slip Replacement"
-                subtitle="BR33: Requires ₱100 payment verification at Accounting before reissuing slip."
+                subtitle={replacementFeeLabel
+                    ? `BR33: Requires ${replacementFeeLabel} payment verification at Accounting before reissuing slip.`
+                    : 'BR33: Requires payment verification at Accounting before reissuing slip.'}
                 size="md"
                 footer={
                     <div className="flex justify-end gap-3">
                         <button type="button" onClick={() => setShowLostSlipModal(false)} className="btn btn-secondary" disabled={lostSlipForm.processing}>
                             Cancel
                         </button>
-                        <button type="submit" form="lost-slip-form" className="btn btn-primary" disabled={lostSlipForm.processing}>
+                        <button type="submit" form="lost-slip-form" className="btn btn-primary" disabled={lostSlipForm.processing || !replacementFeeLabel}>
                             {lostSlipForm.processing ? 'Processing...' : 'Verify OR & Reissue Slip'}
                         </button>
                     </div>
@@ -406,7 +415,17 @@ export default function Index({ clearances, periods, students = [], filters = {}
                 <form id="lost-slip-form" onSubmit={handleLostSlipSubmit} className="space-y-4 text-xs">
                     <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
                         <span className="font-bold block mb-0.5">Student: {lostSlipStudent?.lastName}, {lostSlipStudent?.firstName}</span>
-                        <span>Fee Amount: <strong>₱100.00 (Clearance Slip Replacement)</strong></span>
+                        {replacementFeeLabel ? (
+                            <span>Fee Amount: <strong>{replacementFeeLabel} ({replacementFeeName})</strong></span>
+                        ) : (
+                            <span>
+                                No replacement fee on file. Create the “{replacementFeeName || 'Clearance Slip Replacement'}” fee type in
+                                Admin → Reference Data → Fee Types before charging a replacement.
+                            </span>
+                        )}
+                        {lostSlipForm.errors.fee && (
+                            <span className="block mt-1 font-bold text-rose-700">{lostSlipForm.errors.fee}</span>
+                        )}
                     </div>
                     <FormSection label="Official Receipt (OR) Number from Cashier" required error={lostSlipForm.errors.orNumber}>
                         <input
@@ -565,7 +584,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
 /**
  * Multi-Office Digital Stamp Matrix Panel
  */
-function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip }) {
+function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip, lostSlipLabel }) {
     const approvals = clearance.approvals || [];
     const total = approvals.length;
     const done = approvals.filter((a) => a.status === 'approved' || a.status === 'waived').length;
@@ -705,7 +724,7 @@ function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip }) {
                     onClick={onLostSlip}
                     className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold border border-amber-300 transition-colors"
                 >
-                    ₱100 Lost Slip Replacement Flow
+                    {lostSlipLabel ? `${lostSlipLabel} Lost Slip Replacement Flow` : 'Lost Slip Replacement Flow (fee not set)'}
                 </button>
 
                 <Link

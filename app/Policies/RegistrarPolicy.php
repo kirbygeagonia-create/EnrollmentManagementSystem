@@ -2,16 +2,12 @@
 
 namespace App\Policies;
 
-use App\Enums\ClearanceOverallStatus;
-use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\OfficeId;
 use App\Enums\StudentType;
-use App\Models\Clearanceperiods;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
-use App\Models\Studentclearances;
 use App\Support\EnrollmentReadiness;
 
 class RegistrarPolicy
@@ -64,23 +60,12 @@ class RegistrarPolicy
             return false;
         }
 
-        // Check clearance for continuing students (BR8)
-        if (in_array($enrollment->studentType->value, ['continuing', 'shifter'])) {
-            $currentPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
-            if ($currentPeriod) {
-                $clearance = Studentclearances::where('studentId', $enrollment->studentId)
-                    ->where('clearancePeriodId', $currentPeriod->clearancePeriodId)
-                    ->first();
-
-                if (! $clearance || $clearance->overallStatus !== ClearanceOverallStatus::Approved) {
-                    return false;
-                }
-
-                // Check desk receipt recorded (BR34)
-                if (! $clearance->receivedBy || ! $clearance->receivedDate) {
-                    return false;
-                }
-            }
+        // BR8, and ruling 4: a continuing or shifter student must hold a clearance that
+        // was approved and received in the window now accepting slips. The absence of a
+        // window is no longer read as a pass — it is the reason this gate used to be
+        // quiet, and the one method the checklist reads decides it here too.
+        if (! EnrollmentReadiness::clearanceVerdict($enrollment)['passed']) {
+            return false;
         }
 
         // Concerns #28/#32, enforced here as well as displayed on the checklist:
@@ -112,6 +97,35 @@ class RegistrarPolicy
 
         // Must have permission to approve
         return $user->hasPermissionTo('enrollment.approve');
+    }
+
+    /**
+     * Determine whether the user can drop an enrollment (ruling 17).
+     *
+     * This desk alone, and only from the point it is answerable for the record: assessed,
+     * paid or enrolled. A drop erases what the other desks signed, which is precisely why
+     * the office that holds the final signature has to be the one that takes the blame
+     * for undoing it — so the base Staff role and the cross-office OfficeHead are out,
+     * and `enrollment.drop` belongs to the Registrar approver.
+     *
+     * A pending or evaluated load is not this desk's to drop: nothing has reached
+     * Accounting or this counter yet, and the department still holds it.
+     */
+    public function drop(Staffusers $user, Enrollments $enrollment): bool
+    {
+        if (! $user->hasPermissionTo('enrollment.drop')) {
+            return false;
+        }
+
+        if ($user->officeId !== OfficeId::Registrar->value) {
+            return false;
+        }
+
+        return in_array($enrollment->enrollmentStatus->value, [
+            EnrollmentStatus::Assessed->value,
+            EnrollmentStatus::Paid->value,
+            EnrollmentStatus::Enrolled->value,
+        ], true);
     }
 
     /**

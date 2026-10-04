@@ -8,6 +8,7 @@ use App\Enums\PaymentMode;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payments;
+use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
@@ -93,7 +94,7 @@ class AccountingController extends Controller
     {
         $this->authorize('view', $assessment);
 
-        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'payments.processedBy', 'enrollment.enrollmentworkflow.workflowsteps.office', 'enrollment.enrollmentworkflow.workflowsteps.signedBy']);
+        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'payments.processedBy', 'payments.refundedByUser', 'enrollment.enrollmentworkflow.workflowsteps.office', 'enrollment.enrollmentworkflow.workflowsteps.signedBy']);
 
         return Inertia::render('Accounting/Show', [
             'assessment' => $assessment,
@@ -101,12 +102,65 @@ class AccountingController extends Controller
             'can' => [
                 'settleNoBalance' => $assessment->enrollment?->enrollmentStatus === EnrollmentStatus::Assessed
                     && Auth::user()->can('payment.settle', $assessment),
+                // Which receipts a refund may be written against is the row's status, and
+                // the screen checks that; whether this cashier may write one at all is
+                // here. Ruling 14's refund is money leaving the drawer, so it is offered
+                // separately from `void`, which cancels a receipt that never should have
+                // been filed.
+                'refund' => Auth::user()->can('payment.refund'),
             ],
             // Recomputed from the receipts on file: the desk decides whether it can
             // settle here on the same figure the policy checks, not on a stored
             // column that may have fallen behind.
             'outstandingBalance' => $assessment->outstandingBalance(),
+            // Ruling 9: an account that closed with no cash moving has to say so here. An
+            // empty receipt list on a settled account otherwise reads as "the receipts have
+            // not been filed", which is a different fact and an auditor's first question.
+            'settlementWithoutReceipt' => $this->settlementWithoutReceipt($assessment),
         ]);
+    }
+
+    /**
+     * The audit note for an account that was closed without a receipt, or null when the
+     * account's settled state is backed by cash.
+     *
+     * Derived rather than stored: `paid` with nothing owing and no receipt the school is
+     * holding can only mean the fees were covered, because both the void and the refund
+     * paths pull an account that owes back out of `paid`. The signature the desk gave when
+     * it settled is the Accounting step itself, so the note names the hand and the hour
+     * from the record that already carries them.
+     *
+     * @return array{coverage: float, waived: float, assessed: float, signedBy: ?string, signedDate: ?string}|null
+     */
+    private function settlementWithoutReceipt(Studentassessments $assessment): ?array
+    {
+        $enrollment = $assessment->enrollment;
+
+        if (! in_array($enrollment?->enrollmentStatus, [EnrollmentStatus::Paid, EnrollmentStatus::Enrolled], true)) {
+            return null;
+        }
+
+        if ($assessment->outstandingBalance() > 0 || $assessment->payments()->held()->exists()) {
+            return null;
+        }
+
+        $step = $enrollment->enrollmentworkflow?->workflowsteps()
+            ->where('officeId', OfficeId::Accounting->value)
+            ->orderBy('stepOrder')
+            ->first();
+
+        // `signedBy` is both the FK column and the relation name on Workflowsteps, so the
+        // attribute reads as an int in PHP even though the serializer emits the staff row.
+        // The relation is what carries the hand that signed.
+        $signer = $step === null ? null : $step->getRelationValue('signedBy');
+
+        return [
+            'assessed' => (float) $assessment->totalAssessedAmount,
+            'coverage' => (float) $assessment->totalScholarshipCoverage,
+            'waived' => (float) $assessment->totalWaived,
+            'signedBy' => $signer instanceof Staffusers ? $signer->name : null,
+            'signedDate' => $step?->signedDate?->toDateString(),
+        ];
     }
 
     /**
@@ -148,6 +202,14 @@ class AccountingController extends Controller
 
             // Recalculate remaining balance (payment already saved above, so sum includes it)
             $newBalance = $assessment->outstandingBalance();
+
+            // Ruling 13: an installment that leaves a balance is a part payment, and the
+            // receipt column says so. Every receipt used to read `paid`, so a student who
+            // had paid ₱2,000 of a ₱7,500 account held a receipt claiming the account was
+            // settled — and `partial` was a value no desk could produce.
+            if ($newBalance > 0) {
+                $payment->update(['paymentStatus' => PaymentStatus::Partial]);
+            }
 
             $assessment->update([
                 'remainingBalance' => $newBalance,
@@ -225,20 +287,35 @@ class AccountingController extends Controller
 
         $date = $request->date ?? now()->toDateString();
 
+        // Money still in the drawer: a settled receipt and an installment are both cash
+        // taken; a void and a refund are not.
         $payments = Payments::with(['enrollment.student', 'processedBy'])
             ->whereDate('paymentDate', $date)
-            ->where('paymentStatus', PaymentStatus::Paid)
+            ->held()
+            ->orderByDesc('paymentId')
+            ->get();
+
+        // A refund is cash the desk handed back, so it belongs on the same sheet — on the
+        // day it went out, which is why the row carries its own date rather than having
+        // `paymentDate` rewritten. Money leaving the drawer with no line on the daily
+        // count is cash that cannot be explained (ruling 14).
+        $refunds = Payments::with(['enrollment.student', 'refundedByUser'])
+            ->where('paymentStatus', PaymentStatus::Refunded)
+            ->whereDate('refundedAt', $date)
             ->orderByDesc('paymentId')
             ->get();
 
         $summary = [
             'totalAmount' => $payments->sum('amount'),
             'totalCount' => $payments->count(),
+            'refundedAmount' => $refunds->sum('amount'),
+            'refundedCount' => $refunds->count(),
             'byMode' => $payments->groupBy('paymentMode')->map(fn ($g) => ['count' => $g->count(), 'amount' => $g->sum('amount')]),
         ];
 
         return Inertia::render('Accounting/DailyReport', [
             'payments' => $payments,
+            'refunds' => $refunds,
             'summary' => $summary,
             'date' => $date,
         ]);
@@ -278,5 +355,67 @@ class AccountingController extends Controller
         });
 
         return back()->with('success', 'Payment voided.');
+    }
+
+    /**
+     * Refund a receipt — the money goes back to the student and the account reopens.
+     *
+     * Ruling 14. A void says the receipt should never have been filed; a refund says it was
+     * filed correctly, the cash was taken, and it has now been handed back (an
+     * over-collection, a withdrawn grant settled in cash, a withdrawal after payment). The
+     * receipt keeps its own number and its own collection date and becomes the record of
+     * the payout, so the two are never confused on the ledger.
+     *
+     * The consequence the ruling attaches is the one that matters downstream: an
+     * enrollment already `paid` — or already approved — moves back to owing, so the
+     * Registrar cannot certify a student the school now holds money against.
+     */
+    public function refund(Request $request, Payments $payment): RedirectResponse
+    {
+        $this->authorize('refund', $payment);
+
+        $validated = $request->validate([
+            'refundReason' => 'required|string|min:10|max:500',
+        ]);
+
+        DB::transaction(function () use ($payment, $validated) {
+            $payment->update([
+                'paymentStatus' => PaymentStatus::Refunded,
+                'refundedAt' => now(),
+                'refundedBy' => Auth::user()->userId,
+                'refundedReason' => $validated['refundReason'],
+            ]);
+
+            $enrollment = $payment->enrollment;
+            $assessment = $enrollment?->studentassessments;
+
+            if ($assessment === null) {
+                return;
+            }
+
+            $newBalance = $assessment->outstandingBalance();
+            $assessment->update(['remainingBalance' => $newBalance]);
+
+            if ($newBalance <= 0) {
+                return;
+            }
+
+            // The account owes again. `paid` is one transition back; a record the Registrar
+            // has already approved is the case ruling 15 spells out and ruling 14 implies:
+            // the money consequence does not stop at someone else's signature. Signatures
+            // already given are history and are deliberately not un-signed — the same rule
+            // the void path follows, and for the same reason.
+            if (in_array($enrollment->enrollmentStatus, [EnrollmentStatus::Paid, EnrollmentStatus::Enrolled], true)) {
+                $this->stateMachine->transition(
+                    $enrollment,
+                    EnrollmentStatus::Assessed,
+                    Auth::user(),
+                    "Receipt {$payment->orNumber} refunded (".number_format((float) $payment->amount, 2).
+                    ') — the account owes ₱'.number_format($newBalance, 2).' again. Reason: '.$validated['refundReason']
+                );
+            }
+        });
+
+        return back()->with('success', 'Receipt refunded — the account has been reopened for the amount returned.');
     }
 }

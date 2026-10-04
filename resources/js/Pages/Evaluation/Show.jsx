@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, usePage, useForm } from '@inertiajs/react';
 import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone, formatYearLevel } from '@/Components/ui';
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
@@ -12,7 +12,7 @@ const studentTypeToneMap = {
     shifter: 'accent',
 };
 
-export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
+export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [profileOpenRequest, setProfileOpenRequest] = useState(0);
@@ -30,6 +30,20 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
     // — handled and viewed only by the owning academic department.
     const canRecordRetention = can.recordRetention ?? false;
     const requiresRetentionExam = Boolean(enrollment.course?.requiresRetentionExam);
+
+    // Ruling 5: the pass slip is confirmed here, at the desk the student hands it to.
+    // Only a returning type owes a clearance, so only their record shows the control.
+    const canConfirmClearance = can.confirmClearance ?? false;
+    const owesClearance = ['continuing', 'shifter'].includes(enrollment.studentType?.value || enrollment.studentType);
+    const passSlipConfirmedBy = enrollment.clearanceConfirmedByUser || null;
+    const passSlipConfirmedAt = enrollment.clearanceConfirmedAt || null;
+    const pageErrors = usePage().props.errors || {};
+
+    const setPassSlipConfirmation = (confirmed) => router.post(
+        route('evaluation.clearance.confirm', { enrollment: enrollment.enrollmentId }),
+        { confirmed },
+        { preserveScroll: true },
+    );
 
     // Item 16: the standing is this desk's call, made from the grades on file.
     // It starts on whatever the records derive (or the department's earlier
@@ -655,6 +669,76 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {retentionExam
                                 ? 'Recorded by the owning academic department — shown here for reference only.'
                                 : 'The retention exam is recorded by the owning academic department.'}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Clearance Pass Slip Confirmation — ruling 5. The department is where the
+                student hands the slip over, so the clearance-passed fact is asserted here
+                and read by every phase behind this one, including the Registrar's gate. */}
+            {owesClearance && (
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs mb-8">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <div>
+                            <h3 className="font-heading font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                                Clearance Pass Slip
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                                Confirming is what carries the clearance-passed indicator into Assessment, Accounting and the Registrar — an unconfirmed slip is not a clearance to them
+                            </p>
+                        </div>
+                        {passSlipConfirmedAt ? (
+                            <div className="flex items-center gap-2">
+                                <Badge tone="success">Confirmed</Badge>
+                                <span className="text-xs font-mono text-slate-500">
+                                    {passSlipConfirmedBy
+                                        ? `${passSlipConfirmedBy.firstName} ${passSlipConfirmedBy.lastName} · ${new Date(passSlipConfirmedAt).toLocaleDateString('en-PH')}`
+                                        : new Date(passSlipConfirmedAt).toLocaleDateString('en-PH')}
+                                </span>
+                            </div>
+                        ) : (
+                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                Not confirmed
+                            </span>
+                        )}
+                    </div>
+
+                    {canConfirmClearance ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                            {!passSlipConfirmedAt && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPassSlipConfirmation(true)}
+                                    disabled={!passSlipOnFile}
+                                    title={passSlipOnFile ? undefined : 'The student has no approved slip in the window now accepting clearances, so there is nothing on file to confirm.'}
+                                    className="btn btn-primary btn-sm"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Confirm Pass Slip
+                                </button>
+                            )}
+                            {passSlipConfirmedAt && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPassSlipConfirmation(false)}
+                                    className="btn btn-ghost btn-sm text-slate-600 hover:text-slate-900"
+                                >
+                                    Withdraw confirmation
+                                </button>
+                            )}
+                            {pageErrors.clearanceConfirmed && (
+                                <p className="form-error basis-full">{pageErrors.clearanceConfirmed}</p>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500">
+                            {passSlipConfirmedAt
+                                ? 'Confirmed by the evaluating department — shown here for reference.'
+                                : 'Only the assigned evaluator, dean or program head may confirm the pass slip.'}
                         </p>
                     )}
                 </div>

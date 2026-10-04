@@ -7,7 +7,6 @@ use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
-use App\Enums\PaymentStatus;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Admissions;
@@ -77,7 +76,7 @@ class DashboardController extends Controller
                 'totalAdmissions' => Admissions::count(),
                 'pendingEvaluations' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Pending->value)->count(),
                 'enrolledStudents' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)->count(),
-                'monthlyRevenue' => Payments::where('paymentStatus', PaymentStatus::Paid->value)
+                'monthlyRevenue' => Payments::held()
                     ->whereMonth('paymentDate', now()->month)
                     ->whereYear('paymentDate', now()->year)
                     ->sum('amount'),

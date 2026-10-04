@@ -203,7 +203,9 @@ class WorkflowPhaseIndicatorTest extends TestCase
         $enrollment = $this->makeEnrollment();
         (new WorkflowService)->createWorkflow($enrollment);
 
-        $registrar = $this->staffForOffice(1);
+        // Ruling 7: the return reuses the Registrar's approval right, so the hand that
+        // flags the evaluation box is the Registrar desk role, not any office head.
+        $registrar = $this->staffForOffice(1, 'RegistrarApprover', 'staff');
 
         $this->actingAs($registrar)
             ->post(route('registrar.return', $enrollment), [

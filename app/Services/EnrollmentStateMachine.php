@@ -21,13 +21,24 @@ class EnrollmentStateMachine
     private const TRANSITIONS = [
         'pending' => ['evaluated'],
         'evaluated' => ['assessed'],
-        'assessed' => ['paid'],
+        // Ruling 17: the Registrar can drop a record from the point it is answerable
+        // for — the assessed load, the paid one, and the enrolled one. Each of those
+        // has signatures behind it, which is exactly why the act needs a reason and
+        // this desk rather than the one that signed.
+        'assessed' => ['paid', 'dropped'],
         // Registrar hold (item 8): a paid enrollment can be returned to
         // Department Evaluation with a required reason, and re-enters the
         // pipeline through a fresh evaluation sign-off.
-        'paid' => ['enrolled', 'assessed', 'returnedToEvaluation'],
+        'paid' => ['enrolled', 'assessed', 'returnedToEvaluation', 'dropped'],
         'returnedToEvaluation' => ['evaluated'],
-        'enrolled' => ['dropped'],
+        // Rulings 14 and 15 reach past the Registrar's own signature: a refunded receipt or
+        // a withdrawn grant can leave an approved enrollment owing again, and a record that
+        // owes has to sit where Accounting can see it — `assessed`. Signatures already given
+        // are history and are not un-signed by the reversal, the same rule the payment void
+        // follows, so an undo never erases who did what.
+        'enrolled' => ['dropped', 'assessed'],
+        // A drop is terminal. The student re-enrolls — a new record in the same term,
+        // whose seat this one released — rather than this row being un-dropped.
         'dropped' => [],
     ];
 

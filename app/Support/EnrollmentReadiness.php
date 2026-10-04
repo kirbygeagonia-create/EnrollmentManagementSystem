@@ -2,17 +2,21 @@
 
 namespace App\Support;
 
+use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrolledSubjectStatus;
+use App\Enums\StudentType;
 use App\Enums\SubmissionStatus;
+use App\Models\Clearanceperiods;
 use App\Models\Creditedsubjects;
 use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Gradescale;
+use App\Models\Studentclearances;
 
 /**
- * The two validations the Registrar's checklist was missing (concerns #28/#32).
+ * The gates the Registrar reads before it signs, computed in one place.
  *
  * The desk checked that the department had signed, that a fee sheet existed, that
  * Accounting had been paid and that clearance was received — but not that the
@@ -22,12 +26,69 @@ use App\Models\Gradescale;
  * enforced only at those desks, so a record could arrive at the Registrar with an
  * unverified certificate and an unmet prerequisite and still be approvable.
  *
- * These are the predicates for those two gates, shared by the policy that withholds
+ * These are the predicates for those gates, shared by the policy that withholds
  * approval and the checklist that explains why, so the desk is never shown a green
  * light the server will not grant.
  */
 final class EnrollmentReadiness
 {
+    /**
+     * The clearance a continuing or shifter student must hold before the Registrar
+     * signs, and — when it does not — the one sentence that says what is missing.
+     *
+     * Ruling 4 closes the silence that used to pass this gate: with no accepting
+     * clearance window the check returned true, so a continuing student could be
+     * approved without any office having cleared them, and the fewer windows existed
+     * the more approvals went through. A student who has not been through the offices
+     * in a window is not cleared, whether the window never opened or has since closed.
+     * Ruling 5 adds the other half of the same fact: the slip also has to have been
+     * confirmed at Department Evaluation, because that is the desk the student hands it
+     * to. First-year and transferee students owe no clearance, so the gate is not theirs.
+     *
+     * The window is passed in by the queue (which resolves it once for every row) and
+     * read fresh otherwise, exactly as the policy that enforces it does.
+     *
+     * @return array{passed: bool, reason: string|null}
+     */
+    public static function clearanceVerdict(Enrollments $enrollment, ?Clearanceperiods $window = null): array
+    {
+        if (! in_array($enrollment->studentType->value, [StudentType::Continuing->value, StudentType::Shifter->value], true)) {
+            return ['passed' => true, 'reason' => null];
+        }
+
+        $window ??= Clearanceperiods::accepting()->first();
+
+        if (! $window) {
+            return ['passed' => false, 'reason' => 'No clearance window is accepting slips, so this student has no clearance the Registrar can read. Open or extend one in Clearance → Periods.'];
+        }
+
+        $clearance = Studentclearances::where('studentId', $enrollment->studentId)
+            ->where('clearancePeriodId', $window->clearancePeriodId)
+            ->first();
+
+        if (! $clearance) {
+            return ['passed' => false, 'reason' => 'The student has no clearance slip in the window the Registrar is reading (period '.$window->clearancePeriodId.').'];
+        }
+
+        if ($clearance->overallStatus !== ClearanceOverallStatus::Approved) {
+            return ['passed' => false, 'reason' => 'The clearance is still with the offices — its overall status is '.$clearance->overallStatus->value.', not approved.'];
+        }
+
+        if (! $clearance->receivedBy || ! $clearance->receivedDate) {
+            return ['passed' => false, 'reason' => 'The cleared slip was never received at the Registrar desk (BR34), so the paper copy is not on file.'];
+        }
+
+        // Ruling 5: the pass slip is confirmed at Department Evaluation, and nothing after
+        // that may assert the student was cleared while the department says it never saw
+        // the paper. The confirmation is not implied by the rows above — a slip can be
+        // approved in the database and never have been handed over.
+        if (! $enrollment->clearanceConfirmedBy || ! $enrollment->clearanceConfirmedAt) {
+            return ['passed' => false, 'reason' => 'Department Evaluation has not confirmed this student\'s clearance pass slip, so the clearance-passed indicator is absent through the phases behind it.'];
+        }
+
+        return ['passed' => true, 'reason' => null];
+    }
+
     /**
      * Every document the applicant's own admission required, verified.
      *

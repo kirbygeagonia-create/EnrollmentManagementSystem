@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Evaluation;
 
 use App\Enums\AcademicStanding;
+use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\EnrollmentType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Enums\InstitutionType;
 use App\Enums\OfficeId;
 use App\Enums\PassResult;
+use App\Enums\ShiftRequestStatus;
 use App\Enums\StudentType;
 use App\Http\Controllers\Controller;
+use App\Models\Academicterms;
 use App\Models\Addresses;
+use App\Models\Clearanceperiods;
+use App\Models\Courses;
 use App\Models\Creditedsubjects;
 use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
@@ -24,9 +30,13 @@ use App\Models\Examresults;
 use App\Models\Gradescale;
 use App\Models\Guardians;
 use App\Models\Religions;
+use App\Models\Shiftingrequests;
+use App\Models\Studentclearances;
+use App\Models\Students;
 use App\Models\Subjects;
 use App\Models\Transferacademicrecords;
 use App\Services\AcademicStandingService;
+use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
@@ -48,7 +58,8 @@ class EvaluationController extends Controller
     public function __construct(
         private EnrollmentStateMachine $stateMachine,
         private WorkflowService $workflowService,
-        private AcademicStandingService $standingService
+        private AcademicStandingService $standingService,
+        private EnrollmentIssuer $issuer
     ) {}
 
     /**
@@ -67,9 +78,31 @@ class EvaluationController extends Controller
 
         $enrollments = $query->paginate(20)->withQueryString();
 
+        // Ruling 2 (G-1): this desk issues the returning student's enrollment, so the
+        // screen is given the students who actually repeat a term — those with an earlier
+        // enrollment that still stands — plus the reference lists the form needs. A
+        // student with no earlier term is an applicant and belongs at Admission, which is
+        // why they are not offered here.
+        $canIssue = $request->user()->hasPermissionTo('evaluation.create');
+
+        $returning = fn ($query) => $query->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value]);
+
         return Inertia::render('Evaluation/Index', [
             'enrollments' => $enrollments,
             'filters' => $request->only(['search']),
+            'canIssueEnrollment' => $canIssue,
+            'returningStudents' => $canIssue
+                ? Students::whereHas('enrollments', $returning)
+                    ->with(['enrollments' => fn ($q) => $q->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+                        ->latest('termId')->limit(1)->with(['course:courseId,courseCode,courseName', 'major:majorId,majorName', 'term:termId,semester'])])
+                    ->orderBy('lastName')->orderBy('firstName')
+                    ->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName'])
+                : [],
+            'terms' => $canIssue
+                ? Academicterms::with('academicYear:academicYearId,yearLabel')->orderByDesc('termId')
+                    ->get(['termId', 'academicYearId', 'semester', 'startDate', 'endDate'])
+                : [],
+            'courses' => $canIssue ? Courses::orderBy('courseName')->get(['courseId', 'courseCode', 'courseName']) : [],
         ]);
     }
 
@@ -89,6 +122,7 @@ class EvaluationController extends Controller
             'major',
             'term.academicYear',
             'admission',
+            'clearanceConfirmedByUser',
             'enrolledSubjects.subject',
             // Item 6: the credit-transfer panel renders existing credited subjects.
             'creditedsubjects.creditedToSubject',
@@ -130,6 +164,9 @@ class EvaluationController extends Controller
 
         return Inertia::render('Evaluation/Show', [
             'enrollment' => $enrollment,
+            // Ruling 5: the desk is told whether there is an approved slip on file to
+            // confirm, so it is never offered a button that only comes back as a refusal.
+            'passSlipOnFile' => $this->approvedPassSlip($enrollment) !== null,
             'curriculumSubjects' => $curriculumSubjects,
             'curriculum' => $curriculum?->only(['curriculumId', 'curriculumName', 'effectiveYear']),
             'unmetPrerequisiteSubjectIds' => $unmetPrerequisiteSubjectIds,
@@ -148,6 +185,8 @@ class EvaluationController extends Controller
                 'recordRetention' => $request->user()->can('recordRetention', $enrollment),
                 'decideStanding' => $request->user()->can('proposeSubjects', $enrollment),
                 'captureProfile' => $request->user()->can('captureProfile', $enrollment),
+                // Ruling 5: only the desks that may confirm a pass slip see the control.
+                'confirmClearance' => $request->user()->can('confirmClearance', $enrollment),
             ],
             // BR32: the checklist the desk has to clear before it can sign, and
             // the same list sign() refuses on. One definition, two readers. Keyed
@@ -712,6 +751,18 @@ class EvaluationController extends Controller
      */
     private function retentionBlocker(Enrollments $enrollment): ?string
     {
+        // Ruling 11: for a shift, proof of readiness is the form plus the credit
+        // evaluation — no retention examination and no course examination. The student has
+        // already proven they can carry SEAIT work; what the receiving department answers
+        // is which subjects they are exempt from, and that is the credit panel on this same
+        // screen. Demanding a retention paper here would examine them for a program they
+        // are leaving.
+        if (Shiftingrequests::where('grantedEnrollmentId', $enrollment->enrollmentId)
+            ->where('requestStatus', ShiftRequestStatus::Granted->value)
+            ->exists()) {
+            return null;
+        }
+
         $isReturning = in_array($enrollment->studentType->value, [StudentType::Continuing->value, StudentType::Shifter->value], true);
 
         if (! $isReturning || ! $enrollment->course?->requiresRetentionExam) {
@@ -736,6 +787,168 @@ class EvaluationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Issue the enrollment form for a returning student (G-1, ruling 2).
+     *
+     * §6.3: stages 1-3 — intake, the general entrance examination, the admission
+     * decision — are not repeated by a student who has already completed a SEAIT term;
+     * they live on the student record permanently. What repeats every term starts at this
+     * desk. Until now the only code in app/ that created an enrollments row was the
+     * admission decision, so the returning student's ladder could only be demonstrated by
+     * writing the row by hand, and a returning student reached this queue by accident of
+     * the seeded data rather than by an action a desk could take on screen.
+     *
+     * The workflow form is built here, not at signing: the six or seven boxes are the
+     * record's shape from its first moment (WorkflowService::stepsFor() drops Assessment
+     * for returning types), and every desk behind this one reads that form.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'studentId' => 'required|exists:students,studentId',
+            'termId' => 'required|exists:academicterms,termId',
+            'courseId' => 'required|exists:courses,courseId',
+            'majorId' => 'nullable|exists:majors,majorId',
+            'yearLevel' => 'required|integer|min:1|max:5',
+            'studentType' => ['required', Rule::in([StudentType::Continuing->value, StudentType::Shifter->value])],
+        ]);
+
+        $student = Students::findOrFail($validated['studentId']);
+        $course = Courses::findOrFail($validated['courseId']);
+
+        // Ruling 2: no new permission name. The desk that already holds
+        // `evaluation.create` — the right to issue an enrollment form — is the desk
+        // allowed to make the record.
+        $this->authorize('create', [Enrollments::class, $student, $course]);
+
+        // A student with no earlier term is an applicant, not a returnee. Their first
+        // enrollment comes from the admission decision, which sits behind the intake and
+        // the entrance examination — creating one here would let a student into the
+        // program without either.
+        $prior = Enrollments::where('studentId', $student->studentId)
+            ->where('termId', '!=', $validated['termId'])
+            ->latest('termId')
+            ->first();
+
+        if ($prior === null) {
+            return back()->withErrors([
+                'studentId' => "{$student->lastName}, {$student->firstName} has no enrollment in an earlier term — a student's first enrollment is created by the Admission decision, not here.",
+            ]);
+        }
+
+        // Detection rule, ruling 11: "when the enrolled course does not match history,
+        // confirm and mark shifter". A program change is a shift request — the form the
+        // student signs, the dean or program head endorses and the Guidance Councillor
+        // decides — so issuing a plain continuation here would let a shift happen as an
+        // unremarkable edit and leave G-7 exactly where it was.
+        if ((int) $prior->courseId !== (int) $validated['courseId']) {
+            return back()->withErrors([
+                'courseId' => "This student's last term was in a different program (course {$prior->courseId}). A program change is filed as a shift request, which the dean or program head endorses and Guidance decides — not issued as an ordinary enrollment.",
+            ]);
+        }
+
+        // Ruling 3 (G-4): one active enrollment per student per term, read from the one
+        // place that question is asked. A dropped record does not hold the seat.
+        $holding = EnrollmentIssuer::seatHolder((int) $student->studentId, (int) $validated['termId']);
+
+        if ($holding !== null) {
+            return back()->withErrors([
+                'termId' => "This student already holds enrollment #{$holding->enrollmentId} in the chosen term ({$holding->enrollmentStatus->value}) — one active enrollment per student per term.",
+            ]);
+        }
+
+        $enrollment = $this->issuer->issue([
+            'studentId' => $student->studentId,
+            'courseId' => $validated['courseId'],
+            'majorId' => $validated['majorId'] ?? null,
+            'termId' => $validated['termId'],
+            'yearLevel' => $validated['yearLevel'],
+            // No application is filed again for an internal continuation (§11).
+            'admissionId' => null,
+            'studentType' => $validated['studentType'],
+            // BR31: a returning student's record updates the one the school already holds.
+            'enrollmentType' => EnrollmentType::Old,
+        ], Auth::user());
+
+        return redirect()->route('evaluation.show', $enrollment->enrollmentId)
+            ->with('success', 'Enrollment form issued for '.strtolower($student->lastName).', '.strtolower($student->firstName).' — Year '.$enrollment->yearLevel.'.');
+    }
+
+    /**
+     * The student's cleared slip in the window now accepting clearances, or null.
+     *
+     * This is the screen's answer to "is there anything to confirm" — confirmClearance()
+     * reads the same `accepting()` window but keeps its own granular refusal, because a
+     * desk told "no window is open" and a desk told "this slip is not approved" have
+     * different work to do.
+     */
+    private function approvedPassSlip(Enrollments $enrollment): ?Studentclearances
+    {
+        $window = Clearanceperiods::accepting()->first();
+
+        if ($window === null) {
+            return null;
+        }
+
+        $slip = Studentclearances::where('studentId', $enrollment->studentId)
+            ->where('clearancePeriodId', $window->clearancePeriodId)
+            ->first();
+
+        return $slip?->overallStatus === ClearanceOverallStatus::Approved ? $slip : null;
+    }
+
+    /**
+     * Confirm the student's clearance pass slip at this desk (ruling 5).
+     *
+     * A confirmation is a human act with a name on it: the department looked at the slip
+     * the student carried in. It is refused when there is no cleared slip in the window now
+     * accepting clearances, because then there is nothing on file to have looked at, and it
+     * can be withdrawn — a confirmation lifts the Registrar's block, and a wrong one must
+     * not be permanent. Withdrawing is not deleting: the audit log keeps both acts.
+     */
+    public function confirmClearance(Request $request, Enrollments $enrollment): RedirectResponse
+    {
+        $this->authorize('confirmClearance', $enrollment);
+
+        $request->validate(['confirmed' => 'required|boolean']);
+
+        if (! $request->boolean('confirmed')) {
+            $enrollment->update([
+                'clearanceConfirmedBy' => null,
+                'clearanceConfirmedAt' => null,
+            ]);
+
+            return back()->with('success', 'Clearance confirmation withdrawn. The Registrar will hold this record again.');
+        }
+
+        $window = Clearanceperiods::accepting()->first();
+
+        $slip = $window === null ? null : Studentclearances::where('studentId', $enrollment->studentId)
+            ->where('clearancePeriodId', $window->clearancePeriodId)
+            ->first();
+
+        if ($slip === null) {
+            return back()->withErrors([
+                'clearanceConfirmed' => $window === null
+                    ? 'No clearance window is accepting slips, so there is nothing on file to confirm.'
+                    : 'This student has no clearance slip in the window now accepting clearances, so there is nothing on file to confirm.',
+            ]);
+        }
+
+        if ($slip->overallStatus !== ClearanceOverallStatus::Approved) {
+            return back()->withErrors([
+                'clearanceConfirmed' => 'The slip on file reads '.$slip->overallStatus->value.', not approved — the offices have not passed this student yet.',
+            ]);
+        }
+
+        $enrollment->update([
+            'clearanceConfirmedBy' => Auth::user()->userId,
+            'clearanceConfirmedAt' => now(),
+        ]);
+
+        return back()->with('success', 'Pass slip confirmed. The clearance-passed indicator now carries through to the Registrar.');
     }
 
     /**

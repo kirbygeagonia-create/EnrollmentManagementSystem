@@ -50,6 +50,8 @@ class RbacSeeder extends Seeder
                 'assessment.view',
                 'assessment.compute',
                 'assessment.scholarships.apply',
+                // Ruling 15: taking a grant back is its own act, with its own reason.
+                'assessment.scholarships.withdraw',
                 'assessment.charges.adjust',
                 'assessment.finalize',
             ],
@@ -73,7 +75,7 @@ class RbacSeeder extends Seeder
                 'clinic.reopen',
             ],
 
-            // Evaluation module (10)
+            // Evaluation module (11)
             'evaluation' => [
                 'evaluation.view',
                 'evaluation.create',
@@ -82,9 +84,20 @@ class RbacSeeder extends Seeder
                 'evaluation.subjects.propose',
                 'evaluation.subjects.propose.any',
                 'evaluation.credits.process',
+                'evaluation.clearance.confirm',
                 'evaluation.sign',
                 'evaluation.sign.dean',
                 'enrollment.subjects.confirm',
+            ],
+
+            // Shift requests module (3) — G-7, ruling 11. A SEAIT student changing
+            // program is not an applicant, so the paper moves on its own rights:
+            // filed at Academic Department Evaluation, endorsed by the dean or program
+            // head, decided by the Guidance Councillor.
+            'shift' => [
+                'shift.request.create',
+                'shift.sign.department',
+                'shift.grant',
             ],
 
             // Exam module (5)
@@ -109,6 +122,7 @@ class RbacSeeder extends Seeder
                 'payment.view',
                 'payment.record',
                 'payment.void',
+                'payment.refund',
                 'payment.report.daily',
             ],
 
@@ -131,9 +145,10 @@ class RbacSeeder extends Seeder
                 'refdata.clearanceRequirements.manage',
             ],
 
-            // Enrollment/Registrar module (5)
+            // Enrollment/Registrar module (6)
             'enrollment' => [
                 'enrollment.approve',
+                'enrollment.drop',
                 'print.certificate',
                 'print.classCard',
                 'print.subjectLoad',
@@ -241,6 +256,8 @@ class RbacSeeder extends Seeder
         );
         $guidanceStaff->syncPermissions([
             'exam.view', 'exam.record.general', 'exam.verify.general',
+            // Ruling 11: the Guidance Councillor's signature is the final call on a shift.
+            'shift.grant',
             'dashboard.view', 'user.view', 'students.view',
         ]);
 
@@ -255,6 +272,10 @@ class RbacSeeder extends Seeder
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
+            // Ruling 5: the desk that takes the student is the desk that sees the pass slip.
+            'evaluation.clearance.confirm',
+            // Ruling 11: the shift paper is filed at this desk.
+            'shift.request.create',
             'admission.view', 'dashboard.view', 'user.view', 'enrollment.subjects.confirm',
             'students.view',
         ]);
@@ -270,6 +291,9 @@ class RbacSeeder extends Seeder
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'evaluation.sign.dean',
+            'evaluation.clearance.confirm',
+            // Ruling 11: the dean endorses the shift, and may file it for their department.
+            'shift.request.create', 'shift.sign.department',
             'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
             'refdata.view', 'user.view', 'dashboard.view', 'enrollment.subjects.confirm',
             'students.view',
@@ -282,7 +306,9 @@ class RbacSeeder extends Seeder
         );
         $programHead->syncPermissions([
             'admission.view', 'evaluation.view', 'evaluation.create', 'evaluation.credits.process',
-            'evaluation.subjects.propose', 'evaluation.sign', 'exam.view',
+            'evaluation.subjects.propose', 'evaluation.sign', 'evaluation.clearance.confirm', 'exam.view',
+            // Ruling 11: the program head is one of the two hands that may endorse.
+            'shift.request.create', 'shift.sign.department',
             'exam.record.courseSpecific', 'exam.record.retention',
             'dashboard.view', 'enrollment.subjects.confirm',
             'students.view',
@@ -295,6 +321,7 @@ class RbacSeeder extends Seeder
         );
         $scholarshipOfficer->syncPermissions([
             'assessment.view', 'assessment.compute', 'assessment.scholarships.apply', 'assessment.charges.adjust',
+            'assessment.scholarships.withdraw',
             'assessment.finalize', 'dashboard.view', 'user.view', 'students.view',
         ]);
 
@@ -305,6 +332,11 @@ class RbacSeeder extends Seeder
         );
         $accountingStaff->syncPermissions([
             'payment.view', 'payment.record', 'payment.void', 'payment.report.daily',
+            // Ruling 14: handing money back is the cashier's act, not a void.
+            'payment.refund',
+            // Ruling 8 (BR33): a lost clearance slip is reissued only against a replacement
+            // fee, and the fee is recorded here — the act files the OR as it reissues.
+            'clearance.slip.replace',
             'assessment.view', 'dashboard.view', 'user.view', 'students.view',
         ]);
 
@@ -314,7 +346,12 @@ class RbacSeeder extends Seeder
             ['description' => 'Registrar desk staff for clearance receipt recording and student verification']
         );
         $registrarDesk->syncPermissions([
-            'clearance.view', 'clearance.receipt.record', 'clearance.slip.generate', 'dashboard.view', 'user.view',
+            'clearance.view', 'clearance.receipt.record', 'clearance.slip.generate',
+            // Ruling 8 names Clearance alongside Accounting for the replacement, and
+            // ruling 12 folds the legacy Clearance office into the Registrar — so this is
+            // the desk role that takes the lost-slip request at the counter.
+            'clearance.slip.replace',
+            'dashboard.view', 'user.view',
             'students.view',
         ]);
 
@@ -325,6 +362,10 @@ class RbacSeeder extends Seeder
         );
         $registrarApprover->syncPermissions([
             'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+            // Ruling 17: dropping is the Registrar's alone. It erases what the other
+            // desks signed, so the desk that holds the final signature is the one that
+            // answers for it — and OfficeHead is deliberately not in this list.
+            'enrollment.drop',
             'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'dashboard.view', 'user.view',
             'students.view',
             // The Registrar finalizes academic standing, so the grade scale those
@@ -364,28 +405,46 @@ class RbacSeeder extends Seeder
             'dashboard.view', 'user.view', 'students.view',
         ]);
 
-        // OfficeHead - all view permissions + module action permissions (excluding
-        // admin-only). Item 4: exam recording is NOT a desk-head permission — the
-        // School Entrance Examination is Guidance-only, and course-specific and
-        // retention exams belong to the owning academic department (DeptEvaluator).
+        // OfficeHead - all view permissions + the module actions a desk head answers
+        // for. Item 4: exam recording is NOT a desk-head permission — the School
+        // Entrance Examination is Guidance-only, and course-specific and retention
+        // exams belong to the owning academic department (DeptEvaluator).
+        //
+        // Ruling 7 (X-4) splits the signature rights out of this role. A head used to be
+        // able to sign at any desk in the building — approve an enrollment, approve an
+        // application, sign the evaluation, the clinic and the ID boxes — which made the
+        // signature on a record a question of role name rather than of office custody.
+        // Each of those five now sits with the desk that owns the box: enrollment.approve
+        // with RegistrarApprover, admission.approve with AdmissionOfficer, evaluation.sign
+        // with DeptEvaluator (and Dean/ProgramHead), clinic.sign with ClinicStaff,
+        // id.sign with IdOfficer. Nothing else moved: the view rights, the reference-data
+        // rights and the counters a head actually works (blocking, clearance windows,
+        // payment recording, assessment computing) stay broad on purpose.
+        //
+        // `clearance.approve` is the one listed right that STAYS. It is not a workflow
+        // signature: ClearancePolicy::approveRequirement scopes it to the office that owns
+        // the requirement row, so it means "this office answers for its own clearance line".
+        // No desk role holds `clearance.view` for another office's queue, so moving it to a
+        // desk role would leave the act with nobody who can reach it — see the ruling's own
+        // "keep view rights broad" for why the head is the right holder here.
         $officeHead = Role::firstOrCreate(
             ['name' => 'OfficeHead', 'guard_name' => 'web'],
             ['description' => 'Office Head with all view permissions and module action permissions (exam recording is Guidance/department-only)']
         );
         $officeHead->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
-            'payment.view', 'clearance.view', 'enrollment.approve', 'block.view',
+            'payment.view', 'clearance.view', 'block.view',
             'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
             'students.view',
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
-            'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'id.request.create', 'id.validate', 'id.sign',
+            'clinic.record', 'clinic.update', 'clinic.reopen',
+            'id.request.create', 'id.validate',
             'payment.record', 'payment.report.daily',
             'assessment.compute', 'assessment.finalize',
-            'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process', 'evaluation.sign',
-            'admission.create', 'admission.update', 'admission.approve', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
+            'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process',
+            'admission.create', 'admission.update', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
             'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
         ]);
 

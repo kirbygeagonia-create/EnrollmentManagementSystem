@@ -65,17 +65,22 @@ class EnrollmentWalkthroughTest extends TestCase
     }
 
     /**
-     * Create a staff user in the given office with the OfficeHead role
-     * (OfficeHead carries every module action permission). Item 4: exam
-     * recording left OfficeHead — pass 'DeptEvaluator' for the owning
-     * academic department's exam actions (course-specific and retention).
+     * Create a staff user in the given office. Defaults to the OfficeHead role, which
+     * carries the counter acts a head works everywhere — recording, computing, generating
+     * and receipting clearances, printing. Item 4: exam recording left OfficeHead, so pass
+     * 'GuidanceStaff' or 'DeptEvaluator' for the owning desk's exam actions.
+     * Ruling 7: the five signature acts left OfficeHead too, so the steps that sign a box
+     * pass the desk that owns it — 'RegistrarApprover' for the approval, 'DeptEvaluator'
+     * for the evaluation sign, 'AdmissionOfficer' for the admission approval.
      */
     private function staffForOffice(int $officeId, string $role = 'OfficeHead'): Staffusers
     {
         // Use make() so we can drop remember_token (real staffusers table has no such column)
         $staff = Staffusers::factory()->make([
             'officeId' => $officeId,
-            'role' => $role === 'DeptEvaluator' ? 'staff' : 'officeHead',
+            // The `role` column is the account's display title; the authority is the Spatie
+            // role assigned below, so a desk role seats as plain staff.
+            'role' => $role === 'OfficeHead' ? 'officeHead' : 'staff',
             'employeeNo' => 'EMP-E2E-'.uniqid(), // factory's fake()->unique() collides across instances
             'username' => 'e2e_office'.$officeId.'_'.uniqid(),
             'email' => 'e2e_office'.$officeId.'_'.uniqid().'@example.com',
@@ -545,7 +550,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $final = $this->walkPipeline($enrollment, [
             'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
-            'registrar' => $this->staffForOffice(1),
+            'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
             'clinic' => $this->staffForOffice(11),
             'id' => $this->staffForOffice(22),
@@ -567,7 +572,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $student = $this->createStudent('Continuing');
 
         // --- Evaluation (office 4) ---
-        $evaluator = $this->staffForOffice(4);
+        $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
         // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
         $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', 2, $evaluator->userId);
@@ -624,6 +629,17 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals('approved', $clearance->overallStatus->value);
         $this->assertNotNull($clearance->receivedBy, 'Desk receipt should be recorded');
 
+        // Ruling 5: the department confirms the pass slip the student hands it. Until that
+        // act happens the Registrar holds the record — the walkthrough has to perform it,
+        // or the pipeline it proves is the one from before the ruling.
+        $this->actingAs($this->staffForOffice(7, 'DeptEvaluator'))
+            ->post(route('evaluation.clearance.confirm', $enrollment), ['confirmed' => true])
+            ->assertSessionHasNoErrors();
+        $this->assertNotNull(
+            $enrollment->fresh()->clearanceConfirmedBy,
+            'The pass slip confirmation should be on the enrollment before the Registrar reads it'
+        );
+
         // --- Evaluation (office 4) — profile capture on the enrollment ---
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -673,7 +689,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $final = $this->walkPipeline($enrollment, [
             'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
-            'registrar' => $this->staffForOffice(1),
+            'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
             'clinic' => $this->staffForOffice(11),
             'id' => $this->staffForOffice(22),
@@ -691,7 +707,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $admission = $this->createAdmission(['applicantType' => 'transferee', 'courseId' => 1]);
         $this->verifyAllRequirements($admission);
 
-        $this->actingAs($this->staffForOffice(6))
+        $this->actingAs($this->staffForOffice(6, 'AdmissionOfficer')) // ruling 7: admission approval is the Admission desk's
             ->post(route('admission.approve', $admission))
             ->assertSessionHasNoErrors();
 
@@ -699,7 +715,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals('approved', $admission->admissionStatus->value);
 
         // --- Evaluation (office 4) with credit transfer ---
-        $evaluator = $this->staffForOffice(4);
+        $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
         // --- Enrollment (system-created; evaluatedBy = the evaluator) ---
         $enrollment = $this->createEnrollment($admission, 'transferee', 2, $evaluator->userId);
@@ -775,7 +791,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $final = $this->walkPipeline($enrollment, [
             'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
-            'registrar' => $this->staffForOffice(1),
+            'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
             'clinic' => $this->staffForOffice(11),
             'id' => $this->staffForOffice(22),
@@ -823,10 +839,17 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertEquals('approved', $clearance->overallStatus->value);
 
         // --- Evaluation (office 4) with credit transfer ---
-        $evaluator = $this->staffForOffice(4);
+        $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
         // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
         $enrollment = $this->createEnrollmentNoAdmission($student, 1, 'shifter', 2, $evaluator->userId);
+
+        // Ruling 5: same as the continuing path — the receiving department confirms the
+        // pass slip, and the Registrar reads that confirmation as part of the gate.
+        $this->actingAs($this->staffForOffice(7, 'DeptEvaluator'))
+            ->post(route('evaluation.clearance.confirm', $enrollment), ['confirmed' => true])
+            ->assertSessionHasNoErrors();
+        $this->assertNotNull($enrollment->fresh()->clearanceConfirmedBy);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [
@@ -897,7 +920,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $final = $this->walkPipeline($enrollment, [
             'assessment' => $this->staffForOffice(3), // Assessment office finalizes + signs its own step
             'accounting' => $this->staffForOffice(2),
-            'registrar' => $this->staffForOffice(1),
+            'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
             'clinic' => $this->staffForOffice(11),
             'id' => $this->staffForOffice(22),

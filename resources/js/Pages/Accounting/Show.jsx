@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Badge, CauseEffectModal, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, CauseEffectModal, Modal, FormSection, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
@@ -9,10 +9,18 @@ const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFracti
 const paymentStatusToneMap = {
     completed: 'paid',
     paid: 'paid',
+    // An installment: cash the desk holds, account not yet settled (ruling 13).
+    partial: 'info',
     pending: 'pending',
+    // Cash handed back to the student — its own state, never a cancelled receipt (ruling 14).
+    refunded: 'danger',
     voided: 'danger',
     cancelled: 'danger',
 };
+
+// Money the school is still holding. A part payment counts; a voided or refunded receipt
+// does not, because in both cases the cash is not in the drawer.
+const HELD_STATUSES = ['paid', 'completed', 'partial'];
 
 const paymentModeToneMap = {
     cash: 'info',
@@ -53,11 +61,12 @@ function FlashMessages({ flash }) {
     );
 }
 
-export default function Show({ assessment, paymentModes = [], can = {}, outstandingBalance = 0 }) {
+export default function Show({ assessment, paymentModes = [], can = {}, outstandingBalance = 0, settlementWithoutReceipt = null }) {
     const { flash } = usePage().props;
     const [showVoidConfirm, setShowVoidConfirm] = useState(false);
     const [paymentToVoid, setPaymentToVoid] = useState(null);
     const [showSettleConfirm, setShowSettleConfirm] = useState(false);
+    const [paymentToRefund, setPaymentToRefund] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const enrollment = assessment.enrollment;
@@ -65,7 +74,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
     const charges = assessment.charges || [];
     const payments = assessment.payments || [];
 
-    const totalPaid = payments.reduce((sum, p) => p.paymentStatus === 'paid' || p.paymentStatus === 'completed' ? sum + Number(p.amount || 0) : sum, 0);
+    const totalPaid = payments.reduce((sum, p) => HELD_STATUSES.includes(p.paymentStatus) ? sum + Number(p.amount || 0) : sum, 0);
     const totalAssessed = Number(assessment.totalAssessedAmount || 0);
     const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
     const totalWaived = Number(assessment.totalWaived || 0);
@@ -116,6 +125,23 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                 setIsSubmitting(false);
             },
             onError: () => setIsSubmitting(false),
+        });
+    };
+
+    // Ruling 14: a refund is money handed back to the student, not a receipt cancelled.
+    // The reason is required by the server, because whoever reconciles the drawer needs to
+    // know why cash left it — the receipt alone only proves it once came in.
+    const refundForm = useForm({ refundReason: '' });
+
+    const confirmRefundPayment = (e) => {
+        e.preventDefault();
+        if (!paymentToRefund) return;
+        refundForm.post(route('accounting.payment.refund', { payment: paymentToRefund.paymentId }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setPaymentToRefund(null);
+                refundForm.reset();
+            },
         });
     };
 
@@ -290,7 +316,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                 rows={payments}
                                 children={(row) => (
                                     <div className="flex items-center gap-2">
-                                        {row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? (
+                                        {HELD_STATUSES.includes(row.paymentStatus) && (
                                             <button
                                                 type="button"
                                                 className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
@@ -299,11 +325,44 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                             >
                                                 Void
                                             </button>
-                                        ) : null}
+                                        )}
+                                        {can.refund && HELD_STATUSES.includes(row.paymentStatus) && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm text-warning-700 hover:text-warning-900"
+                                                onClick={() => setPaymentToRefund(row)}
+                                                disabled={!!paymentToRefund}
+                                            >
+                                                Refund
+                                            </button>
+                                        )}
+                                        {row.paymentStatus === 'refunded' && (
+                                            <span className="text-[10px] text-slate-500" title={row.refundedReason || 'Refunded'}>
+                                                returned {row.refundedAt ? new Date(row.refundedAt).toLocaleDateString('en-PH') : ''}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
                                 emptyMessage="No payments recorded"
                             />
+                        ) : settlementWithoutReceipt ? (
+                            // Ruling 9: the empty list is the finding, so it is written out
+                            // rather than left for the reader to infer — an account closed
+                            // with no receipt was an account that owed nothing.
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+                                <p className="font-bold mb-1">Settled without a receipt — no cash was collected</p>
+                                <p>
+                                    Of the {peso(settlementWithoutReceipt.assessed)} assessed,{' '}
+                                    {peso(settlementWithoutReceipt.coverage)} was carried by scholarship and{' '}
+                                    {peso(settlementWithoutReceipt.waived)} waived, leaving nothing owed. No Official
+                                    Receipt number was consumed.
+                                </p>
+                                {settlementWithoutReceipt.signedBy && (
+                                    <p className="mt-1 text-emerald-800">
+                                        Accounting signed this off{settlementWithoutReceipt.signedDate ? ` on ${settlementWithoutReceipt.signedDate}` : ''} — {settlementWithoutReceipt.signedBy}.
+                                    </p>
+                                )}
+                            </div>
                         ) : (
                             <p className="text-slate-400 text-center py-6 text-xs">No payments recorded yet.</p>
                         )}
@@ -522,6 +581,46 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                     )}
                 </div>
             </div>
+
+            {/* Refund a receipt — the money goes back to the student and the account
+                reopens (ruling 14). Kept apart from Void, which cancels a receipt that
+                should never have been filed: different transaction, different drawer. */}
+            <Modal
+                show={!!paymentToRefund}
+                onClose={() => { setPaymentToRefund(null); refundForm.reset(); }}
+                title="Refund a Receipt"
+                subtitle={paymentToRefund ? `OR ${paymentToRefund.orNumber} · ${peso(paymentToRefund.amount)} back to ${studentName}` : ''}
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" className="btn btn-secondary" onClick={() => { setPaymentToRefund(null); refundForm.reset(); }} disabled={refundForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn-danger" onClick={confirmRefundPayment} disabled={refundForm.processing || refundForm.data.refundReason.trim().length < 10}>
+                            {refundForm.processing ? 'Recording…' : 'Record the Refund'}
+                        </button>
+                    </div>
+                }
+            >
+                <form onSubmit={confirmRefundPayment} className="space-y-4">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                        <span className="font-bold block mb-0.5">What this does</span>
+                        The receipt keeps its number and its collection date, and becomes the record of the payout.
+                        {peso(paymentToRefund?.amount)} comes off the money held, so the balance reopens — and if this
+                        enrollment was already paid or approved, it goes back to owing so the Registrar cannot certify it.
+                    </div>
+                    <FormSection label="Reason for the refund" required error={refundForm.errors.refundReason} hint="Minimum 10 characters. The reconciliation and the student both read this.">
+                        <textarea
+                            rows={3}
+                            value={refundForm.data.refundReason}
+                            onChange={(e) => refundForm.setData('refundReason', e.target.value)}
+                            placeholder="e.g., Over-collection of ₱1,500 refunded against DR No. 2026-0041."
+                            className={`form-input ${refundForm.errors.refundReason ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                </form>
+            </Modal>
 
             {/* Void Payment Cause & Effect Confirmation Modal */}
             <CauseEffectModal

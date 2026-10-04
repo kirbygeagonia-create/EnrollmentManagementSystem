@@ -139,6 +139,32 @@ class EvaluationPolicy
     }
 
     /**
+     * Ruling 5: determine whether this desk may confirm the student's clearance pass slip.
+     *
+     * The department that takes a returning student is the department that sees the paper,
+     * so the right sits with the desks that sign the evaluation form and not with the
+     * cross-office generalist. Only a record that owes a clearance can have one confirmed,
+     * and only while the record is still moving: once the Registrar has approved it, or the
+     * drop has closed it, the question is settled and rewriting the answer here would
+     * disagree with a signature already on the form.
+     */
+    public function confirmClearance(Staffusers $user, Enrollments $enrollment): bool
+    {
+        if (! $user->hasPermissionTo('evaluation.clearance.confirm')) {
+            return false;
+        }
+
+        if (! in_array($enrollment->studentType->value, [StudentType::Continuing->value, StudentType::Shifter->value], true)) {
+            return false;
+        }
+
+        return ! in_array($enrollment->enrollmentStatus->value, [
+            EnrollmentStatus::Enrolled->value,
+            EnrollmentStatus::Dropped->value,
+        ], true);
+    }
+
+    /**
      * Determine whether the user can confirm enrolled subjects (Registrar phase).
      */
     public function confirmSubjects(Staffusers $user, Enrollments $enrollment): bool

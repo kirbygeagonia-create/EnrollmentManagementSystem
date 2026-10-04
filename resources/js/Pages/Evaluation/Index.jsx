@@ -1,10 +1,65 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, filters = {} }) {
+export default function Index({ enrollments, filters = {}, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [issueOpen, setIssueOpen] = useState(false);
+
+    // Ruling 2 (G-1): the returning student's cycle starts at this desk, so the desk
+    // issues the enrollment. The list is only ever students who repeat a term — a
+    // student with no earlier term belongs at Admission.
+    const issueForm = useForm({
+        studentId: '',
+        termId: '',
+        courseId: '',
+        majorId: '',
+        yearLevel: '',
+        studentType: 'continuing',
+    });
+
+    const studentOptions = useMemo(() => returningStudents.map((s) => {
+        const last = s.enrollments?.[0];
+        return {
+            value: s.studentId,
+            label: `${s.lastName}, ${s.firstName} ${s.schoolIdNumber}${last?.course ? ` · ${last.course.courseCode}` : ''}`,
+        };
+    }), [returningStudents]);
+
+    const termOptions = useMemo(() => terms.map((t) => ({
+        value: t.termId,
+        label: `${t.academicYear?.yearLabel || ''} ${t.semester}`,
+    })), [terms]);
+
+    const courseOptions = useMemo(() => courses.map((c) => ({
+        value: c.courseId,
+        label: `${c.courseCode} — ${c.courseName}`,
+    })), [courses]);
+
+    // Choosing the student carries forward what the school already knows: their last
+    // program and year level. Nothing promotes the level by itself (gap G-2 is the
+    // Registrar's open question), so this is a starting point the desk edits.
+    const onStudentPick = (studentId) => {
+        issueForm.setData('studentId', studentId);
+        const last = returningStudents.find((s) => s.studentId === studentId)?.enrollments?.[0];
+        if (last) {
+            issueForm.setData((data) => ({
+                ...data,
+                courseId: last.courseId || data.courseId,
+                majorId: last.majorId || '',
+                yearLevel: last.yearLevel || data.yearLevel,
+            }));
+        }
+    };
+
+    const submitIssue = (e) => {
+        e.preventDefault();
+        issueForm.post(route('evaluation.store'), {
+            preserveScroll: true,
+            onSuccess: () => setIssueOpen(false),
+        });
+    };
 
     // Derive quick stats from the full paginator payload (if available)
     const stats = useMemo(() => {
@@ -74,6 +129,14 @@ export default function Index({ enrollments, filters = {} }) {
                     subtitle="Capture student demographic profiles (BR32), evaluate transfer credits, and propose curriculum subject loads"
                     phaseBadge="Phase 2 · Department Evaluation"
                     officeBadge="Office 4 · Academic Evaluation Desk"
+                    actions={canIssueEnrollment ? (
+                        <button type="button" className="btn btn-primary" onClick={() => setIssueOpen(true)}>
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Issue Enrollment Form
+                        </button>
+                    ) : null}
                 />
             }
         >
@@ -173,6 +236,89 @@ export default function Index({ enrollments, filters = {} }) {
                     )}
                 </Card>
             </div>
+            {/* Issue Enrollment Form — ruling 2 (G-1). The returning student's term starts
+                here; they do not pass Admission, the entrance examination or the admission
+                decision again. */}
+            <Modal
+                show={issueOpen}
+                onClose={() => setIssueOpen(false)}
+                title="Issue Enrollment Form"
+                subtitle="For a student who has already completed a term at SEAIT"
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button type="button" className="btn btn-secondary" onClick={() => setIssueOpen(false)} disabled={issueForm.processing}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={submitIssue} disabled={issueForm.processing}>
+                            {issueForm.processing ? 'Issuing…' : 'Issue and Open the Form'}
+                        </button>
+                    </div>
+                }
+            >
+                <form onSubmit={submitIssue} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormSection label="Returning student" required error={issueForm.errors.studentId} className="sm:col-span-2">
+                        <Select
+                            value={issueForm.data.studentId}
+                            onChange={onStudentPick}
+                            options={studentOptions}
+                            placeholder="Select a student with an earlier term"
+                            className={`form-input ${issueForm.errors.studentId ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    <FormSection label="Term" required error={issueForm.errors.termId}>
+                        <Select
+                            value={issueForm.data.termId}
+                            onChange={(v) => issueForm.setData('termId', v)}
+                            options={termOptions}
+                            placeholder="Select term"
+                            className={`form-input ${issueForm.errors.termId ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    <FormSection label="Program" required error={issueForm.errors.courseId}>
+                        <Select
+                            value={issueForm.data.courseId}
+                            onChange={(v) => issueForm.setData('courseId', v)}
+                            options={courseOptions}
+                            placeholder="Select program"
+                            className={`form-input ${issueForm.errors.courseId ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    <FormSection
+                        label="Year level"
+                        required
+                        error={issueForm.errors.yearLevel}
+                        hint="Carried from the last enrollment — the department decides the level; nothing promotes it on its own."
+                    >
+                        <Select
+                            value={issueForm.data.yearLevel}
+                            onChange={(v) => issueForm.setData('yearLevel', v)}
+                            options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `Year ${n}` }))}
+                            placeholder="Year level"
+                            className={`form-input ${issueForm.errors.yearLevel ? 'form-input-error' : ''}`}
+                            required
+                        />
+                    </FormSection>
+                    <FormSection label="Student type" required error={issueForm.errors.studentType} className="sm:col-span-2">
+                        <RadioCards
+                            name="issuingStudentType"
+                            label="Student type"
+                            value={issueForm.data.studentType}
+                            onChange={(v) => issueForm.setData('studentType', v)}
+                            options={[
+                                { value: 'continuing', label: 'Continuing', tone: 'success' },
+                                { value: 'shifter', label: 'Shifting program', tone: 'accent' },
+                            ]}
+                        />
+                    </FormSection>
+                    <p className="sm:col-span-2 text-xs text-slate-500">
+                        One active enrollment per student per term. A student the Registrar dropped can be issued again in the same term — the drop released the seat.
+                    </p>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

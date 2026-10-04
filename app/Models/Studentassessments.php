@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -81,7 +80,7 @@ class Studentassessments extends Model
      */
     public function outstandingBalance(): float
     {
-        $paid = (float) $this->payments()->where('paymentStatus', PaymentStatus::Paid)->sum('amount');
+        $paid = (float) $this->payments()->held()->sum('amount');
 
         return max(0, (float) $this->totalAssessedAmount - (float) $this->totalScholarshipCoverage - (float) $this->totalWaived - $paid);
     }

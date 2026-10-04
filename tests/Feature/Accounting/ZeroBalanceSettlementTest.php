@@ -306,6 +306,33 @@ class ZeroBalanceSettlementTest extends TestCase
     }
 
     #[Test]
+    public function the_settled_account_says_on_its_face_that_no_receipt_was_owed(): void
+    {
+        $assessment = $this->createAssessment();
+        $enrollment = $assessment->enrollment;
+        $this->advanceWorkflowToAccounting($enrollment);
+
+        // Before the settlement the account is simply unpaid, so there is nothing to note.
+        $this->actingAs($this->cashier)
+            ->get(route('accounting.show', $assessment))
+            ->assertInertia(fn ($page) => $page->where('settlementWithoutReceipt', null));
+
+        $this->actingAs($this->cashier)->post(route('accounting.settle', $assessment))->assertSessionHas('success');
+
+        // Ruling 9: the audit trail has to show that no receipt was owed — not merely
+        // contain no receipt, which is also what an unfilled collection looks like.
+        $this->actingAs($this->cashier)
+            ->get(route('accounting.show', $assessment))
+            ->assertInertia(fn ($page) => $page
+                ->where('settlementWithoutReceipt.assessed', 5000)
+                ->where('settlementWithoutReceipt.coverage', 5000)
+                ->where('settlementWithoutReceipt.waived', 0)
+                ->where('settlementWithoutReceipt.signedBy', $this->cashier->name)
+                ->has('settlementWithoutReceipt.signedDate')
+            );
+    }
+
+    #[Test]
     public function the_settlement_action_is_offered_only_to_staff_who_may_use_it(): void
     {
         $assessment = $this->createAssessment();

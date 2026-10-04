@@ -8,6 +8,7 @@ use App\Models\Curriculumsubjects;
 use App\Models\Majors;
 use App\Models\Subjects;
 use Database\Seeders\DevReferenceDataSeeder;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -24,6 +25,16 @@ use Tests\TestCase;
 class ReferenceDataSeederTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The reference seeder seats the desk heads the shift flow needs — a Dean in the
+        // Academic office — and a Spatie role only exists once RbacSeeder has written it.
+        // Seeding in that order is what a real install does.
+        $this->seed(RbacSeeder::class);
+    }
 
     #[Test]
     public function seeder_reconstructs_the_official_program_catalog(): void

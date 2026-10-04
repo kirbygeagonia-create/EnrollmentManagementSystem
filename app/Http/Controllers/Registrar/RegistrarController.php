@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Registrar;
 
 use App\Enums\AcademicStanding;
-use App\Enums\ClearanceOverallStatus;
-use App\Enums\ClearancePeriodStatus;
 use App\Enums\DocumentType;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
@@ -17,8 +15,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Clearanceperiods;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
-use App\Models\Studentclearances;
-use App\Models\Students;
 use App\Models\Subjects;
 use App\Services\AcademicStandingService;
 use App\Services\EnrollmentStateMachine;
@@ -65,7 +61,7 @@ class RegistrarController extends Controller
         // The desk used to have to open every record to learn whether it could
         // be approved. This prints the same five gates beside each row, keyed by
         // enrollment, naming the ones still outstanding.
-        $openPeriod = Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
+        $openPeriod = Clearanceperiods::accepting()->first();
         $readiness = collect($enrollments->getCollection())
             ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod) {
                 $gates = $this->checklist($enrollment, $openPeriod);
@@ -115,6 +111,9 @@ class RegistrarController extends Controller
             'enrollment' => $enrollment,
             'checklist' => $checklist,
             'allValid' => $allValid,
+            // The same sentences approve() refuses with, so the page explains the red box
+            // before the desk presses the button and is told.
+            'blockingReasons' => $this->blockingReasons($enrollment),
             // The Registrar makes the FINAL call on the standing, so the desk is
             // given the same evidence the evaluator saw — what the records derive
             // and whether the department agreed with it — rather than an empty
@@ -153,7 +152,7 @@ class RegistrarController extends Controller
             'evaluation_signed' => (bool) $enrollment->evaluatedBy,
             'assessment_completed' => $assessment !== null,
             'payment_completed' => $paymentCompleted,
-            'clearance_verified' => $this->checkClearance($enrollment, $openPeriod),
+            'clearance_verified' => EnrollmentReadiness::clearanceVerdict($enrollment, $openPeriod)['passed'],
             'registrarApprovalPending' => $nextPendingOffice === OfficeId::Registrar->value,
             // Concerns #28/#32: the two checks this desk was meant to make and
             // did not — that the applicant's own required documents were actually
@@ -165,29 +164,52 @@ class RegistrarController extends Controller
     }
 
     /**
-     * Check clearance for continuing students.
+     * The sentence a desk owes the student for each gate this record cannot clear.
+     *
+     * The checklist answers "may I approve"; this answers "what has to happen first".
+     * The refusal and the record page read the same map, so the desk never has to guess
+     * which of seven red boxes stopped it — and the clearance sentence comes from the
+     * one method that decided it, so the explanation cannot drift from the rule.
+     *
+     * @return array<string, string>
      */
-    private function checkClearance(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null): bool
+    private function blockingReasons(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null): array
     {
-        if (! in_array($enrollment->studentType->value, ['continuing', 'shifter'], true)) {
-            return true; // First-year and transferee don't need clearance
+        $reasons = [];
+
+        if (! $enrollment->evaluatedBy) {
+            $reasons['evaluation_signed'] = 'Department Evaluation has not signed this load.';
         }
 
-        // The whole queue shares one open period, so the list resolves it once
-        // and hands it down instead of asking per row.
-        $openPeriod ??= Clearanceperiods::where('periodStatus', ClearancePeriodStatus::Open)->first();
-        if (! $openPeriod) {
-            return true; // No open period
+        if (! EnrollmentReadiness::documentsVerified($enrollment)) {
+            $reasons['documents_verified'] = 'An admission document the applicant was required to submit is still unverified.';
         }
 
-        $clearance = Studentclearances::where('studentId', $enrollment->studentId)
-            ->where('clearancePeriodId', $openPeriod->clearancePeriodId)
-            ->first();
+        if (! EnrollmentReadiness::prerequisitesMet($enrollment)) {
+            $reasons['prerequisites_met'] = 'A subject on the confirmed load sits behind a prerequisite the student has not passed.';
+        }
 
-        return $clearance
-            && $clearance->overallStatus === ClearanceOverallStatus::Approved
-            && $clearance->receivedBy
-            && $clearance->receivedDate;
+        if (! $enrollment->studentassessments) {
+            $reasons['assessment_completed'] = 'Assessment has not costed this load yet.';
+        }
+
+        $checklist = $this->checklist($enrollment, $openPeriod);
+
+        if (! $checklist['payment_completed']) {
+            $reasons['payment_completed'] = 'Accounting has not settled the assessed balance.';
+        }
+
+        $clearance = EnrollmentReadiness::clearanceVerdict($enrollment, $openPeriod);
+
+        if (! $clearance['passed']) {
+            $reasons['clearance_verified'] = $clearance['reason'];
+        }
+
+        if (! $checklist['registrarApprovalPending']) {
+            $reasons['registrarApprovalPending'] = 'A workflow box ahead of the Registrar is still unsigned.';
+        }
+
+        return $reasons;
     }
 
     /**
@@ -207,12 +229,15 @@ class RegistrarController extends Controller
             'academicStanding' => ['required', 'in:'.implode(',', array_column(AcademicStanding::cases(), 'value'))],
         ]);
 
-        // Validate prerequisites — the identical five gates the desk displays,
-        // read from one method so the two cannot drift apart.
-        $checklist = $this->checklist($enrollment);
+        // Validate prerequisites — the identical gates the desk displays, read from one
+        // method so the two cannot drift apart. The refusal names what is outstanding
+        // rather than leaving the desk to work out which of seven boxes is red.
+        $outstanding = $this->blockingReasons($enrollment);
 
-        if (collect($checklist)->contains(false)) {
-            return back()->withErrors(['validation' => 'Not all prerequisites are met.']);
+        if ($outstanding !== []) {
+            return back()->withErrors([
+                'validation' => 'Cannot approve — '.implode('; ', array_values($outstanding)).'.',
+            ]);
         }
 
         // Determine enrollment type (BR31)
@@ -287,6 +312,49 @@ class RegistrarController extends Controller
     }
 
     /**
+     * Drop an enrollment, with the reason the record has to carry (ruling 17).
+     *
+     * The reason goes in two places on purpose: beside the record, where the desk and any
+     * later reader of this enrollment see it without asking, and in the status history the
+     * state machine writes, which pairs it with who dropped the record and when.
+     *
+     * The subject rows retire with it. A student who has left the term must stop holding a
+     * seat in a block — Blocking counts the distinct students who are not dropped — and
+     * releasing that seat is what lets the same student be re-enrolled in the same term.
+     * A drop is terminal: the record is never un-dropped, the student comes back on a new
+     * one.
+     */
+    public function drop(Request $request, Enrollments $enrollment): RedirectResponse
+    {
+        $this->authorize('registrar.drop', $enrollment);
+
+        $validated = $request->validate([
+            'dropReason' => 'required|string|min:10|max:500',
+        ]);
+
+        DB::transaction(function () use ($enrollment, $validated) {
+            $this->stateMachine->transition(
+                $enrollment,
+                EnrollmentStatus::Dropped,
+                Auth::user(),
+                'Dropped by the Registrar: '.$validated['dropReason']
+            );
+
+            $enrollment->enrolledSubjects()
+                ->whereIn('status', [
+                    EnrolledSubjectStatus::Proposed->value,
+                    EnrolledSubjectStatus::Confirmed->value,
+                ])
+                ->update(['status' => EnrolledSubjectStatus::Dropped->value]);
+
+            $enrollment->update(['dropReason' => $validated['dropReason']]);
+        });
+
+        return redirect()->route('registrar.index')
+            ->with('success', 'Enrollment dropped. The seat in this term is released, so the student may be re-enrolled.');
+    }
+
+    /**
      * Print enrollment certificate.
      */
     public function printCertificate(Enrollments $enrollment, PrintService $printService): Response
@@ -299,7 +367,7 @@ class RegistrarController extends Controller
         ]);
 
         // Log print
-        $printLog = $printService->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, Auth::user()->userId);
+        $printLog = $printService->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, Auth::user()->userId, $enrollment->studentId);
 
         return Inertia::render('Registrar/PrintCertificate', [
             'enrollment' => $enrollment,
@@ -329,7 +397,8 @@ class RegistrarController extends Controller
             fn () => $printService->recordIssue(
                 $enrollment->enrollmentId,
                 DocumentType::ClassCard,
-                Auth::user()->userId
+                Auth::user()->userId,
+                $enrollment->studentId
             )
         );
 
@@ -354,7 +423,7 @@ class RegistrarController extends Controller
             'registrarProcessedByUser',
         ]);
 
-        $printService->recordIssue($enrollment->enrollmentId, DocumentType::SubjectLoad, Auth::user()->userId);
+        $printService->recordIssue($enrollment->enrollmentId, DocumentType::SubjectLoad, Auth::user()->userId, $enrollment->studentId);
 
         return Inertia::render('Registrar/PrintSubjectLoad', [
             'enrollment' => $enrollment,

@@ -19,7 +19,7 @@ class Enrollments extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'returnReason', 'curriculumId', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
+    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'returnReason', 'dropReason', 'clearanceConfirmedBy', 'clearanceConfirmedAt', 'curriculumId', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
 
     protected function casts(): array
     {
@@ -29,6 +29,7 @@ class Enrollments extends Model
             'academicStanding' => AcademicStanding::class,
             'enrollmentStatus' => EnrollmentStatus::class,
             'enrolledDate' => 'date',
+            'clearanceConfirmedAt' => 'datetime',
             'formIssuedDate' => 'date',
             'formSignedDate' => 'date',
         ];
@@ -82,6 +83,18 @@ class Enrollments extends Model
     public function evaluatedByUser(): BelongsTo
     {
         return $this->belongsTo(Staffusers::class, 'evaluatedBy');
+    }
+
+    /**
+     * The Evaluation desk staff member who confirmed the student's clearance pass
+     * slip (ruling 5). Null means nobody at the department ever confirmed it, which is
+     * not the same as it being confirmed and is what stops the Registrar's approval.
+     *
+     * @return BelongsTo<Staffusers, $this>
+     */
+    public function clearanceConfirmedByUser(): BelongsTo
+    {
+        return $this->belongsTo(Staffusers::class, 'clearanceConfirmedBy');
     }
 
     /**

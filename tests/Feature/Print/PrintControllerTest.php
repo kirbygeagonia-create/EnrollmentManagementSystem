@@ -639,6 +639,140 @@ class PrintControllerTest extends TestCase
             ->assertStatus(403);
     }
 
+    #[Test]
+    public function a_slip_printed_before_any_enrollment_exists_is_still_counted_against_its_student(): void
+    {
+        $clearanceStaff = $this->createStaffForOffice(8);
+        $print = fn (Studentclearances $c) => $this->actingAs($clearanceStaff)->get(route('clearance.print-slip', $c));
+
+        // The clearance desk draws a slip for a student in a period. Nothing in that
+        // flow requires an enrollment, so the row used to be filed with enrollmentId
+        // NULL — a group MySQL considers unrelated to every other NULL, which let two
+        // students' slips carry the same document number (§25.10).
+        $first = $this->createClearanceSlip($this->createStudent());
+        $second = $this->createClearanceSlip($this->createStudent());
+
+        $print($first)->assertStatus(200);
+        $print($first)->assertStatus(200);
+        $print($second)->assertStatus(200);
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'studentId' => $first->studentId,
+            'enrollmentId' => null,
+            'documentType' => DocumentType::ClearanceSlip->value,
+            'documentNumber' => 2,
+        ]);
+
+        // The other student's copy counts against that student, not against the first
+        // one's bucket or against a shared pile of unattributed rows.
+        $this->assertDatabaseHas('documentprintlog', [
+            'studentId' => $second->studentId,
+            'documentType' => DocumentType::ClearanceSlip->value,
+            'documentNumber' => 1,
+        ]);
+
+        $this->assertSame(
+            [1, 2],
+            Documentprintlog::where('studentId', $first->studentId)
+                ->where('documentType', DocumentType::ClearanceSlip)
+                ->orderBy('printLogId')
+                ->pluck('documentNumber')
+                ->map(fn ($n) => (int) $n)
+                ->all()
+        );
+    }
+
+    #[Test]
+    public function a_fresh_issue_never_repeats_a_number_an_unattributable_row_already_printed(): void
+    {
+        $clearanceStaff = $this->createStaffForOffice(8);
+
+        // The legacy pile: issuance rows carrying no enrollment, student or block key,
+        // which ruling 6 keeps and no scope counts. Without the skip, a new student's
+        // first slip would be issued number 1 — the same number a historical slip already
+        // went out under, and the unique index cannot object because MySQL compares the
+        // NULL keys as unrelated.
+        foreach ([1, 2] as $taken) {
+            Documentprintlog::create([
+                'enrollmentId' => null,
+                'studentId' => null,
+                'blockId' => null,
+                'documentType' => DocumentType::ClearanceSlip,
+                'printedDate' => now(),
+                'printedBy' => $clearanceStaff->userId,
+                'documentNumber' => $taken,
+            ]);
+        }
+
+        $slip = $this->createClearanceSlip($this->createStudent());
+        $print = fn () => $this->actingAs($clearanceStaff)->get(route('clearance.print-slip', $slip));
+
+        $print()->assertStatus(200);
+        $print()->assertStatus(200);
+
+        $numbers = Documentprintlog::where('studentId', $slip->studentId)
+            ->where('documentType', DocumentType::ClearanceSlip)
+            ->orderBy('printLogId')
+            ->pluck('documentNumber')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        $this->assertSame([3, 4], $numbers);
+
+        // And no number is issued twice across the whole document type.
+        $this->assertSame(
+            count($all = Documentprintlog::where('documentType', DocumentType::ClearanceSlip)
+                ->pluck('documentNumber')->map(fn ($n) => (int) $n)->all()),
+            count(array_unique($all)),
+            'clearance slip numbers must be unique across every scope'
+        );
+    }
+
+    #[Test]
+    public function a_block_roster_is_attributed_to_the_block_it_covers(): void
+    {
+        $blockingStaff = $this->createStaffForOffice(5);
+        $blockingStaff->givePermissionTo('print.blockSchedule');
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $block = Blocks::findOrFail($this->blockId);
+
+        // Logged to the first enrollment in the block, a roster was numbered as if one
+        // student owned it — and an empty block logged nothing to point at at all.
+        $this->actingAs($blockingStaff)->get(route('blocking.print-schedule', $block))->assertStatus(200);
+        $this->actingAs($blockingStaff)->get(route('blocking.print-schedule', $block))->assertStatus(200);
+
+        $rows = Documentprintlog::where('documentType', DocumentType::BlockSchedule)
+            ->orderBy('printLogId')
+            ->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame([$block->blockId, $block->blockId], $rows->pluck('blockId')->all());
+        $this->assertSame([null, null], $rows->pluck('enrollmentId')->all());
+        $this->assertSame([1, 2], $rows->pluck('documentNumber')->map(fn ($n) => (int) $n)->all());
+    }
+
+    #[Test]
+    public function a_copy_issued_against_an_enrollment_also_names_the_student_it_belongs_to(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        $this->actingAs($registrarStaff)
+            ->get(route('registrar.print-certificate', $enrollment))
+            ->assertStatus(200);
+
+        // Both keys on one row: the enrollment the certificate certifies, and the
+        // student holding it, so the trail answers either question without a join.
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'studentId' => $student->studentId,
+            'documentType' => DocumentType::Certificate->value,
+            'documentNumber' => 1,
+        ]);
+    }
+
     /**
      * Swap in a PrintService that writes a stand-in file instead of driving a
      * browser, so the suite covers the download routes' authorization and audit
@@ -651,7 +785,7 @@ class PrintControllerTest extends TestCase
             public function printEnrollmentCertificate(Enrollments $enrollment, int $printedBy): PrintedDocument
             {
                 return new PrintedDocument(
-                    $this->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, $printedBy),
+                    $this->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, $printedBy, $enrollment->studentId),
                     $this->placeholder('certificate')
                 );
             }
@@ -662,7 +796,7 @@ class PrintControllerTest extends TestCase
                 int $printedBy
             ): PrintedDocument {
                 return new PrintedDocument(
-                    $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy),
+                    $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy, $enrollment->studentId),
                     $this->placeholder('class-card')
                 );
             }

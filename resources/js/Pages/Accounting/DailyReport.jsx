@@ -11,8 +11,26 @@ const paymentModeToneMap = {
     check: 'neutral',
 };
 
-export default function DailyReport({ payments, summary, date }) {
+export default function DailyReport({ payments, refunds = [], summary, date }) {
     const formattedDate = date ? new Date(date).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+
+    const refundColumns = useMemo(() => [
+        { key: 'refundedAt', label: 'Paid back at', render: (row) => (row.refundedAt ? new Date(row.refundedAt).toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—') },
+        { key: 'orNumber', label: 'Original OR', render: (row) => <span className="font-mono text-sm">{row.orNumber || '—'}</span> },
+        { key: 'enrollment.student.schoolIdNumber', label: 'Student', render: (row) => {
+            const s = row.enrollment?.student;
+            return s ? `${s.lastName}, ${s.firstName}` : '—';
+        }},
+        { key: 'amount', label: 'Amount returned', render: (row) => (
+            <span className="font-semibold text-rose-700">{peso(row.amount)}</span>
+        )},
+        { key: 'refundedReason', label: 'Reason', render: (row) => (
+            <span className="text-xs text-slate-600" title={row.refundedReason || ''}>
+                {(row.refundedReason || '').slice(0, 60)}{(row.refundedReason || '').length > 60 ? '…' : ''}
+            </span>
+        )},
+        { key: 'refundedByUser', label: 'Handed back by', render: (row) => (row.refundedByUser ? `${row.refundedByUser.firstName} ${row.refundedByUser.lastName}` : '—') },
+    ], []);
 
     const paymentColumns = useMemo(() => [
         { key: 'paymentDate', label: 'Time', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : '—' },
@@ -38,6 +56,10 @@ export default function DailyReport({ payments, summary, date }) {
     const byModeEntries = summary.byMode ? Object.entries(summary.byMode) : [];
     const totalAmount = Number(summary.totalAmount || 0);
     const totalCount = Number(summary.totalCount || 0);
+    const refundedAmount = Number(summary.refundedAmount || 0);
+    const refundedCount = Number(summary.refundedCount || 0);
+    // What the drawer should actually hold at close: cash in, minus cash handed back.
+    const netAmount = totalAmount - refundedAmount;
 
     return (
         <AuthenticatedLayout
@@ -72,13 +94,17 @@ export default function DailyReport({ payments, summary, date }) {
                     </div>
                     <div className="flex items-center gap-2">
                         <Badge tone="info">Daily Report</Badge>
-                        <Badge tone="paid">Paid Transactions Only</Badge>
+                        {/* Money in and money back out are both drawer movements, so both are
+                            on the sheet — a payout with no line here is cash missing without an
+                            explanation (ruling 14). */}
+                        <Badge tone="paid">Receipts held</Badge>
+                        {refunds.length > 0 && <Badge tone="danger">{refunds.length} refunded</Badge>}
                     </div>
                 </div>
             </Card>
 
             {/* Summary StatCards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                 <StatCard
                     compact
                     label="Total Collections"
@@ -98,6 +124,17 @@ export default function DailyReport({ payments, summary, date }) {
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    compact
+                    label="Paid Back Out"
+                    value={peso(refundedAmount)}
+                    iconBg="danger"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h11a4 4 0 014 4v3M3 10l4-4M3 10l4 4" />
                         </svg>
                     }
                 />
@@ -135,7 +172,7 @@ export default function DailyReport({ payments, summary, date }) {
                     {/* Totals row */}
                     <div className="mt-6 pt-4 border-t border-brand-200">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Grand Total</p>
+                            <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Total Cash Collected</p>
                             <div className="flex items-baseline gap-4">
                                 <p className="text-sm text-brand-500">
                                     {totalCount} transaction{totalCount === 1 ? '' : 's'}
@@ -148,7 +185,11 @@ export default function DailyReport({ payments, summary, date }) {
             )}
 
             {/* Payments Table */}
-            <Card title="Transaction Details" subtitle={`All payments collected on ${formattedDate}`}>
+            <Card
+                title="Transaction Details"
+                subtitle={`Receipts the drawer is holding from ${formattedDate}`}
+                className={refunds.length > 0 ? 'mb-6' : ''}
+            >
                 {payments.length > 0 ? (
                     <DataTable
                         columns={paymentColumns}
@@ -159,6 +200,29 @@ export default function DailyReport({ payments, summary, date }) {
                     <p className="text-brand-500 text-center py-8">No payments recorded for this date.</p>
                 )}
             </Card>
+
+            {/* Refunds Table — the payouts of the same day, so the sheet balances (ruling 14) */}
+            {refunds.length > 0 && (
+                <Card title="Cash Handed Back" subtitle="Refunds recorded against receipts of any date, paid out today">
+                    <DataTable
+                        columns={refundColumns}
+                        rows={refunds}
+                        emptyMessage="No refunds recorded for this date"
+                    />
+                    <div className="mt-6 pt-4 border-t border-brand-200 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Total Paid Back</p>
+                            <p className="text-sm text-rose-700">
+                                -{peso(refundedAmount)} ({refundedCount} refund{refundedCount === 1 ? '' : 's'})
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Net Left In The Drawer</p>
+                            <p className="text-2xl font-bold text-brand-900">{peso(netAmount)}</p>
+                        </div>
+                    </div>
+                </Card>
+            )}
         </AuthenticatedLayout>
     );
 }

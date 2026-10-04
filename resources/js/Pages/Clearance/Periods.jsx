@@ -24,6 +24,7 @@ const useTermOptions = (periods) => useMemo(() => periods
 export default function Periods({ periods }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingPeriod, setEditingPeriod] = useState(null); // the period object being edited
+    const [extendingPeriod, setExtendingPeriod] = useState(null); // the period whose window is being pushed out
     const [confirmCloseId, setConfirmCloseId] = useState(null); // period to confirm-close
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,6 +56,16 @@ export default function Periods({ periods }) {
     // Dedicated form for the "close period" confirmation action (keeps it
     // decoupled from the edit modal's state).
     const closeForm = useForm({ periodStatus: 'closed' });
+
+    // Extend form — moves the end date out and marks the window extended. `extended`
+    // is never typed in: it is the result of this action.
+    const {
+        data: extendData,
+        setData: setExtendData,
+        patch: extendPatch,
+        errors: extendErrors,
+        reset: extendReset,
+    } = useForm({ clearanceEndDate: '' });
 
     const termOptions = useTermOptions(periods);
 
@@ -125,6 +136,30 @@ export default function Periods({ periods }) {
     const periodLabel = (p) => {
         const ay = p.term?.academicYear;
         return ay ? `${ay.yearStart}-${ay.yearEnd} ${p.term?.semester}` : '—';
+    };
+
+    const openExtendModal = (period) => {
+        setExtendingPeriod(period);
+        setExtendData('clearanceEndDate', period.clearanceEndDate);
+    };
+
+    const closeExtendModal = () => {
+        setExtendingPeriod(null);
+        extendReset();
+    };
+
+    const handleExtend = (e) => {
+        e.preventDefault();
+        if (!extendingPeriod) return;
+        setIsSubmitting(true);
+        extendPatch(route('clearance.periods.extend', { period: extendingPeriod.clearancePeriodId }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeExtendModal();
+                setIsSubmitting(false);
+            },
+            onError: () => setIsSubmitting(false),
+        });
     };
 
     return (
@@ -198,6 +233,8 @@ export default function Periods({ periods }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {periods.map((p) => {
                             const isOpen = p.periodStatus === 'open';
+                            // An extended window is still taking slips, so it can still be extended.
+                            const isAccepting = isOpen || p.periodStatus === 'extended';
                             return (
                                 <div
                                     key={p.clearancePeriodId}
@@ -257,6 +294,18 @@ export default function Periods({ periods }) {
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                     </svg>
                                                     Close
+                                                </button>
+                                            )}
+                                            {isAccepting && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => openExtendModal(p)}
+                                                >
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    Extend
                                                 </button>
                                             )}
                                         </div>
@@ -419,13 +468,76 @@ export default function Periods({ periods }) {
                 )}
             </Modal>
 
+            {/* Extend Window Modal — moves the end date out and keeps taking slips. */}
+            <Modal
+                show={!!extendingPeriod}
+                onClose={closeExtendModal}
+                title="Extend Clearance Window"
+                subtitle={extendingPeriod ? periodLabel(extendingPeriod) : ''}
+                icon={
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                }
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3">
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={closeExtendModal}
+                            disabled={isSubmitting}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleExtend}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? 'Extending...' : 'Extend Window'}
+                        </button>
+                    </div>
+                }
+            >
+                {extendingPeriod && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3 p-3 rounded-btn bg-brand-50">
+                            <div>
+                                <p className="text-xs text-brand-500">Current End Date</p>
+                                <p className="text-sm font-medium text-brand-900">{fmtDate(extendingPeriod.clearanceEndDate)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-brand-500">Status After Extending</p>
+                                <p className="text-sm font-medium text-brand-900">Extended — still issuing slips</p>
+                            </div>
+                        </div>
+                        <FormSection
+                            label="New End Date"
+                            required
+                            error={extendErrors.clearanceEndDate}
+                            hint="The window keeps accepting slips to this date. Who extended it and when is written in the audit log."
+                        >
+                            <input
+                                type="date"
+                                value={extendData.clearanceEndDate}
+                                onChange={(e) => setExtendData('clearanceEndDate', e.target.value)}
+                                className={`form-input ${extendErrors.clearanceEndDate ? 'form-input-error' : ''}`}
+                                required
+                            />
+                        </FormSection>
+                    </div>
+                )}
+            </Modal>
+
             {/* Confirm close period */}
             <ConfirmDialog
                 show={!!confirmCloseId}
                 onClose={() => setConfirmCloseId(null)}
                 onConfirm={confirmClosePeriod}
                 title="Close Clearance Period"
-                message="Closing this period will stop it from accepting new clearance slips. Students with in-progress clearances can still be processed. This can be reversed by re-opening the period."
+                message="Closing stops this window from accepting new slips. It is refused while any clearance in it is still with the offices — the refusal names how many — so decide those first. Re-opening the period reverses this."
                 confirmText="Close Period"
                 variant="warning"
                 loading={isSubmitting}

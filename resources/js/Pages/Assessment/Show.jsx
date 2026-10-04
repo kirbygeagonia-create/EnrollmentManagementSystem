@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
-import { router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -11,11 +11,35 @@ const coverageTypeToneMap = {
     partial: 'partial',
 };
 
-export default function Show({ assessment, scholarshipTypes }) {
+const paymentStatusToneMap = {
+    paid: 'paid',
+    // An installment: cash the school holds, account not yet settled (ruling 13).
+    partial: 'info',
+    pending: 'pending',
+    // Cash handed back to the student — not a cancelled receipt (ruling 14).
+    refunded: 'warning',
+    voided: 'danger',
+};
+
+// Money the school is still holding. A part payment counts; a voided or refunded receipt
+// does not, because in both cases the cash is not in the drawer.
+const HELD_STATUSES = ['paid', 'partial'];
+
+// A revoked grant was taken back for cause; an expired one simply ran out. Both stopped
+// covering the student the moment they were written (ruling 15).
+const grantStatusToneMap = {
+    active: 'success',
+    pending: 'pending',
+    revoked: 'danger',
+    expired: 'warning',
+};
+
+export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
     const [showConfirmFinalize, setShowConfirmFinalize] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showApplyScholarship, setShowApplyScholarship] = useState(false);
     const [selectedScholarshipTypeId, setSelectedScholarshipTypeId] = useState('');
+    const [grantToWithdraw, setGrantToWithdraw] = useState(null);
 
     const enrollment = assessment.enrollment;
     const student = enrollment?.student;
@@ -23,7 +47,7 @@ export default function Show({ assessment, scholarshipTypes }) {
     const scholarships = assessment.scholarships || [];
     const payments = assessment.payments || [];
 
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => (HELD_STATUSES.includes(p.paymentStatus) ? sum + Number(p.amount || 0) : sum), 0);
     const totalAssessed = Number(assessment.totalAssessedAmount || 0);
     const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
     const remainingBalance = Number(assessment.remainingBalance || 0);
@@ -65,7 +89,7 @@ export default function Show({ assessment, scholarshipTypes }) {
         )},
         { key: 'coveragePercent', label: 'Percent', render: (row) => row.scholarshipType?.coveragePercent ? `${row.scholarshipType.coveragePercent}%` : '—' },
         { key: 'status', label: 'Status', render: (row) => (
-            <Badge tone={row.status === 'active' ? 'success' : row.status === 'pending' ? 'pending' : 'danger'}>
+            <Badge tone={grantStatusToneMap[row.status] || 'neutral'}>
                 {row.status ? formatStatusLabel(row.status) : '—'}
             </Badge>
         )},
@@ -77,7 +101,7 @@ export default function Show({ assessment, scholarshipTypes }) {
         { key: 'paymentMode', label: 'Method', render: (row) => row.paymentMode || '—' },
         { key: 'orNumber', label: 'Reference', render: (row) => row.orNumber || '—' },
         { key: 'paymentStatus', label: 'Status', render: (row) => (
-            <Badge tone={row.paymentStatus === 'paid' || row.paymentStatus === 'completed' ? 'paid' : row.paymentStatus === 'pending' ? 'pending' : 'danger'}>
+            <Badge tone={paymentStatusToneMap[row.paymentStatus] || 'neutral'}>
                 {row.paymentStatus ? formatStatusLabel(row.paymentStatus) : '—'}
             </Badge>
         )},
@@ -137,6 +161,23 @@ export default function Show({ assessment, scholarshipTypes }) {
             onError: () => setIsSubmitting(false),
         });
         setIsSubmitting(true);
+    };
+
+    // Taking a grant back is not editing a row: the coverage number inside this fee sheet
+    // moves with it, and so does the balance. The reason is required because the student
+    // is about to be asked for money the school already told them was covered.
+    const withdrawForm = useForm({ decision: 'revoke', reason: '' });
+
+    const confirmWithdrawGrant = (e) => {
+        e.preventDefault();
+        if (!grantToWithdraw) return;
+        withdrawForm.post(route('assessment.scholarships.withdraw', { grant: grantToWithdraw.studentScholarshipId }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setGrantToWithdraw(null);
+                withdrawForm.reset();
+            },
+        });
     };
 
     return (
@@ -302,7 +343,7 @@ export default function Show({ assessment, scholarshipTypes }) {
             {/* Scholarships */}
             <Card
                 title="Scholarships Applied"
-                subtitle="Active scholarships for this assessment"
+                subtitle="What is covering this assessment, and what the school has taken back"
                 className="mb-6"
                 actions={
                     <button
@@ -323,6 +364,18 @@ export default function Show({ assessment, scholarshipTypes }) {
                         columns={scholarshipColumns}
                         rows={scholarships}
                         emptyMessage="No scholarships applied"
+                        children={can.withdrawScholarship ? (row) => (
+                            row.status === 'active' && (
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm text-danger-600 hover:text-danger-900"
+                                    onClick={() => setGrantToWithdraw(row)}
+                                    disabled={!!grantToWithdraw}
+                                >
+                                    Withdraw
+                                </button>
+                            )
+                        ) : undefined}
                     />
                 ) : (
                     <p className="text-brand-500 text-center py-8">No scholarships applied yet.</p>
@@ -377,6 +430,77 @@ export default function Show({ assessment, scholarshipTypes }) {
                             ))}
                         </select>
                     </FormSection>
+                </Modal>
+
+                {/* Withdraw a grant — revoke it for cause or let it expire (ruling 15) */}
+                <Modal
+                    show={!!grantToWithdraw}
+                    onClose={() => { setGrantToWithdraw(null); withdrawForm.reset(); }}
+                    title="Withdraw a Scholarship Grant"
+                    subtitle={grantToWithdraw ? `${grantToWithdraw.scholarshipType?.scholarshipName || 'Grant'} — ${studentName}` : ''}
+                    size="md"
+                    footer={
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => { setGrantToWithdraw(null); withdrawForm.reset(); }}
+                                disabled={withdrawForm.processing}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={confirmWithdrawGrant}
+                                disabled={withdrawForm.processing || withdrawForm.data.reason.trim().length < 10}
+                            >
+                                {withdrawForm.processing ? 'Withdrawing…' : 'Withdraw the Grant'}
+                            </button>
+                        </div>
+                    }
+                >
+                    <form onSubmit={confirmWithdrawGrant} className="space-y-4">
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                            <span className="font-bold block mb-0.5">What this does</span>
+                            The grant stays on the record with this decision on it, and the coverage it carried comes
+                            off the fee sheet. If the student has already paid or been approved, the enrollment goes
+                            back to owing so it cannot be certified as settled.
+                        </div>
+                        <FormSection label="Decision" required hint="A revocation says the grant should not have been given. An expiry says it was earned and has run out.">
+                            <div className="space-y-2">
+                                {[
+                                    { value: 'revoke', label: 'Revoke', note: 'Mistaken, or forfeited after it was given.' },
+                                    { value: 'expire', label: 'Expire', note: 'It covered this term and no longer stands.' },
+                                ].map((option) => (
+                                    <label key={option.value} className="flex items-start gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="decision"
+                                            value={option.value}
+                                            checked={withdrawForm.data.decision === option.value}
+                                            onChange={() => withdrawForm.setData('decision', option.value)}
+                                            className="mt-1"
+                                        />
+                                        <span>
+                                            <span className="block text-sm font-medium text-brand-900">{option.label}</span>
+                                            <span className="block text-xs text-brand-500">{option.note}</span>
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                        </FormSection>
+                        <FormSection label="Reason for withdrawing it" required error={withdrawForm.errors.reason} hint="Minimum 10 characters. This is what the student is told when the balance reopens.">
+                            <textarea
+                                rows={3}
+                                value={withdrawForm.data.reason}
+                                onChange={(e) => withdrawForm.setData('reason', e.target.value)}
+                                placeholder="e.g., Scholarship cancelled after the student's standing dropped below the retained requirement."
+                                className={`form-input ${withdrawForm.errors.reason ? 'form-input-error' : ''}`}
+                                required
+                            />
+                        </FormSection>
+                    </form>
                 </Modal>
             </Card>
 

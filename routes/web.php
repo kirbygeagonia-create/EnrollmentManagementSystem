@@ -10,6 +10,7 @@ use App\Http\Controllers\Clearance\ClearanceController;
 use App\Http\Controllers\Clinic\ClinicController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Evaluation\EvaluationController;
+use App\Http\Controllers\Evaluation\ShiftRequestController;
 use App\Http\Controllers\Exam\ExamController;
 use App\Http\Controllers\ID\IDController;
 use App\Http\Controllers\NotificationController;
@@ -68,6 +69,20 @@ Route::middleware('auth')->group(function () {
 
     /* ==================== Evaluation ==================== */
     Route::get('/evaluation', [EvaluationController::class, 'index'])->name('evaluation.index');
+    // G-1, ruling 2: the returning student's cycle starts here, and this is the desk
+    // that issues the enrollment — the admission decision is not repeated for them.
+    Route::post('/evaluation', [EvaluationController::class, 'store'])->name('evaluation.store');
+
+    // G-7, ruling 11: the shift paper. Application-shaped but department-started — filed
+    // at Academic Department Evaluation, endorsed by the dean or program head, decided by
+    // the Guidance Councillor, whose signature is the final call. Registered ahead of
+    // `/evaluation/{enrollment}` so the docket is not bound as an enrollment id, and under
+    // the evaluation prefix so the desk sub-navigation knows where it lives.
+    Route::get('/evaluation/shift-requests', [ShiftRequestController::class, 'index'])->name('shift.index');
+    Route::post('/evaluation/shift-requests', [ShiftRequestController::class, 'store'])->name('shift.store');
+    Route::post('/evaluation/shift-requests/{shiftRequest}/endorse', [ShiftRequestController::class, 'endorse'])->name('shift.endorse');
+    Route::post('/evaluation/shift-requests/{shiftRequest}/decide', [ShiftRequestController::class, 'decide'])->name('shift.decide');
+
     Route::get('/evaluation/{enrollment}', [EvaluationController::class, 'show'])->name('evaluation.show');
     Route::put('/evaluation/{enrollment}/profile', [EvaluationController::class, 'captureProfile'])->name('evaluation.profile.capture');
     // Item 16: the standing is decided by the evaluating department from the
@@ -75,6 +90,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/evaluation/{enrollment}/standing', [EvaluationController::class, 'decideStanding'])->name('evaluation.standing.decide');
     Route::post('/evaluation/{enrollment}/subjects', [EvaluationController::class, 'proposeSubjects'])->name('evaluation.subjects.propose');
     Route::post('/evaluation/{enrollment}/credits', [EvaluationController::class, 'processCredits'])->name('evaluation.credits.process');
+    // Ruling 5: the department that takes the student confirms the clearance pass slip.
+    Route::post('/evaluation/{enrollment}/clearance/confirm', [EvaluationController::class, 'confirmClearance'])->name('evaluation.clearance.confirm');
     Route::post('/evaluation/{enrollment}/sign', [EvaluationController::class, 'sign'])->name('evaluation.sign');
     // Item 4: the retention exam is recorded in the Academic Evaluation area by
     // the owning department (BR10) — not in the Exam module.
@@ -85,6 +102,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/assessment/{assessment}', [AssessmentController::class, 'show'])->name('assessment.show');
     Route::post('/assessment/compute/{enrollment}', [AssessmentController::class, 'compute'])->name('assessment.compute');
     Route::post('/assessment/{assessment}/scholarships', [AssessmentController::class, 'applyScholarship'])->name('assessment.scholarships.apply');
+    Route::post('/assessment/scholarships/{grant}/withdraw', [AssessmentController::class, 'withdrawScholarship'])->name('assessment.scholarships.withdraw');
     Route::patch('/assessment/{assessment}/charges', [AssessmentController::class, 'adjustCharges'])->name('assessment.charges.adjust');
     Route::post('/assessment/{assessment}/finalize', [AssessmentController::class, 'finalize'])->name('assessment.finalize');
 
@@ -95,12 +113,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/accounting/{assessment}/payment', [AccountingController::class, 'record'])->name('accounting.payment.record');
     Route::post('/accounting/{assessment}/settle', [AccountingController::class, 'settleNoBalance'])->name('accounting.settle');
     Route::post('/accounting/payments/{payment}/void', [AccountingController::class, 'void'])->name('accounting.payment.void');
+    Route::post('/accounting/payments/{payment}/refund', [AccountingController::class, 'refund'])->name('accounting.payment.refund');
 
     /* ==================== Clearance ==================== */
     Route::get('/clearance', [ClearanceController::class, 'index'])->name('clearance.index');
     Route::get('/clearance/periods', [ClearanceController::class, 'periods'])->name('clearance.periods');
     Route::post('/clearance/periods', [ClearanceController::class, 'storePeriod'])->name('clearance.periods.store');
     Route::patch('/clearance/periods/{period}', [ClearanceController::class, 'updatePeriod'])->name('clearance.periods.update');
+    Route::patch('/clearance/periods/{period}/extend', [ClearanceController::class, 'extendPeriod'])->name('clearance.periods.extend');
     Route::post('/clearance/slip/generate', [ClearanceController::class, 'generateSlip'])->name('clearance.slip.generate');
     Route::post('/clearance/{clearance}/receipt', [ClearanceController::class, 'recordReceipt'])->name('clearance.receipt.record');
     Route::post('/clearance/approvals/{approval}', [ClearanceController::class, 'approveRequirement'])->name('clearance.approve');
@@ -128,6 +148,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/registrar/{enrollment}', [RegistrarController::class, 'show'])->name('registrar.show');
     Route::post('/registrar/{enrollment}/approve', [RegistrarController::class, 'approve'])->name('registrar.approve');
     Route::post('/registrar/{enrollment}/return', [RegistrarController::class, 'returnToEvaluation'])->name('registrar.return');
+    Route::post('/registrar/{enrollment}/drop', [RegistrarController::class, 'drop'])->name('registrar.drop');
     Route::get('/registrar/{enrollment}/print/certificate', [RegistrarController::class, 'printCertificate'])->name('registrar.print-certificate');
     Route::get('/registrar/{enrollment}/print/certificate/pdf', [RegistrarController::class, 'downloadCertificate'])->name('registrar.download-certificate');
     Route::get('/registrar/{enrollment}/print/class-cards', [RegistrarController::class, 'printClassCards'])->name('registrar.print-class-cards');

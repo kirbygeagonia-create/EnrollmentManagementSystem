@@ -251,7 +251,10 @@ class EnrollmentStateMachineTest extends TestCase
 
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Enrolled]);
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);
-        $this->assertEquals(['dropped'], $allowed);
+        // Rulings 14 and 15 reach past the Registrar's approval: a refunded receipt or a
+        // withdrawn grant leaves an enrolled record owing again, and a record that owes has
+        // to sit where Accounting can see it. A drop is still terminal.
+        $this->assertEquals(['dropped', 'assessed'], $allowed);
 
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);

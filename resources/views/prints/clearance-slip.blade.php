@@ -115,9 +115,14 @@
         {{ $cleared ? 'SEAIT CLEARED' : 'HELD — NOT YET CLEARED' }}
     </div>
 
+    @php($replacementFee = \App\Models\Feetypes::clearanceSlipReplacementFee())
     <div class="footer">
-        This clearance slip is valid only for the semester and academic year indicated above. 
-        Lost slip replacement fee: ₱{{ number_format(\App\Models\Feetypes::clearanceSlipReplacementFee(), 2) }}.
+        This clearance slip is valid only for the semester and academic year indicated above.
+        {{-- A fee no schedule records is not printed as a fact: the slip says nothing
+             until the Registrar sets it in Admin → Reference Data → Fee Types. --}}
+        @if ($replacementFee !== null)
+            Lost slip replacement fee: ₱{{ number_format($replacementFee, 2) }}.
+        @endif
     </div>
 </body>
 </html>

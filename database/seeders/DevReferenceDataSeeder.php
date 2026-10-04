@@ -739,6 +739,29 @@ class DevReferenceDataSeeder extends Seeder
             $i++;
         }
 
+        // ---------- Department signatories the workflows require ----------
+        // The dean signature is a real step, not decoration: the evaluation form is
+        // co-signed by the dean or program head (BR14), and the shift paper cannot be
+        // endorsed at all without one (ruling 11). Office 7 is the academic unit, so its
+        // head is the natural dean — and no seeded account held the role, which left both
+        // signatures untestable on the demo dataset.
+        $dean = Staffusers::firstOrCreate(
+            ['username' => 'dean_academic'],
+            [
+                'employeeNo' => 'EMP-00700',
+                'firstName' => 'Dean',
+                'middleName' => '',
+                'lastName' => 'Academic Affairs',
+                'email' => 'dean_academic@seait.edu.ph',
+                'passwordHash' => Hash::make('password'),
+                'officeId' => 7,
+                'contactNo' => '',
+                'role' => 'officeHead',
+                'status' => 'active',
+            ]
+        );
+        $dean->syncRoles(['Dean']);
+
         $this->command?->info(class_basename($this).': done.');
     }
 }

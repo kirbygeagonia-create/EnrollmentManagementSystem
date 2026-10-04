@@ -74,6 +74,10 @@ class HandleInertiaRequests extends Middleware
                 // ask these two flags instead of assuming the admin role.
                 'refdataHub' => ReferenceDataSections::hubVisible($staff),
                 'gradeScaleManage' => $staff?->checkPermissionTo('refdata.gradeScale.manage') ?? false,
+                // Dropping an enrollment undoes what four desks signed, so the button is
+                // offered only to the desk the ruling gave it to (ruling 17). Read through
+                // the gate so an unseeded install answers false instead of throwing.
+                'enrollmentDrop' => $staff?->can('enrollment.drop') ?? false,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

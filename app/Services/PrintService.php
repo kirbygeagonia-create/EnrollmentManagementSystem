@@ -9,7 +9,6 @@ use App\Models\Documentprintlog;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Studentclearances;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -62,11 +61,13 @@ class PrintService
 
         // The number has to exist before the page renders: it is printed on the
         // slip, and a slip with no number on its face cannot be traced back to
-        // the issuance that produced it.
+        // the issuance that produced it. A slip is drawn by a student, so the
+        // student is the key — an enrollment may not exist for the period yet.
         $printLog = $this->recordIssue(
             $clearance->termEnrollment()?->enrollmentId,
             DocumentType::ClearanceSlip,
-            $printedBy
+            $printedBy,
+            $clearance->studentId
         );
 
         $path = $this->generatePdf('prints.clearance-slip', [
@@ -79,34 +80,104 @@ class PrintService
 
     /**
      * Record one issuance of a document — a window print and a PDF download are the
-     * same event to the trail. The number is the running count of that type for the
-     * enrollment, so "Certificate #3" is the third copy ever issued to that student,
-     * and it is unique per enrollment and document type by database constraint.
+     * same event to the trail. The number is one above the highest already issued for
+     * that document under the subject it was issued to, so "Certificate #3" is the third
+     * copy ever issued against that enrollment and "Slip #2" is the second slip this
+     * student has been handed.
+     *
+     * Which column identifies the subject depends on the document: a clearance slip is
+     * drawn by a student in a period and may exist before any enrollment does, a block
+     * schedule covers a block rather than the student whose row happened to be first,
+     * and everything else is issued against one enrollment. Logging each to its own
+     * subject is what makes the count mean "copies of this paper", and the enrollment-
+     * scoped groups are additionally unique by database index
+     * (`uq_documentprintlog_issue`); the student- and block-scoped groups are held to
+     * their sequence by the row lock below, since MySQL compares NULL keys as unrelated.
+     *
+     * A number already printed by an unattributable row is skipped. Those rows (the 21
+     * on live `ems`, kept untouched by ruling 6) carry no key, so no scope counts them
+     * and no index can compare against them — without the skip, a fresh student's second
+     * slip would be issued the same number as a historical one and the ledger would hold
+     * the same document number twice. The skip is the only half of that collision this
+     * can fix without rewriting history: copies already printed keep the number they were
+     * issued with.
      */
-    public function recordIssue(?int $enrollmentId, DocumentType $documentType, int $printedBy): Documentprintlog
-    {
+    public function recordIssue(
+        ?int $enrollmentId,
+        DocumentType $documentType,
+        int $printedBy,
+        ?int $studentId = null,
+        ?int $blockId = null
+    ): Documentprintlog {
+        [$scopeColumn, $scopeValue] = $this->issueScope($documentType, $enrollmentId, $studentId, $blockId);
+
         // The next number comes from a count of the rows already on file, so two desks
         // printing the same document at the same instant would both read the same
         // count and the unique index would reject the second insert. Locking the
         // group's rows for the length of the write makes read-then-insert one step.
-        return DB::transaction(function () use ($enrollmentId, $documentType, $printedBy): Documentprintlog {
-            $issuedBefore = Documentprintlog::where('documentType', $documentType)
-                ->when(
-                    $enrollmentId,
-                    fn (Builder $query) => $query->where('enrollmentId', $enrollmentId),
-                    fn (Builder $query) => $query->whereNull('enrollmentId')
-                )
-                ->lockForUpdate()
-                ->count('printLogId');
+        return DB::transaction(function () use ($enrollmentId, $studentId, $blockId, $documentType, $printedBy, $scopeColumn, $scopeValue): Documentprintlog {
+            $issue = Documentprintlog::where('documentType', $documentType);
+
+            if ($scopeValue === null) {
+                $issue->whereNull($scopeColumn);
+            } else {
+                $issue->where($scopeColumn, $scopeValue);
+            }
+
+            // The scope's own highest number, not its row count: a group that has already
+            // been pushed past a reserved number must keep climbing from where it is,
+            // or the second copy would be issued the same number as the first.
+            $number = ((int) $issue->lockForUpdate()->max('documentNumber')) + 1;
+
+            $reserved = Documentprintlog::where('documentType', $documentType)
+                ->whereNull('enrollmentId')
+                ->whereNull('studentId')
+                ->whereNull('blockId')
+                ->pluck('documentNumber')
+                ->map(fn ($n) => (int) $n)
+                ->all();
+
+            while (in_array($number, $reserved, true)) {
+                $number++;
+            }
 
             return Documentprintlog::create([
                 'enrollmentId' => $enrollmentId,
+                'studentId' => $studentId,
+                'blockId' => $blockId,
                 'documentType' => $documentType,
                 'printedDate' => now(),
                 'printedBy' => $printedBy,
-                'documentNumber' => $issuedBefore + 1,
+                'documentNumber' => $number,
             ]);
         });
+    }
+
+    /**
+     * The column a document's copies are counted against, and the value it takes there.
+     *
+     * A slip or roster whose own key was not supplied is counted against the enrollment
+     * it does name: falling back to the enrollment is a count of a real subject, while
+     * counting the key-less rows would silently continue the pile of unattributable
+     * issuance rows this exists to retire.
+     *
+     * @return array{0: string, 1: int|null}
+     */
+    private function issueScope(
+        DocumentType $documentType,
+        ?int $enrollmentId,
+        ?int $studentId,
+        ?int $blockId
+    ): array {
+        return match ($documentType) {
+            DocumentType::ClearanceSlip => $studentId !== null
+                ? ['studentId', $studentId]
+                : ['enrollmentId', $enrollmentId],
+            DocumentType::BlockSchedule => $blockId !== null
+                ? ['blockId', $blockId]
+                : ['enrollmentId', $enrollmentId],
+            default => ['enrollmentId', $enrollmentId],
+        };
     }
 
     /**
@@ -119,7 +190,7 @@ class PrintService
         // Issued before the page renders so the copy carries its own number, the same
         // way the clearance slip does: a certificate with no number on its face cannot
         // be tied back to the issuance that produced it.
-        $printLog = $this->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, $printedBy);
+        $printLog = $this->recordIssue($enrollment->enrollmentId, DocumentType::Certificate, $printedBy, $enrollment->studentId);
 
         $path = $this->generatePdf('prints.enrollment-certificate', [
             'enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'enrolledSubjects.subject', 'registrarProcessedByUser']),
@@ -184,7 +255,7 @@ class PrintService
         ], $filename, true);
 
         return new PrintedDocument(
-            $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy),
+            $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy, $enrollment->studentId),
             $path
         );
     }
@@ -208,7 +279,7 @@ class PrintService
         ], $filename);
 
         return new PrintedDocument(
-            $this->recordIssue($enrollment->enrollmentId, DocumentType::SubjectLoad, $printedBy),
+            $this->recordIssue($enrollment->enrollmentId, DocumentType::SubjectLoad, $printedBy, $enrollment->studentId),
             $path
         );
     }
@@ -224,11 +295,12 @@ class PrintService
             'block' => $block->load(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings']),
         ], $filename, true);
 
-        // Log to the first enrollment in this block
-        $enrollmentId = $block->enrolledSubjects->first()?->enrollmentId;
-
+        // A roster is one document covering one block. It used to be logged against the
+        // first enrollment in that block, which numbered a block's roster as if it were
+        // one student's paper and left it with no enrollment at all when the block was
+        // still empty.
         return new PrintedDocument(
-            $this->recordIssue($enrollmentId, DocumentType::BlockSchedule, $printedBy),
+            $this->recordIssue(null, DocumentType::BlockSchedule, $printedBy, null, $block->blockId),
             $path
         );
     }
@@ -254,7 +326,7 @@ class PrintService
         ], $filename);
 
         return new PrintedDocument(
-            $this->recordIssue($enrollment->enrollmentId, DocumentType::EnrollmentForm, $printedBy),
+            $this->recordIssue($enrollment->enrollmentId, DocumentType::EnrollmentForm, $printedBy, $enrollment->studentId),
             $path
         );
     }

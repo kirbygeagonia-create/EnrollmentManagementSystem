@@ -64,8 +64,43 @@ class PaymentPolicy
             return false;
         }
 
+        // A refund (ruling 14) is not voidable: `pending` means "this receipt should never
+        // have been filed", and rewriting a payout to that would erase the record that cash
+        // left the drawer while leaving the reopened balance behind. A refund entered in
+        // error is corrected the way a refund is always corrected — the student pays again
+        // and the new receipt sits beside the payout.
+        if ($payment->paymentStatus === PaymentStatus::Refunded) {
+            return false;
+        }
+
         // Payment must not already be voided
         return $payment->paymentStatus !== PaymentStatus::Pending;
+    }
+
+    /**
+     * Determine whether the user can refund a receipt (ruling 14).
+     *
+     * Cash going back out is the same custody question as cash coming in, so the act stays
+     * with the Accounting office — but it is its own right, not `payment.void`, because
+     * returning money that was genuinely collected and cancelling a receipt that should
+     * never have been filed are different transactions with different consequences for the
+     * drawer and for the student.
+     */
+    public function refund(Staffusers $user, Payments $payment): bool
+    {
+        if (! $user->hasPermissionTo('payment.refund')) {
+            return false;
+        }
+
+        // Must be Accounting office (officeId = 2)
+        if ($user->officeId !== OfficeId::Accounting->value) {
+            return false;
+        }
+
+        // Only money actually held can be handed back. A voided receipt was never kept, and
+        // a refunded one has already been returned — refunding either twice is how a
+        // drawer stops reconciling.
+        return in_array($payment->paymentStatus, [PaymentStatus::Paid, PaymentStatus::Partial], true);
     }
 
     /**

@@ -32,10 +32,10 @@ class SettingsSeeder extends Seeder
                 'value' => '',
                 'description' => 'PROVISIONAL — Registrar to supply the official contact number for the print letterhead.',
             ],
-            'clearanceReplacementFee' => [
-                'value' => '100.00',
-                'description' => 'PROVISIONAL — printed on the clearance slip footer; Registrar to confirm against the current fee schedule.',
-            ],
+            // The clearance replacement fee is deliberately not a setting: the amount a
+            // student is charged and the amount the slip prints both come from the
+            // 'Clearance Slip Replacement' fee type in Reference Data, and a second place
+            // holding the same figure is how the two drifted apart (P-12, ruling 8).
         ];
 
         foreach ($settings as $key => $setting) {

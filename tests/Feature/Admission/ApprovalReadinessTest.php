@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Admission;
 
+use App\Enums\EnrollmentStatus;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
+use App\Enums\StudentType;
 use App\Enums\UnitType;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
@@ -12,6 +14,7 @@ use App\Models\Academicyears;
 use App\Models\Admissionrequirements;
 use App\Models\Admissions;
 use App\Models\Courses;
+use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Offices;
 use App\Models\Religions;
@@ -318,6 +321,77 @@ class ApprovalReadinessTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame('approved', $admission->fresh()->admissionStatus->value);
+    }
+
+    #[Test]
+    public function approving_does_not_create_a_second_active_enrollment_in_the_same_term(): void
+    {
+        // Ruling 3 (G-4): the seat is per student per term, not per application. The
+        // lookup used to be by admissionId, so a student who already held an active
+        // enrollment — issued by Department Evaluation under ruling 2, or by an earlier
+        // application — was given a second one for the same seat, and both read as live.
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+        $this->generalExam($student, 'pass');
+
+        $held = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->boardCourseId,
+            'termId' => $this->termId,
+            'yearLevel' => 1,
+            'studentType' => StudentType::FirstYear,
+            'enrollmentType' => 'new',
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+            'evaluatedBy' => $desk->userId,
+        ]);
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('approved', $admission->fresh()->admissionStatus->value);
+        $this->assertSame(1, Enrollments::where('studentId', $student->studentId)->where('termId', $this->termId)->count());
+        $this->assertStringContainsString(
+            "already holds enrollment #{$held->enrollmentId}",
+            session('success')
+        );
+    }
+
+    #[Test]
+    public function a_dropped_enrollment_does_not_hold_the_seat_when_the_application_is_approved(): void
+    {
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+        $this->generalExam($student, 'pass');
+
+        Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->boardCourseId,
+            'termId' => $this->termId,
+            'yearLevel' => 1,
+            'studentType' => StudentType::FirstYear,
+            'enrollmentType' => 'new',
+            'enrollmentStatus' => EnrollmentStatus::Dropped,
+            'dropReason' => 'Withdrew before the term began.',
+            'evaluatedBy' => $desk->userId,
+        ]);
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        // Ruling 17 releases the seat, so the approval here is the student coming back —
+        // a fresh row, tied to this admission, not the closed one.
+        $this->assertSame(2, Enrollments::where('studentId', $student->studentId)->where('termId', $this->termId)->count());
+        $this->assertDatabaseHas('enrollments', [
+            'studentId' => $student->studentId,
+            'admissionId' => $admission->admissionId,
+            'enrollmentStatus' => EnrollmentStatus::Pending->value,
+        ]);
     }
 
     private function boardCourseCode(): string

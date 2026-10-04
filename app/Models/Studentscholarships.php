@@ -14,14 +14,25 @@ class Studentscholarships extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['studentId', 'scholarshipTypeId', 'termId', 'status', 'approvedBy', 'awardedBeforeEnrollment'];
+    protected $fillable = ['studentId', 'scholarshipTypeId', 'termId', 'status', 'approvedBy', 'awardedBeforeEnrollment', 'statusChangedBy', 'statusChangedAt', 'statusReason'];
 
     protected function casts(): array
     {
         return [
             'status' => ScholarshipStatus::class,
             'awardedBeforeEnrollment' => 'boolean',
+            'statusChangedAt' => 'datetime',
         ];
+    }
+
+    /**
+     * The desk that withdrew the grant, when and why (ruling 15).
+     *
+     * @return BelongsTo<Staffusers, $this>
+     */
+    public function statusChangedByUser(): BelongsTo
+    {
+        return $this->belongsTo(Staffusers::class, 'statusChangedBy');
     }
 
     /**
