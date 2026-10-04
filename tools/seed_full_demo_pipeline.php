@@ -354,6 +354,120 @@ if (! $enrRafael) {
     echo "✔ Evaluation Desk: Seeded Rafael Cruz (DEMO-2026-009) - PENDING transferee queue\n";
 }
 
+$proposeSubjects = function (Enrollments $enrollment, array $subjectIds, string $status = 'proposed'): void {
+    foreach ($subjectIds as $subjectId) {
+        // enrolledsubjects carries no timestamps, so the attempt triple is the key.
+        DB::table('enrolledsubjects')->updateOrInsert(
+            ['enrollmentId' => $enrollment->enrollmentId, 'subjectId' => $subjectId, 'attempt_number' => 1],
+            ['status' => $status]
+        );
+    }
+};
+
+/**
+ * The subjects a program actually offers at a year level in a given term.
+ *
+ * Every load the demo seats goes through here. It resolves the curriculum the same way the
+ * Evaluation desk does — the enrollment's pinned version if it has one, otherwise the
+ * newest for that program — then takes the term's own semester, mandatory rows first and
+ * among those the ones with no prerequisite, because a load the desk could not lawfully
+ * propose is the same class of defect as a standing no desk decided: the paper prints an
+ * event that no rule in the application produces.
+ *
+ * Ordering through a CASE expression rather than FIELD() keeps it readable by both engines.
+ *
+ * @return int[]
+ */
+$curriculumLoad = function (int $courseId, int $yearLevel, int $termId, int $take = 3) use ($app): array {
+    $semester = DB::table('academicterms')->where('termId', $termId)->value('semester');
+
+    if ($semester === null) {
+        return [];
+    }
+
+    $curriculumId = DB::table('curriculums')
+        ->where('courseId', $courseId)
+        ->orderByDesc('effectiveYear')
+        ->orderBy('curriculumId')
+        ->value('curriculumId');
+
+    if ($curriculumId === null) {
+        return [];
+    }
+
+    return DB::table('curriculumsubjects as cs')
+        ->where('cs.curriculumId', $curriculumId)
+        ->where('cs.yearLevel', $yearLevel)
+        ->where('cs.semesterOffered', $semester)
+        ->orderByRaw('case when cs.is_elective = 0 and cs.prerequisiteSubjectId is null then 0 when cs.is_elective = 0 then 1 else 2 end')
+        ->orderBy('cs.subjectId')
+        ->limit($take)
+        ->pluck('cs.subjectId')
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values()
+        ->all();
+};
+
+/**
+ * Seat a load from the curriculum and return the subject ids it wrote.
+ *
+ * A program with nothing offered at that level and semester says so on the console rather
+ * than writing placeholder rows: an empty list is the honest answer, and the G-9 counter
+ * at the end of the run reports the enrollment as unpriceable by the curriculum.
+ *
+ * @return int[]
+ */
+$seedLoad = function (Enrollments $enrollment, int $take = 3, string $status = 'proposed') use ($curriculumLoad, $proposeSubjects, $app): array {
+    $ids = $curriculumLoad($enrollment->courseId, $enrollment->yearLevel, $enrollment->termId, $take);
+
+    if ($ids === []) {
+        echo "  ! no curriculum offering at course {$enrollment->courseId} year {$enrollment->yearLevel} on term {$enrollment->termId} — enrollment {$enrollment->enrollmentId} is left with no load\n";
+
+        return [];
+    }
+
+    $proposeSubjects($enrollment, $ids, $status);
+
+    return $ids;
+};
+
+/**
+ * Grade a prior-term load, taken from the same curriculum lookup.
+ *
+ * The standing the Evaluation desk derives comes from these grades, so the subject the
+ * demo fails is named from what was actually resolved rather than from a hard-coded id: a
+ * curriculum can offer one subject at a level or eleven, and the last grade in the list is
+ * the failing one wherever the load happens to end up.
+ *
+ * @param  array<int,string>  $grades  positional, applied to the load in order
+ * @return array{0: int|null, 1: string}  the last graded subject's id and its printed code
+ */
+$gradePriorLoad = function (Enrollments $prior, array $grades) use ($curriculumLoad, $app): array {
+    $ids = $curriculumLoad($prior->courseId, $prior->yearLevel, $prior->termId, count($grades));
+
+    if (count($ids) < count($grades)) {
+        echo "  ! only ".count($ids).' of '.count($grades)." subject(s) are offered on prior enrollment {$prior->enrollmentId}'s program and level — grading what exists\n";
+    }
+
+    if ($ids === []) {
+        return [null, '—'];
+    }
+
+    $graded = array_slice($ids, 0, count($grades));
+
+    foreach (array_combine($graded, array_slice($grades, 0, count($graded))) as $subjectId => $grade) {
+        DB::table('enrolledsubjects')->updateOrInsert(
+            ['enrollmentId' => $prior->enrollmentId, 'subjectId' => $subjectId, 'attempt_number' => 1],
+            ['status' => 'confirmed', 'blockId' => null, 'scheduleId' => null, 'grade' => $grade]
+        );
+    }
+
+    $last = (int) end($graded);
+
+    return [$last, (string) DB::table('subjects')->where('subjectId', $last)->value('subjectCode')];
+};
+
 // -------------------------------------------------------------
 // 4b. ACADEMIC STANDING EVIDENCE — the grades the Evaluation desk derives from
 //     (DEMO-2026-004 repeating a year, DEMO-2026-018 advancing, DEMO-2026-008
@@ -380,13 +494,8 @@ if (! $enrRafael) {
 $liza = Students::where('schoolIdNumber', 'DEMO-2026-004')->first();
 $lizaPrior = Enrollments::where('studentId', $liza->studentId)->where('termId', $priorTermId)->first();
 if ($lizaPrior) {
-    foreach ([1 => '2.50', 2 => '3.00', 3 => '4.50'] as $subjectId => $grade) {
-        DB::table('enrolledsubjects')->updateOrInsert(
-            ['enrollmentId' => $lizaPrior->enrollmentId, 'subjectId' => $subjectId, 'attempt_number' => 1],
-            ['status' => 'confirmed', 'blockId' => null, 'scheduleId' => null, 'grade' => $grade]
-        );
-    }
-    echo "✔ Standing evidence: graded Liza Bautista's prior-term record (MATH101 = 4.50, below the pass line)\n";
+    [$lizaFailedId, $lizaFailedCode] = $gradePriorLoad($lizaPrior, ['2.50', '3.00', '4.50']);
+    echo "✔ Standing evidence: graded Liza Bautista's prior-term record ({$lizaFailedCode} = 4.50, below the pass line)\n";
 }
 
 $enrLiza = Enrollments::where('studentId', $liza->studentId)->where('termId', $termId)->first();
@@ -421,12 +530,7 @@ if (! $marcoPrior) {
         'enrolledDate' => now()->subMonths(9),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
-    foreach ([1 => '1.50', 2 => '2.25', 5 => '2.75'] as $subjectId => $grade) {
-        DB::table('enrolledsubjects')->updateOrInsert(
-            ['enrollmentId' => $marcoPrior->enrollmentId, 'subjectId' => $subjectId, 'attempt_number' => 1],
-            ['status' => 'confirmed', 'blockId' => null, 'scheduleId' => null, 'grade' => $grade]
-        );
-    }
+    $gradePriorLoad($marcoPrior, ['1.50', '2.25', '2.75']);
     echo "✔ Standing evidence: Marco Villanueva's prior-term record (all subjects pass)\n";
 }
 
@@ -492,14 +596,7 @@ if (! $enrGrace) {
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     // Propose 3 subjects
-    foreach ([1, 2, 5] as $subId) {
-        DB::table('enrolledsubjects')->insert([
-            'enrollmentId' => $enrGrace->enrollmentId,
-            'subjectId' => $subId,
-            'status' => 'proposed',
-            'attempt_number' => 1,
-        ]);
-    }
+    $seedLoad($enrGrace);
     // Create workflow
     $wf = Enrollmentworkflow::create([
         'enrollmentId' => $enrGrace->enrollmentId,
@@ -538,14 +635,7 @@ if (! $enrChristian) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
-    foreach ([1, 2, 3] as $subId) {
-        DB::table('enrolledsubjects')->insert([
-            'enrollmentId' => $enrChristian->enrollmentId,
-            'subjectId' => $subId,
-            'status' => 'proposed',
-            'attempt_number' => 1,
-        ]);
-    }
+    $seedLoad($enrChristian);
     $assChristian = DB::table('studentassessments')->insertGetId([
         'enrollmentId' => $enrChristian->enrollmentId,
         'totalAssessedAmount' => 17500.00,
@@ -582,14 +672,7 @@ if (! $enrBea) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
-    foreach ([1, 2, 6] as $subId) {
-        DB::table('enrolledsubjects')->insert([
-            'enrollmentId' => $enrBea->enrollmentId,
-            'subjectId' => $subId,
-            'status' => 'proposed',
-            'attempt_number' => 1,
-        ]);
-    }
+    $seedLoad($enrBea);
     $assBea = DB::table('studentassessments')->insertGetId([
         'enrollmentId' => $enrBea->enrollmentId,
         'totalAssessedAmount' => 18500.00,
@@ -639,14 +722,7 @@ if (! $enrPat) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Paid,
     ]);
-    foreach ([1, 2, 5] as $subId) {
-        DB::table('enrolledsubjects')->insert([
-            'enrollmentId' => $enrPat->enrollmentId,
-            'subjectId' => $subId,
-            'status' => 'proposed',
-            'attempt_number' => 1,
-        ]);
-    }
+    $seedLoad($enrPat);
     $assPat = DB::table('studentassessments')->insertGetId([
         'enrollmentId' => $enrPat->enrollmentId,
         'totalAssessedAmount' => 17500.00,
@@ -707,14 +783,7 @@ if (! $enrGab) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
-    foreach ([1, 2, 5] as $subId) {
-        DB::table('enrolledsubjects')->insert([
-            'enrollmentId' => $enrGab->enrollmentId,
-            'subjectId' => $subId,
-            'status' => 'confirmed',
-            'attempt_number' => 1,
-        ]);
-    }
+    $seedLoad($enrGab, 3, 'confirmed');
     $wfGab = Enrollmentworkflow::create([
         'enrollmentId' => $enrGab->enrollmentId,
         'currentStep' => 4,
@@ -935,16 +1004,6 @@ $assessmentFor = function (Enrollments $enrollment, float $assessed, float $cove
     ]);
 };
 
-$proposeSubjects = function (Enrollments $enrollment, array $subjectIds, string $status = 'proposed'): void {
-    foreach ($subjectIds as $subjectId) {
-        // enrolledsubjects carries no timestamps, so the attempt triple is the key.
-        DB::table('enrolledsubjects')->updateOrInsert(
-            ['enrollmentId' => $enrollment->enrollmentId, 'subjectId' => $subjectId, 'attempt_number' => 1],
-            ['status' => $status]
-        );
-    }
-};
-
 // 10a. The Registrar needs an enrollment it can approve, and a live walkthrough
 //      consumes one — so the desk is seeded with three, covering both approval
 //      paths: a first-year the department must judge on its own judgment, and two
@@ -963,7 +1022,7 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     $termId,
     $stateMachine,
     $deskSigners,
-    $proposeSubjects,
+    $seedLoad,
     $assessmentFor,
     $chargeDemoFees,
     $recordDemoPayment,
@@ -992,7 +1051,7 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     $assessmentOfficer = Staffusers::find($deskSigners[OfficeId::Scholarship->value]);
     $cashier = Staffusers::find($deskSigners[OfficeId::Accounting->value]);
 
-    $proposeSubjects($enrollment, [1, 2, 5]);
+    $seedLoad($enrollment);
 
     if ($enrollment->enrollmentStatus === EnrollmentStatus::Pending) {
         $enrollment = $stateMachine->transition($enrollment, EnrollmentStatus::Evaluated, $evaluator, 'Subject load proposed by Department Evaluation');
@@ -1141,7 +1200,7 @@ if ($openPeriod !== null) {
             'formIssuedDate' => now()->toDateString(),
             'formSignedDate' => now(),
         ]);
-        $proposeSubjects($prior, [1, 2, 4], 'confirmed');
+        $seedLoad($prior, 3, 'confirmed');
         $completeWorkflow($prior);
 
         $current = $issuer->issue([
@@ -1285,7 +1344,7 @@ if (! $enrAngelica) {
 } else {
     echo "✔ Assessment Desk: DEMO-2026-019 Angelica Reyes re-seated\n";
 }
-$proposeSubjects($enrAngelica, [1, 2, 5]);
+$seedLoad($enrAngelica);
 $seatWorkflow($enrAngelica, OfficeId::Scholarship->value);
 
 // 10d. Accounting — an account fully covered by a grant, which is the only case
@@ -1306,7 +1365,7 @@ if (! $enrMarisol) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
-    $proposeSubjects($enrMarisol, [1, 2, 5]);
+    $seedLoad($enrMarisol);
     echo "✔ Accounting Desk: Seeded DEMO-2026-020 Marisol Domingo — ASSESSED, ₱0 due (full grant)\n";
 }
 
@@ -1342,7 +1401,7 @@ if (! $enrIsagani) {
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
-    $proposeSubjects($enrIsagani, [1, 2, 5]);
+    $seedLoad($enrIsagani);
 
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Evaluated, Staffusers::find($deskSigners[OfficeId::Guidance->value]), 'Subject load proposed by Department Evaluation');
     $isaganiAssessment = $assessmentFor($enrIsagani, 17500.00);
@@ -1461,8 +1520,6 @@ $meetingSlots = [
     5 => [['Tuesday', '13:00:00', '14:30:00'], ['Thursday', '13:00:00', '14:30:00']],
     6 => [['Friday', '08:00:00', '09:30:00']],
 ];
-$defaultSlot = [['Friday', '10:00:00', '11:30:00']];
-
 // Students whose load is empty cannot be blocked or printed, so the two ID-desk
 // rows are given the subjects their course actually offers — before the
 // timetable is built, because the timetable reads their load.
@@ -1473,9 +1530,62 @@ foreach (['DEMO-2026-016', 'DEMO-2026-017'] as $schoolId) {
         : null;
 
     if ($enrollment && DB::table('enrolledsubjects')->where('enrollmentId', $enrollment->enrollmentId)->count() === 0) {
-        $proposeSubjects($enrollment, [1, 2, 4], 'confirmed');
+        $seedLoad($enrollment, 3, 'confirmed');
         echo "✔ Blocking Desk: {$schoolId} given the subject load their record was missing\n";
     }
+}
+
+// Retire any load row naming a subject this program does not offer at this level and
+// term, then give the enrollment its load back from the curriculum — retiring without
+// reseeding would leave a student with no subjects at all, which is worse than the wrong
+// ones: the timetable would publish no classes and the desks downstream would have
+// nothing to price, print or block.
+//
+// An enrollment whose term and level offer nothing is left alone rather than emptied:
+// deleting its load would trade a wrong subject list for no subject list, and the G-9
+// counter at the end of this run is the place that condition gets reported.
+$retired = 0;
+$retiredFor = 0;
+$reseeded = 0;
+
+foreach (Enrollments::whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])->get() as $candidate) {
+    $offered = $curriculumLoad($candidate->courseId, $candidate->yearLevel, $candidate->termId, 60);
+
+    if ($offered === []) {
+        continue;
+    }
+
+    $stale = DB::table('enrolledsubjects')
+        ->where('enrollmentId', $candidate->enrollmentId)
+        ->whereNotIn('subjectId', $offered)
+        ->pluck('enrolledSubjectId');
+
+    if ($stale->isNotEmpty()) {
+        DB::table('enrolledsubjects')->whereIn('enrolledSubjectId', $stale)->delete();
+        $retired += $stale->count();
+        $retiredFor++;
+    }
+
+    // Checked after the retire rather than inside it, so an enrollment left empty by an
+    // earlier run is filled here too: "no rows" is not "nothing stale to remove".
+    if (DB::table('enrolledsubjects')->where('enrollmentId', $candidate->enrollmentId)->count() === 0) {
+        // A load the department has already signed off — and anything the Registrar
+        // approved — is confirmed; a load still standing at Evaluation is proposed. Same
+        // line the sections above use, so a reseeded load reads like a fresh one.
+        $status = in_array($candidate->enrollmentStatus->value, [
+            EnrollmentStatus::Assessed->value,
+            EnrollmentStatus::Paid->value,
+            EnrollmentStatus::Enrolled->value,
+        ], true) ? 'confirmed' : 'proposed';
+
+        if ($seedLoad($candidate, 3, $status) !== []) {
+            $reseeded++;
+        }
+    }
+}
+
+if ($retired > 0 || $reseeded > 0) {
+    echo "✔ Loads: retired {$retired} enrolled subject row(s) across {$retiredFor} enrollment(s) that named a subject the curriculum does not offer, and reseated {$reseeded} enrollment(s) from the curriculum\n";
 }
 
 // Only the cohort actually enrolled in the term shapes a block's timetable: a
@@ -1520,7 +1630,7 @@ foreach ($demoBlocks as $index => $slot) {
         ->all();
 
     $schedules = [];
-    foreach ($subjectIds as $subjectId) {
+    foreach (array_values($subjectIds) as $subjectIndex => $subjectId) {
         $existing = DB::table('schedules')
             ->where('blockId', $blockId)->where('subjectId', $subjectId)->first();
 
@@ -1543,7 +1653,14 @@ foreach ($demoBlocks as $index => $slot) {
         // Filtering the stale ones by startTime cannot work here: the column is a
         // MySQL TIME and a bound '08:00:00' string never compares equal to it, so
         // a whereNotIn prune silently deletes the rows just written.
-        $slots = $meetingSlots[$subjectId] ?? $defaultSlot;
+        //
+        // The hour comes from the subject's position in the block, not from its id: a
+        // load is now whatever the curriculum offers at that level, so its subject ids
+        // are not the six the demo used to name, and keying on id would drop every class
+        // on the fallback hour — two lessons in one room at one time, which is the
+        // conflict the desk's own guard refuses to schedule.
+        $slotKeys = array_keys($meetingSlots);
+        $slots = $meetingSlots[$slotKeys[$subjectIndex % count($slotKeys)]];
         DB::table('schedulemeetings')->where('scheduleId', $scheduleId)->delete();
         foreach ($slots as [$day, $start, $end]) {
             DB::table('schedulemeetings')->insert([
@@ -1782,7 +1899,7 @@ if (! $enrCamille) {
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
 }
-$proposeSubjects($enrCamille, [1, 2, 5]);
+$seedLoad($enrCamille);
 $camilleSheet = $assessmentFor($enrCamille, 17500.00);
 $chargeDemoFees($camilleSheet);
 $enrCamille->unsetRelation('enrollmentworkflow');
