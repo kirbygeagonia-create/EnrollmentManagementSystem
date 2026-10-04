@@ -133,7 +133,7 @@ class DevReferenceDataSeeder extends Seeder
         // installed database agree.
         $this->call(StarterReferenceDataSeeder::class);
 
-        // ---------- Academic years + terms (E2E expects term 18 = Summer) ----------
+        // ---------- Academic years + terms ----------
         $year1 = Academicyears::firstOrCreate(
             ['yearLabel' => '2024-2025'],
             ['startDate' => '2024-06-01', 'endDate' => '2025-05-31']
@@ -142,6 +142,13 @@ class DevReferenceDataSeeder extends Seeder
             ['yearLabel' => '2025-2026'],
             ['startDate' => '2025-06-01', 'endDate' => '2026-05-31']
         );
+        // The install had no term covering today, so the shared term chip resolved to
+        // nothing and the dashboard reported zero active terms. The dates follow the
+        // pattern the two earlier years already use rather than a new guess.
+        $year3 = Academicyears::firstOrCreate(
+            ['yearLabel' => '2026-2027'],
+            ['startDate' => '2026-06-01', 'endDate' => '2027-05-31']
+        );
         $terms = [
             [1, $year1->academicYearId, '1st', '2024-06-01', '2024-10-31'],
             [2, $year1->academicYearId, '2nd', '2024-11-01', '2025-03-31'],
@@ -149,6 +156,9 @@ class DevReferenceDataSeeder extends Seeder
             [10, $year2->academicYearId, '1st', '2025-06-01', '2025-10-31'],
             [11, $year2->academicYearId, '2nd', '2025-11-01', '2026-03-31'],
             [18, $year2->academicYearId, 'Summer', '2026-04-01', '2026-05-31'],
+            [19, $year3->academicYearId, '1st', '2026-06-01', '2026-10-31'],
+            [20, $year3->academicYearId, '2nd', '2026-11-01', '2027-03-31'],
+            [21, $year3->academicYearId, 'Summer', '2027-04-01', '2027-05-31'],
         ];
         foreach ($terms as [$id, $yid, $sem, $s, $e]) {
             Academicterms::firstOrCreate(
@@ -157,10 +167,14 @@ class DevReferenceDataSeeder extends Seeder
             );
         }
 
-        // ---------- Clearance periods (E2E reads the open period for term 18) ----------
+        // ---------- Clearance periods ----------
+        // Seeded on the term the demo dataset lives on (2025-2026 2nd semester, G-9).
+        // The window used to open on the Summer term, which no program offers subjects
+        // for: the Registrar's clearance gate then read a period whose students had no
+        // load to clear, and slips printed for a term nothing was enrolled in.
         Clearanceperiods::firstOrCreate(
-            ['termId' => 18],
-            ['clearanceStartDate' => '2026-04-01', 'clearanceEndDate' => '2026-05-31', 'periodStatus' => 'open']
+            ['termId' => 11],
+            ['clearanceStartDate' => '2025-11-01', 'clearanceEndDate' => '2026-03-31', 'periodStatus' => 'open']
         );
 
         // ---------- Courses.
