@@ -79,25 +79,16 @@ class EvaluationController extends Controller
         $enrollments = $query->paginate(20)->withQueryString();
 
         // Ruling 2 (G-1): this desk issues the returning student's enrollment, so the
-        // screen is given the students who actually repeat a term — those with an earlier
-        // enrollment that still stands — plus the reference lists the form needs. A
-        // student with no earlier term is an applicant and belongs at Admission, which is
-        // why they are not offered here.
+        // screen is given the students who actually repeat a term. A student with no
+        // earlier term is an applicant and belongs at Admission, which is why they are
+        // not offered here.
         $canIssue = $request->user()->hasPermissionTo('evaluation.create');
-
-        $returning = fn ($query) => $query->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value]);
 
         return Inertia::render('Evaluation/Index', [
             'enrollments' => $enrollments,
             'filters' => $request->only(['search']),
             'canIssueEnrollment' => $canIssue,
-            'returningStudents' => $canIssue
-                ? Students::whereHas('enrollments', $returning)
-                    ->with(['enrollments' => fn ($q) => $q->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
-                        ->latest('termId')->limit(1)->with(['course:courseId,courseCode,courseName', 'major:majorId,majorName', 'term:termId,semester'])])
-                    ->orderBy('lastName')->orderBy('firstName')
-                    ->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName'])
-                : [],
+            'returningStudents' => $canIssue ? $this->returningStudents() : [],
             'terms' => $canIssue
                 ? Academicterms::with('academicYear:academicYearId,yearLabel')->orderByDesc('termId')
                     ->get(['termId', 'academicYearId', 'semester', 'startDate', 'endDate'])
@@ -194,6 +185,46 @@ class EvaluationController extends Controller
             'profileGaps' => $this->missingProfileFields($enrollment),
             'signBlockers' => $this->signBlockers($enrollment),
         ]);
+    }
+
+    /**
+     * The students this desk may issue an enrollment for (ruling 2 / G-1), each with the
+     * year level their own record implies (G-2) so the issue form opens on a number the
+     * desk confirms or corrects instead of one typed from memory.
+     *
+     * The list is every student with an enrollment that still stands — a dropped one never
+     * happened — while the level counts only completed years, which is the narrower
+     * question of where the student belongs.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function returningStudents(): array
+    {
+        $notDropped = fn ($query) => $query->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value]);
+
+        $students = Students::whereHas('enrollments', $notDropped)
+            ->with(['enrollments' => fn ($q) => $q->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+                ->latest('termId')->limit(1)->with(['course:courseId,courseCode,courseName', 'major:majorId,majorName', 'term:termId,semester'])])
+            ->orderBy('lastName')->orderBy('firstName')
+            ->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName']);
+
+        $enteringTermId = Academicterms::covering()?->termId;
+
+        $levels = Enrollments::derivedYearLevels(
+            $students->pluck('studentId')->all(),
+            // Suggested for the term the calendar covers today, since that is the term a
+            // desk is most often issuing into. Picking a different term does not silently
+            // re-derive the number: placement stays the department's editable field.
+            $enteringTermId === null ? null : (int) $enteringTermId
+        );
+
+        return $students
+            ->map(fn (Students $student) => [
+                ...$student->only(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName']),
+                'enrollments' => $student->enrollments,
+                'derivedYearLevel' => $levels[(int) $student->studentId] ?? 1,
+            ])
+            ->all();
     }
 
     /**

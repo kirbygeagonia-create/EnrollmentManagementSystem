@@ -34,7 +34,7 @@ foreach (['entrance' => 'entrance', 'retention' => 'retention'] as $stage) {
 
 // 2. Exam student lookups — correct candidates per stage
 foreach ([3 => 'entrance', 5 => 'retention'] as $courseId => $stage) {
-    $r = req($academic, 'GET', route('exam.students', ['courseId' => $courseId, 'termId' => 18, 'stage' => $stage]));
+    $r = req($academic, 'GET', route('exam.students', ['courseId' => $courseId, 'termId' => 11, 'stage' => $stage]));
     $names = collect(json_decode($r->getContent(), true)['students'] ?? [])->map(fn ($s) => $s['lastName'])->join(', ');
     echo "exam.students (course $courseId, $stage): HTTP {$r->getStatusCode()} → [$names]\n";
 }

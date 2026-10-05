@@ -62,6 +62,79 @@ class Enrollments extends Model
     }
 
     /**
+     * The year level the student's own record says they are in.
+     *
+     * G-2. Admission used to assert year level 1 for every enrollment it created, which
+     * was right only for a first-year and was never revisited — so a returning student
+     * arrived at the department one year short and the level the curriculum priced their
+     * load against was wrong from the first moment.
+     *
+     * It counts completed YEARS, not records: a normal year is two semesters, so two
+     * finished terms are one year finished. A term still short of `enrolled` is not
+     * completed — the student is still in it — and a dropped one never happened, which is
+     * the same reading the seat guard uses.
+     *
+     * When the term being entered is named, a year counts only if it CLOSED before that
+     * term's own year opened. Without this, a student who finished the 1st semester would
+     * read as year 2 while sitting the 2nd semester of the same year — measured against the
+     * live demo dataset, where exactly that happened to two records.
+     *
+     * This is the automatic answer, not a locked one: the department may place a student
+     * elsewhere with `decideStanding`, and the issue form opens on this number so a person
+     * confirms or corrects it rather than discovering it later.
+     */
+    public static function derivedYearLevel(int $studentId, ?int $targetTermId = null): int
+    {
+        return static::derivedYearLevels([$studentId], $targetTermId)[$studentId] ?? 1;
+    }
+
+    /**
+     * `derivedYearLevel()` for a page of students at once.
+     *
+     * The Evaluation issue form lists every returning student, and one query per row is
+     * the pattern that made the Blocking roster take 343ms. The grouping is the same
+     * read, just spread over the whole id list.
+     *
+     * @param  int[]  $studentIds
+     * @return array<int, int> studentId => year level
+     */
+    public static function derivedYearLevels(array $studentIds, ?int $targetTermId = null): array
+    {
+        $ids = array_values(array_unique(array_map(fn ($id) => (int) $id, $studentIds)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // The year the student is entering, when the caller knows it. Its opening date is
+        // the line a year has to fall behind before it counts as finished.
+        $enteredYearOpens = $targetTermId === null
+            ? null
+            : Academicterms::find($targetTermId)?->academicYear?->startDate?->toDateString();
+
+        $completedYears = static::query()
+            ->join('academicterms', 'academicterms.termId', '=', 'enrollments.termId')
+            ->join('academicyears', 'academicyears.academicYearId', '=', 'academicterms.academicYearId')
+            ->whereIn('enrollments.studentId', $ids)
+            ->where('enrollments.enrollmentStatus', EnrollmentStatus::Enrolled->value)
+            ->when($enteredYearOpens, fn ($q) => $q->whereDate('academicyears.startDate', '<', $enteredYearOpens))
+            ->groupBy('enrollments.studentId')
+            ->select('enrollments.studentId')
+            ->selectRaw('COUNT(DISTINCT academicyears.academicYearId) as years_completed')
+            ->pluck('years_completed', 'studentId')
+            ->all();
+
+        $levels = [];
+        foreach ($ids as $id) {
+            // Five is the ceiling the screens offer and the highest year level the records
+            // carry; a longer history cannot place a student above the top year.
+            $levels[$id] = min(1 + (int) ($completedYears[$id] ?? 0), 5);
+        }
+
+        return $levels;
+    }
+
+    /**
      * @return BelongsTo<Admissions, $this>
      */
     public function admission(): BelongsTo

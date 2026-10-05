@@ -2,10 +2,15 @@
 
 namespace Tests\Feature\E2E;
 
+use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\WorkflowStatus;
 use App\Models\Admissions;
 use App\Models\Clearanceperiods;
+use App\Models\Creditedsubjects;
+use App\Models\Curriculums;
+use App\Models\Curriculumsubjects;
+use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
@@ -117,7 +122,7 @@ class EnrollmentWalkthroughTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'courseId' => 3, // BSCrim (requires entrance exam)
-            'termId' => 18,  // current term (Summer)
+            'termId' => 11,  // the demo term: 2nd semester 2025-2026 (G-9)
             'applicantType' => 'firstYear',
             'addresses' => [
                 [
@@ -188,7 +193,7 @@ class EnrollmentWalkthroughTest extends TestCase
     /**
      * Ensure a block + schedule exists for the enrollment's course/term.
      * The live dataset only carries blocks for term 16, but the current term
-     * is 18 — create a minimal fixture block when missing.
+     * is the demo term — create a minimal fixture block when missing.
      */
     private function ensureBlockAndSchedule(Enrollments $enrollment): void
     {
@@ -289,7 +294,7 @@ class EnrollmentWalkthroughTest extends TestCase
         return $this->persistEnrollment([
             'studentId' => $student->studentId,
             'courseId' => $courseId,
-            'termId' => 18, // current term
+            'termId' => 11, // the demo term
             'admissionId' => null,
             'yearLevel' => $yearLevel,
             'studentType' => $studentType,
@@ -310,6 +315,77 @@ class EnrollmentWalkthroughTest extends TestCase
             'evaluatedBy' => Staffusers::where('officeId', 4)->value('userId'),
             'enrollmentStatus' => EnrollmentStatus::Pending,
         ], $attrs));
+    }
+
+    /**
+     * The subject load the curriculum offers this enrollment this term, which is
+     * what proposeSubjects() demands of a regular student (G-9: the live dataset
+     * now carries real offerings, so an invented load is refused).
+     *
+     * Mirrors the controller's own resolution — pinned catalog, year level,
+     * semester, non-elective only, minus what credit transfer already covered —
+     * so the walkthrough proposes what a desk would actually see on screen.
+     *
+     * @return int[]
+     */
+    private function curriculumLoad(Enrollments $enrollment): array
+    {
+        $curriculum = $enrollment->curriculumId
+            ? Curriculums::find($enrollment->curriculumId)
+            : Curriculums::currentFor(
+                (int) $enrollment->courseId,
+                $enrollment->majorId === null ? null : (int) $enrollment->majorId
+            );
+
+        $this->assertNotNull($curriculum, 'The course must have a curriculum for the walkthrough to propose a load');
+
+        $semester = $enrollment->term?->semester instanceof \BackedEnum
+            ? $enrollment->term->semester->value
+            : '1st';
+
+        $offered = Curriculumsubjects::where('curriculumId', $curriculum->curriculumId)
+            ->where('yearLevel', $enrollment->yearLevel)
+            ->where('semesterOffered', $semester)
+            ->where('is_elective', false)
+            ->pluck('subjectId')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $credited = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+            ->pluck('creditedToSubjectId')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_diff($offered, $credited));
+    }
+
+    /**
+     * Give the student a completed year behind them: an enrolled record in a past
+     * term with that year's curriculum load graded. This is the history G-2 reads
+     * for the year level and the prerequisite gate reads for a subject already passed.
+     */
+    private function completePriorYear(Students $student, int $courseId, int $termId, int $yearLevel): Enrollments
+    {
+        $prior = $this->persistEnrollment([
+            'studentId' => $student->studentId,
+            'courseId' => $courseId,
+            'termId' => $termId,
+            'yearLevel' => $yearLevel,
+            'studentType' => 'continuing',
+            'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        ]);
+
+        foreach ($this->curriculumLoad($prior) as $subjectId) {
+            Enrolledsubjects::create([
+                'enrollmentId' => $prior->enrollmentId,
+                'subjectId' => $subjectId,
+                'status' => EnrolledSubjectStatus::Confirmed,
+                'grade' => 1.5,
+                'attempt_number' => 1,
+            ]);
+        }
+
+        return $prior;
     }
 
     /**
@@ -436,7 +512,15 @@ class EnrollmentWalkthroughTest extends TestCase
     public function first_year_with_two_stage_entrance_exam_completes_full_pipeline(): void
     {
         // --- Admission (BSCrim requires 2-stage entrance exam) ---
-        $admission = $this->createAdmission(['applicantType' => 'firstYear', 'courseId' => 3]);
+        // A first-year applicant sits at the start of the school year, so the walk
+        // enters the 1st semester of 2026-2027 (term 19) — the term the calendar
+        // covers today. G-9 makes this matter: the 2nd-semester curriculum has
+        // prerequisites, and a student with no passed subjects cannot be proposed it.
+        $admission = $this->createAdmission([
+            'applicantType' => 'firstYear',
+            'courseId' => 3,
+            'termId' => 19,
+        ]);
         $this->verifyAllRequirements($admission);
 
         // Stage 1: School Entrance exam (Guidance = office 4 per the OfficeId
@@ -522,7 +606,7 @@ class EnrollmentWalkthroughTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Propose subjects (transitions pending → evaluated)
-        $subjectIds = DB::table('subjects')->limit(3)->pluck('subjectId')->all();
+        $subjectIds = $this->curriculumLoad($enrollment);
         $this->actingAs($evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment), [
                 'subjects' => collect($subjectIds)->map(fn ($id) => ['subjectId' => $id])->all(),
@@ -571,11 +655,18 @@ class EnrollmentWalkthroughTest extends TestCase
         // covers firstYear/transferee) — they enter via enrollment directly.
         $student = $this->createStudent('Continuing');
 
+        // Year 1 is behind them — enrolled, with the year's load graded (term 1 is
+        // the 1st semester of 2024-2025). G-2 reads that history as year level 2, and
+        // subject 68 inside it is the prerequisite the BSBA year 2 curriculum asks for.
+        $this->completePriorYear($student, 5, 1, 1);
+        $yearLevel = Enrollments::derivedYearLevel((int) $student->studentId);
+        $this->assertEquals(2, $yearLevel, 'One completed year of enrollment reads as year level 2');
+
         // --- Evaluation (office 4) ---
         $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
         // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
-        $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', 2, $evaluator->userId);
+        $enrollment = $this->createEnrollmentNoAdmission($student, 5, 'continuing', $yearLevel, $evaluator->userId);
 
         // Retention exam (BR10): recorded in the Academic Evaluation area by
         // the owning academic department — item 4 moved it out of the Exam
@@ -670,7 +761,7 @@ class EnrollmentWalkthroughTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $subjectIds = DB::table('subjects')->limit(3)->pluck('subjectId')->all();
+        $subjectIds = $this->curriculumLoad($enrollment);
         $this->actingAs($evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment), [
                 'subjects' => collect($subjectIds)->map(fn ($id) => ['subjectId' => $id])->all(),
@@ -717,7 +808,9 @@ class EnrollmentWalkthroughTest extends TestCase
         // --- Evaluation (office 4) with credit transfer ---
         $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
-        // --- Enrollment (system-created; evaluatedBy = the evaluator) ---
+        // --- Enrollment (the walk carries its own record; evaluatedBy = the evaluator) ---
+        // Year 2 is the desk's placement: the records alone derive 1 (G-2 — no year
+        // completed here), and the credit evaluation below is what moves them up.
         $enrollment = $this->createEnrollment($admission, 'transferee', 2, $evaluator->userId);
 
         $this->actingAs($evaluator)
@@ -772,7 +865,7 @@ class EnrollmentWalkthroughTest extends TestCase
         $this->assertGreaterThan(0, $enrollment->fresh()->creditedsubjects()->count(), 'Credited subjects should exist');
 
         // Propose subjects + sign
-        $subjectIds = DB::table('subjects')->limit(3)->pluck('subjectId')->all();
+        $subjectIds = $this->curriculumLoad($enrollment);
         $this->actingAs($evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment), [
                 'subjects' => collect($subjectIds)->map(fn ($id) => ['subjectId' => $id])->all(),
@@ -842,6 +935,8 @@ class EnrollmentWalkthroughTest extends TestCase
         $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
         // --- Enrollment (no admission; evaluatedBy = the evaluator) ---
+        // The shift brings credits from the old program, so the desk places the
+        // student in year 2 — G-2's override, since no year is completed here yet.
         $enrollment = $this->createEnrollmentNoAdmission($student, 1, 'shifter', 2, $evaluator->userId);
 
         // Ruling 5: same as the continuing path — the receiving department confirms the
@@ -901,7 +996,7 @@ class EnrollmentWalkthroughTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Propose subjects + sign
-        $subjectIds = DB::table('subjects')->limit(3)->pluck('subjectId')->all();
+        $subjectIds = $this->curriculumLoad($enrollment);
         $this->actingAs($evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment), [
                 'subjects' => collect($subjectIds)->map(fn ($id) => ['subjectId' => $id])->all(),

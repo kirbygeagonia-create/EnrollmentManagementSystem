@@ -37,13 +37,12 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         // The term active today (by date range) — one shared source for every
-        // term chip; replaces per-page hardcoded strings (audit 2026-09-25).
+        // term chip; replaces per-page hardcoded strings (audit 2026-09-25). The same
+        // Academicterms::covering() rule answers the Evaluation issue form's year-level
+        // suggestion, so the chip and the form cannot name different terms.
         // Guarded: un-migrated test envs have no tables yet (ExampleTest).
         $currentTerm = Schema::hasTable('academicterms')
-            ? Academicterms::with('academicYear')
-                ->whereDate('startDate', '<=', now())
-                ->whereDate('endDate', '>=', now())
-                ->first()
+            ? Academicterms::covering(now())
             : null;
 
         $staff = $request->user() instanceof Staffusers ? $request->user() : null;

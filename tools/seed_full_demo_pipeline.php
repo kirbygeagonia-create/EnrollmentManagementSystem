@@ -1245,6 +1245,146 @@ if ($openPeriod !== null) {
     }
 }
 
+// 10b-1c. G-2: a record may not claim a year it has not completed.
+//
+//      The application now reads a year level from the student's own history — an enrolled
+//      record in an academic year that closed before the year being entered. The demo
+//      dataset grew its year levels by assertion, so several students sit "year 2" in
+//      2025-2026 holding nothing in 2024-2025: a desk opening one of those records is shown
+//      a level the record contradicts, and the level is what the curriculum slice, the load
+//      band and the fee sheet are all read against.
+//
+//      The missing year is created the way the other completed years were — the immediately
+//      preceding academic year's second-semester term, one level below the claim, with that
+//      year's curriculum load seeded, graded as passed and its workflow signed. Idempotent:
+//      a student who already has such a year is left alone, and a student who already holds
+//      a row in that term is reported rather than double-seated (ruling 3).
+$levelEvidence = 0;
+
+foreach (Enrollments::where('yearLevel', '>=', 2)
+    ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+    ->with(['term.academicYear', 'student'])
+    ->get() as $claim) {
+
+    $enteredYearOpens = $claim->term?->academicYear?->startDate;
+
+    if ($enteredYearOpens === null) {
+        echo "  ! enrollment {$claim->enrollmentId} sits a term with no academic year — its level cannot be checked\n";
+
+        continue;
+    }
+
+    $hasCompletedYear = Enrollments::query()
+        ->join('academicterms', 'academicterms.termId', '=', 'enrollments.termId')
+        ->join('academicyears', 'academicyears.academicYearId', '=', 'academicterms.academicYearId')
+        ->where('enrollments.studentId', $claim->studentId)
+        ->where('enrollments.enrollmentStatus', EnrollmentStatus::Enrolled->value)
+        ->whereDate('academicyears.startDate', '<', $enteredYearOpens->toDateString())
+        ->exists();
+
+    if ($hasCompletedYear) {
+        continue;
+    }
+
+    $previousYear = DB::table('academicyears')
+        ->where('startDate', '<', $enteredYearOpens->toDateString())
+        ->orderByDesc('startDate')
+        ->first();
+
+    // The 2nd semester is taken so the year reads as finished rather than half-sat.
+    $priorTerm = $previousYear === null ? null : DB::table('academicterms')
+        ->where('academicYearId', $previousYear->academicYearId)
+        ->orderByRaw("case when semester = '2nd' then 0 else 1 end")
+        ->orderByDesc('termId')
+        ->first();
+
+    if ($priorTerm === null) {
+        echo "  ! no academic year precedes enrollment {$claim->enrollmentId}'s term — its year {$claim->yearLevel} cannot be earned on this calendar\n";
+
+        continue;
+    }
+
+    if (EnrollmentIssuer::seatHolder((int) $claim->studentId, (int) $priorTerm->termId) !== null) {
+        echo "  ! {$claim->student?->schoolIdNumber} already holds a record in term {$priorTerm->termId} — year {$claim->yearLevel} on enrollment {$claim->enrollmentId} stays unevidenced\n";
+
+        continue;
+    }
+
+    $earned = Enrollments::create([
+        'studentId' => $claim->studentId,
+        'courseId' => $claim->courseId,
+        'termId' => $priorTerm->termId,
+        'yearLevel' => max(1, (int) $claim->yearLevel - 1),
+        'studentType' => StudentType::Continuing,
+        'enrollmentType' => EnrollmentType::Old,
+        'academicStanding' => 'regular',
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value] ?? 1,
+        'enrolledDate' => now(),
+        'formIssuedDate' => $priorTerm->startDate,
+        'formSignedDate' => now(),
+    ]);
+
+    $gradePriorLoad($earned, ['1.50', '2.00', '2.50']);
+    $completeWorkflow($earned);
+    $levelEvidence++;
+
+    echo "✔ G-2: {$claim->student?->schoolIdNumber} earned the year behind enrollment {$claim->enrollmentId}"
+        ." — record {$earned->enrollmentId} completed in term {$priorTerm->termId} ({$previousYear->yearLabel})\n";
+}
+
+if ($levelEvidence === 0) {
+    echo "  • G-2: every record at year 2 or above already has a completed year behind it\n";
+}
+
+// 10b-1d. One academic year holds one year level.
+//
+//      The two semesters of 2025-2026 are the same year of the program, so two records in
+//      that year cannot carry different levels — and the level is what the curriculum slice,
+//      the load band and the fee sheet are read against. Seating the year behind a returning
+//      student is what exposed this: the 1st-semester row of one demo student still said
+//      year 1 beside his 2nd-semester row saying year 2.
+//
+//      The year's most recent record is taken as the placement (that is the desk's latest
+//      call), and the others join it. A completed record is re-graded from the curriculum at
+//      the level it now sits; a load still standing at Evaluation is left to the retirement
+//      section below, which reseeds it with the status its stage actually carries.
+$siblingsStamped = 0;
+
+$byStudentYear = Enrollments::whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+    ->with(['term.academicYear', 'student'])
+    ->get()
+    ->filter(fn (Enrollments $e) => $e->term?->academicYearId !== null)
+    ->groupBy(fn (Enrollments $e) => $e->studentId.'-'.$e->term->academicYearId);
+
+foreach ($byStudentYear as $records) {
+    if ($records->count() < 2) {
+        continue;
+    }
+
+    $placement = $records->sortByDesc(fn (Enrollments $r) => (int) $r->termId)->first();
+
+    foreach ($records as $record) {
+        if ((int) $record->yearLevel === (int) $placement->yearLevel) {
+            continue;
+        }
+
+        $record->update(['yearLevel' => $placement->yearLevel]);
+        $siblingsStamped++;
+
+        echo "  • G-2: {$record->student?->schoolIdNumber}'s enrollment {$record->enrollmentId}"
+            ." (term {$record->termId}) joins year {$placement->yearLevel} — the year the records share\n";
+
+        if ($record->enrollmentStatus === EnrollmentStatus::Enrolled) {
+            $gradePriorLoad($record, ['1.50', '2.00', '2.50']);
+        }
+    }
+}
+
+if ($siblingsStamped === 0) {
+    echo "  • G-2: no student carries two year levels inside one academic year\n";
+}
+
 // Only continuing and shifter students are checked against a clearance at the
 // Registrar desk — a first-year or transferee has no prior term to clear, so the
 // gate treats them as verified and releasing a slip here would be theatre.
@@ -2269,6 +2409,12 @@ $queuedFor = [
     'Print trail — issue rows carrying no key at all' => DB::table('documentprintlog')
         ->whereNull('enrollmentId')->whereNull('studentId')->whereNull('blockId')->count(),
     'Evaluation — enrolled at a level/term the curriculum offers nothing for' => (int) $noOfferings->sum('n'),
+    // G-2: the level a desk sees on the record must be the level the record supports.
+    'Evaluation — level the record does not support' => Enrollments::query()
+        ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+        ->get(['enrollmentId', 'studentId', 'termId', 'yearLevel'])
+        ->filter(fn (Enrollments $e) => Enrollments::derivedYearLevel((int) $e->studentId, (int) $e->termId) !== (int) $e->yearLevel)
+        ->count(),
     'Ledger — enrolled with no fee sheet' => DB::table('enrollments as e')
         ->where('e.termId', $termId)
         ->whereIn('e.enrollmentStatus', ['paid', 'enrolled'])

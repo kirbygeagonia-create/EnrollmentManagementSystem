@@ -38,17 +38,20 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
     })), [courses]);
 
     // Choosing the student carries forward what the school already knows: their last
-    // program and year level. Nothing promotes the level by itself (gap G-2 is the
-    // Registrar's open question), so this is a starting point the desk edits.
+    // program, and the year level their record implies (G-2 — completed years, counted by
+    // the server). The desk still edits the level before issuing, because placement is the
+    // department's call; what it no longer has to do is remember the number.
     const onStudentPick = (studentId) => {
         issueForm.setData('studentId', studentId);
-        const last = returningStudents.find((s) => s.studentId === studentId)?.enrollments?.[0];
+        const student = returningStudents.find((s) => s.studentId === studentId);
+        const last = student?.enrollments?.[0];
+
         if (last) {
             issueForm.setData((data) => ({
                 ...data,
                 courseId: last.courseId || data.courseId,
                 majorId: last.majorId || '',
-                yearLevel: last.yearLevel || data.yearLevel,
+                yearLevel: student.derivedYearLevel || last.yearLevel || data.yearLevel,
             }));
         }
     };

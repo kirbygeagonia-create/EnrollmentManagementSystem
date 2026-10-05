@@ -376,7 +376,15 @@ class AdmissionController extends Controller
                 'courseId' => $admission->courseId,
                 'termId' => $admission->termId,
                 'admissionId' => $admission->admissionId,
-                'yearLevel' => 1,
+                // G-2: the record decides, not a constant. For an applicant this is year 1
+                // because they have no completed year to point at — which is the same answer
+                // the old hard-code gave — but a student returning after a leave or a
+                // credited year is placed where their own history puts them instead of
+                // arriving one year short and being corrected downstream.
+                'yearLevel' => Enrollments::derivedYearLevel(
+                    (int) $admission->studentId,
+                    (int) $admission->termId
+                ),
                 'studentType' => $admission->applicantType->value,
                 'enrollmentType' => 'new',
                 'evaluatedBy' => Auth::user()->userId,

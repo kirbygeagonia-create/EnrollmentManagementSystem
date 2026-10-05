@@ -84,7 +84,7 @@ $payload = [
     'birthplace' => 'Test City', 'citizenship' => 'Filipino', 'religionId' => 1,
     'civilStatus' => 'single', 'contactNumber' => '09171234567', 'telephoneNumber' => null,
     'email' => 'demo.juan@example.com', 'username' => 'demo_juan', 'password' => 'password123', 'password_confirmation' => 'password123',
-    'courseId' => 3, 'termId' => 18, 'applicantType' => 'firstYear',
+    'courseId' => 3, 'termId' => 11, 'applicantType' => 'firstYear',
     'addresses' => [[
         'addressType' => 'home', 'houseBuildingNo' => '123', 'street' => 'Rizal St', 'sitioPurok' => 'Purok 1',
         'barangay' => 'Barangay 1', 'cityMunicipality' => 'Davao City', 'district' => 'District 1',
@@ -112,7 +112,7 @@ DB::table('studentrequirementsubmissions')->where('admissionId', $admission->adm
 echo "ok   requirements verified\n";
 
 // ---------- 2. Entrance exams (2-stage for BSCrim) ----------
-$examData = ['studentId' => $studentId, 'courseId' => 3, 'termId' => 18, 'examResult' => 'pass', 'examDate' => now()->toDateString()];
+$examData = ['studentId' => $studentId, 'courseId' => 3, 'termId' => 11, 'examResult' => 'pass', 'examDate' => now()->toDateString()];
 ok('exam.general.record', req($staff(7), 'POST', route('exam.general.record'), $examData));
 ok('exam.course-specific.record', req($staff(4), 'POST', route('exam.course-specific.record'), $examData));
 $admission->refresh();
@@ -123,7 +123,7 @@ $evaluator = $staff(4);
 $enrollment = Enrollments::create([
     'studentId' => $studentId,
     'courseId' => 3,
-    'termId' => 18,
+    'termId' => 11,
     'admissionId' => $admission->admissionId,
     'yearLevel' => 1,
     'studentType' => 'firstYear',
@@ -184,10 +184,10 @@ $enrollment->refresh();
 echo "     status: {$enrollment->enrollmentStatus->value}\n";
 
 // ---------- 7. Blocking ----------
-$block = DB::table('blocks')->where('courseId', 3)->where('termId', 18)->first();
+$block = DB::table('blocks')->where('courseId', 3)->where('termId', 11)->first();
 if (! $block) {
     $blockId = DB::table('blocks')->insertGetId([
-        'courseId' => 3, 'termId' => 18, 'yearLevel' => 1, 'blockName' => 'BSCrim 1-A', 'maxStudents' => 40,
+        'courseId' => 3, 'termId' => 11, 'yearLevel' => 1, 'blockName' => 'BSCrim 1-A', 'maxStudents' => 40,
     ]);
     DB::table('schedules')->insert([
         'blockId' => $blockId, 'subjectId' => DB::table('subjects')->value('subjectId'),
@@ -250,7 +250,7 @@ if ($period) {
 
 // Retention exam for BSAIS (course 5)
 ok('exam.retention.record', req($staff(7), 'POST', route('exam.retention.record'), [
-    'studentId' => $student2->studentId, 'courseId' => 5, 'termId' => 18,
+    'studentId' => $student2->studentId, 'courseId' => 5, 'termId' => 11,
     'examResult' => 'pass', 'examDate' => now()->toDateString(),
 ]));
 
