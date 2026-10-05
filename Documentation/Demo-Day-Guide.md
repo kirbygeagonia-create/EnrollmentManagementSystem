@@ -3,6 +3,11 @@
 Everything you need to run the full demo: start the system, log in as any
 office, walk the professor through every FDD module, and shut it down cleanly.
 
+> **This is the demo narration. Acceptance is a separate document:**
+> `Documentation/Per-Office-UAT-Walkthrough.md` — the per-office script (ruling 18) that
+> tells each desk which records to open, what the system must refuse, and what to write down
+> as proof before signing off. Run that one before trusting this one's numbers.
+
 **The system is 100% offline-capable** — no internet is needed at any point.
 All fonts, scripts, and assets are served from this machine.
 
@@ -77,7 +82,7 @@ You should see the SEAIT EMS login page.
 | `office5_head` | Blocking | 9.0 Block Sections & Schedules |
 | `office6_head` | Admission | 3.0 Admissions — intake, requirements, approval |
 | `office7_head` | Academic Department | 4.0 Exams — Course-Specific Entrance (Stage 2) + 5.0 Retention Exam |
-| `office8_head` | Clearance | 8.0 Clearances |
+| `office8_head` | Registrar (the retired Clearance office's login) | kept for one purpose: it holds **no** sign right, so it demonstrates the ruling 7 split |
 | `office11_head` | Clinic | 11.0 Clinic Assessments |
 | `office22_head` | ID Office | 12.0 Student IDs |
 
@@ -97,7 +102,7 @@ You should see the SEAIT EMS login page.
 | Student | School ID | Role in the demo |
 |---|---|---|
 | **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID validated, face photo on file** |
-| **Maria Reyes** | DEMO-2026-002 | Continuing student: **retention exam passed**, clearance slip with **all 10 offices approved** + receipt |
+| **Maria Reyes** | DEMO-2026-002 | Continuing student: **retention exam passed**, clearance slip with **all 9 requirement lines approved** + desk receipt, and her pass slip **confirmed at Department Evaluation** |
 | **Pedro Santos** | DEMO-2026-003 | **Pending admission** — 3 requirement submissions, Form 138 PDF attached; the entrance-exam candidate |
 | **Liza Bautista** | DEMO-2026-004 | Enrolled BSBA from a prior term — the retention-exam candidate |
 
@@ -163,12 +168,15 @@ intake end and **Juan** (fully processed) for everything after.
    payment on any assessment still on screen — the report updates to
    today instantly.*
 9. **(8.0 Clearances)** **Desks & Apps → Campus Clearance.** Open **Maria
-   Reyes**'s clearance slip — **all 10 office sign-offs are approved**
+   Reyes**'s clearance slip — **all 9 requirement lines are approved**
    (Registrar, Accounting, Scholarship, Guidance, Blocking, Admission,
-   Academic Department, Clearance, Clinic, ID Office) and the ₱100 receipt
-   is recorded (FDD 8.6). **Print the slip** (FDD 8.4) — the browser print
-   dialog opens. The **Clearance Periods** tab shows period management
-   (FDD 8.2).
+   Academic Department, Clinic, ID Office — the legacy Clearance office was
+   folded into the Registrar, ruling 12) and the ₱100 replacement fee that
+   Reference Data owns is recorded. **Print the slip** (FDD 8.4) — the browser
+   print dialog opens, and the footer prints the fee from the fee type rather
+   than a hard-coded amount. The **Clearance Periods** tab shows period
+   management (FDD 8.2): closing refuses while any slip is still pending, with
+   the count named, and a window extends only through its own action.
 10. **(9.0 Block Sections)** **Desks & Apps → Blocking & Timetables.** Open
     block **BSCrim 1-A** — Juan is assigned, capacity vs enrolled counts,
     the timetable matrix with rooms and instructors, and conflict detection
