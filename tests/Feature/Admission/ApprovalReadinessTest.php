@@ -14,6 +14,7 @@ use App\Models\Academicyears;
 use App\Models\Admissionrequirements;
 use App\Models\Admissions;
 use App\Models\Courses;
+use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Offices;
@@ -44,6 +45,8 @@ class ApprovalReadinessTest extends TestCase
     private int $boardCourseId;
 
     private int $termId;
+
+    private int $curriculumId;
 
     protected function setUp(): void
     {
@@ -97,6 +100,13 @@ class ApprovalReadinessTest extends TestCase
 
         $this->boardCourseId = (int) $boardCourse->courseId;
         $this->termId = (int) $term->termId;
+
+        // The catalog version an approved applicant's enrollment is pinned to (item 7).
+        $this->curriculumId = (int) Curriculums::create([
+            'courseId' => $boardCourse->courseId,
+            'effectiveYear' => '2026-06-01',
+            'curriculumName' => 'BSCS 2026 curriculum',
+        ])->curriculumId;
 
         Admissionrequirements::create([
             'requirementName' => 'Good Moral Certificate',
@@ -259,6 +269,10 @@ class ApprovalReadinessTest extends TestCase
         $this->assertDatabaseHas('enrollments', [
             'studentId' => $student->studentId,
             'admissionId' => $admission->admissionId,
+            // Item 7: the enrollment is pinned to the catalog the applicant is admitted
+            // into, so the load band and the fee sheet stay readable after the program is
+            // amended. Unpinned, every later lookup falls through to "the newest one".
+            'curriculumId' => $this->curriculumId,
         ]);
     }
 

@@ -28,6 +28,7 @@ use App\Enums\WorkflowStepStatus;
 use App\Models\Admissions;
 use App\Models\Clearanceperiods;
 use App\Models\Clearancerequirements;
+use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Staffusers;
@@ -1003,6 +1004,28 @@ $assessmentFor = function (Enrollments $enrollment, float $assessed, float $cove
         'created_at' => now(),
     ]);
 };
+
+// Item 7: every enrollment carries the curriculum version it is priced against, and the
+// desks read that pin before falling back to "the newest catalog". This tool creates rows
+// directly rather than through EnrollmentIssuer, so it stamps the same version the desks
+// would — through the app's own resolver, not a restatement of its rule, so the two cannot
+// drift apart.
+$pinned = 0;
+
+foreach (Enrollments::whereNull('curriculumId')->get() as $unpinned) {
+    $version = Curriculums::currentFor((int) $unpinned->courseId, $unpinned->majorId);
+
+    if ($version === null) {
+        continue;
+    }
+
+    $unpinned->update(['curriculumId' => $version->curriculumId]);
+    $pinned++;
+}
+
+if ($pinned > 0) {
+    echo "✔ Catalog: pinned the curriculum version on {$pinned} enrollment(s) created without one\n";
+}
 
 // 10a. The Registrar needs an enrollment it can approve, and a live walkthrough
 //      consumes one — so the desk is seeded with three, covering both approval

@@ -10,6 +10,7 @@ use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
 use App\Models\Courses;
+use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Offices;
@@ -54,6 +55,10 @@ class ReturningEnrollmentIssuingTest extends TestCase
     private Academicterms $term;
 
     private Academicterms $priorTerm;
+
+    private Curriculums $oldCatalog;
+
+    private Curriculums $currentCatalog;
 
     protected function setUp(): void
     {
@@ -104,6 +109,20 @@ class ReturningEnrollmentIssuingTest extends TestCase
             'courseName' => 'Bachelor of Science in Computer Science',
             'requiresEntranceExam' => false,
             'requiresRetentionExam' => false,
+        ]);
+
+        // Two catalog versions, so "the one the desk issued it under" is a rule rather
+        // than whichever row the database happens to return first.
+        $this->oldCatalog = Curriculums::create([
+            'courseId' => $this->course->courseId,
+            'effectiveYear' => '2025-06-01',
+            'curriculumName' => 'BSCS old curriculum',
+        ]);
+
+        $this->currentCatalog = Curriculums::create([
+            'courseId' => $this->course->courseId,
+            'effectiveYear' => '2026-06-01',
+            'curriculumName' => 'BSCS revised curriculum',
         ]);
 
         $this->returning = $this->student('Returnee');
@@ -204,6 +223,33 @@ class ReturningEnrollmentIssuingTest extends TestCase
         $this->assertCount(6, $boxes, '§6.5: a returning student\'s form has six boxes — Assessment is not part of it.');
         $this->assertNotContains(OfficeId::Scholarship->value, $boxes);
         $this->assertContains(OfficeId::Registrar->value, $boxes);
+    }
+
+    #[Test]
+    public function the_issued_record_carries_the_catalog_version_it_was_issued_against(): void
+    {
+        // Item 7: the version is what the subjects, the load band and the fee sheet are all
+        // read from. Left unwritten it resolves to "the newest", which with more than one
+        // version on the shelf is a decision nobody made — and an amendment to the program
+        // would silently re-grade a student years after they finished.
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.store'), $this->payload())
+            ->assertSessionHasNoErrors();
+
+        $enrollment = Enrollments::where('studentId', $this->returning->studentId)
+            ->where('termId', $this->term->termId)
+            ->sole();
+
+        $this->assertSame(
+            $this->currentCatalog->curriculumId,
+            $enrollment->curriculumId,
+            'A newly issued enrollment is pinned to the current catalog version.'
+        );
+
+        // The record the desk is continuing from keeps whatever it was created under — the
+        // pin is fixed at issue and is not retrofitted onto history.
+        $prior = Enrollments::where('termId', $this->priorTerm->termId)->sole();
+        $this->assertNull($prior->curriculumId);
     }
 
     #[Test]

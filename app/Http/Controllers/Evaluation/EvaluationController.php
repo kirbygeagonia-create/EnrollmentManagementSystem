@@ -207,10 +207,13 @@ class EvaluationController extends Controller
             return Curriculums::find($enrollment->curriculumId);
         }
 
-        return Curriculums::where('courseId', $enrollment->courseId)
-            ->when($enrollment->majorId, fn ($q) => $q->where('majorId', $enrollment->majorId))
-            ->latest('effectiveYear')
-            ->first() ?? Curriculums::where('courseId', $enrollment->courseId)->latest('effectiveYear')->first();
+        // Records created before the pin existed fall back to the same rule the issuing
+        // desks use, so a student's screen and the enrollment form they were issued on
+        // cannot disagree about which catalog is "current".
+        return Curriculums::currentFor(
+            (int) $enrollment->courseId,
+            $enrollment->majorId === null ? null : (int) $enrollment->majorId
+        );
     }
 
     /**

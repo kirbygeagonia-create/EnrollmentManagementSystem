@@ -13,6 +13,7 @@ use App\Models\Addresses;
 use App\Models\Admissionrequirements;
 use App\Models\Admissions;
 use App\Models\Courses;
+use App\Models\Curriculums;
 use App\Models\Documents;
 use App\Models\Educationalinstitutions;
 use App\Models\Enrollments;
@@ -380,6 +381,11 @@ class AdmissionController extends Controller
                 'enrollmentType' => 'new',
                 'evaluatedBy' => Auth::user()->userId,
                 'enrollmentStatus' => EnrollmentStatus::Pending,
+                // Item 7: the version the record is priced against is fixed at creation.
+                // Left null it falls through to "the newest catalog", which is a tie the
+                // database breaks arbitrarily — and the subjects, the load band and the
+                // fee sheet all read that choice.
+                'curriculumId' => Curriculums::currentFor($admission->courseId)?->curriculumId,
             ]);
         });
 

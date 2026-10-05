@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use Illuminate\Support\Facades\DB;
@@ -43,22 +44,37 @@ class EnrollmentIssuer
     /**
      * Issue the enrollment and its workflow form.
      *
+     * The curriculum version is stamped here rather than left to be resolved later, so the
+     * subjects, the band the load is judged against and the fee sheet built from it all
+     * remain readable years after the catalog is amended (item 7). A caller that names a
+     * version itself is respected — the pin records what the desk used, not what this
+     * helper would have guessed.
+     *
      * @param  array<string, mixed>  $attributes  the desk's own fields (student, program, term, level, type)
      */
     public function issue(array $attributes, Staffusers $issuer): Enrollments
     {
         return DB::transaction(function () use ($attributes, $issuer): Enrollments {
-            $enrollment = Enrollments::create([
+            $enrollment = [
                 ...$attributes,
                 'enrollmentType' => $attributes['enrollmentType'] ?? EnrollmentType::Old,
                 'enrollmentStatus' => EnrollmentStatus::Pending,
                 'evaluatedBy' => $issuer->userId,
                 'formIssuedDate' => now()->toDateString(),
-            ]);
+            ];
 
-            $this->workflowService->createWorkflow($enrollment);
+            if (! array_key_exists('curriculumId', $enrollment)) {
+                $enrollment['curriculumId'] = Curriculums::currentFor(
+                    (int) ($enrollment['courseId'] ?? 0),
+                    isset($enrollment['majorId']) ? (int) $enrollment['majorId'] : null,
+                )?->curriculumId;
+            }
 
-            return $enrollment;
+            $created = Enrollments::create($enrollment);
+
+            $this->workflowService->createWorkflow($created);
+
+            return $created;
         });
     }
 }
