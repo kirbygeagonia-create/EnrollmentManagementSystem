@@ -76,7 +76,9 @@ class EnrollmentWalkthroughTest extends TestCase
      * 'GuidanceStaff' or 'DeptEvaluator' for the owning desk's exam actions.
      * Ruling 7: the five signature acts left OfficeHead too, so the steps that sign a box
      * pass the desk that owns it — 'RegistrarApprover' for the approval, 'DeptEvaluator'
-     * for the evaluation sign, 'AdmissionOfficer' for the admission approval.
+     * for the evaluation sign, 'AdmissionOfficer' for the admission approval, and 'ClinicStaff'
+     * / 'IdOfficer' for the two desks whose affirmative act (recording an assessment,
+     * validating a card) is also the signature on their box.
      */
     private function staffForOffice(int $officeId, string $role = 'OfficeHead'): Staffusers
     {
@@ -636,8 +638,8 @@ class EnrollmentWalkthroughTest extends TestCase
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
-            'clinic' => $this->staffForOffice(11),
-            'id' => $this->staffForOffice(22),
+            'clinic' => $this->staffForOffice(11, 'ClinicStaff'),
+            'id' => $this->staffForOffice(22, 'IdOfficer'),
         ]);
 
         // --- Final assertions ---
@@ -782,8 +784,8 @@ class EnrollmentWalkthroughTest extends TestCase
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
-            'clinic' => $this->staffForOffice(11),
-            'id' => $this->staffForOffice(22),
+            'clinic' => $this->staffForOffice(11, 'ClinicStaff'),
+            'id' => $this->staffForOffice(22, 'IdOfficer'),
         ]);
 
         $this->assertEquals(EnrollmentStatus::Enrolled, $final->enrollmentStatus);
@@ -886,8 +888,8 @@ class EnrollmentWalkthroughTest extends TestCase
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
-            'clinic' => $this->staffForOffice(11),
-            'id' => $this->staffForOffice(22),
+            'clinic' => $this->staffForOffice(11, 'ClinicStaff'),
+            'id' => $this->staffForOffice(22, 'IdOfficer'),
         ]);
 
         $this->assertEquals(EnrollmentStatus::Enrolled, $final->enrollmentStatus);
@@ -1017,8 +1019,8 @@ class EnrollmentWalkthroughTest extends TestCase
             'accounting' => $this->staffForOffice(2),
             'registrar' => $this->staffForOffice(1, 'RegistrarApprover'), // ruling 7: the approval signature is the Registrar desk's
             'blocking' => $this->staffForOffice(5),
-            'clinic' => $this->staffForOffice(11),
-            'id' => $this->staffForOffice(22),
+            'clinic' => $this->staffForOffice(11, 'ClinicStaff'),
+            'id' => $this->staffForOffice(22, 'IdOfficer'),
         ]);
 
         $this->assertEquals(EnrollmentStatus::Enrolled, $final->enrollmentStatus);

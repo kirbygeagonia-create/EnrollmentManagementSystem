@@ -122,6 +122,30 @@ class IDControllerTest extends TestCase
         unset($staff->remember_token);
         $staff->save();
 
+        // As RbacSeeder pairs them: the ID office's head is IdOfficer + OfficeHead. Validation
+        // is the ID box's signature, so it now needs id.sign as well as id.validate — ruling 7
+        // moved that signature out of OfficeHead, and headOnlyInOffice() is the account left
+        // holding only the counter right.
+        $staff->assignRole('OfficeHead', 'IdOfficer');
+
+        return $staff;
+    }
+
+    /**
+     * A bare OfficeHead of the given office: the counter rights, no desk signature.
+     */
+    private function headOnlyInOffice(int $officeId): Staffusers
+    {
+        $staff = Staffusers::factory()->make([
+            'officeId' => $officeId,
+            'role' => 'officeHead',
+            'employeeNo' => 'EMP-TEST-'.uniqid(),
+            'username' => 'test_head'.$officeId.'_'.uniqid(),
+            'email' => 'test_head'.$officeId.'_'.uniqid().'@example.com',
+        ]);
+        unset($staff->remember_token);
+        $staff->save();
+
         $staff->assignRole('OfficeHead');
 
         return $staff;
@@ -490,6 +514,41 @@ class IDControllerTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('photo');
+    }
+
+    #[Test]
+    public function validating_a_request_needs_the_id_signature_as_well_as_the_counter_right(): void
+    {
+        // id.sign was held by IdOfficer and consulted by nothing. The head of the ID office
+        // keeps id.validate and id.request.create (ruling 7 left the counter with the head)
+        // but not the signature, so validation must be refused and the request must stay
+        // pending with its box unsigned.
+        $head = $this->headOnlyInOffice(22);
+        $this->assertTrue($head->can('id.validate'));
+        $this->assertFalse($head->can('id.sign'));
+
+        $this->actingAs($head);
+
+        $enrollment = $this->createEnrollment();
+
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+        $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
+
+        $this->post(route('id.validate', $idRequest))->assertForbidden();
+
+        $idRequest->refresh();
+        $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
+        $this->assertNull($idRequest->validatedBy);
+
+        $idStep = $enrollment->fresh()->enrollmentworkflow->workflowsteps()->where('officeId', 22)->first();
+        $this->assertEquals(WorkflowStepStatus::Pending, $idStep->stepStatus, 'the box stays unsigned');
     }
 
     #[Test]

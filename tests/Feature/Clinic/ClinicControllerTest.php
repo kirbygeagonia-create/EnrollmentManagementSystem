@@ -128,6 +128,33 @@ class ClinicControllerTest extends TestCase
         unset($staff->remember_token);
         $staff->save();
 
+        // An office head at the Clinic counter also holds the desk role, exactly as
+        // RbacSeeder pairs them on a real install: office11_head is ClinicStaff + OfficeHead.
+        // The distinction matters since clinic.sign began to gate the act — recording the
+        // assessment IS signing the Clinic box, and ruling 7 moved that signature out of
+        // OfficeHead. `headOnlyInOffice()` below is the account that lacks it.
+        $staff->assignRole('OfficeHead', 'ClinicStaff');
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        return $staff;
+    }
+
+    /**
+     * A bare OfficeHead of the given office: the counter rights, none of the desk role's
+     * signatures. This is what ruling 7 left behind, and what the matrix test must refuse.
+     */
+    private function headOnlyInOffice(int $officeId): Staffusers
+    {
+        $staff = Staffusers::factory()->make([
+            'officeId' => $officeId,
+            'role' => 'officeHead',
+            'employeeNo' => 'EMP-TEST-'.uniqid(),
+            'username' => 'test_head'.$officeId.'_'.uniqid(),
+            'email' => 'test_head'.$officeId.'_'.uniqid().'@example.com',
+        ]);
+        unset($staff->remember_token);
+        $staff->save();
+
         $staff->assignRole('OfficeHead');
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
@@ -375,6 +402,37 @@ class ClinicControllerTest extends TestCase
             ->has('enrollment')
             ->where('clinicRecord', null)
         );
+    }
+
+    #[Test]
+    public function recording_the_assessment_needs_the_clinic_signature_as_well_as_the_counter_right(): void
+    {
+        // clinic.sign was held by ClinicStaff and checked by nothing until this test. A bare
+        // OfficeHead has clinic.record (ruling 7 left the counter work with the head) but not
+        // the signature, and because recording signs the Clinic box in the same act, the
+        // request must be refused and nothing may be written.
+        $head = $this->headOnlyInOffice(11);
+        $this->assertTrue($head->can('clinic.record'));
+        $this->assertFalse($head->can('clinic.sign'));
+
+        $enrollment = $this->createEnrollment();
+
+        $this->actingAs($head)
+            ->post(route('clinic.record', $enrollment), [
+                'heightCm' => 170,
+                'weightKg' => 65,
+                'bloodPressure' => '118/76',
+                'philhealthRegistered' => false,
+                'assessmentDate' => now()->toDateString(),
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('clinicrecords', ['enrollmentId' => $enrollment->enrollmentId]);
+
+        $step = Workflowsteps::where('workflowId', $enrollment->enrollmentworkflow->workflowId)
+            ->where('officeId', 11)
+            ->first();
+        $this->assertEquals(WorkflowStepStatus::Pending, $step->stepStatus, 'the box stays unsigned');
     }
 
     #[Test]

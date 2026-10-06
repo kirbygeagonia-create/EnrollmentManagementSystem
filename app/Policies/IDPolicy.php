@@ -7,7 +7,6 @@ use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
 use App\Models\Idrequests;
 use App\Models\Staffusers;
 
@@ -108,10 +107,20 @@ class IDPolicy
     /**
      * Determine whether the user can validate the ID request.
      * Strict validation: the request must carry the captured face photo.
+     *
+     * Validation is terminal and it is the ID box's signature — `validate()` stamps the
+     * request and signs the workflow step in one transaction — so it needs both rights, the
+     * counter's `id.validate` (which ruling 7 left with OfficeHead) and the signature's
+     * `id.sign` (which ruling 7 moved to IdOfficer). See the same reasoning in
+     * ClinicPolicy::record and in RegistrarPolicy's treatment of enrollment.approve.
      */
     public function validate(Staffusers $user, Idrequests $request): bool
     {
         if (! $user->hasPermissionTo('id.validate')) {
+            return false;
+        }
+
+        if (! $user->hasPermissionTo('id.sign')) {
             return false;
         }
 
@@ -122,18 +131,5 @@ class IDPolicy
 
         return $request->status === IdRequestStatus::Pending
             && filled($request->cardPhotoPath);
-    }
-
-    /**
-     * Determine whether the user can sign workflow step.
-     */
-    public function signWorkflow(Staffusers $user, Enrollmentworkflow $workflow): bool
-    {
-        if (! $user->hasPermissionTo('id.sign')) {
-            return false;
-        }
-
-        // Must be ID Office
-        return $user->officeId === OfficeId::IdOffice->value;
     }
 }

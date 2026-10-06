@@ -80,7 +80,11 @@ Every account's password is `password`.
 
 `office8_head` is the retired Clearance office's login (ruling 12 folded office 8 into the
 Registrar). It is kept deliberately: it is the only account that proves ruling 7 — a bare
-`OfficeHead` can run a counter but cannot sign a box.
+`OfficeHead` can run a counter but cannot sign a box. Two more head-only accounts are made
+during the run, one inside office 11 and one inside office 22 (§14R.2, §15R.4), because
+`office8_head` sits in another office and is refused on *office* scope before its missing
+signature is ever reached. Those two checks are the ones that show the signature itself gates
+the act.
 
 ---
 
@@ -378,7 +382,16 @@ Path: **Clinic** (`/clinic`), a record at `/clinic/{enrollment}`.
 | 14.2 | Amend a record (`PATCH /clinic/records/{clinic}`) | The edit is attributed; nothing re-opens the workflow | | ☐ |
 | 14.3 | **Reopen** a completed record (`POST /clinic/records/{clinic}/reopen`) | Allowed, and the record carries `reopened`. This value is *reachable and tested* — it was challenged as dead code and the owner ruled to keep the feature | | ☐ |
 
-**Refusal check** — attempt any clinic action as `office2_head`: refused by office scope.
+**Refusal checks**
+
+| # | Do this | The system must | Observed | OK |
+|---|---|---|---|---|
+| 14R.1 | Attempt any clinic action as `office2_head` | Refused by office scope | | ☐ |
+| 14R.2 | In **Admin → User Management**, put a spare account in **office 11** with the `OfficeHead` role **only** — no `ClinicStaff` — then record a health assessment with it | **Refused.** Recording the assessment *is* the signature on the Clinic box, so the act asks `clinic.sign` as well as the counter's `clinic.record` (ruling 7, wired into the code 2026-10-05). No `clinicrecords` row is written and the office 11 box stays `Pending` | | ☐ |
+| 14R.3 | With the same head-only account, **amend** an existing record and **reopen** it | Both allowed: correcting and reopening are counter work, not signatures, and still ask only `clinic.update` and `clinic.reopen` | | ☐ |
+
+> Restore that account afterwards (give `ClinicStaff` back, or delete it) — leaving it in office
+> 11 makes §14 look broken on a later run.
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -403,6 +416,9 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 | 15R.1 | Validate a request with no face photo on file | Refused — the photo is a validation prerequisite | | ☐ |
 | 15R.2 | Look for any release/cancel action on the desk | None exists, and `idrequests.status` holds only `pending` and `validated` | | ☐ |
 | 15R.3 | Act on an ID request as `office1_head` | Refused by office scope | | ☐ |
+| 15R.4 | Put a spare account in **office 22** with the `OfficeHead` role **only** — no `IdOfficer` — then attach a photo and press **Validate** on a pending request | **Refused.** Validation is terminal and it *is* the ID box's signature, so the act asks `id.sign` as well as the counter's `id.validate` (ruling 7, wired into the code 2026-10-05). The request stays `pending`, `validatedBy` and `validatedDate` stay empty, and the office 22 box is unsigned. The same account may still create a request and attach its photo — those are counter work | | ☐ |
+
+> Restore that account afterwards, as in §14.
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -431,7 +447,7 @@ last, after the desks have finished, so a failure is not mistaken for a data pro
 
 | # | Log in as | Do this | The system must | Observed | OK |
 |---|---|---|---|---|---|
-| 17.1 | `office8_head` (OfficeHead only, office 1) | Look for the approve / sign / validate buttons on the Registrar, Evaluation, Admission, Clinic and ID desks, then POST one of them anyway | **Every one is refused.** A head keeps counter work — `clearance.approve` is deliberately still theirs — but holds none of `enrollment.approve`, `admission.approve`, `evaluation.sign`, `clinic.sign`, `id.sign` | | ☐ |
+| 17.1 | `office8_head` (OfficeHead only, office 1) | Look for the approve / sign / validate buttons on the Registrar, Evaluation, Admission, Clinic and ID desks, then POST one of them anyway | **Every one is refused.** A head keeps counter work — `clearance.approve` is deliberately still theirs — but holds none of `enrollment.approve`, `admission.approve`, `evaluation.sign`, `clinic.sign`, `id.sign`. This check proves the reach is gone; §14R.2 and §15R.4 prove the *signature* itself, from inside the owning office, where office scope cannot be the reason for the refusal | | ☐ |
 | 17.2 | `office11_head` (Clinic head) | Try to compute an assessment and to approve an enrollment | Refused — the counter stays; the other desk does not | | ☐ |
 | 17.3 | the plain staff account you created in §16.5 (no desk role) | Open a Student 360 record from quick-search | It is not offered: `students.view` is a granted permission held by the desk roles that need it, not a default of `Staff` or `Instructor` | | ☐ |
 
@@ -444,18 +460,14 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
 1. **The clearance gate is window-based, not term-based.** One accepting window answers for
    the whole queue; a slip issued under a different term's window would also pass. Changing
    that is a ruling about which window a term owns.
-2. **`clinic.sign` and `id.sign` gate nothing at runtime.** They are held by the clinic and ID
-   desk roles and checked by policy methods (`signWorkflow`) that no route calls; the real
-   authority is `clinic.record` and `id.validate`. Ruling 7 is correct on the record, and this
-   is the one place the permission list is ahead of the code.
-3. **The enrollment form has no desk print action.** `PrintService::printEnrollmentForm()` and
+2. **The enrollment form has no desk print action.** `PrintService::printEnrollmentForm()` and
    the template exist and the fidelity command renders them, but no route or desk button prints
    the form itself — adding one needs a new permission name, which is the owner's call.
-4. **21 print rows carry no key at all** (19 legacy clearanceSlip rows and 2 blockSchedule
+3. **21 print rows carry no key at all** (19 legacy clearanceSlip rows and 2 blockSchedule
    rows). They are kept untouched by ruling 6, and the sequence deliberately steps over the
    numbers they hold rather than reusing them.
-5. **`documentprintlog` still has no unique index over (enrollmentId, documentType,
+4. **`documentprintlog` still has no unique index over (enrollmentId, documentType,
    documentNumber)** for the NULL-keyed rows; MySQL treats NULLs as distinct, so the guarantee
    for new prints is the sequencing rule, not the schema.
-6. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
+5. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
    script against the migrated data before accepting the system for production.

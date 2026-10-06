@@ -8,7 +8,6 @@ use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
-use App\Models\Enrollmentworkflow;
 use App\Models\Staffusers;
 
 class ClinicPolicy
@@ -32,11 +31,24 @@ class ClinicPolicy
     /**
      * Determine whether the user can record clinic assessment.
      * Phase 7: Physical exam, PhilHealth, hard-copy assessments
-     * BR13/BR14: Workflow step for Clinic (office 11) must be completed in order
+     * BR13/BR14: Workflow step 7 (Clinic) must be completed in order
+     *
+     * Recording the assessment IS the Clinic box's signature — `record()` writes the record
+     * and signs the step in one transaction — so the act needs both rights: the counter's
+     * (`clinic.record`, which ruling 7 left with OfficeHead) and the signature's
+     * (`clinic.sign`, which ruling 7 took away from OfficeHead and gave to ClinicStaff).
+     * Before this, `clinic.sign` was held by roles and checked by no caller at all, so the
+     * ruling was recorded on the matrix and unenforced at the desk. This is the same shape
+     * RegistrarPolicy::approve gives enrollment.approve: where the act and the signature are
+     * one act, the signature governs it.
      */
     public function record(Staffusers $user, Enrollments $enrollment): bool
     {
         if (! $user->hasPermissionTo('clinic.record')) {
+            return false;
+        }
+
+        if (! $user->hasPermissionTo('clinic.sign')) {
             return false;
         }
 
@@ -99,18 +111,5 @@ class ClinicPolicy
 
         // Can only reopen if status is completed
         return $clinic->status === ClinicRecordStatus::Completed;
-    }
-
-    /**
-     * Determine whether the user can sign workflow step.
-     */
-    public function signWorkflow(Staffusers $user, Enrollmentworkflow $workflow): bool
-    {
-        if (! $user->hasPermissionTo('clinic.sign')) {
-            return false;
-        }
-
-        // Must be Clinic office
-        return $user->officeId === OfficeId::Clinic->value;
     }
 }
