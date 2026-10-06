@@ -184,7 +184,12 @@ intake end and **Juan** (fully processed) for everything after.
 11. **(10.0 Registrar)** **Desks & Apps → Registrar Official Suite.** Juan's
     record shows final approval (FDD 10.2). Show the print buttons —
     **Certificate of Registration, Class Cards, Subject Load** (FDD 10.3–
-    10.6) — each opens a printable view.
+    10.6) — each opens a printable view. **Enrollment Form (PDF)** is the
+    fourth tile and downloads instead of opening a screen: the Blade template
+    is the paper, `print.enrollmentForm` guards it, and the issue row it mints
+    is its own `enrollmentForm` sequence. Say plainly that this paper prints
+    student type and standing but no program or term — that gap is finding
+    P-2, open, not a broken button.
 12. **(11.0 Clinic)** **Desks & Apps → School Clinic.** Juan's health
     assessment — height, weight, blood pressure, PhilHealth, physical exam
     findings (FDD 11.2–11.3).

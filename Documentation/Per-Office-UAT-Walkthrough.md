@@ -48,6 +48,7 @@ the observed evidence.
 | 2.5 | `php artisan ems:print-fidelity` | `Done: 8/8 rendered in storage/app/prints/fidelity` | ☐ |
 | 2.6 | `php artisan test tests/Feature/E2E` | 4 passed. These run against the live `ems` database, so they prove the dataset supports a full walkthrough end to end | ☐ |
 | 2.7 | Back the database up once: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-UAT-<date>.sql` | File is > 1 MB | ☐ |
+| 2.8 | Create the two **head-only** test accounts — **Admin → User Management**: `head11_only` in office 11 and `head22_only` in office 22, each with the role **OfficeHead and nothing else**, password `password` | Both open their own counter's screens. These are the only accounts that can prove ruling 7 at the Clinic and ID desks, because **the demo dataset has no bare head**: `RbacSeeder` step 3 pairs every `office{N}_head` with that office's desk role, so each head holds their own signature deliberately. Remove or restore them when §17 finishes | ☐ |
 
 > **Which server answered?** `php artisan serve` also binds `8080` on this machine and
 > silently shadows Laragon's Apache on loopback. If a screen 404s a route you know exists,
@@ -76,15 +77,26 @@ Every account's password is `password`.
 | `office11_head` | 11 Clinic | ClinicStaff + OfficeHead | §14, §17.2 |
 | `office22_head` | 22 ID Office | IdOfficer + OfficeHead | §15 |
 | `staff8` | 1 Registrar | Admin + SysAdmin | §16, §17 |
-| `office8_head` | 1 Registrar | **OfficeHead only** | §17.1 — the negative-test identity (also §7R.1, §10R.4, §12R.1) |
+| `office8_head` | 1 Registrar | RegistrarApprover + OfficeHead | §7R.1, §10R.4 — **not** a negative test for the Registrar's own signature |
+| `head11_only` *(you create it, §2.8)* | 11 Clinic | **OfficeHead only** | §12R.1, §14R.2, §14R.3, §17.1 |
+| `head22_only` *(you create it, §2.8)* | 22 ID Office | **OfficeHead only** | §15R.4 |
 
-`office8_head` is the retired Clearance office's login (ruling 12 folded office 8 into the
-Registrar). It is kept deliberately: it is the only account that proves ruling 7 — a bare
-`OfficeHead` can run a counter but cannot sign a box. Two more head-only accounts are made
-during the run, one inside office 11 and one inside office 22 (§14R.2, §15R.4), because
-`office8_head` sits in another office and is refused on *office* scope before its missing
-signature is ever reached. Those two checks are the ones that show the signature itself gates
-the act.
+**Read this before using any account as a refusal.** No account on the demo dataset is a bare
+`OfficeHead`: `RbacSeeder` step 3 pairs every office head with that office's desk role, so
+`office11_head` holds `clinic.sign` and `office1_head` holds `enrollment.approve` *by design* —
+that pairing is how ruling 7 kept each desk's own signature reachable. `office8_head` is the
+retired Clearance office's login; ruling 12 moved it under the Registrar, and the pairing then
+made it a Registrar approver, so it can certify an enrollment and proves nothing about ruling 7 at
+the Registrar desk. The two accounts §2.8 creates are therefore the only identities that refuse
+because a **signature is missing** rather than because an office is wrong, which is why §12R.1,
+§14R.2, §15R.4 and §17.1 use them. `office8_head` still refuses `evaluation.sign` and
+`payment.refund`, and refuses them for the right reason — no role it holds grants either.
+
+`dean_academic` was `DeptEvaluator + OfficeHead` on the live install until 2026-10-06: its
+`staffusers.role` said `officeHead`, and the pairing above overwrote the Dean grant the seeder had
+just given it. That made §8.3 impossible to demonstrate — `shift.sign.department` belongs to Dean
+and ProgramHead. It now reads `dean`, and holds **Dean + DeptEvaluator**. If §8.3 refuses with
+"not permitted", check that account's roles first.
 
 ---
 
@@ -205,7 +217,7 @@ This is the busiest section. Take the records in this order.
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
-| 7R.1 | Sign an evaluation as `office8_head` (bare OfficeHead) | Refused — `evaluation.sign` left this role under ruling 7 | | ☐ |
+| 7R.1 | Sign an evaluation as `office8_head` (RegistrarApprover + OfficeHead) | Refused — `evaluation.sign` left OfficeHead under ruling 7, and no role this account holds grants it. The department's own signer is `office7_head` | | ☐ |
 | 7R.2 | Propose a subject the curriculum places behind an unsatisfied prerequisite | Refused with `X requires Y` naming both codes | | ☐ |
 | 7R.3 | Confirm a pass slip for a student with no approved slip in the accepting window | Refused, and the message says which of the two is missing | | ☐ |
 
@@ -330,17 +342,20 @@ Path: **Registrar** (`/registrar`), a record at `/registrar/{enrollment}`.
 | 12.6 | **Drop** an `assessed`/`paid`/`enrolled` record with a required reason (`POST /registrar/{enrollment}/drop`) | Status `dropped` with `dropReason`; the reason also lands in the status history with who and when; proposed and confirmed subject rows are retired, which **releases the block seat**; `dropped` is terminal | | ☐ |
 | 12.7 | Re-enroll that student in the **same term** at Evaluation | Allowed — a dropped record does not hold the seat (ruling 17) | | ☐ |
 | 12.8 | Print **COR / certificate, subject load, class card** for an enrolled record, as screen and as PDF | Each renders from real rows, each writes its own issue row keyed to the record it covers, and the printed year level uses the one shared formatter (`1st Year (Freshman)`), never `1 Year` | | ☐ |
-| 12.9 | Compare a printed PDF against the reference image in `Documentation/Images/` | Layout is acceptable to the Registrar — this is the one step in this script that needs the Registrar's eye, not the tester's | | ☐ |
+| 12.9 | Print the **enrollment form itself** (`GET /registrar/{enrollment}/print/enrollment-form/pdf`, `print.enrollmentForm`) | A PDF downloads and `documentprintlog` gains an `enrollmentForm` row numbered in its **own** sequence — printing the form does not advance the certificate's. There is deliberately **no screen** for this paper: the blade is the form, and a second layout could only drift from it. Ask the Registrar whether the paper is acceptable **as the record it is**: it is the only document that prints student type and standing | | ☐ |
+| 12.10 | Compare a printed PDF against the reference image in `Documentation/Images/` | Layout is acceptable to the Registrar — this is the one step in this script that needs the Registrar's eye, not the tester's | | ☐ |
 
 **Refusal checks**
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
-| 12R.1 | Approve as `office8_head` | Refused — `enrollment.approve` left OfficeHead (ruling 7) | | ☐ |
+| 12R.1 | Approve an enrollment as `head11_only` (§2.8 — OfficeHead, no desk role) | Refused — `enrollment.approve` left OfficeHead (ruling 7) and sits with RegistrarApprover. **Do not use `office8_head` for this one**: since ruling 12 it is a Registrar office head, and the seeder pairs it with RegistrarApprover, so it can approve | | ☐ |
 | 12R.2 | Approve while **no clearance window is accepting** | Refused for continuing and shifter types. "No open period" is a **block**, never a silent pass (ruling 4) | | ☐ |
-| 12R.3 | Drop a record that is still `pending` or `evaluated` | Refused — drop is only for `assessed`, `paid`, `enrolled` | | ☐ |
-| 12R.4 | Drop without a reason | Refused — the reason is required | | ☐ |
-| 12R.5 | Approve a record whose confirmed load sits behind an unsatisfied prerequisite | Refused by gate 7, which reads the record rather than the Evaluation screen's lock | | ☐ |
+| 12R.3 | Approve a record whose confirmed load sits behind an unsatisfied prerequisite | Refused by gate 7, which reads the record rather than the Evaluation screen's lock | | ☐ |
+| 12R.4 | Drop a record that is still `pending` or `evaluated` | Refused — drop is only for `assessed`, `paid`, `enrolled` | | ☐ |
+| 12R.5 | Drop without a reason | Refused — the reason is required, and it is what makes the status history readable | | ☐ |
+| 12R.6 | Request the enrollment form PDF for a record that has not reached `enrolled` | Refused. The right is `print.enrollmentForm`; the record must also be enrolled, and the gate is named away from the permission so the status test actually runs | | ☐ |
+| 12R.7 | Request the enrollment form PDF as the **plain staff account** from §16.5 (no desk role) | Refused — the paper is reached by `print.enrollmentForm`, which sits with `RegistrarApprover` and `OfficeHead`, exactly where `print.certificate` sits. Then check the reach you have just accepted: **`office11_head` also gets a 200.** Measured live on 2026-10-06 — the print rights are not office-scoped in this build, so a head of any office prints the Registrar's papers. Recorded in §18 as a known limit covering all four documents, not as a defect at this desk | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -387,11 +402,12 @@ Path: **Clinic** (`/clinic`), a record at `/clinic/{enrollment}`.
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
 | 14R.1 | Attempt any clinic action as `office2_head` | Refused by office scope | | ☐ |
-| 14R.2 | In **Admin → User Management**, put a spare account in **office 11** with the `OfficeHead` role **only** — no `ClinicStaff` — then record a health assessment with it | **Refused.** Recording the assessment *is* the signature on the Clinic box, so the act asks `clinic.sign` as well as the counter's `clinic.record` (ruling 7, wired into the code 2026-10-05). No `clinicrecords` row is written and the office 11 box stays `Pending` | | ☐ |
+| 14R.2 | Log in as `head11_only` (§2.8: office 11, `OfficeHead` and nothing else) and record a health assessment | **Refused.** Recording the assessment *is* the signature on the Clinic box, so the act asks `clinic.sign` as well as the counter's `clinic.record` (ruling 7, wired into the code 2026-10-05). No `clinicrecords` row is written and the office 11 box stays `Pending` | | ☐ |
 | 14R.3 | With the same head-only account, **amend** an existing record and **reopen** it | Both allowed: correcting and reopening are counter work, not signatures, and still ask only `clinic.update` and `clinic.reopen` | | ☐ |
 
-> Restore that account afterwards (give `ClinicStaff` back, or delete it) — leaving it in office
-> 11 makes §14 look broken on a later run.
+> `head11_only` and `head22_only` are test identities, not desk accounts. Delete them when §17
+> finishes, or leave them and note it — either way do not renumber or re-pair them, because the
+> refusals above depend on them holding `OfficeHead` alone.
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -416,9 +432,9 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 | 15R.1 | Validate a request with no face photo on file | Refused — the photo is a validation prerequisite | | ☐ |
 | 15R.2 | Look for any release/cancel action on the desk | None exists, and `idrequests.status` holds only `pending` and `validated` | | ☐ |
 | 15R.3 | Act on an ID request as `office1_head` | Refused by office scope | | ☐ |
-| 15R.4 | Put a spare account in **office 22** with the `OfficeHead` role **only** — no `IdOfficer` — then attach a photo and press **Validate** on a pending request | **Refused.** Validation is terminal and it *is* the ID box's signature, so the act asks `id.sign` as well as the counter's `id.validate` (ruling 7, wired into the code 2026-10-05). The request stays `pending`, `validatedBy` and `validatedDate` stay empty, and the office 22 box is unsigned. The same account may still create a request and attach its photo — those are counter work | | ☐ |
+| 15R.4 | Log in as `head22_only` (§2.8: office 22, `OfficeHead` and nothing else), attach a photo and press **Validate** on a pending request | **Refused.** Validation is terminal and it *is* the ID box's signature, so the act asks `id.sign` as well as the counter's `id.validate` (ruling 7, wired into the code 2026-10-05). The request stays `pending`, `validatedBy` and `validatedDate` stay empty, and the office 22 box is unsigned. The same account may still create a request and attach its photo — those are counter work | | ☐ |
 
-> Restore that account afterwards, as in §14.
+> `head22_only` is the ID desk's version of §14's `head11_only`; restore or delete both after §17.
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -447,7 +463,7 @@ last, after the desks have finished, so a failure is not mistaken for a data pro
 
 | # | Log in as | Do this | The system must | Observed | OK |
 |---|---|---|---|---|---|
-| 17.1 | `office8_head` (OfficeHead only, office 1) | Look for the approve / sign / validate buttons on the Registrar, Evaluation, Admission, Clinic and ID desks, then POST one of them anyway | **Every one is refused.** A head keeps counter work — `clearance.approve` is deliberately still theirs — but holds none of `enrollment.approve`, `admission.approve`, `evaluation.sign`, `clinic.sign`, `id.sign`. This check proves the reach is gone; §14R.2 and §15R.4 prove the *signature* itself, from inside the owning office, where office scope cannot be the reason for the refusal | | ☐ |
+| 17.1 | `head11_only` (§2.8 — OfficeHead only, in office 11) | Look for the approve / sign / validate buttons on the Registrar, Evaluation, Admission, Clinic and ID desks, then POST one of them anyway | **Every one is refused.** A head keeps counter work — `clearance.approve` is deliberately still theirs — but holds none of `enrollment.approve`, `admission.approve`, `evaluation.sign`, `clinic.sign`, `id.sign`. This is the check that proves the *signature* itself, from inside a real office, where office scope cannot be the reason (`office8_head` can no longer serve as it: ruling 12 put it in office 1 and the seeder paired it with RegistrarApprover) | | ☐ |
 | 17.2 | `office11_head` (Clinic head) | Try to compute an assessment and to approve an enrollment | Refused — the counter stays; the other desk does not | | ☐ |
 | 17.3 | the plain staff account you created in §16.5 (no desk role) | Open a Student 360 record from quick-search | It is not offered: `students.view` is a granted permission held by the desk roles that need it, not a default of `Staff` or `Instructor` | | ☐ |
 
@@ -460,9 +476,13 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
 1. **The clearance gate is window-based, not term-based.** One accepting window answers for
    the whole queue; a slip issued under a different term's window would also pass. Changing
    that is a ruling about which window a term owns.
-2. **The enrollment form has no desk print action.** `PrintService::printEnrollmentForm()` and
-   the template exist and the fidelity command renders them, but no route or desk button prints
-   the form itself — adding one needs a new permission name, which is the owner's call.
+2. **The enrollment form prints, but the paper itself is thin.** `GET
+   /registrar/{enrollment}/print/enrollment-form/pdf` (`print.enrollmentForm`) issues the form from
+   the blade and mints its own `enrollmentForm` issue row. It has no screen deliberately: the blade
+   is the paper, and a second layout could only drift from it. What it still cannot do is name the
+   program, the year level or the term — `enrollment-form.blade.php` prints student type and
+   standing and no academic period at all. That is finding **P-2**, still open: report a missing
+   field on that paper as P-2, not as a broken print action.
 3. **21 print rows carry no key at all** (19 legacy clearanceSlip rows and 2 blockSchedule
    rows). They are kept untouched by ruling 6, and the sequence deliberately steps over the
    numbers they hold rather than reusing them.
@@ -471,3 +491,10 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    for new prints is the sequencing rule, not the schema.
 5. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
    script against the migrated data before accepting the system for production.
+6. **Print rights are not office-scoped.** `print.certificate`, `print.classCard`,
+   `print.subjectLoad` and now `print.enrollmentForm` are held by `OfficeHead`, and no policy asks
+   which office the head runs — so a clinic or ID head can print the Registrar's papers for any
+   enrolled record. Verified live on 2026-10-06 (`office11_head` returned 200 on the enrollment-form
+   route). The new form inherits this rather than adding it, because the owner chose to mirror the
+   certificate's holders; narrowing it is one decision that moves all four documents together, not a
+   per-paper fix.
