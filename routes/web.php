@@ -155,6 +155,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/registrar/{enrollment}/print/class-cards/{enrolledSubject}/pdf', [RegistrarController::class, 'downloadClassCard'])->name('registrar.download-class-card');
     Route::get('/registrar/{enrollment}/print/subject-load', [RegistrarController::class, 'printSubjectLoad'])->name('registrar.print-subject-load');
     Route::get('/registrar/{enrollment}/print/subject-load/pdf', [RegistrarController::class, 'downloadSubjectLoad'])->name('registrar.download-subject-load');
+    // PDF only, by design: the blade is the paper and a screen would be a second copy of it.
+    Route::get('/registrar/{enrollment}/print/enrollment-form/pdf', [RegistrarController::class, 'downloadEnrollmentForm'])->name('registrar.download-enrollment-form');
 
     /* ==================== Clinic ==================== */
     Route::get('/clinic', [ClinicController::class, 'index'])->name('clinic.index');

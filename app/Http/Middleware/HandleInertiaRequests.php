@@ -77,6 +77,10 @@ class HandleInertiaRequests extends Middleware
                 // offered only to the desk the ruling gave it to (ruling 17). Read through
                 // the gate so an unseeded install answers false instead of throwing.
                 'enrollmentDrop' => $staff?->can('enrollment.drop') ?? false,
+                // The enrollment form is the record as issued, so the desk offers it only to
+                // the counters that may print it. Same reason as above for `can` over
+                // `checkPermissionTo`: an install that has not run RbacSeeder answers false.
+                'printEnrollmentForm' => $staff?->can('print.enrollmentForm') ?? false,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

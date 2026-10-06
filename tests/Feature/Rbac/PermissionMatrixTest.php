@@ -482,7 +482,7 @@ class PermissionMatrixTest extends TestCase
             'assessment.compute', 'assessment.finalize',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process',
             'admission.create', 'admission.update', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
-            'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+            'print.certificate', 'print.classCard', 'print.subjectLoad', 'print.enrollmentForm', 'enrollment.studentdata.record',
         ];
         foreach ($actionPerms as $perm) {
             $this->assertTrue($officeHead->hasPermissionTo($perm),

@@ -444,6 +444,21 @@ class RegistrarController extends Controller
     }
 
     /**
+     * Download the enrollment form itself — the record as issued, with its subjects and its
+     * signatures. There is deliberately no second layout for it: the blade in
+     * resources/views/prints/enrollment-form.blade.php is the paper, and ems:print-fidelity
+     * renders the same one, so a screen copy could only ever drift from the PDF.
+     */
+    public function downloadEnrollmentForm(Enrollments $enrollment, PrintService $printService): BinaryFileResponse
+    {
+        $this->authorize('registrar.printEnrollmentForm', $enrollment);
+
+        return $printService
+            ->printEnrollmentForm($enrollment, Auth::user()->userId)
+            ->asDownload("enrollment-form-{$enrollment->student?->schoolIdNumber}-{$enrollment->enrollmentId}.pdf");
+    }
+
+    /**
      * Download one class card as a PDF.
      */
     public function downloadClassCard(

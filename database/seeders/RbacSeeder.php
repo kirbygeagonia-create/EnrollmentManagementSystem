@@ -145,13 +145,18 @@ class RbacSeeder extends Seeder
                 'refdata.clearanceRequirements.manage',
             ],
 
-            // Enrollment/Registrar module (6)
+            // Enrollment/Registrar module (7)
             'enrollment' => [
                 'enrollment.approve',
                 'enrollment.drop',
                 'print.certificate',
                 'print.classCard',
                 'print.subjectLoad',
+                // The enrollment form is the Registrar's own paper: the record as issued, with
+                // its subjects and its signatures. It needed a name of its own because a print
+                // log row must say which document was issued, and printing the record a desk
+                // certified is not the same act as printing a certificate about it.
+                'print.enrollmentForm',
                 'enrollment.studentdata.record',
             ],
 
@@ -210,9 +215,15 @@ class RbacSeeder extends Seeder
         // ===========================================
         // 2. CREATE ALL DESK AND FACULTY ROLES AND ASSIGN PERMISSIONS
         // ===========================================
+        //
+        // updateOrCreate, not firstOrCreate: the row already exists on every installed database,
+        // so firstOrCreate would keep whatever description the year-old insert wrote and the
+        // string below would never reach it. Live `ems` proved the drift — IdOfficer still read
+        // "and card release", a step the 2026-09-30 ruling removed from the code, the
+        // permissions and the desk. syncPermissions below is idempotent for the same reason.
 
         // SysAdmin - ALL permissions
-        $sysAdmin = Role::firstOrCreate(
+        $sysAdmin = Role::updateOrCreate(
             ['name' => 'SysAdmin', 'guard_name' => 'web'],
             ['description' => 'System Administrator with full access to all modules']
         );
@@ -224,7 +235,7 @@ class RbacSeeder extends Seeder
         // desks without directly touching other offices' records. SysAdmin
         // remains the only full-power role. Any write an Admin account makes
         // is flagged `adminOverride` by the AuditLogObserver.
-        $admin = Role::firstOrCreate(
+        $admin = Role::updateOrCreate(
             ['name' => 'Admin', 'guard_name' => 'web'],
             ['description' => 'Institutional overseer with read-everywhere access (no direct record mutation)']
         );
@@ -236,7 +247,7 @@ class RbacSeeder extends Seeder
         );
 
         // AdmissionOfficer - Phase 0
-        $admissionOfficer = Role::firstOrCreate(
+        $admissionOfficer = Role::updateOrCreate(
             ['name' => 'AdmissionOfficer', 'guard_name' => 'web'],
             ['description' => 'Admission Officer with intake, requirement verification, and qualification permissions']
         );
@@ -250,7 +261,7 @@ class RbacSeeder extends Seeder
         // records it, sees all of its results (pass and failed), and transfers
         // the passers to the academic departments. Course-specific and retention
         // exams are handled and viewed only by the owning department.
-        $guidanceStaff = Role::firstOrCreate(
+        $guidanceStaff = Role::updateOrCreate(
             ['name' => 'GuidanceStaff', 'guard_name' => 'web'],
             ['description' => 'Guidance counselor — School Entrance Examination scoring (Stage 1, BR9): all results, passer transfer']
         );
@@ -264,7 +275,7 @@ class RbacSeeder extends Seeder
         // DeptEvaluator - Phase 2. Item 4: the owning academic department also
         // handles and views the course-specific entrance exam (BR9 Stage 2) and
         // the retention exam (BR10 — recorded in the Academic Evaluation area).
-        $deptEvaluator = Role::firstOrCreate(
+        $deptEvaluator = Role::updateOrCreate(
             ['name' => 'DeptEvaluator', 'guard_name' => 'web'],
             ['description' => 'Academic department evaluator — profile capture, subject proposals, transfer credits, course-specific and retention exams']
         );
@@ -281,7 +292,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // Dean - Phase 2 & Academic Department Head
-        $dean = Role::firstOrCreate(
+        $dean = Role::updateOrCreate(
             ['name' => 'Dean', 'guard_name' => 'web'],
             ['description' => 'College Dean with evaluation sign-off, curriculum review, and enrollment confirmation']
         );
@@ -300,7 +311,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // ProgramHead - Phase 2
-        $programHead = Role::firstOrCreate(
+        $programHead = Role::updateOrCreate(
             ['name' => 'ProgramHead', 'guard_name' => 'web'],
             ['description' => 'Program Head with evaluation, subject proposal, and confirmation permissions']
         );
@@ -315,7 +326,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // ScholarshipOfficer - Phase 3
-        $scholarshipOfficer = Role::firstOrCreate(
+        $scholarshipOfficer = Role::updateOrCreate(
             ['name' => 'ScholarshipOfficer', 'guard_name' => 'web'],
             ['description' => 'Scholarship & Assessment officer for grant verification and fee computation']
         );
@@ -326,7 +337,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // AccountingStaff - Phase 4
-        $accountingStaff = Role::firstOrCreate(
+        $accountingStaff = Role::updateOrCreate(
             ['name' => 'AccountingStaff', 'guard_name' => 'web'],
             ['description' => 'Cashier and accounting staff for payment collection, OR recording, and daily collection reports']
         );
@@ -341,7 +352,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // RegistrarDesk - Phase 1
-        $registrarDesk = Role::firstOrCreate(
+        $registrarDesk = Role::updateOrCreate(
             ['name' => 'RegistrarDesk', 'guard_name' => 'web'],
             ['description' => 'Registrar desk staff for clearance receipt recording and student verification']
         );
@@ -356,12 +367,12 @@ class RbacSeeder extends Seeder
         ]);
 
         // RegistrarApprover - Phase 5
-        $registrarApprover = Role::firstOrCreate(
+        $registrarApprover = Role::updateOrCreate(
             ['name' => 'RegistrarApprover', 'guard_name' => 'web'],
-            ['description' => 'Registrar officer for final enrollment approval, subject confirmation, certificate and class card printing']
+            ['description' => 'Registrar officer for final enrollment approval, subject confirmation, and the certificate, class card, subject load and enrollment-form prints']
         );
         $registrarApprover->syncPermissions([
-            'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+            'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'print.enrollmentForm', 'enrollment.studentdata.record',
             // Ruling 17: dropping is the Registrar's alone. It erases what the other
             // desks signed, so the desk that holds the final signature is the one that
             // answers for it — and OfficeHead is deliberately not in this list.
@@ -376,7 +387,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // BlockingCoordinator - Phase 6
-        $blockingCoordinator = Role::firstOrCreate(
+        $blockingCoordinator = Role::updateOrCreate(
             ['name' => 'BlockingCoordinator', 'guard_name' => 'web'],
             ['description' => 'Blocking coordinator for block section assignment, schedule management, and capacity verification']
         );
@@ -386,7 +397,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // ClinicStaff - Phase 7
-        $clinicStaff = Role::firstOrCreate(
+        $clinicStaff = Role::updateOrCreate(
             ['name' => 'ClinicStaff', 'guard_name' => 'web'],
             ['description' => 'School clinic health assessment and PhilHealth registration staff']
         );
@@ -396,7 +407,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // IdOfficer - Phase 8
-        $idOfficer = Role::firstOrCreate(
+        $idOfficer = Role::updateOrCreate(
             ['name' => 'IdOfficer', 'guard_name' => 'web'],
             ['description' => 'ID Office staff for ID requests and face-photo validation']
         );
@@ -427,7 +438,7 @@ class RbacSeeder extends Seeder
         // No desk role holds `clearance.view` for another office's queue, so moving it to a
         // desk role would leave the act with nobody who can reach it — see the ruling's own
         // "keep view rights broad" for why the head is the right holder here.
-        $officeHead = Role::firstOrCreate(
+        $officeHead = Role::updateOrCreate(
             ['name' => 'OfficeHead', 'guard_name' => 'web'],
             ['description' => 'Office Head with all view permissions and module action permissions (exam recording is Guidance/department-only)']
         );
@@ -445,14 +456,14 @@ class RbacSeeder extends Seeder
             'assessment.compute', 'assessment.finalize',
             'evaluation.create', 'evaluation.profile.capture', 'evaluation.subjects.propose', 'evaluation.credits.process',
             'admission.create', 'admission.update', 'admission.reject', 'admission.requirements.submit', 'admission.requirements.verify',
-            'print.certificate', 'print.classCard', 'print.subjectLoad', 'enrollment.studentdata.record',
+            'print.certificate', 'print.classCard', 'print.subjectLoad', 'print.enrollmentForm', 'enrollment.studentdata.record',
         ]);
 
         // Staff - view permissions.
         // Audit follow-up §A1: audit.view is deliberately NOT granted to the
         // base Staff role — the audit log exposes full model snapshots (incl.
         // student PII) and would bypass the students.view scoping.
-        $staff = Role::firstOrCreate(
+        $staff = Role::updateOrCreate(
             ['name' => 'Staff', 'guard_name' => 'web'],
             ['description' => 'Staff with view-only access across all modules']
         );
@@ -463,7 +474,7 @@ class RbacSeeder extends Seeder
         ]);
 
         // Instructor - Phase 2 & Advising
-        $instructor = Role::firstOrCreate(
+        $instructor = Role::updateOrCreate(
             ['name' => 'Instructor', 'guard_name' => 'web'],
             ['description' => 'College Faculty Instructor with evaluation, subject proposal, and schedule viewing permissions']
         );

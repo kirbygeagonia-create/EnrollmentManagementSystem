@@ -603,6 +603,103 @@ class PrintControllerTest extends TestCase
     }
 
     #[Test]
+    public function the_enrollment_form_downloads_and_the_trail_calls_it_a_form(): void
+    {
+        // The paper existed with a renderer and no way to reach it. Printing it must register
+        // as its own document, or the trail cannot answer "how many forms left this desk"
+        // separately from "how many certificates".
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrar = $this->createStaffForOffice(1);
+        $this->assertTrue($registrar->hasPermissionTo('print.enrollmentForm'));
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($registrar)
+            ->get(route('registrar.download-enrollment-form', $enrollment))
+            ->assertStatus(200)
+            ->assertDownload("enrollment-form-{$student->schoolIdNumber}-{$enrollment->enrollmentId}.pdf");
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'studentId' => $student->studentId,
+            'documentType' => DocumentType::EnrollmentForm,
+            'printedBy' => $registrar->userId,
+            'documentNumber' => 1,
+        ]);
+
+        // The certificate sequence is its own: printing the form does not advance it.
+        $this->actingAs($registrar)
+            ->get(route('registrar.download-certificate', $enrollment))
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'documentType' => DocumentType::Certificate,
+            'documentNumber' => 1,
+        ]);
+
+        // And the form's second copy continues from its own highest number.
+        $this->actingAs($registrar)
+            ->get(route('registrar.download-enrollment-form', $enrollment))
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'enrollmentId' => $enrollment->enrollmentId,
+            'documentType' => DocumentType::EnrollmentForm,
+            'documentNumber' => 2,
+        ]);
+    }
+
+    #[Test]
+    public function a_desk_without_the_enrollment_form_right_cannot_draw_it(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $plainStaff = $this->createStaffWithoutPrintPermissions(1);
+        $this->assertFalse($plainStaff->hasPermissionTo('print.enrollmentForm'));
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($plainStaff)
+            ->get(route('registrar.download-enrollment-form', $enrollment))
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('documentprintlog', ['documentType' => DocumentType::EnrollmentForm]);
+    }
+
+    #[Test]
+    public function the_form_refuses_a_record_that_has_not_reached_enrolled(): void
+    {
+        // The ability is named away from the permission on purpose: if it carried the
+        // permission's own name, Spatie's Gate::before would answer from the permission alone
+        // and a pending record — unsigned, its load not yet published — would print.
+        $student = $this->createStudent();
+        $pending = Enrollments::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->courseId,
+            'majorId' => $this->majorId,
+            'termId' => $this->termId,
+            'yearLevel' => 1,
+            'studentType' => StudentType::FirstYear,
+            'enrollmentType' => EnrollmentType::New,
+            'academicStanding' => 'regular',
+            'evaluatedBy' => Staffusers::where('officeId', 4)->first()?->userId,
+            'enrollmentStatus' => 'pending',
+            'formIssuedDate' => now()->toDateString(),
+        ]);
+        $registrar = $this->createStaffForOffice(1);
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($registrar)
+            ->get(route('registrar.download-enrollment-form', $pending))
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('documentprintlog', ['documentType' => DocumentType::EnrollmentForm]);
+    }
+
+    #[Test]
     public function test_a_download_of_another_students_class_card_is_not_found(): void
     {
         $student = $this->createStudent();
@@ -798,6 +895,14 @@ class PrintControllerTest extends TestCase
                 return new PrintedDocument(
                     $this->recordIssue($enrollment->enrollmentId, DocumentType::ClassCard, $printedBy, $enrollment->studentId),
                     $this->placeholder('class-card')
+                );
+            }
+
+            public function printEnrollmentForm(Enrollments $enrollment, int $printedBy): PrintedDocument
+            {
+                return new PrintedDocument(
+                    $this->recordIssue($enrollment->enrollmentId, DocumentType::EnrollmentForm, $printedBy, $enrollment->studentId),
+                    $this->placeholder('enrollment-form')
                 );
             }
 

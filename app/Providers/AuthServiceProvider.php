@@ -279,6 +279,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('registrar.printSubjectLoad', function ($user, $enrollment) {
             return app(RegistrarPolicy::class)->printSubjectLoad($user, $enrollment);
         });
+        // Not `print.enrollmentForm`: that is the permission's own name, and Spatie's
+        // Gate::before would answer from the permission alone (see the collision rule at
+        // clinic.recordAssessment above), skipping the status gate in the policy.
+        Gate::define('registrar.printEnrollmentForm', function ($user, $enrollment) {
+            return app(RegistrarPolicy::class)->printEnrollmentForm($user, $enrollment);
+        });
 
         // User management auxiliary models (Roles/Permissions/Settings are mapped to
         // UserManagementPolicy, but the manage* abilities need explicit gates).

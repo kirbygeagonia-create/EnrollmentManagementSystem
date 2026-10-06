@@ -14,6 +14,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
     const [returnOpen, setReturnOpen] = useState(false);
     const [dropOpen, setDropOpen] = useState(false);
     const canDrop = usePage().props.can?.enrollmentDrop === true;
+    const canPrintForm = usePage().props.can?.printEnrollmentForm === true;
 
     // Item 16: the standing the evaluating department recorded is a proposal
     // until this office confirms it, so approval carries the Registrar's own
@@ -357,7 +358,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                     {/* Official Document Print Suite */}
                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
                         <h3 className="font-heading font-bold text-slate-900 text-sm mb-3">Registrar Print Engine</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-3 ${canPrintForm ? 'lg:grid-cols-4' : ''}`}>
                             <Link
                                 href={route('registrar.print-certificate', { enrollment: enrollment.enrollmentId })}
                                 target="_blank"
@@ -390,6 +391,18 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                 </svg>
                                 <span>Subject Load</span>
                             </Link>
+
+                            {canPrintForm && (
+                                <a
+                                    href={route('registrar.download-enrollment-form', { enrollment: enrollment.enrollmentId })}
+                                    className="p-3 rounded-xl bg-slate-50 hover:bg-seait-50 border border-slate-200 hover:border-seait-300 text-slate-800 hover:text-seait-700 transition-all text-center flex flex-col items-center justify-center gap-1.5 text-xs font-bold"
+                                >
+                                    <svg className="w-5 h-5 text-seait-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h3m-8 4h14a2 2 0 002-2V7a2 2 0 00-2-2h-4.5L12 3l-1.5 2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Enrollment Form (PDF)</span>
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -168,6 +168,24 @@ class RegistrarPolicy
     }
 
     /**
+     * Determine whether the user can print the enrollment form itself.
+     *
+     * The other three prints describe the enrollment (a certificate about it, a card per
+     * subject, a load list). This is the record as issued, signatures and all, so it is
+     * gated the same way as the certificate — held by exactly the roles that hold
+     * print.certificate — and refuses anything that has not reached `enrolled`, because a
+     * pending record has no load published and no desk has signed it yet.
+     */
+    public function printEnrollmentForm(Staffusers $user, Enrollments $enrollment): bool
+    {
+        if (! $user->hasPermissionTo('print.enrollmentForm')) {
+            return false;
+        }
+
+        return $enrollment->enrollmentStatus === EnrollmentStatus::Enrolled;
+    }
+
+    /**
      * Determine whether the user can record/update student data (new vs old).
      * BR31: firstYear/transferee = new (record), continuing/shifter = old (update)
      */
