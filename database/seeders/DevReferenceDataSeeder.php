@@ -818,6 +818,13 @@ class DevReferenceDataSeeder extends Seeder
         // endorsed at all without one (ruling 11). Office 7 is the academic unit, so its
         // head is the natural dean — and no seeded account held the role, which left both
         // signatures untestable on the demo dataset.
+        //
+        // `role` must be 'dean', not 'officeHead': RbacSeeder step 3 re-derives every
+        // account's roles from that enum, and an officeHead at office 7 is paired
+        // DeptEvaluator + OfficeHead — which silently removes the Dean role this block just
+        // granted and puts shift.sign.department back out of reach. Measured on live `ems`
+        // after the 2026-10-06 reseed: dean_academic held DeptEvaluator + OfficeHead only,
+        // so §13.7's endorsement step could not be demonstrated by any account on the install.
         $dean = Staffusers::firstOrCreate(
             ['username' => 'dean_academic'],
             [
@@ -829,10 +836,13 @@ class DevReferenceDataSeeder extends Seeder
                 'passwordHash' => Hash::make('password'),
                 'officeId' => 7,
                 'contactNo' => '',
-                'role' => 'officeHead',
+                'role' => 'dean',
                 'status' => 'active',
             ]
         );
+        // Kept for the run where this seeder executes alone, before RbacSeeder maps enums
+        // to roles; step 3 then widens it to Dean + DeptEvaluator, which is the pairing a
+        // real install gives a dean who also evaluates.
         $dean->syncRoles(['Dean']);
 
         $this->command?->info(class_basename($this).': done.');
