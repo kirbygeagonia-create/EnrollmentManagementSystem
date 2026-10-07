@@ -49,6 +49,7 @@ the observed evidence.
 | 2.6 | `php artisan test tests/Feature/E2E` | 4 passed. These run against the live `ems` database, so they prove the dataset supports a full walkthrough end to end | ☐ |
 | 2.7 | Back the database up once: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-UAT-<date>.sql` | File is > 1 MB | ☐ |
 | 2.8 | Create the two **head-only** test accounts — **Admin → User Management**: `head11_only` in office 11 and `head22_only` in office 22, each with the role **OfficeHead and nothing else**, password `password` | Both open their own counter's screens. These are the only accounts that can prove ruling 7 at the Clinic and ID desks, because **the demo dataset has no bare head**: `RbacSeeder` step 3 pairs every `office{N}_head` with that office's desk role, so each head holds their own signature deliberately. Remove or restore them when §17 finishes | ☐ |
+| 2.9 | Confirm the queue answer before testing a desk on a notice: `grep QUEUE_CONNECTION .env` | This install runs **`QUEUE_CONNECTION=sync`** (the owner's answer to §28 **C-10**, 2026-10-06), so a notice is written inside the request and the bell shows what a desk just did — a delivery was proved on live `ems` the same day. The 56 jobs that had been sitting undelivered were cleared. **Production is a different answer**: DEPLOYMENT.md's Supervisor worker still applies, so do not copy `sync` onto the school's server | ☐ |
 
 > **Which server answered?** `php artisan serve` also binds `8080` on this machine and
 > silently shadows Laragon's Apache on loopback. If a screen 404s a route you know exists,
@@ -116,7 +117,7 @@ term chip and `activeTerms` resolve.
 | Carlo Mendoza | DEMO-2026-006 | — | admission 44 `rejected`, transferee | the rejection path |
 | Rico Navarro | DEMO-2026-007 | 598 `pending` + 597 `enrolled` (term 10) | clearance slip 42 **pending, no receipt** | the Registrar's block, live |
 | Elena Ramos | DEMO-2026-008 | 84 `pending` | first-year, no history | the derived level must read 1 |
-| Rafael Cruz | DEMO-2026-009 | 85 `pending` year 2, 655 `enrolled` (term 2, year 1) | transferee | a placement the desk gave, not the record |
+| Rafael Cruz | DEMO-2026-009 | 85 `pending` year 2 **irregular**, 655 `enrolled` (term 2, year 1) | transferee | a placement the desk gave, not the record — and standing the type decides (C-2) |
 | Grace Tan | DEMO-2026-010 | 86 `paid` | cash + bank check | Registrar approval queue |
 | Christian Lim | DEMO-2026-012 | 87 `assessed`, owes ₱17,500 | nothing held | full payment |
 | Bea Alonzo | DEMO-2026-013 | 88 `assessed`, assessed ₱18,500 / owes ₱10,500 | **₱8,000 already held** | part payment and refund |
@@ -204,7 +205,7 @@ This is the busiest section. Take the records in this order.
 | 7.5 | Propose the full offered load | Accepted; status becomes `evaluated` | | ☐ |
 | 7.6 | Open **Iñigo Barrameda (475)** and **Relinda Sabla (476)**, both BSCrim year 2 | Try to **Sign** before a retention result exists → refused. The refusal must name the examination, not a generic blocker | | ☐ |
 | 7.7 | Record the retention pass for Iñigo (`POST /evaluation/{enrollment}/retention`) | Sign now succeeds; Relinda stays unsigned and continues to demonstrate the block | | ☐ |
-| 7.8 | Open **Rafael Cruz (85)**, the transferee | The picker includes the second-year load; his prior-year record (655) is what earned the level. Where a curriculum subject waits behind a prerequisite, it is only offered because the credited or passed subject is on record (ruling 10) | | ☐ |
+| 7.8 | Open **Rafael Cruz (85)**, the transferee | The picker includes the second-year load; his prior-year record (655) is what earned the level. Where a curriculum subject waits behind a prerequisite, it is only offered because the credited or passed subject is on record (ruling 10). **His standing already reads `irregular`** — C-2 was ruled 2026-10-06: a student arriving from another school is irregular because of what the type means, not because a desk read grades | | ☐ |
 | 7.9 | Process a credit transfer with a **passing** grade, then one with a **failing** grade | Only the passing line is credited; the failing line stays on the record and does **not** unlock the subject behind it | | ☐ |
 | 7.10 | Fill the demographic profile where it is incomplete, then try to sign | The screen shows the checklist of gaps, and signing refuses on the same list — one rule, two readers | | ☐ |
 | 7.11 | Decide standing on **Liza Bautista (262)** | Standing is derived from her grades (she failed a subject → `irregular`), and a placement that differs from the derivation is called out in the confirmation message rather than silently accepted | | ☐ |
@@ -234,8 +235,8 @@ the start of this section; the walkthrough fills it.
 |---|---|---|---|---|
 | 8.1 | File a shift for a currently enrolled student: current program, target program, and the student's own will statement | A `pending` paper is created, signed by the department staff member who filed it | | ☐ |
 | 8.2 | Try to **decide** the paper as the same person who filed it, before endorsement | Refused — a decision requires the `endorsed` state | | ☐ |
-| 8.3 | Endorse as `dean_academic` | Status `endorsed`, the dean's signature and date recorded | | ☐ |
-| 8.4 | **Decide (grant)** as a Guidance councillor (`office4_head`) | Status `granted`; the receiving enrollment is created with `studentType = shifter`, its own block seat, the curriculum pinned, and **no examination requirement** attached to it (ruling 11's proof is the form plus credit evaluation) | | ☐ |
+| 8.3 | Endorse as `dean_academic` | Status `endorsed`, the dean's signature and date recorded. If this refuses, check the account before the rule: `dean_academic` held only `DeptEvaluator + OfficeHead` until 2026-10-06, because it was seeded with the `officeHead` enum and `RbacSeeder` step 3 re-derives roles from that column — it now reads `dean`, so the account holds **Dean + DeptEvaluator** and `shift.sign.department` is reachable | | ☐ |
+| 8.4 | **Decide (grant)** as a Guidance councillor (`office4_head`) | Status `granted`; the receiving enrollment is created with `studentType = shifter`, **`academicStanding = irregular`** (C-2, ruled 2026-10-06 — a program change is irregular by what it means, so the record no longer arrives undecided), its own block seat, the curriculum pinned, and **no examination requirement** attached to it (ruling 11's proof is the form plus credit evaluation) | | ☐ |
 | 8.5 | Open both enrollment ids named on the granted paper | If the record being left sat in the **same term**, it is now `dropped` with the reason naming the shift request, and its proposed/confirmed subject rows are retired — the seat is not held twice. An earlier term is left alone as history | | ☐ |
 | 8.6 | File a second paper for a student who already holds another active enrollment in the target term and try to grant it | **Refused**, pointing at the Registrar's drop action — the shift paper is not a way around ruling 17 | | ☐ |
 | 8.7 | Decide a different paper as **rejected** | Status `rejected`; no enrollment is created, and nothing on the student's current record changes | | ☐ |
@@ -338,7 +339,7 @@ Path: **Registrar** (`/registrar`), a record at `/registrar/{enrollment}`.
 | 12.2 | Try to approve a **continuing** record whose pass slip is not confirmed | Refused. The reason is **on the record page** under the red gate (the refusal is a 403, not a session flash) — do not expect a banner | | ☐ |
 | 12.3 | Confirm Maria Reyes' slip at Evaluation (7.12), then approve her load | Approved; `enrolled`, and `enrollmentType` reads `old` for a returning student | | ☐ |
 | 12.4 | State the standing at approval | Approval is refused until the Registrar states the standing; the recorded standing is what every later document prints | | ☐ |
-| 12.5 | **Return** a record to Evaluation with a reason (Isagani Torres 287 is the standing example) | Status `returnedToEvaluation`, the reason reaches the Evaluation desk, and the inbox notice is addressed to the desk that must act next | | ☐ |
+| 12.5 | **Return** a record to Evaluation with a reason (Isagani Torres 287 is the standing example) | Status `returnedToEvaluation` and the reason reaches the Evaluation desk; the inbox notice is addressed to the desk that must act next and appears on its bell during the request (§2.9 — this install runs the queue synchronously) | | ☐ |
 | 12.6 | **Drop** an `assessed`/`paid`/`enrolled` record with a required reason (`POST /registrar/{enrollment}/drop`) | Status `dropped` with `dropReason`; the reason also lands in the status history with who and when; proposed and confirmed subject rows are retired, which **releases the block seat**; `dropped` is terminal | | ☐ |
 | 12.7 | Re-enroll that student in the **same term** at Evaluation | Allowed — a dropped record does not hold the seat (ruling 17) | | ☐ |
 | 12.8 | Print **COR / certificate, subject load, class card** for an enrolled record, as screen and as PDF | Each renders from real rows, each writes its own issue row keyed to the record it covers, and the printed year level uses the one shared formatter (`1st Year (Freshman)`), never `1 Year` | | ☐ |
@@ -355,7 +356,8 @@ Path: **Registrar** (`/registrar`), a record at `/registrar/{enrollment}`.
 | 12R.4 | Drop a record that is still `pending` or `evaluated` | Refused — drop is only for `assessed`, `paid`, `enrolled` | | ☐ |
 | 12R.5 | Drop without a reason | Refused — the reason is required, and it is what makes the status history readable | | ☐ |
 | 12R.6 | Request the enrollment form PDF for a record that has not reached `enrolled` | Refused. The right is `print.enrollmentForm`; the record must also be enrolled, and the gate is named away from the permission so the status test actually runs | | ☐ |
-| 12R.7 | Request the enrollment form PDF as the **plain staff account** from §16.5 (no desk role) | Refused — the paper is reached by `print.enrollmentForm`, which sits with `RegistrarApprover` and `OfficeHead`, exactly where `print.certificate` sits. Then check the reach you have just accepted: **`office11_head` also gets a 200.** Measured live on 2026-10-06 — the print rights are not office-scoped in this build, so a head of any office prints the Registrar's papers. Recorded in §18 as a known limit covering all four documents, not as a defect at this desk | | ☐ |
+| 12R.7 | Request the enrollment form PDF as the **plain staff account** from §16.5 (no desk role) | Refused — the paper is reached by `print.enrollmentForm`, which sits with `RegistrarApprover`, `OfficeHead` and SysAdmin, exactly where `print.certificate` sits | | ☐ |
+| 12R.8 | Request the **certificate and the enrollment form** as `office11_head` — a head, but of the Clinic | **Refused since 2026-10-06 (#35).** `office11_head` holds `print.certificate` and `print.enrollmentForm`, and is still turned away: the right is necessary, not sufficient, and the four Registrar papers now also ask whether the requester runs office 1 — or, for a class card and a subject load, whether the requester's academic unit owns the program. Before this ruling the same request returned 200, measured on live `ems` the morning it was closed | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -491,10 +493,14 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    for new prints is the sequencing rule, not the schema.
 5. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
    script against the migrated data before accepting the system for production.
-6. **Print rights are not office-scoped.** `print.certificate`, `print.classCard`,
-   `print.subjectLoad` and now `print.enrollmentForm` are held by `OfficeHead`, and no policy asks
-   which office the head runs — so a clinic or ID head can print the Registrar's papers for any
-   enrolled record. Verified live on 2026-10-06 (`office11_head` returned 200 on the enrollment-form
-   route). The new form inherits this rather than adding it, because the owner chose to mirror the
-   certificate's holders; narrowing it is one decision that moves all four documents together, not a
-   per-paper fix.
+6. **Notifications depend on a worker nobody has confirmed is installed.** The two listeners that
+   write them (`SendEnrollmentNotification`, `SendWorkflowNotification`) are queued, the queue
+   connection is `database`, and live `ems` held **56 undelivered jobs** on 2026-10-06 with only two
+   notification rows — both stamped by the seeder. Until §28's **C-10** is answered, read every
+   notice check in this script as a check on the queue, not on the desk that acted.
+   _Answered the same day: this install now runs `QUEUE_CONNECTION=sync`, the 56 stale jobs were
+   cleared, and a notice was proved to reach `notifications` inside the request. Production keeps the
+   Supervisor worker DEPLOYMENT.md describes — sync is the answer for the demo machine, not for the
+   school's server._
+
+_(Print scope is no longer a known limit: ruled and built 2026-10-06, and tested at §12R.8.)_

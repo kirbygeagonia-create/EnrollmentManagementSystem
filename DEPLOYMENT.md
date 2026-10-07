@@ -74,8 +74,24 @@ audit §2.1).
 
 ## 5. Queue worker (audit §4.7)
 
-`QUEUE_CONNECTION=database` means PDF/print jobs and other queued work only
-execute when a persistent worker runs. Under Supervisor:
+§28 **C-10** asked whether a queue worker is part of the installed deployment. Answered
+2026-10-06, with two different answers for two machines.
+
+**The demo/UAT machine runs `QUEUE_CONNECTION=sync`.** On `database` with no worker, notices were
+never written: 56 jobs sat in `jobs` while the only two `notifications` rows carried the seeder's own
+timestamp — so every "the desk that must act next is notified" claim in the documentation and in
+`Documentation/Per-Office-UAT-Walkthrough.md` was a claim about a queue nobody was draining. With
+`sync`, a notification is written inside the request and the bell shows what a desk just did;
+delivery was proved on live `ems` the same day (2 → 5 rows, 0 jobs queued).
+
+**Production keeps `database` and runs a worker.** Do not copy `sync` to the school's server: a
+synchronous listener holds the HTTP request through whatever the listener does, and a slow or failing
+notification then fails the desk's action with it. What is actually queued is the two event
+listeners `SendEnrollmentNotification` and `SendWorkflowNotification` (both `ShouldQueue`, both
+registered in `EventServiceProvider`); PDF rendering is a synchronous Browsershot call inside the
+print request, not queued work, so §6's browser requirement applies whether or not a worker runs.
+
+Under Supervisor:
 
 ```ini
 [program:ems-queue]
@@ -86,7 +102,9 @@ user=www-data
 stopwaitsecs=3600
 ```
 
-or systemd: `php artisan queue:work` with `Restart=always`.
+or systemd: `php artisan queue:work` with `Restart=always`. If a machine is ever left on `database`
+without a worker, `php artisan queue:clear database` empties the backlog — it discards jobs, it does
+not run them, so prefer starting the worker once the notice content has been checked.
 
 ## 6. PDF printing — Puppeteer + a system browser (audit §3.5)
 
