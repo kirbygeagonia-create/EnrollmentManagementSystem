@@ -23,7 +23,10 @@ const deskConfigs = {
         ],
     },
     clearance: {
-        title: 'Campus Clearance Office',
+        // §12.1: clearance is a process the participating offices sign, and the counter's acts
+        // are the Registrar's since ruling 12 retired the legacy Clearance office — so the chrome
+        // names the window, not an office that does not exist.
+        title: 'Campus Clearance',
         phase: 'Phase 1',
         badgeColor: 'bg-amber-500/10 text-amber-700 border-amber-300',
         tabs: [

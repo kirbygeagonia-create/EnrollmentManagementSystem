@@ -135,6 +135,8 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     const [submittingAssign, setSubmittingAssign] = useState(false);
     const [confirmUnassign, setConfirmUnassign] = useState({ open: false, enrollmentId: null });
     const [confirmDeleteSchedule, setConfirmDeleteSchedule] = useState({ open: false, scheduleId: null });
+    // One refusal at a time: the unassign and delete-schedule dialogs are never both open.
+    const [blockActionError, setBlockActionError] = useState(null);
     const [submittingUnassign, setSubmittingUnassign] = useState(false);
     const [submittingDeleteSchedule, setSubmittingDeleteSchedule] = useState(false);
     const [showFinalizeModal, setShowFinalizeModal] = useState(false);
@@ -324,6 +326,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     };
 
     const handleDeleteSchedule = (scheduleId) => {
+        setBlockActionError(null);
         setConfirmDeleteSchedule({ open: true, scheduleId });
     };
 
@@ -331,12 +334,13 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         setSubmittingDeleteSchedule(true);
         router.delete(route('blocking.schedules.destroy', { schedule: confirmDeleteSchedule.scheduleId }), {
             onSuccess: () => {
+                setBlockActionError(null);
                 setConfirmDeleteSchedule({ open: false, scheduleId: null });
                 setSubmittingDeleteSchedule(false);
             },
             onError: (errors) => {
                 if (errors.schedule) {
-                    alert(errors.schedule);
+                    setBlockActionError(errors.schedule);
                 }
                 setSubmittingDeleteSchedule(false);
             },
@@ -361,6 +365,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
     };
 
     const handleUnassign = (enrollmentId) => {
+        setBlockActionError(null);
         setConfirmUnassign({ open: true, enrollmentId });
     };
 
@@ -368,12 +373,13 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         setSubmittingUnassign(true);
         router.post(route('blocking.unassign', { block: block.blockId }), { enrollmentIds: [confirmUnassign.enrollmentId] }, {
             onSuccess: () => {
+                setBlockActionError(null);
                 setConfirmUnassign({ open: false, enrollmentId: null });
                 setSubmittingUnassign(false);
             },
             onError: (errors) => {
                 if (errors.enrollmentIds) {
-                    alert(errors.enrollmentIds[0]);
+                    setBlockActionError(errors.enrollmentIds[0]);
                 }
                 setSubmittingUnassign(false);
             },
@@ -918,7 +924,10 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
             {/* Unassign Student Cause & Effect Modal */}
             <CauseEffectModal
                 show={confirmUnassign.open}
-                onClose={() => setConfirmUnassign({ open: false, enrollmentId: null })}
+                onClose={() => {
+                    setBlockActionError(null);
+                    setConfirmUnassign({ open: false, enrollmentId: null });
+                }}
                 onConfirm={confirmUnassignStudent}
                 title="Unassign Student from Block Section"
                 subtitle="Section Capacity & Timetable Roster Modification"
@@ -938,13 +947,17 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 acknowledgementText="I confirm that this student should be removed from this section's timetable."
                 confirmText="Yes, Unassign Student"
                 cancelText="Keep Student in Block"
+                error={blockActionError}
                 loading={submittingUnassign}
             />
 
             {/* Delete Schedule Cause & Effect Modal */}
             <CauseEffectModal
                 show={confirmDeleteSchedule.open}
-                onClose={() => setConfirmDeleteSchedule({ open: false, scheduleId: null })}
+                onClose={() => {
+                    setBlockActionError(null);
+                    setConfirmDeleteSchedule({ open: false, scheduleId: null });
+                }}
                 onConfirm={confirmDeleteScheduleAction}
                 title="Delete Timetable Schedule Slot"
                 subtitle="Room & Faculty Schedule Deletion"
@@ -962,6 +975,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 acknowledgementText="I understand that deleting this schedule will remove the assigned room and class time."
                 confirmText="Yes, Permanently Delete Slot"
                 cancelText="Keep Schedule"
+                error={blockActionError}
                 loading={submittingDeleteSchedule}
             />
 

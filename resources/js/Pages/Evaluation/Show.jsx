@@ -156,7 +156,6 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
     const handleProposeSelectedSubjects = (e) => {
         e.preventDefault();
         if (selectedSubjectIds.length === 0) {
-            alert('Please select at least one subject to propose.');
             return;
         }
 
@@ -337,7 +336,8 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                         <div>
                             <h3 className="font-heading font-bold text-slate-900 text-sm">Continuing Student Flow</h3>
                             <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                                Campus clearance must be settled with the owning departments before the Registrar can approve — the clearance gate is enforced at Phase 5, not here.
+                                Campus clearance must be settled with the owning departments before the Registrar can approve — and this desk is where
+                                the student hands the slip over, so confirm it in the Clearance Pass Slip panel below.
                             </p>
                         </div>
                     </div>
@@ -915,6 +915,11 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             </svg>
                             {isSubmitting ? 'Proposing Subject Load...' : 'Save & Propose Subject Load'}
                         </button>
+                        {selectedSubjectIds.length === 0 && (
+                            <p className="mt-2 text-center text-[11px] text-slate-500" role="status">
+                                Select at least one subject above before proposing the load.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>

@@ -69,10 +69,11 @@ class HandleInertiaRequests extends Middleware
             'can' => [
                 'studentsView' => $request->user()?->can('viewAny', Students::class) ?? false,
                 // Reference-data catalogs are maintained by more than one desk now
-                // (the Registrar owns the grade scale), so the launcher and the hub
-                // ask these two flags instead of assuming the admin role.
+                // (the Registrar owns the grade scale), so the launcher and the hub ask
+                // this flag instead of assuming the admin role. Which individual catalogs a
+                // user may open is decided inside the hub by ReferenceDataSections, and each
+                // screen is still gated by its own policy on the server.
                 'refdataHub' => ReferenceDataSections::hubVisible($staff),
-                'gradeScaleManage' => $staff?->checkPermissionTo('refdata.gradeScale.manage') ?? false,
                 // Dropping an enrollment undoes what four desks signed, so the button is
                 // offered only to the desk the ruling gave it to (ruling 17). Read through
                 // the gate so an unseeded install answers false instead of throwing.

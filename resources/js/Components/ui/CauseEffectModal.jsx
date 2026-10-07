@@ -63,6 +63,7 @@ export default function CauseEffectModal({
     confirmText = 'Confirm & Proceed',
     cancelText = 'Cancel, Keep Unchanged',
     loading = false,
+    error = null,
 }) {
     const shouldRequireAck = requiresAcknowledgement !== null ? requiresAcknowledgement : tone === 'danger';
     const [isAcknowledged, setIsAcknowledged] = useState(false);
@@ -124,6 +125,13 @@ export default function CauseEffectModal({
                                 </span>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* The refusal this action just earned, shown where the officer is looking */}
+                {error && (
+                    <div className="p-3.5 bg-danger-50 border border-danger-200 rounded-xl text-danger-800 text-sm" role="alert">
+                        {error}
                     </div>
                 )}
 
