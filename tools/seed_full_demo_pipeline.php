@@ -348,7 +348,9 @@ if (! $enrRafael) {
         'yearLevel' => 2,
         'studentType' => StudentType::Transferee,
         'enrollmentType' => EnrollmentType::New,
-        'academicStanding' => null,
+        // C-2 (2026-10-06): a transferee is Irregular from the moment the record exists,
+        // which is what the Admission approval now writes for that type too.
+        'academicStanding' => AcademicStanding::Irregular,
         'evaluatedBy' => 5,
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
@@ -556,9 +558,17 @@ if (! $enrMarco) {
 // makes it official. Rows seeded before that rule carry a `regular` nobody
 // chose, so every enrollment still short of approval is corrected here — which
 // also makes the Registrar screen's derivation panel the honest answer.
+//
+// The exemption is C-2, ruled 2026-10-06: a transferee and a shifter are Irregular
+// because of what their type means — credit carried in from another school or another
+// program — not because a desk read grades and inferred it. Clearing those two would put
+// the demo dataset in contradiction with the rule the desk paths now apply at issue.
 Enrollments::whereNotIn('enrollmentStatus', [
     EnrollmentStatus::Enrolled,
     EnrollmentStatus::Dropped,
+])->whereNotIn('studentType', [
+    StudentType::Transferee->value,
+    StudentType::Shifter->value,
 ])->update(['academicStanding' => null]);
 
 $marco->update(['semestersCompleted' => 1, 'yearsInInstitution' => 1]);
@@ -1106,7 +1116,11 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     // Standing stays UNDECIDED here on purpose: the evaluating department may
     // propose it, but the label only becomes official when the Registrar chooses
     // it at approval, and the screen must show what the grades actually support.
-    $enrollment->update(['academicStanding' => null]);
+    // C-2's two types are the exception — their standing comes from the type, so
+    // clearing it here would erase a fact the record already knows.
+    if (! $enrollment->studentType->arrivesIrregular()) {
+        $enrollment->update(['academicStanding' => null]);
+    }
 
     $seatWorkflow($enrollment, OfficeId::Registrar->value);
 
@@ -1438,6 +1452,34 @@ foreach ($seatedForRegistrar as $seat) {
     ]);
 
     echo "✔ Clearance: {$student->schoolIdNumber} released — all offices cleared, slip received at the Registrar desk\n";
+}
+
+// 10b-1e. C-2: the standing follows the type.
+//
+//      A transferee and a shifter are Irregular — the owner ruled it on 2026-10-06, and the two
+//      desk paths that create such a record now write it at issue. Records this tool seated
+//      before the ruling still read regular or null, which is the same class of contradiction
+//      the year-level pass above removed: the paper an office prints would say one thing while
+//      the type on the same line says another. Only the two types are touched. A continuing
+//      student who failed a subject is irregular for a different reason and stays as the
+//      standing report derives it.
+$standingStamped = 0;
+
+$needsStanding = Enrollments::whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+    ->whereIn('studentType', [StudentType::Transferee->value, StudentType::Shifter->value])
+    ->where(fn ($q) => $q->whereNull('academicStanding')
+        ->orWhere('academicStanding', '!=', AcademicStanding::Irregular->value))
+    ->with('student')
+    ->get();
+
+foreach ($needsStanding as $enrollment) {
+    $enrollment->update(['academicStanding' => AcademicStanding::Irregular]);
+    $standingStamped++;
+    echo "  • {$enrollment->student?->schoolIdNumber} is {$enrollment->studentType->value} — standing set irregular (C-2)\n";
+}
+
+if ($standingStamped === 0) {
+    echo "10b-1e: every transferee and shifter record already reads irregular (C-2)\n";
 }
 
 // 10b-2. Ruling 5: the pass slip is confirmed at Department Evaluation, and the
@@ -2410,6 +2452,13 @@ $queuedFor = [
         ->whereNull('enrollmentId')->whereNull('studentId')->whereNull('blockId')->count(),
     'Evaluation — enrolled at a level/term the curriculum offers nothing for' => (int) $noOfferings->sum('n'),
     // G-2: the level a desk sees on the record must be the level the record supports.
+    // C-2: and the standing a desk sees must agree with the type on the same line.
+    'Evaluation — standing the type contradicts' => Enrollments::query()
+        ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+        ->whereIn('studentType', [StudentType::Transferee->value, StudentType::Shifter->value])
+        ->where(fn ($q) => $q->whereNull('academicStanding')
+            ->orWhere('academicStanding', '!=', AcademicStanding::Irregular->value))
+        ->count(),
     'Evaluation — level the record does not support' => Enrollments::query()
         ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
         ->get(['enrollmentId', 'studentId', 'termId', 'yearLevel'])

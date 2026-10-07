@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Evaluation;
 
+use App\Enums\AcademicStanding;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\ShiftRequestStatus;
@@ -411,6 +412,25 @@ class ShiftRequestFlowTest extends TestCase
         $this->assertNull($request->grantedEnrollmentId);
         $this->assertSame('enrolled', $this->current->fresh()->enrollmentStatus->value);
         $this->assertSame(1, Enrollments::count());
+    }
+
+    #[Test]
+    public function the_enrollment_a_grant_issues_arrives_irregular(): void
+    {
+        // C-2, ruled 2026-10-06: changing program — inside the same department or into another —
+        // makes the student Irregular, because the load carried in was not earned as this
+        // program's regular progression. Before the ruling the new record arrived with no
+        // standing at all and read regular on any paper that printed the field.
+        $request = $this->endorsed();
+
+        $this->actingAs($this->counsellor)
+            ->post(route('shift.decide', $request), ['decision' => 'grant'])
+            ->assertSessionHasNoErrors();
+
+        $received = Enrollments::findOrFail($request->fresh()->grantedEnrollmentId);
+
+        $this->assertEquals(StudentType::Shifter, $received->studentType);
+        $this->assertEquals(AcademicStanding::Irregular, $received->academicStanding);
     }
 
     #[Test]

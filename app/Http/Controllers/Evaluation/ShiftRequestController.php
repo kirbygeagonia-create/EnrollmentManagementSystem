@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Evaluation;
 
+use App\Enums\AcademicStanding;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
@@ -279,6 +280,15 @@ class ShiftRequestController extends Controller
                 'yearLevel' => $yearLevel,
                 'admissionId' => null,
                 'studentType' => StudentType::Shifter,
+                // C-2, ruled 2026-10-06: a program change — into another department or within
+                // the same one — makes the student Irregular, because the load they carry in was
+                // not earned as this program's regular progression. The receiving department
+                // still credits subject by subject, and the standing report keeps deriving from
+                // those grades; what no longer happens is the new record reading regular by
+                // default while half its subjects came from elsewhere.
+                'academicStanding' => StudentType::Shifter->arrivesIrregular()
+                    ? AcademicStanding::Irregular
+                    : null,
                 'enrollmentType' => EnrollmentType::Old,
             ], Auth::user());
 

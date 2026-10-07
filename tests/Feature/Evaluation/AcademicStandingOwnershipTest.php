@@ -300,6 +300,41 @@ class AcademicStandingOwnershipTest extends TestCase
         $this->assertEquals(EnrollmentStatus::Pending, $enrollment->enrollmentStatus);
     }
 
+    #[Test]
+    public function admission_approval_issues_a_transferee_as_irregular_because_the_type_decides_it(): void
+    {
+        // C-2, ruled 2026-10-06: a student arriving from another school carries subjects that
+        // were not earned as this program's regular progression, so the record is irregular from
+        // the moment it exists. The test beside this one pins the other half — a first-year's
+        // standing is still left to the desks, because nothing about arriving for the first time
+        // breaks a continuity.
+        $admission = Admissions::create([
+            'studentId' => $this->student->studentId,
+            'courseId' => $this->course->courseId,
+            'termId' => $this->currentTerm->termId,
+            'applicantType' => ApplicantType::Transferee,
+            'admissionStatus' => AdmissionStatus::Pending,
+        ]);
+
+        $this->actingAs($this->admissionOfficer)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        $enrollment = Enrollments::where('admissionId', $admission->admissionId)->sole();
+
+        $this->assertEquals(AcademicStanding::Irregular, $enrollment->academicStanding);
+        $this->assertEquals(StudentType::Transferee, $enrollment->studentType);
+    }
+
+    #[Test]
+    public function only_the_two_types_that_carry_credit_in_from_elsewhere_arrive_irregular(): void
+    {
+        $this->assertTrue(StudentType::Transferee->arrivesIrregular());
+        $this->assertTrue(StudentType::Shifter->arrivesIrregular());
+        $this->assertFalse(StudentType::FirstYear->arrivesIrregular());
+        $this->assertFalse(StudentType::Continuing->arrivesIrregular());
+    }
+
     // ---------------------------------------------------------------- Derivation
 
     #[Test]

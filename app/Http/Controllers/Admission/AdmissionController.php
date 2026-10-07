@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admission;
 
+use App\Enums\AcademicStanding;
 use App\Enums\AdmissionStatus;
 use App\Enums\ApplicantType;
 use App\Enums\EnrollmentStatus;
 use App\Enums\InstitutionType;
 use App\Enums\LevelCompleted;
+use App\Enums\StudentType;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
 use App\Models\Addresses;
@@ -365,17 +367,21 @@ class AdmissionController extends Controller
                 return $standing;
             }
 
-            // academicStanding is deliberately left out: whether the student is
-            // regular or irregular is an academic judgement the Department
-            // Evaluation desk makes from the grades on file, and the Registrar
-            // confirms it at approval. Stamping "regular" here pre-decided it
-            // on an admission officer's say-so and made every document that
-            // prints the standing report an unverified default.
+            // C-2, ruled 2026-10-06: a transferee arrives Irregular — subjects carried in from
+            // another school are not this program's regular progression, and the owner ruled the
+            // type itself decides rather than leaving it to be noticed later. Every other
+            // applicant type still leaves academicStanding for the desks: whether a first-year is
+            // regular is an academic judgement the Department Evaluation desk makes from the
+            // grades on file and the Registrar confirms at approval (item 16), and stamping a
+            // default here would pre-decide it on an admission officer's say-so.
             return Enrollments::create([
                 'studentId' => $admission->studentId,
                 'courseId' => $admission->courseId,
                 'termId' => $admission->termId,
                 'admissionId' => $admission->admissionId,
+                'academicStanding' => StudentType::from($admission->applicantType->value)->arrivesIrregular()
+                    ? AcademicStanding::Irregular
+                    : null,
                 // G-2: the record decides, not a constant. For an applicant this is year 1
                 // because they have no completed year to point at — which is the same answer
                 // the old hard-code gave — but a student returning after a leave or a
