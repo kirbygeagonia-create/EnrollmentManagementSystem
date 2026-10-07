@@ -129,16 +129,52 @@ class RegistrarPolicy
     }
 
     /**
+     * The print boundary, drawn the same way for all four Registrar papers (C-2's sibling in
+     * this model of authority: the right names the paper, the office names who may issue it).
+     *
+     * Before 2026-10-06 no print gate asked which office the requester ran, so a head of the
+     * Clinic printed a Certificate of Enrollment as readily as the Registrar did — measured on
+     * live `ems`, not inferred from the permission list. The owner ruled the four rights
+     * office-scoped, which is what the other desk acts already do.
+     *
+     * A teacher may still print the two papers a teacher actually hands out — the class card and
+     * the subject load — but only for a program their own academic unit owns, which is the same
+     * unit test the workflow uses for an academic signer. A unit-less account gets no extra
+     * reach from it: the demo's instructor rows carry no unitId, so on that dataset the
+     * Registrar is the only desk printing until someone is assigned.
+     */
+    private function mayPrint(Staffusers $user, Enrollments $enrollment, string $permission, bool $owningUnitToo = false): bool
+    {
+        if (! $user->hasPermissionTo($permission)) {
+            return false;
+        }
+
+        // Every one of the four documents certifies a finished transaction: a pending or
+        // returned record has no published load and no approval to print.
+        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
+            return false;
+        }
+
+        if ($user->officeId === OfficeId::Registrar->value) {
+            return true;
+        }
+
+        if ($user->hasRole('SysAdmin')) {
+            return true;
+        }
+
+        return $owningUnitToo
+            && $user->unitId !== null
+            && $enrollment->course?->unitId !== null
+            && (int) $user->unitId === (int) $enrollment->course->unitId;
+    }
+
+    /**
      * Determine whether the user can print enrollment certificate.
      */
     public function printCertificate(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (! $user->hasPermissionTo('print.certificate')) {
-            return false;
-        }
-
-        // Enrollment must be enrolled
-        return $enrollment->enrollmentStatus === EnrollmentStatus::Enrolled;
+        return $this->mayPrint($user, $enrollment, 'print.certificate');
     }
 
     /**
@@ -146,12 +182,7 @@ class RegistrarPolicy
      */
     public function printClassCards(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (! $user->hasPermissionTo('print.classCard')) {
-            return false;
-        }
-
-        // Enrollment must be enrolled
-        return $enrollment->enrollmentStatus === EnrollmentStatus::Enrolled;
+        return $this->mayPrint($user, $enrollment, 'print.classCard', true);
     }
 
     /**
@@ -159,30 +190,19 @@ class RegistrarPolicy
      */
     public function printSubjectLoad(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (! $user->hasPermissionTo('print.subjectLoad')) {
-            return false;
-        }
-
-        // Enrollment must be enrolled
-        return $enrollment->enrollmentStatus === EnrollmentStatus::Enrolled;
+        return $this->mayPrint($user, $enrollment, 'print.subjectLoad', true);
     }
 
     /**
      * Determine whether the user can print the enrollment form itself.
      *
      * The other three prints describe the enrollment (a certificate about it, a card per
-     * subject, a load list). This is the record as issued, signatures and all, so it is
-     * gated the same way as the certificate — held by exactly the roles that hold
-     * print.certificate — and refuses anything that has not reached `enrolled`, because a
-     * pending record has no load published and no desk has signed it yet.
+     * subject, a load list). This is the record as issued, signatures and all, so it is the most
+     * Registrar-authored paper of the four and is scoped to that desk.
      */
     public function printEnrollmentForm(Staffusers $user, Enrollments $enrollment): bool
     {
-        if (! $user->hasPermissionTo('print.enrollmentForm')) {
-            return false;
-        }
-
-        return $enrollment->enrollmentStatus === EnrollmentStatus::Enrolled;
+        return $this->mayPrint($user, $enrollment, 'print.enrollmentForm');
     }
 
     /**

@@ -700,6 +700,85 @@ class PrintControllerTest extends TestCase
     }
 
     #[Test]
+    public function a_head_of_another_office_no_longer_prints_the_registrar_papers(): void
+    {
+        // Ruled 2026-10-06 (#35). Before it, no print gate asked which office the requester ran:
+        // `print.certificate` sat on OfficeHead, so the head of the Clinic could certify an
+        // enrollment they never processed. Measured live on ems on 2026-10-06 — office11_head got
+        // a 200 on the enrollment-form route — which is what this batch narrowed.
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $clinicHead = $this->createStaffForOffice(11);
+
+        $this->assertTrue($clinicHead->hasPermissionTo('print.certificate'), 'the right is still the head’s');
+        $this->assertFalse($clinicHead->can('registrar.printCertificate', $enrollment), 'the office is not');
+
+        $this->actingAs($clinicHead)
+            ->get(route('registrar.print-certificate', $enrollment))
+            ->assertForbidden();
+
+        $this->actingAs($clinicHead)
+            ->get(route('registrar.download-enrollment-form', $enrollment))
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('documentprintlog', ['documentType' => DocumentType::Certificate]);
+    }
+
+    #[Test]
+    public function a_teacher_prints_the_load_for_a_program_their_own_unit_owns(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $teacher = $this->createTeacherInUnit((int) $enrollment->course?->unitId);
+
+        $this->assertTrue($teacher->hasPermissionTo('print.subjectLoad'));
+        $this->assertNotNull($teacher->unitId, 'the unit link is what carries this one');
+
+        $this->actingAs($teacher)
+            ->get(route('registrar.print-subject-load', $enrollment))
+            ->assertStatus(200);
+    }
+
+    #[Test]
+    public function a_teacher_from_another_unit_does_not_print_a_program_they_do_not_own(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+
+        $otherUnit = Academicunits::create(['unitName' => 'College of Business', 'unitType' => 'college']);
+        $outsider = $this->createTeacherInUnit($otherUnit->unitId);
+
+        $this->actingAs($outsider)
+            ->get(route('registrar.print-subject-load', $enrollment))
+            ->assertForbidden();
+
+        $this->actingAs($outsider)
+            ->get(route('registrar.print-class-cards', $enrollment))
+            ->assertForbidden();
+    }
+
+    /**
+     * An instructor attached to one academic unit — the account the print scope turns on. The
+     * demo seeders give their instructors no unitId, which is why the Registrar remains the only
+     * desk that prints on a fresh install.
+     */
+    private function createTeacherInUnit(int $unitId): Staffusers
+    {
+        $teacher = Staffusers::factory()->create([
+            'officeId' => 7,
+            'unitId' => $unitId,
+            'role' => 'instructor',
+            'employeeNo' => 'EMP-TEACH-'.uniqid(),
+            'username' => 'teach_'.uniqid(),
+            'email' => 'teach_'.uniqid().'@example.com',
+        ]);
+        $teacher->assignRole('Instructor');
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        return $teacher;
+    }
+
+    #[Test]
     public function test_a_download_of_another_students_class_card_is_not_found(): void
     {
         $student = $this->createStudent();
