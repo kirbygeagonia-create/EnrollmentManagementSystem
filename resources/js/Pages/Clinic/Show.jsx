@@ -38,7 +38,7 @@ export default function Show({ enrollment, clinicRecord }) {
     };
 
     const handleOpenRecord = () => {
-        recordForm.reset({
+        recordForm.setData({
             heightCm: '',
             weightKg: '',
             bloodPressure: '',
@@ -52,7 +52,7 @@ export default function Show({ enrollment, clinicRecord }) {
     };
 
     const handleOpenUpdate = () => {
-        recordForm.reset({
+        recordForm.setData({
             heightCm: clinicRecord?.heightCm || '',
             weightKg: clinicRecord?.weightKg || '',
             bloodPressure: clinicRecord?.bloodPressure || '',

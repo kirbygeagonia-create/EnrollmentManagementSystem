@@ -61,7 +61,7 @@ export default function GradeScales({ bands, passingCeiling, hasGradeScale, filt
     };
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             minGrade: '',
             maxGrade: '',
             isPassing: true,
@@ -72,7 +72,7 @@ export default function GradeScales({ bands, passingCeiling, hasGradeScale, filt
     };
 
     const openEditModal = (band) => {
-        form.reset({
+        form.setData({
             minGrade: Number(band.minGrade),
             maxGrade: Number(band.maxGrade),
             isPassing: !!band.isPassing,

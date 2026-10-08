@@ -147,7 +147,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     };
 
     const openEditModal = (user) => {
-        editForm.reset({
+        editForm.setData({
             officeId: user.officeId || '',
             unitId: user.unitId || '',
             employeeNo: user.employeeNo || '',
@@ -191,7 +191,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     };
 
     const openAssignRolesModal = (user) => {
-        assignRolesForm.reset({
+        assignRolesForm.setData({
             roleIds: user.roles?.map(r => r.id) || [],
         });
         setAssigningRolesUser(user);

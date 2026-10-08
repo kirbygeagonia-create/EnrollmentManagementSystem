@@ -65,7 +65,7 @@ export default function Courses({ courses, units, filters = {} }) {
     };
 
     const openEditModal = (course) => {
-        form.reset({
+        form.setData({
             unitId: course.unitId,
             courseName: course.courseName,
             courseCode: course.courseCode,

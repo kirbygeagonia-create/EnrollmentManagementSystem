@@ -137,7 +137,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
     };
 
     const openLostSlipReplacement = (clearance) => {
-        lostSlipForm.reset({
+        lostSlipForm.setData({
             studentId: clearance.studentId,
             clearancePeriodId: clearance.clearancePeriodId,
             orNumber: '',

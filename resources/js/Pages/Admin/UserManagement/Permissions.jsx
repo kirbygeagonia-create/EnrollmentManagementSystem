@@ -42,7 +42,7 @@ export default function Permissions({ permissions }) {
     };
 
     const openEditModal = (permission) => {
-        editForm.reset({
+        editForm.setData({
             name: permission.name || '',
             module: permission.module || '',
         });

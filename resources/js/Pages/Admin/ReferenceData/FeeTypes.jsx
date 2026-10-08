@@ -50,7 +50,7 @@ export default function FeeTypes({ feeTypes, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             feeName: '',
             defaultAmount: 0,
             unitBasis: 'perUnit',
@@ -60,7 +60,7 @@ export default function FeeTypes({ feeTypes, filters = {} }) {
     };
 
     const openEditModal = (feeType) => {
-        form.reset({
+        form.setData({
             feeName: feeType.feeName,
             defaultAmount: feeType.defaultAmount,
             unitBasis: feeType.unitBasis,

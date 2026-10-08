@@ -50,7 +50,7 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
     };
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             scholarshipName: '',
             coverageType: 'full',
             coveragePercent: 100,
@@ -60,7 +60,7 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
     };
 
     const openEditModal = (type) => {
-        form.reset({
+        form.setData({
             scholarshipName: type.scholarshipName,
             coverageType: type.coverageType,
             coveragePercent: type.coveragePercent,

@@ -61,7 +61,7 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             academicYearId: '',
             semester: '1st',
             startDate: '',
@@ -72,7 +72,7 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
     };
 
     const openEditModal = (term) => {
-        form.reset({
+        form.setData({
             academicYearId: term.academicYearId,
             semester: term.semester,
             startDate: term.startDate ? term.startDate.split('T')[0] : '',

@@ -30,7 +30,7 @@ export default function Settings({ settings }) {
     ], []);
 
     const openEditModal = (setting) => {
-        editForm.reset({
+        editForm.setData({
             settingValue: setting.settingValue !== null && setting.settingValue !== undefined ? String(setting.settingValue) : '',
         });
         setEditingSetting(setting);

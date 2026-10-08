@@ -37,13 +37,13 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({ courseId: '', termId: '', yearLevel: 1, blockName: '', maxStudents: 50 });
+        form.setData({ courseId: '', termId: '', yearLevel: 1, blockName: '', maxStudents: 50 });
         setEditingBlock(null);
         setShowModal(true);
     };
 
     const openEditModal = (block) => {
-        form.reset({
+        form.setData({
             courseId: block.courseId,
             termId: block.termId,
             yearLevel: block.yearLevel,

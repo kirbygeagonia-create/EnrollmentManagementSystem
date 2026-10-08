@@ -33,13 +33,13 @@ export default function ClearanceRequirements({ requirements, offices, filters =
     };
 
     const openCreateModal = () => {
-        form.reset({ officeId: '', requirementName: '' });
+        form.setData({ officeId: '', requirementName: '' });
         setEditingRequirement(null);
         setShowModal(true);
     };
 
     const openEditModal = (req) => {
-        form.reset({
+        form.setData({
             officeId: req.officeId,
             requirementName: req.requirementName || '',
         });

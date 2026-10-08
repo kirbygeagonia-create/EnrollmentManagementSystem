@@ -80,7 +80,7 @@ export default function Roles({ roles, permissions }) {
     };
 
     const openEditModal = (role) => {
-        editForm.reset({
+        editForm.setData({
             name: role.name || '',
             description: role.description || '',
             permissionIds: role.permissions?.map(p => p.id) || [],

@@ -80,14 +80,21 @@ class ReferenceDataCrudTest extends TestCase
             'courseCode' => 'BSIS',
             'requiresEntranceExam' => true,
             'requiresRetentionExam' => true,
+            // C-5 and C-4 arrived later than this test, and each is a checkbox on the same
+            // screen: a department cannot make its own paper required, or waive the general one
+            // for transferees, unless the flag survives the round trip through the route.
+            'requiresCourseSpecificExam' => true,
+            'entranceExamExemptsTransferee' => true,
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $flagged = DB::table('courses')->where('courseId', $course->courseId)->first();
 
         $this->assertEquals(1, $flagged->requiresEntranceExam);
         $this->assertEquals(1, $flagged->requiresRetentionExam);
+        $this->assertEquals(1, $flagged->requiresCourseSpecificExam);
+        $this->assertEquals(1, $flagged->entranceExamExemptsTransferee);
 
-        // Unticking both must land the same as sending neither.
+        // Unticking all four must land the same as sending none.
         $this->actingAs($admin)->patch(route('admin.reference-data.courses.update', $course->courseId), [
             'unitId' => 1,
             'courseName' => 'Bachelor of Science in Information Systems',
@@ -98,6 +105,8 @@ class ReferenceDataCrudTest extends TestCase
 
         $this->assertEquals(0, $cleared->requiresEntranceExam);
         $this->assertEquals(0, $cleared->requiresRetentionExam);
+        $this->assertEquals(0, $cleared->requiresCourseSpecificExam);
+        $this->assertEquals(0, $cleared->entranceExamExemptsTransferee);
     }
 
     #[Test]

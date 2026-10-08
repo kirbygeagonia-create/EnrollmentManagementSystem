@@ -33,13 +33,13 @@ export default function Rooms({ rooms, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({ roomName: '', capacity: 1, building: '' });
+        form.setData({ roomName: '', capacity: 1, building: '' });
         setEditingRoom(null);
         setShowModal(true);
     };
 
     const openEditModal = (room) => {
-        form.reset({ roomName: room.roomName, capacity: room.capacity, building: room.building || '' });
+        form.setData({ roomName: room.roomName, capacity: room.capacity, building: room.building || '' });
         setEditingRoom(room);
         setShowModal(true);
     };

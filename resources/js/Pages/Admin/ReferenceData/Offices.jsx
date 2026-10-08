@@ -52,13 +52,13 @@ export default function Offices({ offices, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({ officeName: '' });
+        form.setData({ officeName: '' });
         setEditingOffice(null);
         setShowModal(true);
     };
 
     const openEditModal = (office) => {
-        form.reset({ officeName: office.officeName });
+        form.setData({ officeName: office.officeName });
         setEditingOffice(office);
         setShowModal(true);
     };

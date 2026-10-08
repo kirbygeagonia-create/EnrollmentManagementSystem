@@ -54,7 +54,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
     ], []);
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             subjectId: '',
             prerequisiteSubjectId: '',
             yearLevel: 1,
@@ -69,7 +69,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
     };
 
     const openEditModal = (cs) => {
-        form.reset({
+        form.setData({
             subjectId: cs.subjectId,
             prerequisiteSubjectId: cs.prerequisiteSubjectId || '',
             yearLevel: cs.yearLevel,

@@ -41,7 +41,7 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
     };
 
     const openEditModal = (curriculum) => {
-        form.reset({
+        form.setData({
             courseId: curriculum.courseId,
             majorId: curriculum.majorId || '',
             effectiveYear: curriculum.effectiveYear ? curriculum.effectiveYear.split('T')[0] : '',

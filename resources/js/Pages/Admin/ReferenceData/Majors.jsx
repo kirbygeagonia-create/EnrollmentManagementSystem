@@ -40,7 +40,7 @@ export default function Majors({ majors, courses, filters = {} }) {
     };
 
     const openEditModal = (major) => {
-        form.reset({
+        form.setData({
             courseId: major.courseId,
             majorName: major.majorName,
         });

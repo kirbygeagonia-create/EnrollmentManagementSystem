@@ -68,13 +68,13 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
     };
 
     const openCreateModal = () => {
-        form.reset({ requirementName: '', appliesTo: 'firstYear', isRequired: true });
+        form.setData({ requirementName: '', appliesTo: 'firstYear', isRequired: true });
         setEditingRequirement(null);
         setShowModal(true);
     };
 
     const openEditModal = (req) => {
-        form.reset({
+        form.setData({
             requirementName: req.requirementName,
             appliesTo: req.appliesTo,
             isRequired: req.isRequired,

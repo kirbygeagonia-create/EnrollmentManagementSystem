@@ -61,7 +61,7 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
     };
 
     const openCreateModal = () => {
-        form.reset({
+        form.setData({
             subjectCode: '',
             subjectName: '',
             subjectDesc: '',
@@ -74,7 +74,7 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
     };
 
     const openEditModal = (subject) => {
-        form.reset({
+        form.setData({
             subjectCode: subject.subjectCode,
             subjectName: subject.subjectName,
             subjectDesc: subject.subjectDesc || '',
