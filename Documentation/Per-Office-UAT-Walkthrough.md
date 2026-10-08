@@ -164,7 +164,7 @@ Path: **Desks & Apps → Admission** (`/admission`).
 | 5R.1 | Try to record a **general entrance** result from this account | Not offered and refused — exam recording belongs to Guidance and the department | | ☐ |
 | 5R.2 | After a course-specific exam **pass** is recorded for an applicant, look at the admission | Still `pending`. An examination result must never decide the application (that was finding G-8) | | ☐ |
 | 5R.3 | Attach a `.txt` file to a requirement | Rejected with the allowed-type message | | ☐ |
-| 5R.4 | With Pedro's three documents now verified and **no** examination result on record, press **Approve** | Refused **twice more, each by name**: *"No General Entrance Exam result on record for this applicant."* and *"No Course-Specific Entrance Exam result on record for this applicant, and BSCrim requires one."* Both come from the **program's** flags, never from this desk (C-5, ruled 2026-10-07). Before that ruling the second blocker could never fire on the install — no program carried the flag, so a departmental test could be demanded on paper and skipped in practice | | ☐ |
+| 5R.4 | With Pedro's three documents now verified and **no** examination result on record, press **Approve** | Refused **twice more, each by name**: *"No General Entrance Exam result on record for this applicant to BSCrim for this term."* and *"No Course-Specific Entrance Exam result on record for this applicant, and BSCrim requires one."* Both come from the **program's** flags, never from this desk (C-5, ruled 2026-10-07). Before that ruling the second blocker could never fire on the install — no program carried the flag, so a departmental test could be demanded on paper and skipped in practice. Each blocker is read against **this admission's own program and term**: a pass Pedro earned under a different program does not answer here (ruled 2026-10-08, and see §18 item 7) | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -506,13 +506,13 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    cleared, and a notice was proved to reach `notifications` inside the request. Production keeps the
    Supervisor worker DEPLOYMENT.md describes — sync is the answer for the demo machine, not for the
    school's server._
-7. **An examination result is matched per student, not per program and term.** The admission
-   blockers read the applicant's _own_ exam rows through `Admissions::examResults()`, which joins on
-   `studentId` alone, while `examresults` stores a `courseId` and `termId` like every other exam
-   table. So a general pass recorded under one program also answers for that student's application
-   to another. Reporting an applicant as approvable on a result from a different program is finding
-   **C-5 follow-up**, not a broken blocker: narrowing it to the admission's own course and term is
-   the owner's call, because applicants who re-sat after a failed screening would then need a fresh
-   result.
+7. **An examination result answers for the program and term printed on it — closed 2026-10-08, and it
+   used to be a limit.** `Admissions::examResults()` joins on `studentId` alone, so the approval
+   blockers once read a general or departmental pass earned against *another* program as clearing the
+   application in front of them. `ApprovalReadinessTest` now pins the scoped reading, and the blockers
+   name the program: *"…on record for this applicant to BSCrim for this term."* To see the difference,
+   record a general pass for a student under one program and open their application to another — the
+   second one still refuses. **Worth measuring before you rely on it:** on the demo install no student
+   holds a result for more than one course, so no applicant's outcome changed when the rule tightened.
 
 _(Print scope is no longer a known limit: ruled and built 2026-10-06, and tested at §12R.8.)_
