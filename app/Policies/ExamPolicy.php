@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Models\Courses;
@@ -48,17 +47,5 @@ class ExamPolicy
         }
 
         return $user->hasPermissionTo('exam.record.retention');
-    }
-
-    /**
-     * Determine whether the user can verify general exam before course-specific.
-     * BR9: Course-specific exam verifies Guidance result first
-     */
-    public function verifyGeneralExam(Staffusers $user, Examresults $exam): bool
-    {
-        return $user->hasPermissionTo('exam.verify.general')
-            && $exam->examStage === ExamStage::Entrance
-            && $exam->examType === ExamType::General
-            && $exam->examResult === ExamResult::Pass;
     }
 }

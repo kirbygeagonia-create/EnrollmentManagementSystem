@@ -100,13 +100,15 @@ class RbacSeeder extends Seeder
                 'shift.grant',
             ],
 
-            // Exam module (5)
+            // Exam module (4). exam.verify.general was retired 2026-10-08: the only
+            // reader was ExamPolicy::verifyGeneralExam, which nothing ever called, so
+            // the right granted a check no route performed — the Stage 1 prerequisite
+            // is enforced once, in ExamController::recordCourseSpecific.
             'exam' => [
                 'exam.view',
                 'exam.record.general',
                 'exam.record.courseSpecific',
                 'exam.record.retention',
-                'exam.verify.general',
             ],
 
             // ID module (4) — validation-only flow (card-making removed)
@@ -266,7 +268,7 @@ class RbacSeeder extends Seeder
             ['description' => 'Guidance counselor — School Entrance Examination scoring (Stage 1, BR9): all results, passer transfer']
         );
         $guidanceStaff->syncPermissions([
-            'exam.view', 'exam.record.general', 'exam.verify.general',
+            'exam.view', 'exam.record.general',
             // Ruling 11: the Guidance Councillor's signature is the final call on a shift.
             'shift.grant',
             'dashboard.view', 'user.view', 'students.view',

@@ -498,7 +498,7 @@ class PermissionMatrixTest extends TestCase
             'refdata.courses.manage', 'refdata.majors.manage',
             'user.create', 'user.roles.assign', 'user.roles.manage',
             'block.capacity.check', 'clearance.slip.replace',
-            'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention', 'exam.verify.general',
+            'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention',
             'enrollment.approve', 'admission.approve', 'evaluation.sign', 'clinic.sign', 'id.sign',
         ];
         foreach ($notOfficeHead as $perm) {
@@ -586,7 +586,17 @@ class PermissionMatrixTest extends TestCase
         // The School Entrance Examination belongs to Guidance alone.
         $this->assertFalse($deptEvaluator->hasPermissionTo('exam.record.general'),
             'DeptEvaluator must NOT hold exam.record.general — the School Entrance Examination is Guidance-only');
-        $this->assertFalse($deptEvaluator->hasPermissionTo('exam.verify.general'),
-            'DeptEvaluator must NOT hold exam.verify.general — School Entrance verification is Guidance-only');
+
+        // exam.verify.general was retired 2026-10-08. Its only reader was
+        // ExamPolicy::verifyGeneralExam, which no route ever called, so the right
+        // granted a check nothing performed — and a permission no code asks for is
+        // a number on a Roles screen that a panel can be told means nothing. This
+        // asserts both halves: the seeder no longer declares it, and the prune path
+        // really removes the row from a reseeded install.
+        $this->assertNull(Permission::where('name', 'exam.verify.general')->first(),
+            'exam.verify.general must not exist after RbacSeeder: declared nowhere, read by nothing');
+        $this->assertSame(4, Permission::whereIn('name', [
+            'exam.view', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention',
+        ])->count(), 'the Exam module ships exactly four permissions');
     }
 }
