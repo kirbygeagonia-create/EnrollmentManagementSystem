@@ -111,7 +111,7 @@ term chip and `activeTerms` resolve.
 |---|---|---|---|---|
 | Juan Dela Cruz | DEMO-2026-001 | 53 | `enrolled`, clinic + ID validated | the completed first-year path |
 | Maria Reyes | DEMO-2026-002 | 596 `pending` + 595 `enrolled` (term 10) | clearance slip 27 approved and receipted, pass slip **confirmed** | the approvable returning record |
-| Pedro Santos | DEMO-2026-003 | — | admission 41 `pending`, 1 requirement submitted / 2 pending | the Admission desk's blocked approval |
+| Pedro Santos | DEMO-2026-003 | — | admission 41 `pending` for **BSCrim**, 1 requirement submitted / 2 pending | the Admission desk's blocked approval — first the documents (5.2), then both examinations (5R.4) |
 | Liza Bautista | DEMO-2026-004 | 262 `enrolled` **irregular**, 55 (term 10) + 654 (term 2) `enrolled` | one failed subject on the prior load | standing derived from grades, not typed |
 | Ana Gonzales | DEMO-2026-005 | — | admission 45 `approved` | approved application, enrollment issued |
 | Carlo Mendoza | DEMO-2026-006 | — | admission 44 `rejected`, transferee | the rejection path |
@@ -150,11 +150,12 @@ Path: **Desks & Apps → Admission** (`/admission`).
 |---|---|---|---|---|
 | 5.1 | Open the queue | Show admission 41 (Pedro Santos) as `pending` with 3 requirement lines and their submission states | | ☐ |
 | 5.2 | Open Pedro's record and try **Approve** | **Refuse**, naming the requirement that is not yet verified — not a generic "cannot approve" | | ☐ |
-| 5.3 | Upload a PDF to each pending requirement line (Submit), then **Verify** each one | Only a `pdf/jpg/jpeg/png/doc/docx` file is accepted; after the last verification the approval blocker clears | | ☐ |
-| 5.4 | Approve | `admissionStatus = approved`, **one** enrollment created for student+term, `evaluatedBy` = you, and the record appears in Department Evaluation's queue | | ☐ |
+| 5.3 | Upload a PDF to each pending requirement line (Submit), then **Verify** each one | Only a `pdf/jpg/jpeg/png/doc/docx` file is accepted; after the last verification the *document* blocker clears — but Pedro's program is BSCrim, a board program, so the two examination blockers remain and 5R.4 shows them | | ☐ |
+| 5.4 | Approve, having recorded the results the desk does not own: the **general** pass in §6 (Guidance) and the **course-specific** pass in §7 (the department) | `admissionStatus = approved`, **one** enrollment created for student+term, `evaluatedBy` = you, and the record appears in Department Evaluation's queue | | ☐ |
 | 5.5 | Open the created enrollment | `yearLevel` is the derived level (1 for a student with no history), `curriculumId` is pinned, and `academicStanding` is **empty** — the department decides standing, not this desk (ruling of the audit: approval must not pre-decide it) | | ☐ |
 | 5.6 | Approve the same admission again | No second enrollment: the response names the enrollment already holding the seat (ruling 3) | | ☐ |
 | 5.7 | Reject Carlo Mendoza's application if it is not already rejected | `rejected`, no enrollment created | | ☐ |
+| 5.8 | File a **transferee** application (**Admission → New Application**) for a program that carries the course-specific flag, then ask the Reference Data holder (§16.8) to tick *Exempt transferees from the General Entrance Exam* on that program and re-read the blockers | Before the tick: both examination blockers. After it: the **General** blocker is gone and the **Course-Specific** one remains. C-4, ruled 2026-10-07 — a transferee arriving with credit may be waived the school-wide screening, never the department's own test. The flag is per-program and **default off**, so no application approvable before this change becomes approvable now | | ☐ |
 
 **Refusal checks**
 
@@ -163,6 +164,7 @@ Path: **Desks & Apps → Admission** (`/admission`).
 | 5R.1 | Try to record a **general entrance** result from this account | Not offered and refused — exam recording belongs to Guidance and the department | | ☐ |
 | 5R.2 | After a course-specific exam **pass** is recorded for an applicant, look at the admission | Still `pending`. An examination result must never decide the application (that was finding G-8) | | ☐ |
 | 5R.3 | Attach a `.txt` file to a requirement | Rejected with the allowed-type message | | ☐ |
+| 5R.4 | With Pedro's three documents now verified and **no** examination result on record, press **Approve** | Refused **twice more, each by name**: *"No General Entrance Exam result on record for this applicant."* and *"No Course-Specific Entrance Exam result on record for this applicant, and BSCrim requires one."* Both come from the **program's** flags, never from this desk (C-5, ruled 2026-10-07). Before that ruling the second blocker could never fire on the install — no program carried the flag, so a departmental test could be demanded on paper and skipped in practice | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -176,7 +178,7 @@ Path: **Exams** (`/exam`), results list `/exam/results`.
 |---|---|---|---|---|
 | 6.1 | Filter the student list for an examining program and the demo term (`/exam/students?courseId=…&termId=11&stage=entrance`) | Candidates are the applicants for that course/term; the list is not empty on a term the curriculum covers | | ☐ |
 | 6.2 | Record a **School Entrance Examination** pass for a pending first-year applicant | `examStage = entrance`, `examType = general`, result stored against the applicant's own term | | ☐ |
-| 6.3 | Record a **fail** on another candidate | Every admissions row for that student/course/term becomes `rejected`, and stage 4 is thereafter unreachable | | ☐ |
+| 6.3 | Record a **fail** on another candidate | One `examresults` row is written and **nothing else** — the application stays `pending`, because a result must never decide an admission (finding G-8, closed 2026-10-01). The Admission desk then refuses that applicant naming *"The General Entrance Exam result on file is fail, not pass."*, and the department cannot score them: the stage-4 prerequisite refuses a non-pass general row. Do **not** expect the row to flip to `rejected` — an earlier draft of this script said it does, and the code stopped doing that | | ☐ |
 | 6.4 | Open the pass/fail list | Both readings appear, with the stage named | | ☐ |
 
 **Refusal checks**
@@ -213,6 +215,8 @@ This is the busiest section. Take the records in this order.
 | 7.13 | Issue a returning student's enrollment: **Evaluation → Issue**, pick a student with an earlier record, note the prefilled numbers | The form opens on the level **the record implies** (completed years, computed by the server) and on the student's last program; `yearLevel` is editable. Issuing builds the workflow form — **6 boxes** for continuing and shifter types | | ☐ |
 | 7.14 | Issue again for the same student and the same term | **Refused**, naming the enrollment that already holds the seat (ruling 3) | | ☐ |
 | 7.15 | Try to issue with a **different program** from the student's last enrollment | **Refused**, and the refusal points at the shift flow — a program change may not pass as an ordinary continuation | | ☐ |
+| 7.16 | Record a **course-specific entrance** pass for Pedro (**Exams → Record Course-Specific Exam**, as `office7_head`) — the second blocker §5R.4 names | The candidate list is the School Entrance **passers** transferred by Guidance (BR9): BSCrim runs the general paper, so an applicant with no general result is not offered. The row stores `examType = courseSpecific` against the applicant's own term, the Admission desk's second blocker clears, and the application itself is untouched — a result never decides an admission (5R.2) | | ☐ |
+| 7.17 | Switch the same screen to a program that runs **no** general paper — BSA, BSCE or BSEE — with no passers on file | The roster is **that program's own unenrolled applicants**, not an empty passer list. Record a departmental pass and the Admission desk's blocker clears on that result alone. These three carry `requiresCourseSpecificExam` with `requiresEntranceExam` off, so there is no Stage 1 to transfer and none is demanded; before 2026-10-07 the screen offered nothing here, which made every applicant to a board-only program permanently unapprovable | | ☐ |
 
 **Refusal checks**
 
@@ -453,6 +457,7 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
 | 16.5 | Create a staff account through **User Management**, deliberately **with no desk role**, and confirm there is no public self-registration | `POST /register` does not exist — staff accounts come from this screen or from the first-deploy console command. Keep the new account: §17.3 tests it | | ☐ |
 | 16.6 | Confirm the office list | **Nine offices.** There is no office 8 and no `clearancerequirements` line without a name | | ☐ |
 | 16.7 | Check the audit trail on any record you touched in this section | The audit log shows the entity, the change and who made it — including a clearance-period extension (who and when, from the widened `auditlogs.entityId`) | | ☐ |
+| 16.8 | Open **Reference Data → Courses** and read the four examination columns on every program | Each program shows Required / Not Required for the **General Entrance**, **Course-Specific** and **Retention** examinations, and the **transferee waiver** reads *Exempt* or *Must sit*. Five programs carry the course-specific flag — BSCrim, BSCE, BSEE, BSA, BSSW (C-5, ruled 2026-10-07: the board programs; **PROVISIONAL**, the owning department replaces the set from this same screen). The waiver is off on all sixteen. Tick it on one program and confirm the flag persists on reopen — that tick is what §5.8 then tests from the Admission side | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______
 
@@ -493,8 +498,7 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    for new prints is the sequencing rule, not the schema.
 5. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
    script against the migrated data before accepting the system for production.
-6. **Notifications depend on a worker nobody has confirmed is installed.** The two listeners that
-   write them (`SendEnrollmentNotification`, `SendWorkflowNotification`) are queued, the queue
+6. **Notifications depend on a worker nobody has confirmed is installed.** The two listeners that   write them (`SendEnrollmentNotification`, `SendWorkflowNotification`) are queued, the queue
    connection is `database`, and live `ems` held **56 undelivered jobs** on 2026-10-06 with only two
    notification rows — both stamped by the seeder. Until §28's **C-10** is answered, read every
    notice check in this script as a check on the queue, not on the desk that acted.
@@ -502,5 +506,13 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    cleared, and a notice was proved to reach `notifications` inside the request. Production keeps the
    Supervisor worker DEPLOYMENT.md describes — sync is the answer for the demo machine, not for the
    school's server._
+7. **An examination result is matched per student, not per program and term.** The admission
+   blockers read the applicant's _own_ exam rows through `Admissions::examResults()`, which joins on
+   `studentId` alone, while `examresults` stores a `courseId` and `termId` like every other exam
+   table. So a general pass recorded under one program also answers for that student's application
+   to another. Reporting an applicant as approvable on a result from a different program is finding
+   **C-5 follow-up**, not a broken blocker: narrowing it to the admission's own course and term is
+   the owner's call, because applicants who re-sat after a failed screening would then need a fresh
+   result.
 
 _(Print scope is no longer a known limit: ruled and built 2026-10-06, and tested at §12R.8.)_
