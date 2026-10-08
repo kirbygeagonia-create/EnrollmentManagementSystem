@@ -276,6 +276,20 @@ class RetentionGateTest extends TestCase
             ->assertSessionHasErrors('retention');
 
         $this->assertNull($enrollment->fresh()->formSignedDate);
+
+        // And the screen says the same thing the route does. The panel used to read
+        // the student's most recent retention row for the program without asking
+        // which term it belonged to, so an earlier term's pass printed a green badge
+        // beside the refusal that nothing is recorded for this term — one screen, two
+        // answers, and the officer trusting the green one.
+        $this->actingAs($this->evaluator)
+            ->get(route('evaluation.show', $enrollment))
+            ->assertInertia(fn ($page) => $page
+                ->where('retentionExam', null)
+                ->where('signBlockers.retention',
+                    'No retention examination recorded for this term — a returning student in a program '
+                    .'that examines retention must pass it before the form is forwarded.')
+            );
     }
 
     #[Test]

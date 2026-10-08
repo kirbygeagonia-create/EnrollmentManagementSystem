@@ -145,13 +145,13 @@ class EvaluationController extends Controller
             ->pluck('subjectId')
             ->values();
 
-        // Item 4: the retention exam result is recorded and viewed here, in the
-        // Academic Evaluation area, by the owning academic department (BR10).
+        // Item 4 (BR10): read against this enrollment's own term, as signBlockers() reads it —
+        // an earlier term's pass proves fitness to have continued THEN, not to continue now.
         $retentionResult = Examresults::where('studentId', $enrollment->studentId)
             ->where('courseId', $enrollment->courseId)
+            ->where('termId', $enrollment->termId)
             ->where('examStage', ExamStage::Retention->value)
-            ->orderByDesc('examId')
-            ->first();
+            ->orderByDesc('examId')->first();
 
         return Inertia::render('Evaluation/Show', [
             'enrollment' => $enrollment,
