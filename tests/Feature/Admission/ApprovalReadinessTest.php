@@ -224,7 +224,7 @@ class ApprovalReadinessTest extends TestCase
             ->get(route('admission.show', $admission))
             ->assertInertia(fn ($page) => $page->has('approvalBlockers', 1))
             ->assertInertia(fn ($page) => $page
-                ->where('approvalBlockers.0', 'No General Entrance Exam result on record for this applicant.')
+                ->where('approvalBlockers.0', 'No General Entrance Exam result on record for this applicant to '.$this->boardCourseCode().' for this term.')
             );
     }
 
@@ -534,7 +534,7 @@ class ApprovalReadinessTest extends TestCase
         $this->actingAs($desk)
             ->get(route('admission.show', $admission))
             ->assertInertia(fn ($page) => $page
-                ->where('approvalBlockers.0', 'No General Entrance Exam result on record for this applicant.')
+                ->where('approvalBlockers.0', 'No General Entrance Exam result on record for this applicant to '.$this->boardCourseCode().' for this term.')
             );
     }
 
@@ -584,6 +584,58 @@ class ApprovalReadinessTest extends TestCase
                 ->where('approvalBlockers.0', 'No Course-Specific Entrance Exam result on record for this applicant, and '
                     .$this->boardCourseCode().' requires one.')
             );
+    }
+
+    #[Test]
+    public function an_examination_pass_answers_only_for_the_program_it_was_taken_under(): void
+    {
+        // Ruled 2026-10-08. examresults stores a courseId and a termId, but the
+        // blockers joined on studentId alone, so a general pass earned against one
+        // program cleared an application to another. The desk that approved on it
+        // had never seen the paper it was relying on.
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $other = Courses::create([
+            'unitId' => Academicunits::value('unitId'),
+            'courseCode' => 'BSAB',
+            'courseName' => 'Bachelor of Science in Abstract Business',
+            'requiresEntranceExam' => true,
+            'requiresCourseSpecificExam' => false,
+            'requiresRetentionExam' => false,
+        ]);
+
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+
+        Examresults::create([
+            'studentId' => $student->studentId,
+            'courseId' => $other->courseId,
+            'termId' => $this->termId,
+            'examStage' => ExamStage::Entrance,
+            'examType' => ExamType::General,
+            'examResult' => ExamResult::Pass,
+            'examDate' => now(),
+        ]);
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page
+                ->where('approvalBlockers.0',
+                    'No General Entrance Exam result on record for this applicant to '.$this->boardCourseCode().' for this term.')
+            );
+
+        // The same student and the same paper, this program's own row: now it answers.
+        $this->generalExam($student, 'pass');
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('approved', $admission->fresh()->admissionStatus->value);
     }
 
     private function boardCourseCode(): string

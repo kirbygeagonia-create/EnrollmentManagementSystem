@@ -110,12 +110,15 @@ class AdmissionPolicy
 
         if ($admission->course->requiresEntranceExam && ! $exemptFromGeneralExam) {
             $generalExam = $admission->examresults()
+                ->where('courseId', $admission->courseId)
+                ->where('termId', $admission->termId)
                 ->where('examStage', 'entrance')
                 ->where('examType', ExamType::General->value)
                 ->first();
 
             if (! $generalExam) {
-                $blockers[] = 'No General Entrance Exam result on record for this applicant.';
+                $blockers[] = 'No General Entrance Exam result on record for this applicant to '
+                    .$admission->course->courseCode.' for this term.';
             } elseif ($generalExam->examResult->value !== 'pass') {
                 $blockers[] = 'The General Entrance Exam result on file is '
                     .$generalExam->examResult->value.', not pass.';
@@ -124,7 +127,13 @@ class AdmissionPolicy
 
         // A recorded departmental result always decides the outcome; a missing one
         // only does so where the program actually requires the examination.
+        // Scoped to this admission's own program and term (ruled 2026-10-08): an
+        // examresults row carries a courseId and a termId, and the examination that
+        // answers for a student is the one their application sits under — a pass
+        // earned against another program's paper says nothing about this one.
         $courseExam = $admission->examresults()
+            ->where('courseId', $admission->courseId)
+            ->where('termId', $admission->termId)
             ->where('examStage', 'entrance')
             ->where('examType', ExamType::CourseSpecific->value)
             ->first();
