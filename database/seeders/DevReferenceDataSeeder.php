@@ -238,6 +238,20 @@ class DevReferenceDataSeeder extends Seeder
             );
         }
 
+        // ---------- C-5, ruled 2026-10-07: the departmental examination belongs to the
+        // board programs. The owner named them — Civil Engineering, Electrical Engineering,
+        // Criminology, Agriculture and Social Work are the degrees whose graduates sit a
+        // licensure examination, and it is that test the program administers on its own
+        // terms after the general paper. PROVISIONAL: the owning department replaces this
+        // set in Reference Data → Courses, one checkbox at a time; the flag is data, and
+        // the admission gate that reads it is in app/Policies/AdmissionPolicy.php.
+        // Without it no program carried the flag, so a rule that was built and tested
+        // could not be demonstrated on the install at all.
+        foreach (['BSCrim', 'BSCE', 'BSEE', 'BSA', 'BSSW'] as $boardCourseCode) {
+            Courses::where('courseCode', $boardCourseCode)
+                ->update(['requiresCourseSpecificExam' => true]);
+        }
+
         // ---------- Majors (documented specializations of the degree programs).
         // The Evaluation flow filters the curriculum by the enrollment's majorId
         // when set, so these are real flow data — not display-only. ----------

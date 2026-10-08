@@ -97,7 +97,18 @@ class AdmissionPolicy
         // the general result while waving through one who never sat the board
         // test at all, because an absent course-specific result was treated as
         // "not administered" rather than as a missing requirement.
-        if ($admission->course->requiresEntranceExam) {
+        // Ruling C-4 (2026-10-07): a program may waive the general paper for an
+        // applicant arriving with credit from another institution. The waiver is the
+        // program's own setting — a transferee admitted under it still sits the
+        // departmental examination below, which is the screen that tests the program's
+        // fit — and with the flag off, which is how every program is seeded, an
+        // applicant to an examining program is treated exactly as before.
+        // Courses::waivesGeneralEntranceExam is the single answer, because the Exam
+        // desk reads the same rule when it decides whom the department may score.
+        $exemptFromGeneralExam = $admission->course
+            ->waivesGeneralEntranceExam($admission->applicantType);
+
+        if ($admission->course->requiresEntranceExam && ! $exemptFromGeneralExam) {
             $generalExam = $admission->examresults()
                 ->where('examStage', 'entrance')
                 ->where('examType', ExamType::General->value)

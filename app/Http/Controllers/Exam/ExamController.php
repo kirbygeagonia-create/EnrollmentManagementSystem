@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Exam;
 
 use App\Enums\AdmissionStatus;
+use App\Enums\ApplicantType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
+use App\Models\Admissions;
 use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Students;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -148,7 +151,9 @@ class ExamController extends Controller
             'termId' => 'required|exists:academicterms,termId',
         ]);
 
-        if ($type === ExamType::CourseSpecific) {
+        $course = Courses::find($request->courseId);
+
+        if ($type === ExamType::CourseSpecific && $course?->requiresEntranceExam) {
             // Item 4 — the passer transfer (BR9): these are the School Entrance
             // Examination passers. Students are not applicants at this stage —
             // only names and results are shown.
@@ -160,27 +165,84 @@ class ExamController extends Controller
                 ->where('examResult', ExamResult::Pass->value)
                 ->get();
 
-            $students = $passers->map(fn ($result) => [
+            $rows = $passers->map(fn ($result) => [
                 'studentId' => $result->student->studentId,
                 'schoolIdNumber' => $result->student->schoolIdNumber,
                 'lastName' => $result->student->lastName,
                 'firstName' => $result->student->firstName,
                 'middleName' => $result->student->middleName,
                 'examResult' => $result->examResult->value,
-            ])->values();
+                'generalExamWaived' => false,
+            ])->all();
+
+            // C-4 (ruled 2026-10-07): a program may waive the school-wide General
+            // Entrance Examination for the transferees it takes on credit. Those
+            // applicants have no passer row to transfer, so without this second
+            // query the waiver would be a trap: the department could never reach
+            // them on its own roster, could never record its own result, and the
+            // admission would stay blocked forever — the waiver would make such an
+            // applicant unapprovable rather than exempt.
+            if ($course->entranceExamExemptsTransferee) {
+                $listed = array_column($rows, 'studentId');
+
+                $waived = Students::whereHas('admissions', fn ($q) => $q
+                    ->where('courseId', $request->courseId)
+                    ->where('termId', $request->termId)
+                    ->where('applicantType', ApplicantType::Transferee->value)
+                    ->whereIn('admissionStatus', [
+                        AdmissionStatus::Pending->value,
+                        AdmissionStatus::Approved->value,
+                    ])
+                )->whereDoesntHave('examResults', fn ($q) => $q
+                    ->where('courseId', $request->courseId)
+                    ->where('termId', $request->termId)
+                    ->where('examStage', ExamStage::Entrance->value)
+                    ->where('examType', ExamType::General->value)
+                )->whereNotIn('studentId', $listed)->get([
+                    'studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName',
+                ]);
+
+                foreach ($waived as $student) {
+                    $rows[] = [
+                        'studentId' => $student->studentId,
+                        'schoolIdNumber' => $student->schoolIdNumber,
+                        'lastName' => $student->lastName,
+                        'firstName' => $student->firstName,
+                        'middleName' => $student->middleName,
+                        'examResult' => null,
+                        'generalExamWaived' => true,
+                    ];
+                }
+            }
+
+            $students = collect($rows);
         } else {
-            // Entrance candidates: students admitted to the course/term who have
-            // not yet enrolled (exam happens between admission and evaluation).
-            $students = Students::whereHas('admissions', fn ($q) => $q
-                ->where('courseId', $request->courseId)
-                ->where('termId', $request->termId)
-                ->whereIn('admissionStatus', [AdmissionStatus::Pending->value, AdmissionStatus::Approved->value])
-            )->whereDoesntHave('enrollments', fn ($q) => $q
-                ->where('termId', $request->termId)
-            )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
+            // The School Entrance candidates, and the departmental roster of a program that
+            // runs no general paper at all — BSA, BSCE and BSEE require their board's exam and
+            // administer no Stage 1, so there is no passer transfer to read and the applicants
+            // themselves are the only honest list. Scoring them from an empty roster is what
+            // made those three programs' requirement impossible to satisfy on 2026-10-07.
+            $students = $this->entranceApplicants((int) $request->courseId, (int) $request->termId);
         }
 
         return response()->json(['students' => $students]);
+    }
+
+    /**
+     * Students a program has on file for a term and has not yet enrolled — the population
+     * the examinations run over.
+     *
+     * @return Collection<int, Students>
+     */
+    private function entranceApplicants(int $courseId, int $termId): Collection
+    {
+        return Students::whereHas('admissions', fn ($q) => $q
+            ->where('courseId', $courseId)
+            ->where('termId', $termId)
+            ->whereIn('admissionStatus', [AdmissionStatus::Pending->value, AdmissionStatus::Approved->value])
+        )->whereDoesntHave('enrollments', fn ($q) => $q
+            ->where('termId', $termId)
+        )->get(['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName']);
     }
 
     /**
@@ -244,21 +306,38 @@ class ExamController extends Controller
             'examDate' => 'required|date',
         ]);
 
-        // Verify general exam passed first
-        $generalExam = Examresults::where('studentId', $validated['studentId'])
-            ->where('courseId', $validated['courseId'])
-            ->where('termId', $validated['termId'])
-            ->where('examStage', ExamStage::Entrance)
-            ->where('examType', ExamType::General)
-            ->first();
-
-        if (! $generalExam || $generalExam->examResult !== ExamResult::Pass) {
-            return back()->withErrors(['generalExam' => 'General entrance exam must be passed first.']);
+        $course = Courses::findOrFail($validated['courseId']);
+        if (! $course->requiresEntranceExam && ! $course->requiresCourseSpecificExam) {
+            return back()->withErrors(['courseId' => 'This course administers no entrance examination.']);
         }
 
-        $course = Courses::findOrFail($validated['courseId']);
-        if (! $course->requiresEntranceExam) {
-            return back()->withErrors(['courseId' => 'This course does not require an entrance exam.']);
+        // BR9: Stage 1 before Stage 2 — where the program runs a Stage 1 at all. Two
+        // rulings narrow this, and both were found the same way: a rule the blockers ask
+        // for that the recording path refuses to let anyone produce.
+        //   C-4 (2026-10-07): a program may waive the general paper for its transferees.
+        //   C-5 (2026-10-07): a board program may require its own paper while administering
+        //   no general one — BSA, BSCE and BSEE are seeded that way, and requiring their
+        //   examination behind a general pass they never run made every one of their
+        //   applicants unapprovable.
+        if ($course->requiresEntranceExam) {
+            $admission = Admissions::query()
+                ->where('studentId', $validated['studentId'])
+                ->where('courseId', $validated['courseId'])
+                ->where('termId', $validated['termId'])
+                ->first();
+
+            $waived = $course->waivesGeneralEntranceExam($admission?->applicantType);
+
+            $generalExam = Examresults::where('studentId', $validated['studentId'])
+                ->where('courseId', $validated['courseId'])
+                ->where('termId', $validated['termId'])
+                ->where('examStage', ExamStage::Entrance)
+                ->where('examType', ExamType::General)
+                ->first();
+
+            if (! $waived && (! $generalExam || $generalExam->examResult !== ExamResult::Pass)) {
+                return back()->withErrors(['generalExam' => 'General entrance exam must be passed first.']);
+            }
         }
 
         Examresults::create([

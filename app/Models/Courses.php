@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApplicantType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,15 +15,31 @@ class Courses extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['courseId', 'unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresCourseSpecificExam', 'requiresRetentionExam'];
+    protected $fillable = ['courseId', 'unitId', 'courseName', 'courseCode', 'requiresEntranceExam', 'requiresCourseSpecificExam', 'entranceExamExemptsTransferee', 'requiresRetentionExam'];
 
     protected function casts(): array
     {
         return [
             'requiresEntranceExam' => 'boolean',
             'requiresCourseSpecificExam' => 'boolean',
+            'entranceExamExemptsTransferee' => 'boolean',
             'requiresRetentionExam' => 'boolean',
         ];
+    }
+
+    /**
+     * Does this program waive the school-wide General Entrance Examination for
+     * the applicant in front of you? (C-4, ruled 2026-10-07.)
+     *
+     * Three readers must answer alike: the approval blockers, the department's
+     * exam roster, and the Stage 1 prerequisite on recording a course-specific
+     * result. A waiver honoured by only two of them strands the applicant —
+     * either still blocked, or unable to sit the department's own exam at all.
+     */
+    public function waivesGeneralEntranceExam(?ApplicantType $applicantType): bool
+    {
+        return $this->entranceExamExemptsTransferee
+            && $applicantType === ApplicantType::Transferee;
     }
 
     /**

@@ -103,11 +103,13 @@ class ReferenceDataController extends Controller
                 'courseCode' => 'required|string|max:50|unique:courses,courseCode',
                 'requiresEntranceExam' => 'boolean',
                 'requiresCourseSpecificExam' => 'boolean',
+                'entranceExamExemptsTransferee' => 'boolean',
                 'requiresRetentionExam' => 'boolean',
             ]),
             [
                 'requiresEntranceExam' => $request->boolean('requiresEntranceExam'),
                 'requiresCourseSpecificExam' => $request->boolean('requiresCourseSpecificExam'),
+                'entranceExamExemptsTransferee' => $request->boolean('entranceExamExemptsTransferee'),
                 'requiresRetentionExam' => $request->boolean('requiresRetentionExam'),
             ]
         ));
@@ -126,11 +128,13 @@ class ReferenceDataController extends Controller
                 'courseCode' => 'required|string|max:50|unique:courses,courseCode,'.$course->courseId.',courseId',
                 'requiresEntranceExam' => 'boolean',
                 'requiresCourseSpecificExam' => 'boolean',
+                'entranceExamExemptsTransferee' => 'boolean',
                 'requiresRetentionExam' => 'boolean',
             ]),
             [
                 'requiresEntranceExam' => $request->boolean('requiresEntranceExam'),
                 'requiresCourseSpecificExam' => $request->boolean('requiresCourseSpecificExam'),
+                'entranceExamExemptsTransferee' => $request->boolean('entranceExamExemptsTransferee'),
                 'requiresRetentionExam' => $request->boolean('requiresRetentionExam'),
             ]
         ));

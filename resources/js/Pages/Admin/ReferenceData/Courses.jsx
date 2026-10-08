@@ -17,6 +17,7 @@ export default function Courses({ courses, units, filters = {} }) {
         courseCode: '',
         requiresEntranceExam: false,
         requiresCourseSpecificExam: false,
+        entranceExamExemptsTransferee: false,
         requiresRetentionExam: false,
     });
 
@@ -32,6 +33,11 @@ export default function Courses({ courses, units, filters = {} }) {
         { key: 'requiresCourseSpecificExam', label: 'Course-Specific Exam', render: (row) => (
             <Badge tone={row.requiresCourseSpecificExam ? 'success' : 'neutral'}>
                 {row.requiresCourseSpecificExam ? 'Required' : 'Not Required'}
+            </Badge>
+        )},
+        { key: 'entranceExamExemptsTransferee', label: 'Transferees', render: (row) => (
+            <Badge tone={row.entranceExamExemptsTransferee ? 'info' : 'neutral'}>
+                {row.entranceExamExemptsTransferee ? 'Exempt' : 'Must sit'}
             </Badge>
         )},
         { key: 'requiresRetentionExam', label: 'Retention Exam', render: (row) => (
@@ -65,6 +71,7 @@ export default function Courses({ courses, units, filters = {} }) {
             courseCode: course.courseCode,
             requiresEntranceExam: course.requiresEntranceExam,
             requiresCourseSpecificExam: course.requiresCourseSpecificExam,
+            entranceExamExemptsTransferee: course.entranceExamExemptsTransferee,
             requiresRetentionExam: course.requiresRetentionExam,
         });
         setEditingCourse(course);
@@ -269,6 +276,18 @@ export default function Courses({ courses, units, filters = {} }) {
                                 <div>
                                     <span className="text-sm font-medium text-brand-800">Requires Course-Specific Exam</span>
                                     <p className="text-xs text-brand-500">The owning department also examines the applicant, after the general exam is passed.</p>
+                                </div>
+                            </label>
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.entranceExamExemptsTransferee}
+                                    onChange={(e) => form.setData('entranceExamExemptsTransferee', e.target.checked)}
+                                    className="form-checkbox"
+                                />
+                                <div>
+                                    <span className="text-sm font-medium text-brand-800">Exempt Transferees from the Entrance Exam</span>
+                                    <p className="text-xs text-brand-500">An applicant arriving with credit from another institution skips the general exam, where this program requires one. The departmental exam below still applies.</p>
                                 </div>
                             </label>
                             <label className="flex items-center gap-3 cursor-pointer p-3 rounded-btn border border-brand-200 hover:bg-brand-50/50 transition-colors">

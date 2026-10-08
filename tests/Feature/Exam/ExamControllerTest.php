@@ -44,6 +44,8 @@ class ExamControllerTest extends TestCase
 
     private int $plainCourseId;
 
+    private int $boardOnlyCourseId;
+
     private int $termId;
 
     private int $evaluatorId;
@@ -123,6 +125,18 @@ class ExamControllerTest extends TestCase
             'requiresEntranceExam' => false,
             'requiresRetentionExam' => false,
         ]);
+        // C-5's shape on the live install: BSA, BSCE and BSEE are board programs whose
+        // department examines them and who administer no school-wide paper at all. The
+        // departmental requirement has to be satisfiable without a general pass, or every
+        // applicant to such a program is blocked by a paper nobody runs.
+        Courses::create([
+            'unitId' => $unit->unitId,
+            'courseCode' => 'BSCE',
+            'courseName' => 'BS Civil Engineering (departmental exam only)',
+            'requiresEntranceExam' => false,
+            'requiresCourseSpecificExam' => true,
+            'requiresRetentionExam' => false,
+        ]);
     }
 
     /**
@@ -147,6 +161,7 @@ class ExamControllerTest extends TestCase
         $this->entranceCourseId = (int) Courses::where('courseCode', 'BSCRIM')->value('courseId');
         $this->retentionCourseId = (int) Courses::where('courseCode', 'BSN')->value('courseId');
         $this->plainCourseId = (int) Courses::where('courseCode', 'BSIT')->value('courseId');
+        $this->boardOnlyCourseId = (int) Courses::where('courseCode', 'BSCE')->value('courseId');
         $this->termId = (int) Academicterms::value('termId');
         $this->evaluatorId = (int) $evaluator->userId;
     }
@@ -197,13 +212,13 @@ class ExamControllerTest extends TestCase
         ]);
     }
 
-    private function createAdmission(Students $student, int $courseId, string $status = 'pending'): Admissions
+    private function createAdmission(Students $student, int $courseId, string $status = 'pending', string $applicantType = 'firstYear'): Admissions
     {
         return Admissions::create([
             'studentId' => $student->studentId,
             'courseId' => $courseId,
             'termId' => $this->termId,
-            'applicantType' => 'firstYear',
+            'applicantType' => $applicantType,
             'admissionStatus' => $status,
         ]);
     }
@@ -466,6 +481,121 @@ class ExamControllerTest extends TestCase
             'admissionId' => $admission->admissionId,
             'admissionStatus' => 'pending',
         ]);
+    }
+
+    #[Test]
+    public function a_program_that_waives_the_general_paper_still_scores_the_transferee_itself(): void
+    {
+        // C-4 (ruled 2026-10-07). The waiver is read here as well as in the
+        // approval blockers: if Stage 2 still demanded a Stage 1 pass from a
+        // waived transferee, the department could never produce the one result
+        // that clears the remaining blocker, and the waiver would have made the
+        // applicant unapprovable instead of exempt.
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+        $this->createAdmission($student, $this->entranceCourseId, 'pending', 'transferee');
+        Courses::where('courseId', $this->entranceCourseId)
+            ->update(['entranceExamExemptsTransferee' => true]);
+
+        $this->actingAs($department)
+            ->post(route('exam.course-specific.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $this->entranceCourseId,
+                'termId' => $this->termId,
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('exam.index'));
+
+        $this->assertDatabaseHas('examresults', [
+            'studentId' => $student->studentId,
+            'courseId' => $this->entranceCourseId,
+            'examStage' => ExamStage::Entrance->value,
+            'examType' => ExamType::CourseSpecific->value,
+            'examResult' => 'pass',
+        ]);
+    }
+
+    #[Test]
+    public function the_department_roster_lists_a_waived_transferee_and_nobody_else_who_has_not_sat(): void
+    {
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $waived = $this->createStudent();
+        $this->createAdmission($waived, $this->entranceCourseId, 'pending', 'transferee');
+        $firstYear = $this->createStudent();
+        $this->createAdmission($firstYear, $this->entranceCourseId);
+        Courses::where('courseId', $this->entranceCourseId)
+            ->update(['entranceExamExemptsTransferee' => true]);
+
+        $this->actingAs($department)
+            ->getJson(route('exam.students', ['courseId' => $this->entranceCourseId, 'termId' => $this->termId, 'type' => 'courseSpecific']))
+            ->assertOk()
+            ->assertJsonFragment(['studentId' => $waived->studentId, 'generalExamWaived' => true])
+            ->assertJsonMissing(['studentId' => $firstYear->studentId]);
+    }
+
+    #[Test]
+    public function a_board_program_that_runs_no_general_paper_still_scores_its_own_exam(): void
+    {
+        // C-5, seeded on the live install as BSA, BSCE and BSEE: requiresCourseSpecificExam
+        // without requiresEntranceExam. Their departmental paper is the only examination the
+        // program administers, so a general pass can neither be produced nor transferred —
+        // demanding one left every applicant to such a program blocked by a paper nobody runs.
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+        $this->createAdmission($student, $this->boardOnlyCourseId);
+
+        $this->actingAs($department)
+            ->post(route('exam.course-specific.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $this->boardOnlyCourseId,
+                'termId' => $this->termId,
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertRedirect(route('exam.index'));
+
+        $this->assertDatabaseHas('examresults', [
+            'studentId' => $student->studentId,
+            'courseId' => $this->boardOnlyCourseId,
+            'examType' => ExamType::CourseSpecific->value,
+            'examResult' => 'pass',
+        ]);
+        $this->assertSame(0, Examresults::where('examType', ExamType::General->value)->count(),
+            'no School Entrance result was invented for a program that does not run one');
+    }
+
+    #[Test]
+    public function a_program_with_no_general_paper_offers_its_applicants_to_the_department(): void
+    {
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $applicant = $this->createStudent();
+        $this->createAdmission($applicant, $this->boardOnlyCourseId);
+
+        $this->actingAs($department)
+            ->getJson(route('exam.students', ['courseId' => $this->boardOnlyCourseId, 'termId' => $this->termId, 'type' => 'courseSpecific']))
+            ->assertOk()
+            ->assertJsonFragment(['studentId' => $applicant->studentId]);
+    }
+
+    #[Test]
+    public function a_program_that_administers_no_examination_at_all_still_refuses_the_record(): void
+    {
+        $department = $this->staffWithRole('DeptEvaluator', 4);
+        $student = $this->createStudent();
+        $this->createAdmission($student, $this->plainCourseId);
+
+        $this->actingAs($department)
+            ->post(route('exam.course-specific.record'), [
+                'studentId' => $student->studentId,
+                'courseId' => $this->plainCourseId,
+                'termId' => $this->termId,
+                'examResult' => 'pass',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertSessionHasErrors('courseId');
+
+        $this->assertSame(0, Examresults::where('examType', ExamType::CourseSpecific->value)->count());
     }
 
     #[Test]

@@ -75,7 +75,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
         : 'School Entrance Examination');
 
     const getStageDescription = () => (isCourseSpecific
-        ? 'Stage 2 (BR9): score your department\'s own exam for the School Entrance passers transferred from Guidance'
+        ? 'Stage 2 (BR9): score your department\'s own exam for the School Entrance passers transferred from Guidance — and for the transferees your program waives that screening for'
         : 'Stage 1 (BR9): record every result, pass and failed — passers are transferred to the academic departments');
 
     return (
@@ -105,7 +105,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column (7 cols): Academic Target & Student */}
                     <div className="lg:col-span-7 space-y-4">
-                        <Card title="Target Academic Cohort & Student" subtitle={isCourseSpecific ? 'Select program, term, and transferred passer' : 'Select program, term, and candidate applicant'}>
+                        <Card title="Target Academic Cohort & Student" subtitle={isCourseSpecific ? 'Select program, term, and exam candidate' : 'Select program, term, and candidate applicant'}>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <FormSection label="Course / Program" required>
@@ -131,7 +131,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                     </FormSection>
                                 </div>
 
-                                <FormSection label={isCourseSpecific ? 'Transferred Passer' : 'Candidate Student'} required>
+                                <FormSection label={isCourseSpecific ? 'Exam Candidate' : 'Candidate Student'} required>
                                     {loadingStudents ? (
                                         <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50 border border-brand-100">
                                             <svg className="animate-spin h-5 w-5 text-seait-600" fill="none" viewBox="0 0 24 24">
@@ -148,12 +148,17 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                                 value: s.studentId,
                                                 // Item 4 — the BR9 transfer: course-specific
                                                 // candidates show the School Entrance result
-                                                // Guidance transferred alongside the name.
-                                                label: isCourseSpecific && s.examResult
+                                                // Guidance transferred alongside the name. A
+                                                // transferee the program waived that screening
+                                                // for (C-4) is listed too, named as waived — the
+                                                // department still sits them its own exam.
+                                                label: isCourseSpecific && s.generalExamWaived
+                                                    ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — General Entrance waived (transferee)`
+                                                    : isCourseSpecific && s.examResult
                                                     ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — School Entrance: ${formatStatusLabel(s.examResult)}`
                                                     : `${s.schoolIdNumber} — ${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}`,
                                             }))}
-                                            placeholder={isCourseSpecific ? 'Search & select transferred passer...' : 'Search & select candidate student...'}
+                                            placeholder={isCourseSpecific ? 'Search & select a passer or a waived transferee...' : 'Search & select candidate student...'}
                                             required
                                         />
                                     ) : (
@@ -164,7 +169,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                             <span className="text-slate-500 text-xs font-medium">
                                                 {form.data.courseId && form.data.termId
                                                     ? (isCourseSpecific
-                                                        ? 'No School Entrance passers have been transferred to this course for this term yet.'
+                                                        ? 'Nothing to score here yet: no School Entrance passers have been transferred to this course for this term, and no applicant is waiting who needs no transfer.'
                                                         : 'No examinees found awaiting score entry for this cohort.')
                                                     : 'Please select Course and Term above to populate students.'}
                                             </span>
