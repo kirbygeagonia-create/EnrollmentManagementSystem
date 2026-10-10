@@ -139,6 +139,12 @@ block 75 `BSIT 1-A` year 1 (1/40, 6), block 114 `BSBA 2-A` year 2 (0/40, 6).
 **Fee types:** id 5 `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
 must both read that row.
 **Shift docket:** `shiftingrequests` holds **0 rows**; §7 files the first one.
+**Two applicant gaps, deliberate:** the demo set has **no applicant to a board-only program** (BSA,
+BSCE, BSEE) and **no pending transferee** — Carlo Mendoza's transferee application (44) is `rejected`,
+which is the rejection path it is there for. Measured 2026-10-09 across all four admissions: 27 and 41
+first-year BSCrim, 45 first-year BSIT, 44 rejected transferee. So rows **5.8** and **7.17 create the
+applicant they test**; an empty queue on either is the dataset, not a defect. Registering them during
+the walk also exercises intake, which is the point.
 
 ---
 
@@ -216,7 +222,7 @@ This is the busiest section. Take the records in this order.
 | 7.14 | Issue again for the same student and the same term | **Refused**, naming the enrollment that already holds the seat (ruling 3) | | ☐ |
 | 7.15 | Try to issue with a **different program** from the student's last enrollment | **Refused**, and the refusal points at the shift flow — a program change may not pass as an ordinary continuation | | ☐ |
 | 7.16 | Record a **course-specific entrance** pass for Pedro (**Exams → Record Course-Specific Exam**, as `office7_head`) — the second blocker §5R.4 names | The candidate list is the School Entrance **passers** transferred by Guidance (BR9): BSCrim runs the general paper, so an applicant with no general result is not offered. The row stores `examType = courseSpecific` against the applicant's own term, the Admission desk's second blocker clears, and the application itself is untouched — a result never decides an admission (5R.2) | | ☐ |
-| 7.17 | Switch the same screen to a program that runs **no** general paper — BSA, BSCE or BSEE — with no passers on file | The roster is **that program's own unenrolled applicants**, not an empty passer list. Record a departmental pass and the Admission desk's blocker clears on that result alone. These three carry `requiresCourseSpecificExam` with `requiresEntranceExam` off, so there is no Stage 1 to transfer and none is demanded; before 2026-10-07 the screen offered nothing here, which made every applicant to a board-only program permanently unapprovable | | ☐ |
+| 7.17 | **Have the Admission desk (`office6_head`) register an applicant first** — Admission → Register Applicant, program **BSCE**, term 11, type *First Year* (the department cannot: `admission.create` belongs to AdmissionOfficer and Dean) — then open **Exams → Record Course-Specific Exam** as `office7_head` and pick BSCE | The roster lists **the applicants of a program that runs no general paper**, so the new name is there even though BSCE has no School Entrance passer to transfer. Record a departmental pass and the Admission desk's blocker clears on that result alone. These three programs carry `requiresCourseSpecificExam` with `requiresEntranceExam` off: there is no Stage 1 to transfer and none is demanded. Before 2026-10-07 this roster was built from passers who cannot exist, which made every applicant to a board-only program permanently unapprovable. **An empty list before anyone registers is correct, not the bug** — which is why this row creates its own applicant (§4) | | ☐ |
 
 **Refusal checks**
 
