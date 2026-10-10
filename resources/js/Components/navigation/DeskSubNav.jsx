@@ -109,6 +109,7 @@ const deskConfigs = {
             { name: 'Reference Catalogs', route: 'admin.reference-data.index' },
             { name: 'User Management', route: 'admin.users.index', adminOnly: true },
             { name: 'Role Permissions', route: 'admin.users.roles', adminOnly: true },
+            { name: 'Permission Catalog', route: 'admin.users.permissions', adminOnly: true },
             { name: 'System Settings', route: 'admin.users.settings', adminOnly: true },
             { name: 'Audit Logs', route: 'admin.users.audit-logs', adminOnly: true },
         ],
