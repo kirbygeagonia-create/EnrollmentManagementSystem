@@ -1032,6 +1032,29 @@ class PrintControllerTest extends TestCase
                 );
             }
 
+            public function printClearanceSlip(Studentclearances $clearance, int $printedBy): PrintedDocument
+            {
+                // The real slip is keyed to the STUDENT, not the enrollment — a slip can be
+                // drawn before any enrollment exists for the period.
+                return new PrintedDocument(
+                    $this->recordIssue(
+                        $clearance->termEnrollment()?->enrollmentId,
+                        DocumentType::ClearanceSlip,
+                        $printedBy,
+                        $clearance->studentId
+                    ),
+                    $this->placeholder('clearance-slip')
+                );
+            }
+
+            public function printBlockSchedule(Blocks $block, int $printedBy): PrintedDocument
+            {
+                return new PrintedDocument(
+                    $this->recordIssue(null, DocumentType::BlockSchedule, $printedBy, null, $block->blockId),
+                    $this->placeholder('block-schedule')
+                );
+            }
+
             private function placeholder(string $prefix): string
             {
                 // The real PrintService creates this folder before writing; the
