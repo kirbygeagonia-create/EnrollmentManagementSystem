@@ -850,6 +850,54 @@ class BlockingControllerTest extends TestCase
     }
 
     #[Test]
+    public function the_screen_offers_the_delete_only_for_a_block_the_delete_accepts(): void
+    {
+        // Audit lane 2 found blocking.destroy with a usage guard and tests but no control anywhere.
+        // The owner ruled it gets a button, so the flag the button reads must agree with the handler
+        // at every step of a block's life — a desk clicking an action that can only be refused is
+        // worse than a desk with no action at all.
+        $blockingStaff = $this->staffForOffice(5);
+        $this->actingAs($blockingStaff);
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+        $schedule = $fixture['schedule'];
+
+        $this->get(route('blocking.show', $block))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Blocking/Show')->where('canDelete', false));
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('blocking.assign', $block), [
+            'enrollmentIds' => [$enrollment->enrollmentId],
+            'scheduleId' => $schedule->scheduleId,
+        ])->assertSessionHasNoErrors();
+
+        $this->get(route('blocking.show', $block))
+            ->assertInertia(fn ($page) => $page->where('canDelete', false));
+
+        // Unseating alone still leaves the timetable row holding the block, so still no button.
+        $this->post(route('blocking.unassign', $block), [
+            'enrollmentIds' => [$enrollment->enrollmentId],
+        ])->assertSessionHasNoErrors();
+
+        $this->get(route('blocking.show', $block))
+            ->assertInertia(fn ($page) => $page->where('canDelete', false));
+
+        $this->delete(route('blocking.schedules.destroy', $schedule))->assertSessionHasNoErrors();
+
+        $this->get(route('blocking.show', $block))
+            ->assertInertia(fn ($page) => $page->where('canDelete', true));
+
+        // And the offer is real: the delete the screen now advertises completes.
+        $this->delete(route('blocking.destroy', $block))
+            ->assertRedirect(route('blocking.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('blocks', ['blockId' => $block->blockId]);
+    }
+
+    #[Test]
     public function the_roster_counts_one_seat_per_student_not_per_subject_row(): void
     {
         $this->actingAs($this->staffForOffice(5));

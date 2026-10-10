@@ -114,8 +114,12 @@ function ConflictAlert({ conflicts, title = 'Conflicts detected' }) {
     );
 }
 
-export default function Show({ block, capacity, enrolled, available, subjects, rooms, instructors, days, eligibleEnrollments }) {
+export default function Show({ block, capacity, enrolled, available, subjects, rooms, instructors, days, eligibleEnrollments, canDelete = false }) {
     const { flash } = usePage().props;
+    // The server answers this, from the same test destroy() refuses on: a block that has been
+    // scheduled or seated cannot be deleted, so the action is offered only for a block whose delete
+    // would complete. A button that only produces the refusal is a trap, not a feature.
+    const [confirmDeleteBlock, setConfirmDeleteBlock] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [editingScheduleId, setEditingScheduleId] = useState(null);
@@ -325,6 +329,13 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
         setShowScheduleModal(true);
     };
 
+    const confirmDeleteBlockAction = () => {
+        setBlockActionError(null);
+        router.delete(route('blocking.destroy', { block: block.blockId }), {
+            onFinish: () => setConfirmDeleteBlock(false),
+        });
+    };
+
     const handleDeleteSchedule = (scheduleId) => {
         setBlockActionError(null);
         setConfirmDeleteSchedule({ open: true, scheduleId });
@@ -463,6 +474,21 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                 </svg>
                                 Print Schedule
                             </Link>
+                            {canDelete && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setBlockActionError(null);
+                                        setConfirmDeleteBlock(true);
+                                    }}
+                                    className="btn btn-danger btn-sm"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1H9a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete Empty Block
+                                </button>
+                            )}
                         </div>
                     }
                 />
@@ -977,6 +1003,33 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 cancelText="Keep Schedule"
                 error={blockActionError}
                 loading={submittingDeleteSchedule}
+            />
+
+            {/* Delete Empty Block Cause & Effect Modal — offered only when canDelete */}
+            <CauseEffectModal
+                show={confirmDeleteBlock}
+                onClose={() => {
+                    setBlockActionError(null);
+                    setConfirmDeleteBlock(false);
+                }}
+                onConfirm={confirmDeleteBlockAction}
+                title="Delete Block Section"
+                subtitle="Empty Section Removal"
+                tone="danger"
+                entityContext={{
+                    label: 'Block Section',
+                    value: block.blockCode || 'BLOCK SECTION',
+                }}
+                cause="Deleting removes the block record itself. Only a block with no timetable slot and no seated student can be deleted, which is why this action is offered here and not on a block that has been used."
+                effects={[
+                    'The block name, its course, term and year level leave the scheduling catalog.',
+                    'No student is unseated by this action — a block with any subject row or schedule is refused and names what holds it.',
+                ]}
+                requiresAcknowledgement={true}
+                acknowledgementText="I understand that this block section will be removed from the scheduling catalog."
+                confirmText="Yes, Delete This Block"
+                cancelText="Keep Block"
+                error={blockActionError}
             />
 
             {/* Finalize Schedule Cause & Effect Modal */}

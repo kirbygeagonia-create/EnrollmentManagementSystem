@@ -148,7 +148,7 @@ class BlockingController extends Controller
             'rooms' => Rooms::all(['roomId', 'roomName', 'capacity', 'building']),
             'instructors' => Staffusers::where('officeId', '!=', OfficeId::Registrar->value)->get(['userId', 'firstName', 'lastName', 'middleName', 'role', 'officeId', 'unitId']),
             'days' => collect(DayOfWeek::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'eligibleEnrollments' => $eligibleEnrollments,
+            'eligibleEnrollments' => $eligibleEnrollments, 'canDelete' => $this->undeletableReasons($block) === [],
         ]);
     }
 
@@ -199,10 +199,10 @@ class BlockingController extends Controller
         // database error page. This is the desk where blocks are built, so the row on
         // screen nearly always has children — name them instead. The Reference Data
         // catalog refuses the same delete for the same reason.
-        $usages = array_filter([
-            'schedule' => $block->schedules()->count(),
-            'enrolled subject' => $block->enrolledSubjects()->count(),
-        ]);
+        //
+        // The detail screen asks this same question before it offers the action at all, so
+        // a control that can only answer 403 cannot exist; undeletableReasons() is one copy.
+        $usages = $this->undeletableReasons($block);
 
         if ($usages !== []) {
             $named = collect($usages)->map(fn (int $count, string $label): string => "{$count} {$label}(s)")->implode(', ');
@@ -592,5 +592,24 @@ class BlockingController extends Controller
         return $printService
             ->printBlockSchedule($block, Auth::user()->userId)
             ->asDownload("block-schedule-{$block->blockName}.pdf");
+    }
+
+    /**
+     * The children that make a block undeletable, labelled for the refusal message.
+     *
+     * Written once and read twice: destroy() refuses on it, and show() shares it as `canDelete` so
+     * the detail screen offers the button only for a block the delete would actually accept. Audit
+     * lane 2 found the handler and its four tests with no control anywhere — a desk could retire an
+     * empty block only by crafting the request. Placed last in the class because nineteen citations
+     * in the documentation point into this file by line.
+     *
+     * @return array<string, int>
+     */
+    private function undeletableReasons(Blocks $block): array
+    {
+        return array_filter([
+            'schedule' => $block->schedules()->count(),
+            'enrolled subject' => $block->enrolledSubjects()->count(),
+        ]);
     }
 }
