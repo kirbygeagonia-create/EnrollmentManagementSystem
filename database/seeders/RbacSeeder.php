@@ -178,11 +178,6 @@ class RbacSeeder extends Seeder
                 'settings.manage',
             ],
 
-            // Dashboard module (1)
-            'dashboard' => [
-                'dashboard.view',
-            ],
-
             // Student directory module (1) — Student 360 / global quick-search
             'students' => [
                 'students.view',
@@ -255,7 +250,7 @@ class RbacSeeder extends Seeder
         );
         $admissionOfficer->syncPermissions([
             'admission.view', 'admission.create', 'admission.update', 'admission.approve', 'admission.reject',
-            'admission.requirements.submit', 'admission.requirements.verify', 'dashboard.view', 'user.view',
+            'admission.requirements.submit', 'admission.requirements.verify', 'user.view',
             'students.view',
         ]);
 
@@ -271,7 +266,7 @@ class RbacSeeder extends Seeder
             'exam.view', 'exam.record.general',
             // Ruling 11: the Guidance Councillor's signature is the final call on a shift.
             'shift.grant',
-            'dashboard.view', 'user.view', 'students.view',
+            'user.view', 'students.view',
         ]);
 
         // DeptEvaluator - Phase 2. Item 4: the owning academic department also
@@ -289,7 +284,7 @@ class RbacSeeder extends Seeder
             'evaluation.clearance.confirm',
             // Ruling 11: the shift paper is filed at this desk.
             'shift.request.create',
-            'admission.view', 'dashboard.view', 'user.view', 'enrollment.subjects.confirm',
+            'admission.view', 'user.view', 'enrollment.subjects.confirm',
             'students.view',
         ]);
 
@@ -308,7 +303,7 @@ class RbacSeeder extends Seeder
             // Ruling 11: the dean endorses the shift, and may file it for their department.
             'shift.request.create', 'shift.sign.department',
             'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
-            'refdata.view', 'user.view', 'dashboard.view', 'enrollment.subjects.confirm',
+            'refdata.view', 'user.view', 'enrollment.subjects.confirm',
             'students.view',
         ]);
 
@@ -323,7 +318,7 @@ class RbacSeeder extends Seeder
             // Ruling 11: the program head is one of the two hands that may endorse.
             'shift.request.create', 'shift.sign.department',
             'exam.record.courseSpecific', 'exam.record.retention',
-            'dashboard.view', 'enrollment.subjects.confirm',
+            'enrollment.subjects.confirm',
             'students.view',
         ]);
 
@@ -335,7 +330,7 @@ class RbacSeeder extends Seeder
         $scholarshipOfficer->syncPermissions([
             'assessment.view', 'assessment.compute', 'assessment.scholarships.apply', 'assessment.charges.adjust',
             'assessment.scholarships.withdraw',
-            'assessment.finalize', 'dashboard.view', 'user.view', 'students.view',
+            'assessment.finalize', 'user.view', 'students.view',
         ]);
 
         // AccountingStaff - Phase 4
@@ -350,7 +345,7 @@ class RbacSeeder extends Seeder
             // Ruling 8 (BR33): a lost clearance slip is reissued only against a replacement
             // fee, and the fee is recorded here — the act files the OR as it reissues.
             'clearance.slip.replace',
-            'assessment.view', 'dashboard.view', 'user.view', 'students.view',
+            'assessment.view', 'user.view', 'students.view',
         ]);
 
         // RegistrarDesk - Phase 1
@@ -364,7 +359,7 @@ class RbacSeeder extends Seeder
             // ruling 12 folds the legacy Clearance office into the Registrar — so this is
             // the desk role that takes the lost-slip request at the counter.
             'clearance.slip.replace',
-            'dashboard.view', 'user.view',
+            'user.view',
             'students.view',
         ]);
 
@@ -379,7 +374,7 @@ class RbacSeeder extends Seeder
             // desks signed, so the desk that holds the final signature is the one that
             // answers for it — and OfficeHead is deliberately not in this list.
             'enrollment.drop',
-            'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'dashboard.view', 'user.view',
+            'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'user.view',
             'students.view',
             // The Registrar finalizes academic standing, so the grade scale those
             // standings are derived against is maintained here rather than by a
@@ -395,7 +390,7 @@ class RbacSeeder extends Seeder
         );
         $blockingCoordinator->syncPermissions([
             'block.view', 'block.manage', 'block.assign', 'block.schedules.manage', 'block.capacity.check',
-            'print.blockSchedule', 'dashboard.view', 'user.view', 'students.view',
+            'print.blockSchedule', 'user.view', 'students.view',
         ]);
 
         // ClinicStaff - Phase 7
@@ -405,7 +400,7 @@ class RbacSeeder extends Seeder
         );
         $clinicStaff->syncPermissions([
             'clinic.view', 'clinic.record', 'clinic.update', 'clinic.sign', 'clinic.reopen',
-            'dashboard.view', 'user.view', 'students.view',
+            'user.view', 'students.view',
         ]);
 
         // IdOfficer - Phase 8
@@ -415,7 +410,7 @@ class RbacSeeder extends Seeder
         );
         $idOfficer->syncPermissions([
             'id.view', 'id.request.create', 'id.validate', 'id.sign',
-            'dashboard.view', 'user.view', 'students.view',
+            'user.view', 'students.view',
         ]);
 
         // OfficeHead - all view permissions + the module actions a desk head answers
@@ -447,7 +442,7 @@ class RbacSeeder extends Seeder
         $officeHead->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'block.view',
-            'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
+            'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view',
             'students.view',
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
@@ -472,7 +467,7 @@ class RbacSeeder extends Seeder
         $staff->syncPermissions([
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'block.view', 'clinic.view',
-            'id.view', 'refdata.view', 'user.view', 'dashboard.view',
+            'id.view', 'refdata.view', 'user.view',
         ]);
 
         // Instructor - Phase 2 & Advising
@@ -482,7 +477,7 @@ class RbacSeeder extends Seeder
         );
         $instructor->syncPermissions([
             'evaluation.view', 'evaluation.create', 'evaluation.subjects.propose', 'evaluation.profile.capture',
-            'print.classCard', 'print.subjectLoad', 'block.view', 'dashboard.view', 'user.view',
+            'print.classCard', 'print.subjectLoad', 'block.view', 'user.view',
         ]);
 
         $this->command->info('Created '.Role::count().' desk and faculty roles with module permissions.');

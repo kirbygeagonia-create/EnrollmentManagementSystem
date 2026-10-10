@@ -5,6 +5,7 @@ namespace Tests\Feature\Rbac;
 use App\Models\Staffusers;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
@@ -85,7 +86,7 @@ class PermissionMatrixTest extends TestCase
      * Per RbacSeeder, Staff has these view permissions:
      * admission.view, exam.view, evaluation.view, assessment.view,
      * payment.view, clearance.view, block.view, clinic.view,
-     * id.view, refdata.view, user.view, dashboard.view
+     * id.view, refdata.view, user.view
      *
      * Audit follow-up §A1: audit.view was REMOVED from Staff — the audit log
      * exposes full model snapshots (incl. student PII) and would otherwise
@@ -119,7 +120,6 @@ class PermissionMatrixTest extends TestCase
             ['admin.users.index', 'user.view', true],
             // Audit follow-up §A1: Staff no longer holds audit.view (expect 403)
             ['admin.users.audit-logs', 'audit.view', false],
-            ['dashboard', 'dashboard.view', true],
         ];
     }
 
@@ -361,7 +361,6 @@ class PermissionMatrixTest extends TestCase
             'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
             'refdata.view',
             'user.view',
-            'dashboard.view',
             'enrollment.subjects.confirm',
         ];
 
@@ -398,7 +397,6 @@ class PermissionMatrixTest extends TestCase
             // Item 4: the owning academic department also handles the
             // course-specific entrance exam and the retention exam (BR9/BR10).
             'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
-            'dashboard.view',
             'enrollment.subjects.confirm',
         ];
 
@@ -455,7 +453,7 @@ class PermissionMatrixTest extends TestCase
         $viewPerms = [
             'admission.view', 'exam.view', 'evaluation.view', 'assessment.view',
             'payment.view', 'clearance.view', 'block.view',
-            'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view', 'dashboard.view',
+            'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view',
         ];
         foreach ($viewPerms as $perm) {
             $this->assertTrue($officeHead->hasPermissionTo($perm),
@@ -575,7 +573,7 @@ class PermissionMatrixTest extends TestCase
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any',
             'evaluation.credits.process', 'evaluation.sign',
             'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
-            'admission.view', 'dashboard.view', 'user.view',
+            'admission.view', 'user.view',
             'enrollment.subjects.confirm', 'students.view',
         ];
         foreach ($deptEvaluatorPermissions as $perm) {
@@ -598,5 +596,27 @@ class PermissionMatrixTest extends TestCase
         $this->assertSame(4, Permission::whereIn('name', [
             'exam.view', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention',
         ])->count(), 'the Exam module ships exactly four permissions');
+
+        // dashboard.view was retired 2026-10-10, one lane of the Full Audit Suite after #47. It was
+        // the same shape and worse in reach: seeded in its own `dashboard` module, granted to all
+        // seventeen roles, and read by no line of app/, routes/ or resources/js. /dashboard is
+        // guarded by `auth` alone, so the right gated nothing even for the landing page — this file
+        // used to assert it as though it did, which is exactly how a dead right survives a defence.
+        // Asserted on both halves: the seeder declares it nowhere, and the prune path removes both
+        // the row and its seventeen grants from a reseeded install.
+        $this->assertNull(Permission::where('name', 'dashboard.view')->first(),
+            'dashboard.view must not exist after RbacSeeder: declared nowhere, read by nothing');
+        $this->assertSame(0, Permission::where('name', 'like', 'dashboard.%')->count(),
+            'the dashboard module shipped exactly one permission, so the module is gone with it');
+        $this->assertSame(0, DB::table('role_permissions as rp')
+            ->join('permissions as p', 'p.id', '=', 'rp.permissionId')
+            ->where('p.name', 'dashboard.view')->count(),
+            'no grant may outlive the permission it points at');
+
+        // The proof that removing the right cost nothing: a bare Staff account — which held
+        // dashboard.view until today and holds no such thing now — still lands on the dashboard,
+        // because routes/web.php:31 guards it with `auth` and nothing else.
+        $staff = $this->createStaffWithRole('Staff');
+        $this->actingAs($staff)->get(route('dashboard'))->assertOk();
     }
 }
