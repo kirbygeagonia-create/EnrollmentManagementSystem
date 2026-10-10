@@ -10,11 +10,13 @@ use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Admissions;
+use App\Models\Clinicrecords;
 use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Models\Payments;
 use App\Models\Staffusers;
+use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Services\WorkflowService;
@@ -87,16 +89,53 @@ class DashboardController extends Controller
                 'totalCourses' => Courses::count(),
             ],
             'progressTracking' => $progressTracking,
+            // The cards the desk route would actually open for this account, so the chrome and the
+            // JSON answer to one rule instead of two (see QUEUES).
+            'queueKeys' => $this->visibleQueueKeys($user),
         ]);
     }
 
     /**
+     * Each dashboard queue against the authorization its own desk route performs, so the badge and
+     * the page behind it can never disagree. Two models carry no import here on purpose: adding a
+     * `use` line would shift DashboardController.php:41, which the documentation cites by line.
+     *
+     * blocking.viewAny is a Gate::define (AuthServiceProvider), not a model policy, so it takes no
+     * model argument.
+     */
+    private const QUEUES = [
+        'admission' => ['viewAny', Admissions::class],
+        'evaluation' => ['viewAny', Enrollments::class],
+        'assessment' => ['viewAny', Studentassessments::class],
+        'accounting' => ['viewAny', Payments::class],
+        'registrar' => ['viewAny', Enrollments::class],
+        'blocking' => ['blocking.viewAny', null],
+        'clinic' => ['viewAny', Clinicrecords::class],
+        'id' => ['viewAny', Idrequests::class],
+        'clearance' => ['viewAny', Studentclearances::class],
+    ];
+
+    /**
      * Per-office queue counts for live desk polling (JSON).
+     *
+     * Measured 2026-10-09: this answered with all nine institution-wide totals to ANY signed-in
+     * staff account, while the page itself hides the cards an office does not run. The owner ruled
+     * the payload follow the desk, so a count is computed and returned only for a queue whose own
+     * index route would open for this user — the same `can()` call, not a parallel list of rights
+     * that can drift from it. It also stops the nine queries running for desks the caller cannot
+     * reach.
      */
     public function queueCounts(Request $request): JsonResponse
     {
+        $visible = $this->visibleQueueKeys($request->user());
+
+        $admitted = [];
+        foreach ($visible as $key) {
+            $admitted[$key] = true;
+        }
+
         return response()->json([
-            'queueCounts' => [
+            'queueCounts' => array_intersect_key([
                 'admission' => Admissions::where('admissionStatus', AdmissionStatus::Pending->value)->count(),
                 'evaluation' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Pending->value)->count(),
                 'assessment' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Evaluated->value)->count(),
@@ -125,7 +164,31 @@ class DashboardController extends Controller
                     ->count(),
                 'id' => Idrequests::where('status', IdRequestStatus::Pending->value)->count(),
                 'clearance' => Studentclearances::where('overallStatus', ClearanceOverallStatus::Pending->value)->count(),
-            ],
+            ], $admitted),
         ]);
+    }
+
+    /**
+     * The queue keys this account may open, decided by the authorization its desk route itself
+     * makes. Returning the list to the page is what lets the cards follow the server instead of a
+     * second, hand-maintained set of office numbers — the set that still named office 8 after
+     * ruling 12 folded it into Registrar, hiding the Clearance queue from every office but one.
+     *
+     * @return list<string>
+     */
+    private function visibleQueueKeys(?Staffusers $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        $visible = [];
+        foreach (self::QUEUES as $key => [$ability, $model]) {
+            if ($model === null ? $user->can($ability) : $user->can($ability, $model)) {
+                $visible[] = $key;
+            }
+        }
+
+        return $visible;
     }
 }

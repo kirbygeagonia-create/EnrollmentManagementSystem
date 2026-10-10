@@ -44,7 +44,7 @@ const subSystems = [
                 name: 'Campus Clearance',
                 phase: 'Phase 1',
                 route: 'clearance.index',
-                officeId: 8,
+                officeId: null, // was 8, the legacy Clearance office ruling 12 folded into Registrar
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-amber-500 to-orange-600',
                 textColor: 'text-amber-700 bg-amber-50 border-amber-200',
@@ -248,6 +248,7 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
     const { props } = usePage();
     const canStudentsView = props.can?.studentsView ?? false;
     const canRefdataHub = props.can?.refdataHub ?? false;
+    const canClearanceDesk = props.can?.clearanceDesk ?? false;
     const [filterQuery, setFilterQuery] = useState('');
     const inputRef = useRef(null);
 
@@ -273,6 +274,9 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         // the Registrar maintains the grade scale, so it needs this entry without
         // becoming an administrator.
         if (item.route === 'admin.reference-data.index') return canRefdataHub;
+        // Campus Clearance is signed by every office, so no single officeId owns the card; the same
+        // right the desk's own gate asks (ClearancePolicy::viewAny) decides whether it appears.
+        if (item.route === 'clearance.index') return canClearanceDesk;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
             // Item 4 — some modules serve two offices (the Exam module is

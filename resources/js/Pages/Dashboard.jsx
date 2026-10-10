@@ -68,6 +68,7 @@ export default function Dashboard() {
     const stats = usePage().props.stats || {};
     const currentTerm = usePage().props.currentTerm;
     const progressTracking = usePage().props.progressTracking || [];
+    const queueKeys = usePage().props.queueKeys || [];
     const [queueCounts, setQueueCounts] = useState({});
     const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -86,33 +87,25 @@ export default function Dashboard() {
     }, []);
 
     const queueItems = [
-        { key: 'admission', label: 'Admission Queue', route: 'admission.index', offices: [6] },
-        { key: 'evaluation', label: 'Evaluation Queue', route: 'evaluation.index', offices: [4, 5] },
-        { key: 'assessment', label: 'Assessment Queue', route: 'assessment.index', offices: [3] },
-        { key: 'accounting', label: 'Cashier Queue', route: 'accounting.index', offices: [2] },
-        { key: 'registrar', label: 'Registrar Queue', route: 'registrar.index', offices: [1] },
-        { key: 'blocking', label: 'Blocking Queue', route: 'blocking.index', offices: [5] },
-        { key: 'clinic', label: 'Clinic Queue', route: 'clinic.index', offices: [11] },
-        { key: 'id', label: 'ID Desk Queue', route: 'id.index', offices: [22] },
-        { key: 'clearance', label: 'Clearance Queue', route: 'clearance.index', offices: [6, 8], denyRoles: ['dean'] },
+        { key: 'admission', label: 'Admission Queue', route: 'admission.index' },
+        { key: 'evaluation', label: 'Evaluation Queue', route: 'evaluation.index' },
+        { key: 'assessment', label: 'Assessment Queue', route: 'assessment.index' },
+        { key: 'accounting', label: 'Cashier Queue', route: 'accounting.index' },
+        { key: 'registrar', label: 'Registrar Queue', route: 'registrar.index' },
+        { key: 'blocking', label: 'Blocking Queue', route: 'blocking.index' },
+        { key: 'clinic', label: 'Clinic Queue', route: 'clinic.index' },
+        { key: 'id', label: 'ID Desk Queue', route: 'id.index' },
+        { key: 'clearance', label: 'Clearance Queue', route: 'clearance.index' },
     ];
 
-    // denyRoles lets a queue card opt out for roles whose route policies would
-    // 403 on click (m3): Dean lacks clearance.view (RbacSeeder grants it only to
-    // RegistrarDesk/RegistrarApprover/OfficeHead/Staff), so the Clearance Queue
-    // must not render for deans even though office 6 falls in their office set.
-    // All other combos verify clean: every office's staff carries the base Staff
-    // role (all views), office heads carry OfficeHead, and deans/program heads
-    // hold evaluation.view for the queues they see.
-    const canSeeQueue = (q) => {
-        if (q.denyRoles?.includes(user?.role)) return false;
-        if (user?.role === 'admin') return true;
-        if (user?.role === 'dean') return q.offices.some((o) => [4, 6, 7].includes(o));
-        if (user?.role === 'programHead') return q.offices.some((o) => [4, 6].includes(o));
-        return q.offices.includes(user?.officeId);
-    };
-
-    const visibleQueues = queueItems.filter((q) => canSeeQueue(q));
+    // Which cards render is the server's answer, not a second office table keyed by hand.
+    // The list this replaces still carried office 8 after ruling 12 folded that office into
+    // Registrar, and office 8 matches no account, so the Clearance Queue was showing for the
+    // Admission office alone while the desks entitled to open it (Registrar, Scholarship,
+    // Accounting, Clinic, ID and every office head) saw no card. queueKeys comes from
+    // DashboardController::visibleQueueKeys(), which asks the same authorization the desk
+    // route itself asks — so a card can no longer offer a page that would 403.
+    const visibleQueues = queueItems.filter((q) => queueKeys.includes(q.key));
 
     // Filter quick links by role and office permissions
     const accessibleLinks = useMemo(() => {

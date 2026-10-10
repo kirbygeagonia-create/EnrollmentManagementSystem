@@ -81,7 +81,7 @@ class HandleInertiaRequests extends Middleware
                 // The enrollment form is the record as issued, so the desk offers it only to
                 // the counters that may print it. Same reason as above for `can` over
                 // `checkPermissionTo`: an install that has not run RbacSeeder answers false.
-                'printEnrollmentForm' => $staff?->can('print.enrollmentForm') ?? false,
+                'printEnrollmentForm' => $staff?->can('print.enrollmentForm') ?? false, 'clearanceDesk' => $staff?->can('clearance.view') ?? false, // the Clearance desk spans offices
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
