@@ -1,111 +1,86 @@
 # Project Instructions — SEAIT Enrollment Management System
 
-## Mandatory Workflow Rule
+## The two rules that outrank everything below
 
-**Every time a task is given to any agent (fixer, designer, explorer, librarian, oracle, etc.), the orchestrator MUST:**
+1. **Never commit or push until the user says so explicitly.** This overrides the
+   commit-before-dispatch habit described elsewhere in this file. Ask, then act.
+2. **`Documentation/EMS Complete Documentation.docx` is the authority.** Owner ruling
+   2026-09-29. Where the storyboard, the use-case guide or this file disagree with it,
+   the docx wins — and when the code moves, the docx is edited to follow in the same
+   batch of work, never left describing an older build.
 
-1. **Commit all current changes** before dispatching the agent
-2. **Push to remote** after the agent completes and gates pass
-3. **Verify working tree is clean** before starting the next task
+## Gate requirements before any push
 
-This ensures:
-- No work is lost if an agent goes rogue (as happened with fix-13)
-- Every change is traceable in git history
-- Remote backup exists at every checkpoint
-- Clean state for the next task
+All five must pass, then watch CI to green and read `gh`'s own exit code:
 
-## Gate Requirements Before Push
+- **Pest** — run `php artisan test` **whole**, never per-directory; per-directory runs hide
+  cross-file breakage. The SQLite suite is the default (`phpunit.xml` pins `:memory:`); the E2E
+  walkthrough and admin smoke run against the real MySQL `ems` database and skip when it is unreachable.
+- **PHPStan** — 0 errors. **Pint** — `--test` passes. **ESLint** — `npx eslint resources/js --max-warnings=0`.
+- **Vite build** — succeeds. CI runs three jobs (`.github/workflows/ci.yml`: Pest+PHPStan+Pint on
+  SQLite, Pest on MySQL 8, ESLint+build). Do not merge red.
+- After any gate change, also run `php artisan ems:print-fidelity` and
+  `php tools/seed_full_demo_pipeline.php` and **read their warnings** — a green suite does not
+  prove a desk can demonstrate the rule.
+- Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
+  `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
+  binds a fake service must have **every** method its route reaches — an un-overridden method
+  quietly calls the real one; poison the real method once and confirm the test still passes.
 
-All 5 gates must pass:
-- **Pest** (backend tests): 274/274 passing (SQLite suite; the E2E walkthrough + admin smoke skip when the real MySQL `ems` database is unreachable)
-- **PHPStan** (static analysis): 0 errors
-- **Pint** (code style): passed
-- **ESLint** (frontend lint): 0 errors, 0 warnings
-- **Vite build**: succeeds
+## Working with the live `ems` database
 
-Note: this file's Mandatory Workflow Rule (commit+push per agent dispatch) is
-OVERRIDDEN by the user's standing instruction — never commit or push until the
-user explicitly says so. The user's rule wins in every session.
+- Dump before every live write: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-<what>-<date>.sql`,
+  then verify the file landed and contains the table you are about to change.
+- `php artisan db:seed --class=RbacSeeder` prunes permissions the seeder no longer declares, so
+  retiring a right is a seeder edit plus a reseed, not a migration.
+- RBAC pivots are renamed: `staff_roles`, `role_permissions` with columns `roleId` / `permissionId`;
+  there is **no** `model_has_roles`. `staff_roles.model_type` is stored double-escaped
+  (`App\\Models\\Staffusers`), so a single-backslash SQL literal matches nothing and every account
+  looks role-less.
+- Never delete rows found during probing. Deleting probe residue is its own decision for the owner.
 
-## Agent Dispatch Discipline
+## Facts new code must respect
 
-- Use `background: true` for independent lanes
-- Scope agents to specific files/folders (no overlapping write scopes)
-- Reconcile results before advancing dependent work
-- Never poll background tasks — wait for notification
+- **Stack:** Laravel + Inertia/React (`resources/js/Pages`), MySQL 8 via Laragon, PHP at
+  `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`. `localhost:8080` is Laragon Apache;
+  `php artisan serve` silently shadows it on loopback, so check which server answered a probe.
+- Public `/register` is removed. Staff accounts come from Admin → User Management or
+  `php artisan ems:create-admin`.
+- Student 360 and quick-search require the seeded `students.view` permission; bare `Staff` and
+  `Instructor` do not hold it. The frontend reads shared prop `can.studentsView`.
+- Office ids: use `App\Enums\OfficeId` (Registrar=1, Accounting=2, Scholarship=3, Guidance=4,
+  Blocking=5, Admission=6, Academic=7, Clinic=11, IdOffice=22) — never a bare integer in PHP, and
+  never a hand-kept office list in JSX. Descriptors that gate a card by number went stale when
+  ruling 12 folded legacy office 8 into Registrar; navigation now answers to a right the desk's own
+  route asks (`DashboardController::QUEUES`, `HandleInertiaRequests`' `can` map).
+- Spatie registers `Gate::before`, so **a gate ability must never share a permission's name** — the
+  permission would grant it and the policy body would never run (`AbilityNameCollisionTest` pins it).
+  Note `Gate::before` also grants SysAdmin everything before any policy runs.
+- Staff relations are named `*User` (`evaluatedByUser`, `registrarProcessedByUser`, `approvedByUser`,
+  `receivedByUser`); the bare FK columns return ints. `Schedulemeetings.startTime/endTime` are plain
+  strings — casting them breaks Blocking's conflict detection.
+- Money in the drawer is `Payments::held()` (`paid` or `partial`). "Is clearance season?" is
+  answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is derived
+  from the student's own record, never asserted as a constant.
+- Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
+  SQLite suite depends on that escape hatch.
+- Record timestamps exist only on students, admissions, enrollments, payments, studentassessments,
+  studentclearances, clinicrecords and idrequests.
 
-## Stage Completion Checklist
+## Editing the authority docx
 
-Before marking a stage complete:
-- [ ] All gates pass
-- [ ] Working tree clean (committed)
-- [ ] Pushed to remote
-- [ ] Audit report documented
+`word/document.xml` is ~5.7M characters and its sentences are split across `<w:t>` runs, so:
+edit through `storage/app/scratch/docx-edit-engine.php` with absolute offsets verified before each
+write; never reflow existing tables from memory; **one offset cannot carry two edits** (an insert
+and a rewrite at the same byte corrupt the document); re-measure every `File.php:NN` citation an
+edit invalidates and verify it by *meaning* (which method the line sits in), not arithmetic;
+before believing a clean verdict from any checker, feed it a mutant and watch it fail; re-run
+`dump-docx-flat.php` before trusting `probe-docx-cite-method.php`, which reads that generated dump;
+then prove the file still opens — `docx-ooxml-check.php`, `verify-docx.php`, and
+`word-open-copy-test.ps1`, which opens a hash-identical copy in real Word and quits only the
+Word instance it started.
 
----
+## Agent dispatch
 
-## Continuation State (updated Aug 29, 2026)
-
-**Stack:** Laravel + Inertia/React (resources/js/Pages), MySQL 8 via Laragon.
-PHP binary: `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`.
-Env: OneDrive path, `EMS_DATABASE=ems` (E2E tests run against real MySQL DB).
-
-**Full code audit remediated (commit `4315a69`, Aug 29 2026) — see
-`Documentation/Audit-Remediation-2026-08-29.md` and `DEPLOYMENT.md`. Key
-facts new code MUST respect:**
-- Public `/register` is REMOVED. Staff accounts only via Admin → User
-  Management or `php artisan ems:create-admin` (first-deploy bootstrap).
-- Student 360 / quick-search require the seeded `students.view` permission
-  (StudentPolicy). Bare `Staff` and `Instructor` roles do NOT have it.
-  Frontend must consult shared Inertia prop `can.studentsView`.
-- Office IDs: use the `App\Enums\OfficeId` backed enum — never bare ints —
-  in policies/gates/seeders (Registrar=1, Accounting=2, Scholarship=3,
-  Guidance=4, Blocking=5, Admission=6, Clinic=11, IdOffice=22).
-- `blocking.assignStudents` is office-scoped: only Blocking office (5)
-  users (BlockingCoordinator/OfficeHead) or SysAdmin/Admin pass.
-- `submitRequirement` enforces `mimes:pdf,jpg,jpeg,png,doc,docx`.
-- SecurityHeaders middleware runs on every web response.
-- Record timestamps (`created_at/updated_at`, nullable) exist on students,
-  admissions, enrollments, payments, studentassessments, studentclearances,
-  clinicrecords, idrequests; `$timestamps = true` on those models only.
-- CI: `.github/workflows/ci.yml` (Pest+PHPStan+Pint on SQLite; Pest on
-  MySQL 8; ESLint+build). Do not merge red.
-- Migrations with raw MySQL SQL MUST guard on `DB::connection()
-  ->getDriverName() !== 'mysql'` (pattern used by realign/add-auto-increment/
-  widen-enum migrations) — the SQLite suite depends on it.
-
-**Stage 4 (print fidelity + load test): COMPLETE code-side.**
-- Commits: `82dad48` (print fidelity fixes), `fe261ad` (roster performance).
-- Benchmarks (run: `php artisan ems:benchmark`): Blocking roster 1,133→34ms,
-  Registrar queue →0.7ms, Blocking eligible 42ms (was 343ms + 1,275ms count).
-- Print fidelity: `php artisan ems:print-fidelity` renders 9/9 PDFs to
-  `storage/app/prints/fidelity/` from real DB data; templates in
-  `resources/views/prints/`.
-
-**Model facts new code MUST respect:**
-- Staff relations are named `*User` (FK columns shadow the old relation names):
-  `evaluatedByUser`, `registrarProcessedByUser`, `approvedByUser`, `receivedByUser`
-  on Enrollments/Admissions/Clearanceapprovals/Studentclearances/Studentscholarships.
-  Eager-load with those names. The bare FK columns (`evaluatedBy`, etc.) return ints.
-- `Schedulemeetings.startTime/endTime` are plain STRINGS (no cast — casts break
-  BlockingController conflict detection). Blades use
-  `\Illuminate\Support\Carbon::parse(...)->format('H:i')`.
-
-**Remaining (human-dependent, NOT code):**
-1. Registrar compares fidelity PDFs vs `Documentation/Images/` references.
-2. Real-data migration (needs registrar spreadsheets).
-3. Per-office UAT walkthroughs.
-
-**Deployment note:** production needs `npm install puppeteer` (Browsershot
-PDFs) plus the full checklist in `DEPLOYMENT.md` (APP_DEBUG=false,
-SESSION_SECURE_COOKIE=true, queue worker under Supervisor, HTTPS).
-
-**Next workstream (user direction): UI/UX and frontend polish.** Screens are
-Inertia React pages under `resources/js/Pages/` (Registrar, Blocking, Evaluation,
-Clearance, Admission, Assessment, Clinic, ID, Exam, Accounting, Student, Admin).
-Use @designer for visual/interaction work; @oracle only for review gates.
-Route UI/UX validation to @designer, not orchestrator.
-
----
-
-*This file is loaded via `opencode.json` → `instructions: ["AGENTS.md"]`*
+Scope agents to non-overlapping paths, run independent lanes in background, reconcile before
+advancing dependent work, and never poll a background task — wait for its notification.
