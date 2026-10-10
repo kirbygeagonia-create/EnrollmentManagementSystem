@@ -553,6 +553,53 @@ class PrintControllerTest extends TestCase
     }
 
     #[Test]
+    public function the_clearance_slip_pdf_download_is_logged_like_the_screen(): void
+    {
+        // Audit lane 3b (2026-10-09): the two desk PDF routes were the only print actions no test
+        // named — the screen each one renders from was covered, the saved copy was not. A download
+        // that renders but does not log is an issuance that never happened in the trail.
+        $student = $this->createStudent();
+        $clearance = $this->createClearanceSlip($student);
+        $clearanceStaff = $this->createStaffForOffice(1);
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($clearanceStaff)
+            ->get(route('clearance.download-slip', $clearance))
+            ->assertStatus(200)
+            ->assertDownload("clearance-slip-{$student->schoolIdNumber}.pdf");
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'documentType' => DocumentType::ClearanceSlip->value,
+            'studentId' => $student->studentId,
+            'printedBy' => $clearanceStaff->userId,
+        ]);
+    }
+
+    #[Test]
+    public function the_block_schedule_pdf_download_is_logged_against_the_block(): void
+    {
+        $blockingStaff = $this->createStaffForOffice(5);
+        $blockingStaff->givePermissionTo('print.blockSchedule');
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $block = Blocks::findOrFail($this->blockId);
+
+        $this->bindFakePrintService();
+
+        $this->actingAs($blockingStaff)
+            ->get(route('blocking.download-schedule', $block))
+            ->assertStatus(200)
+            ->assertDownload("block-schedule-{$block->blockName}.pdf");
+
+        $this->assertDatabaseHas('documentprintlog', [
+            'documentType' => DocumentType::BlockSchedule->value,
+            'blockId' => $block->blockId,
+            'printedBy' => $blockingStaff->userId,
+        ]);
+    }
+
+    #[Test]
     public function test_unauthorized_user_cannot_print(): void
     {
         $student = $this->createStudent();
