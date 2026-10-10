@@ -3,12 +3,6 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
 
-const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-];
-
 const statusToneMap = {
     active: 'success',
     inactive: 'neutral',
@@ -23,7 +17,14 @@ const roleBadgeMap = {
     staff: 'role-badge-staff',
 };
 
-export default function Index({ users, offices, units, roles, filters = {}, staffRoles }) {
+export default function Index({ users, offices, units, roles, filters = {}, staffRoles, staffStatuses = [] }) {
+    // Built from the StaffStatus list the server shares, the way staffRoleOptions below is built
+    // from staffRoles. A screen that hard-codes an enum's members goes stale the day the enum
+    // grows, and nothing in the suite notices. The empty value is this filter's "show everything".
+    const statusOptions = useMemo(
+        () => [{ value: '', label: 'All Statuses' }, ...staffStatuses.map((s) => ({ value: s.value, label: formatStatusLabel(s.value) }))],
+        [staffStatuses],
+    );
     const [search, setSearch] = useState(filters.search || '');
     const [officeId, setOfficeId] = useState(filters.officeId || '');
     const [status, setStatus] = useState(filters.status || '');

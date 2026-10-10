@@ -99,7 +99,6 @@ class AssessmentController extends Controller
 
         return Inertia::render('Assessment/Show', [
             'assessment' => $assessment,
-            'feeTypes' => Feetypes::all(['feeTypeId', 'feeName', 'defaultAmount', 'unitBasis']),
             'scholarshipTypes' => Scholarshiptypes::all(['scholarshipTypeId', 'scholarshipName', 'coverageType', 'coveragePercent']),
             'can' => [
                 // Which grants can be taken back is the row's status, and the screen checks

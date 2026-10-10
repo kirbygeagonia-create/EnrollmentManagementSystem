@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\StaffStatus;
 use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,12 +16,13 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): Response
+    public function edit(): Response
     {
-        return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
-        ]);
+        // No props: Profile/Edit reads the signed-in user from the shared auth.user, which is
+        // where the two Breeze keys this method used to send (mustVerifyEmail, status) ended up
+        // anyway — the trimmed page never named them. Staff accounts are created by an
+        // administrator and there is no verification link to acknowledge.
+        return Inertia::render('Profile/Edit');
     }
 
     /**

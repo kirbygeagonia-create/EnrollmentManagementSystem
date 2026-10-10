@@ -2,20 +2,21 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
-
-const unitBasisOptions = [
-    { value: '', label: 'All Bases' },
-    { value: 'perUnit', label: 'Per Unit' },
-    { value: 'flat', label: 'Flat Rate' },
-];
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
 
 const unitBasisToneMap = {
     perUnit: 'info',
     flat: 'warning',
 };
 
-export default function FeeTypes({ feeTypes, filters = {} }) {
+export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
+    // The filter's choices come from the same FeeUnitBasis list the server shares, so a third
+    // unit basis appears in the dropdown without anyone remembering to edit this file. The
+    // empty-value sentinel is the screen's own "show everything", not a stored basis.
+    const unitBasisOptions = useMemo(
+        () => [{ value: '', label: 'All Bases' }, ...unitBases.map((b) => ({ value: b.value, label: formatStatusLabel(b.value) }))],
+        [unitBases],
+    );
     const [search, setSearch] = useState(filters.search || '');
     const [unitBasis, setUnitBasis] = useState(filters.unitBasis || '');
     const [showModal, setShowModal] = useState(false);
