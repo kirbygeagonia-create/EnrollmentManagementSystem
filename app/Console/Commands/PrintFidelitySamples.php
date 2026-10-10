@@ -15,7 +15,7 @@ use Spatie\Browsershot\Browsershot;
  * slip, enrollment form, enrollment certificate, class card, subject load,
  * block & schedule) as a PDF from real database data into
  * storage/app/prints/fidelity/ so they can be visually compared against the
- * reference images in EnrollmentSystem/Documentation/Images/.
+ * physical Registrar forms themselves — their photographs are not committed (.gitignore).
  *
  * Read-only: does NOT write Documentprintlog rows.
  */
@@ -156,7 +156,7 @@ class PrintFidelitySamples extends Command
 
         $this->newLine();
         $this->info("Done: {$rendered}/".count($templates).' rendered in '.str_replace(base_path(), '.', $outDir).($stale ? ", {$stale} stale sample(s) pruned" : ''));
-        $this->line('Compare against: EnrollmentSystem/Documentation/Images/ (Clearance Slip, Class Card, Subject Load, Class Block and Schedule).');
+        $this->line('Compare against: the physical Registrar forms (Clearance Slip, Class Card, Subject Load, Class Block and Schedule) — the scans of them are deliberately not in this repo.');
 
         return self::SUCCESS;
     }

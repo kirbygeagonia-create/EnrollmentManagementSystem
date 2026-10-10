@@ -13,6 +13,8 @@
 /.vscode
 /.zed
 /auth.json
+# Photographs of the physical Registrar forms: real student numbers and staff signatures.
+/Documentation/Images/
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json

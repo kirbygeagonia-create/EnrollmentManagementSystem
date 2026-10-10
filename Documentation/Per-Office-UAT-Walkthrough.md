@@ -355,7 +355,7 @@ Path: **Registrar** (`/registrar`), a record at `/registrar/{enrollment}`.
 | 12.7 | Re-enroll that student in the **same term** at Evaluation | Allowed — a dropped record does not hold the seat (ruling 17) | | ☐ |
 | 12.8 | Print **COR / certificate, subject load, class card** for an enrolled record, as screen and as PDF | Each renders from real rows, each writes its own issue row keyed to the record it covers, and the printed year level uses the one shared formatter (`1st Year (Freshman)`), never `1 Year` | | ☐ |
 | 12.9 | Print the **enrollment form itself** (`GET /registrar/{enrollment}/print/enrollment-form/pdf`, `print.enrollmentForm`) | A PDF downloads and `documentprintlog` gains an `enrollmentForm` row numbered in its **own** sequence — printing the form does not advance the certificate's. There is deliberately **no screen** for this paper: the blade is the form, and a second layout could only drift from it. Ask the Registrar whether the paper is acceptable **as the record it is**: it is the only document that prints student type and standing | | ☐ |
-| 12.10 | Compare a printed PDF against the reference image in `Documentation/Images/` | Layout is acceptable to the Registrar — this is the one step in this script that needs the Registrar's eye, not the tester's | | ☐ |
+| 12.10 | Compare a printed PDF against **the physical form held at the Registrar's desk** | Layout is acceptable to the Registrar — this is the one step in this script that needs the Registrar's eye, not the tester's. The photographs of these forms are deliberately **not** in the repository: they carry real student numbers and staff signatures, so the comparison is against the paper. `php artisan ems:print-fidelity` prints the same guidance. | | ☐ |
 
 **Refusal checks**
 
