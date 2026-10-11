@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\InvalidStateTransitionException;
+use App\Exceptions\PrintRendererMissing;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Database\QueryException;
@@ -112,5 +113,26 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', 'That could not be saved — it conflicts with information already on file, '
                     .'or the record changed while this screen was open. Nothing was written. Reload the '
                     .'record, repeat the step, and tell your office head if it happens again.');
+        });
+
+        // Every printed paper is drawn by shelling out to a real browser. On a server that has
+        // none, the desk's download used to end on the generic 500 page, which reads as the
+        // system having broken rather than as one dependency an office head can install — and a
+        // download is a page navigation, so the refusal has to arrive back on the screen the
+        // desk was standing on. This is the same check PrintFidelitySamples already makes on the
+        // command line, now answering for the desks.
+        $exceptions->render(function (PrintRendererMissing $e, Request $request) {
+            $friendly = 'This paper could not be drawn because the server has no browser to draw it with, '
+                .'so no file was produced. Nothing on the screen changed — the record is as it was saved. '
+                .'Ask your office head to install Chrome or Edge on the server, or to point '
+                .'EMS_CHROME_PATH at one, then download it again.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $friendly], 503);
+            }
+
+            return redirect()
+                ->back(fallback: '/dashboard')
+                ->with('error', $friendly);
         });
     })->create();

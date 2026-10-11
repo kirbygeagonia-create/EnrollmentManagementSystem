@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DocumentType;
 use App\Enums\EnrolledSubjectStatus;
+use App\Exceptions\PrintRendererMissing;
 use App\Models\Blocks;
 use App\Models\Documentprintlog;
 use App\Models\Enrolledsubjects;
@@ -21,6 +22,17 @@ class PrintService
      */
     public function generatePdf(string $template, array $data, string $filename, bool $landscape = false): string
     {
+        // Asked before the page is built, so a server with no browser refuses without
+        // first rendering a document it cannot draw. Browsershot shells out to a real
+        // Chrome or Edge; with neither present every desk download ended on the generic
+        // 500 page, which reads as the system having broken rather than as one dependency
+        // an office head can install. This is the check PrintFidelitySamples already makes.
+        $chrome = ChromiumLocator::locate();
+
+        if (! $chrome) {
+            throw new PrintRendererMissing('No Chrome or Edge binary is available to render the document.');
+        }
+
         $html = view($template, $data)->render();
 
         $path = storage_path("app/prints/{$filename}");
@@ -34,9 +46,7 @@ class PrintService
 
         // Browsershot only knows where Chrome lives if the npm `puppeteer` package was
         // installed; on the school machines it is not, so point at the system browser.
-        if ($chrome = ChromiumLocator::locate()) {
-            $browser->setChromePath($chrome);
-        }
+        $browser->setChromePath($chrome);
 
         $browser
             ->setOption('landscape', $landscape)
