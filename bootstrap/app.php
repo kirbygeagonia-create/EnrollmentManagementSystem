@@ -3,6 +3,7 @@
 use App\Exceptions\InvalidStateTransitionException;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     // Application::configure() turns on listener discovery by default, and discovery
@@ -61,5 +63,54 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect()
                 ->back()
                 ->with('error', $friendly);
+        });
+
+        // A desk that leaves a tab open and comes back to it hits 419 on its next save. The default
+        // is a dead-end page that does not say the save failed and drops the person away from the
+        // record they were on, so for anything that was a submission this sends them back with a
+        // warning naming both facts. A GET is left alone — nothing was lost, and the page explains
+        // itself. Note the exception cannot be caught as TokenMismatchException: the framework's
+        // prepareException() turns it into an HttpException(419) before any render callback runs.
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 419 || $request->isMethodSafe()) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session expired, so this was not saved. Sign in again and try once more.',
+                ], 419);
+            }
+
+            return redirect()
+                ->back(fallback: '/dashboard')
+                ->with('warning', 'Your session expired while you were away, so that was not saved. '
+                    .'Nothing you had already saved was lost — sign in again and repeat the last step.');
+        });
+
+        // The last of the raw-database-error paths. Every constraint the application knows about
+        // is guarded in code first, so reaching the database with a violation means something the
+        // desk did that no rule predicted — a duplicate typed into a screen that never checked for
+        // it, a row deleted underneath a form already open. The person cannot act on a SQL message
+        // and a 500 page tells them the system broke rather than that the save did not happen, so
+        // a submission is sent back with what to do instead. The exception is still logged in full
+        // by the handler, and a page that was merely being read keeps the normal 500 screen.
+        $exceptions->render(function (QueryException $e, Request $request) {
+            if ($request->isMethodSafe()) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'That could not be saved because it conflicts with information already on file. '
+                        .'Reload the record and try again.',
+                ], 409);
+            }
+
+            return redirect()
+                ->back(fallback: '/dashboard')
+                ->with('error', 'That could not be saved — it conflicts with information already on file, '
+                    .'or the record changed while this screen was open. Nothing was written. Reload the '
+                    .'record, repeat the step, and tell your office head if it happens again.');
         });
     })->create();

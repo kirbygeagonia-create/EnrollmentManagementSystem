@@ -53,18 +53,33 @@ export default class ErrorBoundary extends Component {
                                     </svg>
                                 </div>
 
-                                <h2 className="text-xl font-bold text-slate-900 mb-2">Something Went Wrong</h2>
+                                <h2 className="text-xl font-bold text-slate-900 mb-2">This page could not be displayed</h2>
                                 <p className="text-sm text-slate-500 leading-relaxed mb-6">
-                                    An unexpected error occurred while rendering this page.
-                                    This has been logged for investigation.
+                                    Nothing has been lost and no record was changed — this is a display
+                                    problem on this page only. Anything you had already saved is safe.
                                 </p>
 
-                                {/* Error message */}
-                                <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6 text-left">
-                                    <p className="text-sm font-mono text-red-800 break-words">
-                                        {this.state.error?.message || 'Unknown error'}
-                                    </p>
-                                </div>
+                                {/* What to do, in the order that costs least. A desk staring at a
+                                    failure needs a next action, not a stack trace it cannot read. */}
+                                <ol className="mb-6 space-y-2 text-left text-sm text-slate-600">
+                                    <li className="flex gap-2.5">
+                                        <span className="font-bold text-slate-400">1.</span>
+                                        <span>Reload the page. This clears it most of the time.</span>
+                                    </li>
+                                    <li className="flex gap-2.5">
+                                        <span className="font-bold text-slate-400">2.</span>
+                                        <span>
+                                            If it returns, go to the Dashboard and open the record again from there.
+                                        </span>
+                                    </li>
+                                    <li className="flex gap-2.5">
+                                        <span className="font-bold text-slate-400">3.</span>
+                                        <span>
+                                            Still failing? Note which record you were on and tell your office head —
+                                            the technical details below are what an administrator needs.
+                                        </span>
+                                    </li>
+                                </ol>
 
                                 {/* Actions */}
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -95,15 +110,25 @@ export default class ErrorBoundary extends Component {
                                     onClick={this.toggleStack}
                                     className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-600 transition-colors"
                                 >
-                                    <span>Technical Details</span>
+                                    <span>Technical details for support</span>
                                     <svg className={`w-4 h-4 transition-transform ${this.state.showStack ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                {this.state.showStack && this.state.errorInfo && (
-                                    <pre className="mt-3 p-3 bg-slate-900 text-green-400 text-[10px] leading-relaxed rounded-lg overflow-x-auto max-h-48 font-mono">
-                                        {this.state.errorInfo.componentStack}
-                                    </pre>
+                                {this.state.showStack && (
+                                    <>
+                                        {/* The raw message lives here, not on the face of the screen:
+                                            "Cannot read properties of undefined" reads to a desk user
+                                            as data loss, and it is not. */}
+                                        <p className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-700 break-words">
+                                            {this.state.error?.message || 'Unknown error'}
+                                        </p>
+                                        {this.state.errorInfo && (
+                                            <pre className="mt-3 p-3 bg-slate-900 text-green-400 text-3xs leading-relaxed rounded-lg overflow-x-auto max-h-48 font-mono">
+                                                {this.state.errorInfo.componentStack}
+                                            </pre>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
