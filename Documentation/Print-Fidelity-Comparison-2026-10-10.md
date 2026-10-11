@@ -60,15 +60,24 @@ knowledge of their own paper.
 | 2.3 | `Course & Year` as `Bachelor of Science in Information Technology - First Year` — the level spelled as a word | `Course & Year: … - Year 1` (plus the major, which the paper's line does not carry) | vocabulary |
 | 2.4 | Subject block is a table row: `Subject Code` \| `Descriptive Title` \| `Units`, labels beneath the values | Three `Label: value` rows, and the middle label is `Description:` not `Descriptive Title` | vocabulary + shape |
 | 2.5 | `Units` holds one number (`3`) | `3 (Lec: 2, Lab: 1)` | extra |
-| 2.6 | `Set` \| `Time` \| `Day` \| `Grade` as four cells; `Time` holds the two ranges, `Day` holds `MON, TUE, SAT` once | Same four boxes, **but the day is printed twice** — the `Time` box writes `Mon 11:30-13:00` per meeting and the `Day` box then lists `Mon` again | defect (see note) |
+| 2.6 | `Set` \| `Time` \| `Day` \| `Grade` as four cells; `Time` holds the two ranges, `Day` holds `MON, TUE, SAT` once | Same four boxes, **but the day is printed twice** — the `Time` box writes `Mon 11:30-13:00` per meeting and the `Day` box then lists `Mon` again | defect — **closed 2026-10-11**, see note |
 | 2.7 | `Name and Signature of Instructor:` with the name written by hand | `Name & Signature of Instructor` pre-filled from the schedule's instructor, no signature space of its own | vocabulary |
 | 2.8 | Two `Date:` fields, one under the instructor and one under `Issued by:` | One `Date` box and one `Date:` in the footer, both auto-filled with today | shape |
 | 2.9 | Semester line is `2nd Semester \| 2024-2025` | `1st Semester, 2026-2027` — comma, no pipe | vocabulary |
 
-**2.6 is the only row in this document that is not a taste question.** The day genuinely
-appears twice on our card because two boxes are fed from the same meeting list. Whether the
-fix is to drop the day from the `Time` box or to drop the `Day` box depends on which shape
-the Registrar wants (2.1–2.2), so it is left unfixed and named here.
+**2.6 was the only row in this document that is not a taste question, and it is now closed.**
+The day genuinely appeared twice on our card because two boxes were fed from the same meeting
+list. Ruled 2026-10-11: the `Time` box prints the ranges only (`08:00-09:30`, `10:00-11:30`) and
+the `Day` box keeps the weekdays, matching the form, which prints the day once. Pinned by
+`PrintControllerTest::the_class_card_prints_the_meeting_day_once_not_in_both_boxes()`, which
+renders the card from a two-meeting schedule and asserts the weekday appears in `Day` and in no
+other box. The rows still open are the shape questions 2.1–2.5 and 2.7–2.9 — including whether
+the `Day` box should list one weekday per line as it does today or carry `MON, TUE` on one line
+as the paper does, which is a 2.2 shape question and has not been changed.
+
+The card's React screen (`resources/js/Pages/Registrar/PrintClassCards.jsx:148`) is untouched:
+it has one `Schedule` field and no `Day` field, so its `Monday 08:00–09:30` is the only place
+that screen prints the weekday — there is no duplication to remove there.
 
 ---
 
@@ -132,7 +141,7 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 | 1.6 | Is the per-office requirement checklist on the same sheet as the student's copy, or a separate document? | | ☐ |
 | 1.1–1.5 | Do the slip's labels follow the paper (`Full Name`, `Date`, `Registrar In-charge (Signature over Printed Name) & Date`, semester-in-title, `2nd Year`) or does the paper follow the system? | | ☐ |
 | 2.1–2.9 | Same question for the card, including whether it is a portrait card at all | | ☐ |
-| 2.6 | The day prints twice on our card — drop it from the `Time` box, or drop the `Day` box? | | ☐ |
+| 2.6 | ~~The day prints twice on our card — drop it from the `Time` box, or drop the `Day` box?~~ **Answered 2026-10-11 by the owner: the day was dropped from the `Time` box, the `Day` box stays.** Not a question for the office any more | done | ☑ |
 | 3.6 | Is the subject load signed by Student / Class Adviser / Registrar, or by Evaluated by / Processed by as the paper shows? | | ☐ |
 | 3.3 | Is the student-type word on the paper ("Old") the one to print, or is the system's ("Continuing") correct? | | ☐ |
 | 3.4–3.5 | May the load print the extra three columns and the totals row the paper does not have? | | ☐ |
@@ -140,5 +149,8 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 | 4.1 | Does the block schedule need to be a weekly grid, or is the meeting list the document the office files? | | ☐ |
 | §5 | Provide a blank photograph of the enrollment certificate and the enrollment form so those two can be compared too | | ☐ |
 
-Nothing in this file was changed in the templates. Every row above is a paper decision first and
-a code change second, and the code follows the ruling — not the other way round.
+One row of this file has been acted on: **2.6**, the doubled weekday, which the owner ruled on
+2026-10-11 and the card template now prints once. It was the only row that was a defect rather
+than a preference, so it did not need the office's hand. Every other row above is still a paper
+decision first and a code change second, and the code follows the ruling — not the other way
+round.

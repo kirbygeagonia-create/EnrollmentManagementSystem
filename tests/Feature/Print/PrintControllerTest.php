@@ -23,6 +23,7 @@ use App\Models\Enrollments;
 use App\Models\Majors;
 use App\Models\Offices;
 use App\Models\Rooms;
+use App\Models\Schedulemeetings;
 use App\Models\Schedules;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
@@ -417,6 +418,63 @@ class PrintControllerTest extends TestCase
         $this->assertCount($subjectCount, $logs);
         $this->assertEquals(1, $logs[0]->documentNumber);
         $this->assertEquals(2, $logs[1]->documentNumber);
+    }
+
+    /**
+     * The text printed inside one labelled box of the card.
+     */
+    private function boxContent(string $html, string $title): string
+    {
+        $pattern = '/<div class="box-title">'.preg_quote($title, '/').'<\/div>\s*<div class="box-content">(.*?)<\/div>/s';
+        $this->assertSame(1, preg_match($pattern, $html, $m), "The printed card has no {$title} box.");
+
+        return trim(strip_tags(str_replace('<br>', ' ', $m[1])));
+    }
+
+    #[Test]
+    public function the_class_card_prints_the_meeting_day_once_not_in_both_boxes(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $enrolled = $enrollment->enrolledSubjects->first();
+
+        $schedule = Schedules::create([
+            'blockId' => $this->blockId,
+            'subjectId' => $enrolled->subjectId,
+            'instructorId' => $this->createStaffForOffice(7)->userId,
+            'roomId' => Rooms::first()->roomId,
+        ]);
+
+        foreach ([['Monday', '08:00:00', '09:30:00'], ['Tuesday', '10:00:00', '11:30:00']] as [$day, $from, $to]) {
+            Schedulemeetings::create([
+                'scheduleId' => $schedule->scheduleId,
+                'dayOfWeek' => $day,
+                'startTime' => $from,
+                'endTime' => $to,
+            ]);
+        }
+
+        $enrolled->update(['scheduleId' => $schedule->scheduleId]);
+
+        $html = view('prints.class-card', [
+            'enrollment' => $enrollment->load(['student', 'course', 'major', 'term.academicYear', 'registrarProcessedByUser']),
+            'subject' => $enrolled->subject,
+            'schedule' => $schedule->load(['room', 'instructor', 'meetings']),
+        ])->render();
+
+        // Ruled 2026-10-11 from the physical form, which prints the day once: the ranges
+        // belong to Time, the weekday belongs to Day. Before the ruling Time carried
+        // "Monday 08:00-09:30" beside a Day box that said "Monday" again.
+        $time = $this->boxContent($html, 'Time');
+        $this->assertStringContainsString('08:00-09:30', $time);
+        $this->assertStringContainsString('10:00-11:30', $time);
+        $this->assertStringNotContainsString('Monday', $time);
+        $this->assertStringNotContainsString('Tuesday', $time);
+
+        $day = $this->boxContent($html, 'Day');
+        $this->assertStringContainsString('Monday', $day);
+        $this->assertStringContainsString('Tuesday', $day);
+        $this->assertStringNotContainsString('08:00', $day);
     }
 
     #[Test]
