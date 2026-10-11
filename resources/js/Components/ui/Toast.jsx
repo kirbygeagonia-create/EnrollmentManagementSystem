@@ -12,6 +12,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *     bury a forty-word instruction on what to do next.
  *   - An urgent message is announced, not whispered. role="status" is polite, and a screen reader
  *     can leave it unread while the desk moves on.
+ *   - A rejected save is read even when the form has no room for it. Page-level field errors join the
+ *     same queue, because most desk forms post directly and render no error list of their own.
  */
 const variants = {
     success: {
@@ -123,7 +125,7 @@ function ToastCard({ item, onDismiss }) {
 }
 
 export default function Toast({ max = 4 }) {
-    const { flash } = usePage().props;
+    const { flash, errors } = usePage().props;
     const [queue, setQueue] = useState([]);
     const seen = useRef(new Set());
     const nextId = useRef(0);
@@ -146,6 +148,26 @@ export default function Toast({ max = 4 }) {
         incoming.forEach((item) => seen.current.add(`${item.type}|${item.message}`));
         setQueue((current) => [...incoming, ...current].slice(0, max));
     }, [flash, max]);
+
+    // Ruled 2026-10-10: a rejected save arrives as page-level field errors, and the forms that post
+    // with router.post directly — the upload picker, the camera capture, twenty-some other desk
+    // actions — render none of them. Without this the desk's only answer is a button that stops
+    // spinning. Forms that already list their own errors show both; the field is the precise place
+    // to fix it and this is the notice that something happened at all.
+    useEffect(() => {
+        if (!errors || typeof errors !== 'object') {
+            return;
+        }
+
+        const message = Object.values(errors).map(textOf).filter((text) => text !== '').join(' ');
+
+        if (message === '' || seen.current.has(`error|${message}`)) {
+            return;
+        }
+
+        seen.current.add(`error|${message}`);
+        setQueue((current) => [{ type: 'error', message, id: (nextId.current += 1) }, ...current].slice(0, max));
+    }, [errors, max]);
 
     const dismiss = useCallback((id) => setQueue((current) => current.filter((item) => item.id !== id)), []);
 

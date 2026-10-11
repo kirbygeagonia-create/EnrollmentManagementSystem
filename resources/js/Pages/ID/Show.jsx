@@ -26,6 +26,17 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const fileInputRef = useRef(null);
+    const [photoKey, setPhotoKey] = useState(0);
+
+    // A re-captured face lands at a new path but the view route is the same URL, so React keeps
+    // the image it already decoded and the desk goes on looking at the photo it just replaced —
+    // then signs a validation against a face that is no longer on file. The counter changes the
+    // URL, which is what makes the screen show the photo the record actually carries.
+    const photoSrc = () => {
+        const base = route('id.photo.view', { idRequest: idRequest.idRequestId });
+
+        return photoKey ? `${base}?k=${photoKey}` : base;
+    };
 
     const student = enrollment.student;
 
@@ -94,6 +105,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
         router.post(route('id.photo', { idRequest: idRequest.idRequestId }), formData, {
             onSuccess: () => {
                 setUploadingPhoto(false);
+                setPhotoKey((k) => k + 1);
                 stopCamera();
             },
             onError: () => setUploadingPhoto(false),
@@ -281,6 +293,20 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                                             </div>
                                         </div>
                                     )}
+                                    {photoAttached && (
+                                        <div className="space-y-2">
+                                            <div className="mx-auto w-full max-w-xs">
+                                                <img
+                                                    src={photoSrc()}
+                                                    alt={`Face photo for ${getStudentName()}`}
+                                                    className="rounded-2xl border-2 border-slate-200 object-cover w-full"
+                                                />
+                                            </div>
+                                            <p className="text-center text-xs text-brand-500">
+                                                This is the photo on file. Capture or choose another to replace it.
+                                            </p>
+                                        </div>
+                                    )}
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -297,7 +323,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                                 <div className="space-y-4">
                                     <div className="mx-auto w-full max-w-xs">
                                         <img
-                                            src={route('id.photo.view', { idRequest: idRequest.idRequestId })}
+                                            src={photoSrc()}
                                             alt={`Face photo for ${getStudentName()}`}
                                             className="rounded-2xl border-2 border-slate-200 object-cover w-full"
                                         />

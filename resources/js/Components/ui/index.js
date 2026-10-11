@@ -9,7 +9,6 @@ export { default as Badge } from './Badge';
 export { default as Modal } from './Modal';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as CauseEffectModal } from './CauseEffectModal';
-export { default as ErrorModal } from './ErrorModal';
 export { default as EmptyState } from './EmptyState';
 export { default as FormSection } from './FormSection';
 export { default as Select } from './Select';
