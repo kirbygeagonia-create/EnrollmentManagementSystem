@@ -221,9 +221,16 @@ class AssessmentController extends Controller
         }
 
         // Calculate coverage
+        // Every peso figure is rounded to the centavo it will be stored as. The columns are
+        // DECIMAL(x,2) but PHP does this arithmetic in binary floats, and an unrounded sum can
+        // land a peso amount a few picoseconds over the total — which the 100% cap below then
+        // reads as a genuine over-award and refuses, telling the officer something impossible.
         $coverageAmount = $scholarshipType->coverageType === CoverageType::Full
-            ? $assessment->remainingBalance
-            : min($assessment->remainingBalance, $assessment->totalAssessedAmount * ($scholarshipType->coveragePercent / 100));
+            ? round((float) $assessment->remainingBalance, 2)
+            : round(min(
+                (float) $assessment->remainingBalance,
+                (float) $assessment->totalAssessedAmount * ($scholarshipType->coveragePercent / 100)
+            ), 2);
 
         // A grant that awards nothing is not a grant. Once the account is fully
         // covered (or fully paid) the remaining balance is 0, so every award from
@@ -237,7 +244,7 @@ class AssessmentController extends Controller
         }
 
         // Check 100% cap
-        $newTotalCoverage = $assessment->totalScholarshipCoverage + $coverageAmount;
+        $newTotalCoverage = round((float) $assessment->totalScholarshipCoverage + $coverageAmount, 2);
         if ($newTotalCoverage > $assessment->totalAssessedAmount) {
             return back()->withErrors(['scholarshipTypeId' => 'Total scholarship coverage cannot exceed 100%.']);
         }
@@ -257,7 +264,7 @@ class AssessmentController extends Controller
 
         $assessment->update([
             'totalScholarshipCoverage' => $newTotalCoverage,
-            'remainingBalance' => max(0, $assessment->totalAssessedAmount - $newTotalCoverage - $assessment->totalWaived - $totalPaid),
+            'remainingBalance' => round(max(0, (float) $assessment->totalAssessedAmount - $newTotalCoverage - (float) $assessment->totalWaived - (float) $totalPaid), 2),
         ]);
 
         return back()->with('success', 'Scholarship applied.');
@@ -323,15 +330,15 @@ class AssessmentController extends Controller
                 ->get();
 
             $coverage = $remaining->contains(fn (Studentscholarships $g) => $g->scholarshipType?->coverageType === CoverageType::Full)
-                ? $assessed
-                : min($assessed, $remaining->sum(function (Studentscholarships $g) use ($assessed) {
+                ? round((float) $assessed, 2)
+                : round(min($assessed, $remaining->sum(function (Studentscholarships $g) use ($assessed) {
                     $type = $g->scholarshipType;
 
-                    return $type === null ? 0.0 : $assessed * ((float) $type->coveragePercent / 100);
-                }));
+                    return $type === null ? 0.0 : round((float) $assessed * ((float) $type->coveragePercent / 100), 2);
+                })), 2);
 
             $held = (float) $assessment->payments()->held()->sum('amount');
-            $newBalance = max(0, $assessed - $coverage - (float) $assessment->totalWaived - $held);
+            $newBalance = round(max(0, $assessed - $coverage - (float) $assessment->totalWaived - $held), 2);
 
             $assessment->update([
                 'totalScholarshipCoverage' => $coverage,
@@ -396,7 +403,7 @@ class AssessmentController extends Controller
             $assessment->update([
                 'totalAssessedAmount' => $totalAssessed,
                 'totalWaived' => $totalWaived,
-                'remainingBalance' => max(0, $totalAssessed - $assessment->totalScholarshipCoverage - $totalWaived - $totalPaid),
+                'remainingBalance' => round(max(0, (float) $totalAssessed - (float) $assessment->totalScholarshipCoverage - (float) $totalWaived - (float) $totalPaid), 2),
             ]);
         });
 

@@ -415,4 +415,48 @@ class ScholarshipGrantTest extends TestCase
 
         $this->assertSame(0, Studentscholarships::count());
     }
+
+    #[Test]
+    public function a_fractional_assessment_still_adds_up_after_two_percentage_grants(): void
+    {
+        // 12,345.67 on purpose: ten percent of it is 1,234.567, a figure no DECIMAL(x,2)
+        // column can hold and no binary float can represent exactly. Whatever the arithmetic
+        // does on the way, the two numbers the desk ends up writing must still add back to
+        // what was assessed — an officer reconciles a fee sheet by that identity, not by the
+        // intermediate floats.
+        [, $assessment] = $this->assess(null, [
+            'totalAssessedAmount' => 12345.67,
+            'remainingBalance' => 12345.67,
+        ]);
+
+        $grants = collect([10, 90])->map(fn (int $percent) => Scholarshiptypes::create([
+            'scholarshipName' => 'Fractional '.$percent.' Percent',
+            'coverageType' => 'partial',
+            'coveragePercent' => $percent,
+        ]));
+
+        foreach ($grants as $grant) {
+            $this->actingAs($this->officer)
+                ->post(route('assessment.scholarships.apply', $assessment), [
+                    'scholarshipTypeId' => $grant->scholarshipTypeId,
+                ])
+                ->assertSessionHasNoErrors();
+        }
+
+        $fresh = $assessment->fresh();
+
+        // Ten plus ninety is exactly the whole of it: the account is fully covered, the
+        // balance is zero, and the two figures still reconcile to what was assessed.
+        $this->assertSame(
+            12345.67,
+            round((float) $fresh->totalScholarshipCoverage, 2),
+            'the two grants together cover the whole assessment'
+        );
+        $this->assertSame(0.0, round((float) $fresh->remainingBalance, 2));
+        $this->assertSame(
+            12345.67,
+            round((float) $fresh->totalScholarshipCoverage + (float) $fresh->remainingBalance, 2),
+            'coverage and remaining balance must add back to the amount assessed'
+        );
+    }
 }
