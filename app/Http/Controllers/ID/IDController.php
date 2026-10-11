@@ -149,7 +149,17 @@ class IDController extends Controller
             return back()->with('error', 'The photo could not be saved, so this request is unchanged and still needs a face photo. Capture or choose the picture again. If it fails a second time the server is short of storage space — tell your office head so they can have it checked.');
         }
 
+        $superseded = $idRequest->cardPhotoPath;
+
         $idRequest->update(['cardPhotoPath' => $path]);
+
+        // Ruled 2026-10-10: a retake replaces the picture on the record, so the blurred
+        // attempt is removed rather than left in the folder holding student photographs.
+        // After the update, and only for a path this record no longer uses — a rejected
+        // upload never reaches this line, so a failed attempt cannot destroy a good photo.
+        if (filled($superseded) && $superseded !== $path) {
+            Storage::disk('documents')->delete($superseded);
+        }
 
         return back()->with('success', 'Face photo attached to the ID request.');
     }

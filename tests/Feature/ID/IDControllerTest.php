@@ -528,6 +528,71 @@ class IDControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_retaking_the_photo_removes_the_picture_it_replaced(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        $this->post(route('id.photo', $idRequest), ['photo' => UploadedFile::fake()->image('first.jpg')])
+            ->assertSessionHasNoErrors();
+
+        $first = $idRequest->fresh()->cardPhotoPath;
+
+        $this->post(route('id.photo', $idRequest), ['photo' => UploadedFile::fake()->image('second.jpg')])
+            ->assertSessionHasNoErrors();
+
+        $second = $idRequest->fresh()->cardPhotoPath;
+
+        // Ruled 2026-10-10: the retake replaces the record's picture, and the blurred
+        // attempt it displaced is removed rather than left in the folder of student photos.
+        $this->assertNotEquals($first, $second);
+        Storage::disk('documents')->assertExists($second);
+        Storage::disk('documents')->assertMissing($first);
+    }
+
+    #[Test]
+    public function test_a_rejected_retake_leaves_the_photo_on_file_in_place(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+
+        $this->post(route('id.photo', $idRequest), ['photo' => UploadedFile::fake()->image('good.jpg')])
+            ->assertSessionHasNoErrors();
+
+        $kept = $idRequest->fresh()->cardPhotoPath;
+
+        $this->post(route('id.photo', $idRequest), ['photo' => UploadedFile::fake()->create('scan.pdf', 50, 'application/pdf')])
+            ->assertSessionHasErrors('photo');
+
+        // The removal happens after a stored write and a successful update, so a failed
+        // attempt cannot destroy the one picture the request actually has.
+        $this->assertEquals($kept, $idRequest->fresh()->cardPhotoPath);
+        Storage::disk('documents')->assertExists($kept);
+    }
+
+    #[Test]
     public function validating_a_request_needs_the_id_signature_as_well_as_the_counter_right(): void
     {
         // id.sign was held by IdOfficer and consulted by nothing. The head of the ID office
