@@ -43,9 +43,9 @@ class WorkflowService
     /**
      * Build the ordered workflow steps for an enrollment.
      *
-     * Assessment (officeId 3) is included only for firstYear and transferee
-     * students. Continuing and shifter students skip it: their scholarship
-     * status was already settled by the clearance that precedes enrollment.
+     * Assessment (officeId 3) is included only for firstYear and transferee students. Continuing
+     * and shifter students skip it: their clearance carries a signed Scholarship-office line, but no
+     * clearance code reads studentscholarships — an office attests, no data is checked, §28 C-7 asks.
      *
      * @return array<int, array{0: int, 1: string}> [officeId, label]
      */
