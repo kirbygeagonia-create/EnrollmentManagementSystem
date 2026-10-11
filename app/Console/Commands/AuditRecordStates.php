@@ -118,7 +118,7 @@ class AuditRecordStates extends Command
         }
 
         $this->newLine();
-        $this->info('Records checked: 10 rules across idrequests, workflowsteps, enrollmentworkflow, enrollments, notifications and documentprintlog.');
+        $this->info('Records checked: '.count($findings).' rules across idrequests, workflowsteps, enrollmentworkflow, enrollments, notifications and documentprintlog.');
 
         if ($impossible === 0 && $decisions === 0) {
             $this->info('Every state the application is supposed to prevent is prevented, and no open decision row is on file.');

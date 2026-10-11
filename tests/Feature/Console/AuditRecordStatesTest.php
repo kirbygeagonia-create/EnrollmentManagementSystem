@@ -220,6 +220,12 @@ class AuditRecordStatesTest extends TestCase
 
         $this->assertStringContainsString('Every state the application is supposed to prevent is prevented', $out);
         $this->assertStringNotContainsString('FAIL', $out);
+
+        // The summary sentence has to be derived, not typed: count the rule lines that were
+        // marked and require the headline to carry that same number.
+        preg_match_all('/^  (?:ok|FAIL|note)\s+\S/m', $out, $marked);
+        $this->assertCount(10, $marked[0], 'Ten rules should print a marked line each.');
+        $this->assertStringContainsString('Records checked: 10 rules', $out);
     }
 
     /**
