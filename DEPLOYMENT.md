@@ -184,7 +184,11 @@ Do not merge with red CI.
 2. `/register` returns 404 (self-registration disabled).
 3. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.
 4. Admin → User Management creates a second account (proves RBAC + hashing).
-5. Trigger a queued print job and confirm the worker processes it.
+5. Download one paper from each desk and confirm it arrives as a PDF. Printing is **not** queued
+   work (§5/§6): Browsershot runs inside the request, so this step proves the browser binary, not
+   the worker. Then confirm the notification bell of the desk that must act next shows the row the
+   action just wrote — on this machine (`sync`) that happens in the same request; on production it
+   is the worker's job, so check `jobs` is empty and the row exists.
 6. `php artisan ems:audit:record-states` exits 0. This is the command the audit should have
    had from the start: every impossible record this project found by hand — a validated ID
    request with no face photo, a workflow box completed with no officer on it, a request still
