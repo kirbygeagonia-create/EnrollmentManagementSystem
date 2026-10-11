@@ -75,7 +75,15 @@ php artisan key:generate
 php artisan migrate --force
 php artisan db:seed --force     # roles, permissions, settings, starter reference data, notifications
 php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan ems:preflight
 ```
+
+`ems:preflight` turns this document into a command: it checks the environment pair, the
+database connection, unapplied migrations, an unseeded RBAC, the privacy of the `documents`
+disk, the folders Laravel must write into, a browser for PDFs, and the queue connection — and
+for each failure it names the fix rather than the symptom. It writes nothing and changes
+nothing, so it is safe to run before §4 and again after any change below. A non-zero exit code
+means at least one desk would break on this server.
 
 ## 4. Bootstrap the first SysAdmin (audit §3.3)
 
@@ -177,6 +185,17 @@ Do not merge with red CI.
 3. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.
 4. Admin → User Management creates a second account (proves RBAC + hashing).
 5. Trigger a queued print job and confirm the worker processes it.
+6. `php artisan ems:audit:record-states` exits 0. This is the command the audit should have
+   had from the start: every impossible record this project found by hand — a validated ID
+   request with no face photo, a workflow box completed with no officer on it, a request still
+   open under a box its own office had already signed, a notice addressed to a class that does
+   not exist — is one of its ten rules. A non-zero count means a write path regressed or a row
+   was edited behind a desk's back, so fix the path or restore from a dump rather than editing
+   the status column. Its one `note` line is different in kind: printed papers attributable to
+   nobody are the owner's open decision (docx §28 G-9), reported so it is measured the same way
+   each time, and it does not fail the run.
+7. `php artisan ems:uploads:prune` reports what the private disk holds that no record points at,
+   and deletes nothing until told `--delete` (§2).
 
 ---
 
