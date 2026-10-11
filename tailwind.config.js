@@ -16,6 +16,14 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
                 heading: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            // The three sub-12px sizes the desks already use, named so they sit on the scale
+            // instead of being re-typed as arbitrary values. Plain strings on purpose: a tuple
+            // here would add a line-height and reflow every label that currently inherits one.
+            fontSize: {
+                '2xs': '11px',
+                '3xs': '10px',
+                '4xs': '9px',
+            },
             colors: {
                 // SEAIT Primary Accent - Orange
                 seait: {
@@ -43,6 +51,9 @@ export default {
                     700: '#2D4258',
                     800: '#1E2D3D',
                     850: '#162330',
+                    // The chrome's own dark: the top bar, the launcher header, and the ring around
+                    // its unread badge. It sat between 850 and 900 as a literal in three JSX files.
+                    875: '#0B1528',
                     900: '#101920',
                     950: '#080E14',
                 },
@@ -58,6 +69,7 @@ export default {
                     700: '#2D4258',
                     800: '#1E2D3D',
                     850: '#162330',
+                    875: '#0B1528',
                     900: '#101920',
                     950: '#080E14',
                 },

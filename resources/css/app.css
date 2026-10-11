@@ -122,6 +122,16 @@
         @apply outline-none ring-2 ring-seait-500 ring-offset-2;
     }
 
+    /* Accessibility floor, same shape as the one above: the disabled state was declared inside
+       .btn only, so the 28 desk controls that are hand-styled on purpose gave no sign of being
+       busy — and a desk cannot tell a dead button from one that is still working. */
+    button:disabled,
+    [role='button'][aria-disabled='true'],
+    input[type='submit']:disabled,
+    input[type='button']:disabled {
+        @apply cursor-not-allowed opacity-50;
+    }
+
     /* Accessibility floor: honour the OS reduce-motion setting app-wide. */
     @media (prefers-reduced-motion: reduce) {
         *, ::before, ::after {
@@ -288,8 +298,10 @@
         @apply badge bg-info-100 text-info-800;
     }
 
+    /* Ruled 2026-10-10: an incomplete item is something a student still owes, at every desk.
+       It read grey, the same as a line nobody has acted on, which under-alarmed the checklist. */
     .badge-incomplete {
-        @apply badge bg-brand-100 text-brand-700;
+        @apply badge bg-warning-100 text-warning-800;
     }
 
     .badge-paid {

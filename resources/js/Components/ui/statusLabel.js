@@ -87,3 +87,13 @@ export const idRequestStatusTone = {
     validated: 'accent',
     cancelled: 'danger',
 };
+
+// The workflow statuses whose badge is simply named after them: .badge-pending, .badge-approved,
+// .badge-rejected, .badge-waived, .badge-incomplete. Six desk files each carried their own copy of
+// exactly this list, which is how one word can end up two colours after someone edits one copy.
+// Anything outside it reads neutral, the same fallback those maps had.
+const identityStatusTones = ['pending', 'approved', 'rejected', 'waived', 'incomplete'];
+
+export const statusToneFor = (status) => (
+    identityStatusTones.includes(status) ? status : 'neutral'
+);

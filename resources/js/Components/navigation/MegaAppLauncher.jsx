@@ -306,7 +306,7 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
             <div className="relative min-h-screen flex items-start justify-center p-4 sm:p-6 lg:p-8">
                 <div className="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden my-8 animate-scale-in">
                     {/* Header */}
-                    <div className="px-6 py-5 bg-gradient-to-r from-[#0B1528] via-navy-800 to-[#0B1528] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10">
+                    <div className="px-6 py-5 bg-gradient-to-r from-navy-875 via-navy-800 to-navy-875 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-seait-500/20 border border-seait-500/40 flex items-center justify-center text-seait-400">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
