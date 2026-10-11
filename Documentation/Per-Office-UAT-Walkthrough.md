@@ -433,7 +433,7 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
-| 15.1 | Create a card request for an enrolled student (`newStudent`) | A `pending` request is opened | | ☐ |
+| 15.1 | Create a card request for an enrolled student (`newStudent`) | A `pending` request is opened. **Precondition found by walking this script 2026-10-11:** the desk can only open a request for an enrollment whose next unsigned box is the ID office's and which has no request yet, and one enrollment per student — the demo dataset holds exactly one enrollment parked at that stage (DEMO-2026-016) and it already carries a request, so this row needs a second record advanced to the ID box first, or it cannot be performed as written | | ☐ |
 | 15.2 | Attach the face photo, then **Validate** | Before the photo is on file the validate button is disabled and the reason is printed under it. After it, the desk sees the captured face **on the pending request** — not only once it is signed — and re-capturing replaces the picture on file and removes the one it displaced. Validation is **terminal**: status `validated`, the validator and date recorded. There is no release step and no `released` value any more | | ☐ |
 | 15.3 | Open a request whose data looks wrong and record a **mismatch remark** (`POST /id/requests/{idRequest}/remark`, `id.remarkRequest`) | The remark is stored on the **pending** request; a validated request cannot take one | | ☐ |
 | 15.4 | Print the class card / ID-facing documents | Each subject of an expanded card prints, and the issue row is attributable to the student | | ☐ |
