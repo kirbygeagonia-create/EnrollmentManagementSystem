@@ -30,10 +30,9 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Uploaded papers live on the private default disk, which the framework serves
- * only through a signed URL. These tests pin the two routes that answer on the
- * owning module's policy instead, so a desk can open what an applicant or an ID
- * operator actually uploaded.
+ * Uploaded papers live on the named private documents disk, which no URL reaches.
+ * These tests pin the two routes that answer on the owning module's policy instead, so
+ * a desk can open what an applicant or an ID operator actually uploaded.
  */
 class StoredFileAccessTest extends TestCase
 {
@@ -54,7 +53,7 @@ class StoredFileAccessTest extends TestCase
         $this->seedReferenceData();
         $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\RbacSeeder', '--database' => 'sqlite']);
 
-        Storage::fake('local');
+        Storage::fake('documents');
     }
 
     private function seedReferenceData(): void
@@ -172,7 +171,7 @@ class StoredFileAccessTest extends TestCase
         ]);
 
         $path = 'admission-documents/form138.pdf';
-        Storage::disk('local')->put($path, $contents);
+        Storage::disk('documents')->put($path, $contents);
 
         $document = Documents::create([
             'submissionId' => $submission->submissionId,
@@ -224,14 +223,14 @@ class StoredFileAccessTest extends TestCase
 
         $response->assertOk();
         $this->assertEquals('THE-SEALED-PDF', $response->streamedContent());
-        Storage::disk('local')->assertExists($path);
+        Storage::disk('documents')->assertExists($path);
     }
 
     #[Test]
     public function a_document_whose_file_is_gone_reports_404_rather_than_500(): void
     {
         [, , $document] = $this->makeAdmissionWithDocument();
-        Storage::disk('local')->delete($document->fileUrl);
+        Storage::disk('documents')->delete($document->fileUrl);
 
         $this->actingAs($this->staffInOffice(6, 'AdmissionOfficer'))
             ->get(route('admission.documents.show', $document))
@@ -267,7 +266,7 @@ class StoredFileAccessTest extends TestCase
     public function the_id_desk_can_see_the_captured_face_photo(): void
     {
         $path = 'id-photos/capture.jpg';
-        Storage::disk('local')->put($path, 'THE-FACE');
+        Storage::disk('documents')->put($path, 'THE-FACE');
         $idRequest = $this->makeIdRequest($path);
 
         $this->actingAs($this->staffInOffice(22, 'IdOfficer'));

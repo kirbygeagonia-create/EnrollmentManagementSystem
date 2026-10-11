@@ -24,6 +24,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -48,6 +49,12 @@ class IDControllerTest extends TestCase
         $this->artisan('migrate', ['--database' => 'sqlite']);
         $this->seedReferenceData();
         $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\RbacSeeder', '--database' => 'sqlite']);
+
+        // These tests post a real image to the attach-photo route. Without the fake every
+        // run left another face photo behind in storage/app/private/id-photos — 131
+        // unreferenced files by 2026-10-10 — in the same folder the school's real
+        // student pictures live in.
+        Storage::fake('documents');
     }
 
     private function seedReferenceData(): void
@@ -391,6 +398,8 @@ class IDControllerTest extends TestCase
             'emergencyContactName' => 'Emergency Contact',
             'emergencyContactNumber' => '09171234569',
             'bloodType' => 'O+',
+            // Ruled 2026-10-10: the create route no longer reads a photo path. A request
+            // carries a face only after attachPhoto() stored one and checked the write.
             'cardPhotoPath' => '/photos/card.jpg',
         ]);
 
@@ -403,7 +412,9 @@ class IDControllerTest extends TestCase
         $this->assertEquals('Emergency Contact', $idRequest->emergencyContactName);
         $this->assertEquals('09171234569', $idRequest->emergencyContactNumber);
         $this->assertEquals('O+', $idRequest->bloodType);
-        $this->assertEquals('/photos/card.jpg', $idRequest->cardPhotoPath);
+        // The field was sent and must have been ignored: a request created at the counter
+        // has no photo, however much text the post carried.
+        $this->assertNull($idRequest->cardPhotoPath);
         $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
         $this->assertNotNull($idRequest->requestDate);
     }

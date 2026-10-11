@@ -110,7 +110,10 @@ class IDController extends Controller
             'emergencyContactName' => 'required|string|max:255',
             'emergencyContactNumber' => 'required|string|max:20',
             'bloodType' => 'required|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
-            'cardPhotoPath' => 'nullable|string|max:500',
+            // cardPhotoPath is deliberately not accepted here. Ruled 2026-10-10: a typed
+            // path satisfied IDPolicy::validate's "must carry a captured face photo" rule
+            // without any file behind it, and no form sends this field — the picture only
+            // ever arrives through attachPhoto(), which stores it and checks the write.
         ]);
 
         $idRequest = Idrequests::create([
@@ -119,7 +122,6 @@ class IDController extends Controller
             'emergencyContactName' => $validated['emergencyContactName'],
             'emergencyContactNumber' => $validated['emergencyContactNumber'],
             'bloodType' => $validated['bloodType'],
-            'cardPhotoPath' => $validated['cardPhotoPath'] ?? null,
             'requestDate' => now(),
             'status' => IdRequestStatus::Pending,
         ]);
@@ -138,8 +140,14 @@ class IDController extends Controller
             'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $disk = config('filesystems.default', 'public');
-        $path = $request->file('photo')->store('id-photos', $disk);
+        // Named rather than the default disk: config/filesystems.php and DEPLOYMENT.md §2.
+        $path = $request->file('photo')->store('id-photos', 'documents');
+
+        // Audit lane 7: a failed write returns false rather than raising, and the
+        // request would then carry a path with no file behind it into validation.
+        if ($path === false) {
+            return back()->with('error', 'The photo could not be saved, so this request is unchanged and still needs a face photo. Capture or choose the picture again. If it fails a second time the server is short of storage space — tell your office head so they can have it checked.');
+        }
 
         $idRequest->update(['cardPhotoPath' => $path]);
 
@@ -149,16 +157,15 @@ class IDController extends Controller
     /**
      * Stream the captured face photo back to the desk.
      *
-     * The stored path is relative to the private default disk, which the
-     * framework only serves through a signed URL, so an <img> pointed at it
-     * cannot load. This answers on the same policy as the request screen that
-     * shows the photo.
+     * The stored path sits on the private documents disk, which no URL reaches at
+     * all, so an <img> pointed at it cannot load. This answers on the same policy as
+     * the request screen that shows the photo.
      */
     public function photo(Idrequests $idRequest): StreamedResponse
     {
         $this->authorize('view', $idRequest);
 
-        $disk = Storage::disk(config('filesystems.default'));
+        $disk = Storage::disk('documents');
         abort_unless(filled($idRequest->cardPhotoPath) && $disk->exists($idRequest->cardPhotoPath), 404, 'No face photo is stored for this request.');
 
         return $disk->response($idRequest->cardPhotoPath);

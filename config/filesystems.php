@@ -38,6 +38,30 @@ return [
             'report' => false,
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Uploaded applicant papers and student face photos
+        |--------------------------------------------------------------------------
+        |
+        | Deliberately its own disk rather than the default one, and rooted where the
+        | default already is so every path already stored stays valid. Uploads written
+        | through config('filesystems.default') would move to a publicly served folder
+        | on an operator who set FILESYSTEM_DISK=public and ran storage:link — and the
+        | two routes that read them back are the only thing standing between a stranger
+        | and a named student's documents, because a hashed filename is not a secret.
+        | Naming the disk here means one line in .env can no longer expose them.
+        | No 'serve' and no 'url': nothing may reach these bytes except through a route
+        | that authorizes the record they belong to.
+        |
+        */
+
+        'documents' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

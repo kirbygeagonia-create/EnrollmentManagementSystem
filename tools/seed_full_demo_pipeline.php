@@ -144,7 +144,7 @@ if (DB::table('enrollments')->where('termId', $relocatedFromTermId)->exists()) {
  * display where the face should be.
  */
 $demoFacePhoto = function (string $slug): string {
-    $disk = Storage::disk(config('filesystems.default', 'local'));
+    $disk = Storage::disk('documents');
     $path = 'id-photos/'.$slug.'.png';
 
     if (! $disk->exists($path)) {
@@ -156,8 +156,12 @@ $demoFacePhoto = function (string $slug): string {
         $tmp = sys_get_temp_dir().'/ems-face-'.uniqid().'.png';
         imagepng($canvas, $tmp);
         imagedestroy($canvas);
-        $disk->put($path, file_get_contents($tmp));
+        $written = $disk->put($path, file_get_contents($tmp));
         unlink($tmp);
+
+        if (! $written) {
+            throw new RuntimeException("Demo face photo could not be written at {$path}; the disk refused the write.");
+        }
     }
 
     return $path;

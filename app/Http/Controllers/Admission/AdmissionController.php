@@ -264,10 +264,10 @@ class AdmissionController extends Controller
     /**
      * Stream one uploaded requirement document.
      *
-     * Uploads go to the default disk, which is private: it is served only with a
-     * signed URL, so a plain link to the stored path cannot work. Answering here
-     * keeps the file behind the same policy as its admission, which is what lets
-     * the desk open the paper before it signs the requirement off.
+     * Uploads go to the named private documents disk, which no URL reaches, so a
+     * plain link to the stored path cannot work. Answering here keeps the file
+     * behind the same policy as its admission, which is what lets the desk open the
+     * paper before it signs the requirement off.
      */
     public function document(Documents $document): StreamedResponse
     {
@@ -275,7 +275,7 @@ class AdmissionController extends Controller
         abort_unless($admission !== null, 404, 'This document no longer belongs to an admission.');
         $this->authorize('view', $admission);
 
-        $disk = Storage::disk(config('filesystems.default'));
+        $disk = Storage::disk('documents');
         abort_unless(filled($document->fileUrl) && $disk->exists($document->fileUrl), 404, 'The stored file is missing from disk.');
 
         return $disk->response($document->fileUrl);
@@ -300,8 +300,14 @@ class AdmissionController extends Controller
             ->where('requirementId', $requirement->requirementId)
             ->firstOrFail();
 
-        $disk = config('filesystems.default', 'public');
-        $path = $request->file('file')->store('admission-documents', $disk);
+        // Named rather than the default disk: config/filesystems.php and DEPLOYMENT.md §2.
+        $path = $request->file('file')->store('admission-documents', 'documents');
+
+        // Audit lane 7: the disk sets throw => false, so a failed write returns false
+        // instead of raising — and the row would be recorded over a paper never written.
+        if ($path === false) {
+            return back()->with('error', 'Your file could not be saved, so nothing was submitted and this requirement is still waiting for it. Please attach the paper again. If it fails a second time the server is short of storage space — tell your office head so they can have it checked.');
+        }
 
         DB::transaction(function () use ($submission, $path, $request, $validated) {
             Documents::create([
