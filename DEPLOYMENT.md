@@ -53,6 +53,11 @@ folder's own `.gitignore` keeps a machine full of real signed forms from shippin
 papers by accident, and the reference photographs of the physical forms are ignored at
 the repository root for the same reason.
 
+To see what has accumulated there, run `php artisan ems:uploads:prune`. It lists the
+files on the private disk that no record points at — superseded face captures, residue
+from an older install — and deletes nothing unless given `--delete`. It looks only inside
+`id-photos/` and `admission-documents/`, never at the disk's root.
+
 The production-debug guard lives in `app/Providers/AppServiceProvider.php`:
 booting with `APP_ENV=production` and `APP_DEBUG=true` throws a
 `RuntimeException`, so a forgotten override can never ship stack traces.

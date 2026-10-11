@@ -434,7 +434,7 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
 | 15.1 | Create a card request for an enrolled student (`newStudent`) | A `pending` request is opened | | ☐ |
-| 15.2 | Attach the face photo, then **Validate** | Validation is **terminal**: status `validated`, the validator and date recorded. There is no release step and no `released` value any more | | ☐ |
+| 15.2 | Attach the face photo, then **Validate** | Before the photo is on file the validate button is disabled and the reason is printed under it. After it, the desk sees the captured face **on the pending request** — not only once it is signed — and re-capturing replaces the picture on file and removes the one it displaced. Validation is **terminal**: status `validated`, the validator and date recorded. There is no release step and no `released` value any more | | ☐ |
 | 15.3 | Open a request whose data looks wrong and record a **mismatch remark** (`POST /id/requests/{idRequest}/remark`, `id.remarkRequest`) | The remark is stored on the **pending** request; a validated request cannot take one | | ☐ |
 | 15.4 | Print the class card / ID-facing documents | Each subject of an expanded card prints, and the issue row is attributable to the student | | ☐ |
 
@@ -446,6 +446,8 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 | 15R.2 | Look for any release/cancel action on the desk | None exists, and `idrequests.status` holds only `pending` and `validated` | | ☐ |
 | 15R.3 | Act on an ID request as `office1_head` | Refused by office scope | | ☐ |
 | 15R.4 | Log in as `head22_only` (§2.8: office 22, `OfficeHead` and nothing else), attach a photo and press **Validate** on a pending request | **Refused.** Validation is terminal and it *is* the ID box's signature, so the act asks `id.sign` as well as the counter's `id.validate` (ruling 7, wired into the code 2026-10-05). The request stays `pending`, `validatedBy` and `validatedDate` stay empty, and the office 22 box is unsigned. The same account may still create a request and attach its photo — those are counter work | | ☐ |
+
+| 15R.5 | After a good capture, attach a file that is **not an image** (a text file renamed `.jpg` — the picker's filter is a hint, not a rule) | The desk is told: the card "That step did not go through" with *"The photo field must be an image."* Nothing silent, and the picture already on file survives untouched — the removal of a superseded photo happens only after a write that worked. Validation stays available on the photo that is really there | | ☐ |
 
 > `head22_only` is the ID desk's version of §14's `head11_only`; restore or delete both after §17.
 
