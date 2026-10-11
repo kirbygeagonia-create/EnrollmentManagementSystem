@@ -127,25 +127,31 @@ function ToastCard({ item, onDismiss }) {
 export default function Toast({ max = 4 }) {
     const { flash, errors } = usePage().props;
     const [queue, setQueue] = useState([]);
-    const seen = useRef(new Set());
+    // Deduped by prop IDENTITY, not by message text. Two visits carry two objects even when
+    // they carry the same sentence, so an officer who captures a photo, retakes it, and gets
+    // the same "Face photo attached" a second time is shown the second card — a text-keyed
+    // memory swallowed it, which is the one case this desk actually produces.
+    const lastFlash = useRef(null);
+    const lastErrors = useRef(null);
     const nextId = useRef(0);
 
     useEffect(() => {
-        if (!flash) {
+        if (!flash || flash === lastFlash.current) {
             return;
         }
+
+        lastFlash.current = flash;
 
         const incoming = Object.keys(variants)
             .filter((type) => flash[type])
             .map((type) => ({ type, message: textOf(flash[type]) }))
-            .filter((item) => item.message !== '' && !seen.current.has(`${item.type}|${item.message}`))
+            .filter((item) => item.message !== '')
             .map((item) => ({ ...item, id: (nextId.current += 1) }));
 
         if (incoming.length === 0) {
             return;
         }
 
-        incoming.forEach((item) => seen.current.add(`${item.type}|${item.message}`));
         setQueue((current) => [...incoming, ...current].slice(0, max));
     }, [flash, max]);
 
@@ -155,17 +161,18 @@ export default function Toast({ max = 4 }) {
     // spinning. Forms that already list their own errors show both; the field is the precise place
     // to fix it and this is the notice that something happened at all.
     useEffect(() => {
-        if (!errors || typeof errors !== 'object') {
+        if (!errors || typeof errors !== 'object' || errors === lastErrors.current) {
             return;
         }
+
+        lastErrors.current = errors;
 
         const message = Object.values(errors).map(textOf).filter((text) => text !== '').join(' ');
 
-        if (message === '' || seen.current.has(`error|${message}`)) {
+        if (message === '') {
             return;
         }
 
-        seen.current.add(`error|${message}`);
         setQueue((current) => [{ type: 'error', message, id: (nextId.current += 1) }, ...current].slice(0, max));
     }, [errors, max]);
 
