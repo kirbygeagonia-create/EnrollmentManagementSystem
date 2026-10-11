@@ -748,6 +748,92 @@ class IDControllerTest extends TestCase
         $this->assertNull($idStep->signedBy);
     }
 
+    /**
+     * Every box already signed, including the ID office's — the state an enrollment
+     * reaches after the desk has finished with it. The request row is written directly
+     * because id.create refuses an enrollment that has left the ID stage.
+     */
+    private function createFullySignedWorkflow(Enrollments $enrollment, Staffusers $notThisOfficer): Enrollmentworkflow
+    {
+        // createEnrollment() already opened a workflow parked at the ID box, and the
+        // desk reads its box through a hasOne — leaving both rows means the desk signs
+        // the other one and the test proves nothing. Retire it first, as the existing
+        // wrong-stage test does.
+        $enrollment->enrollmentworkflow?->workflowsteps()->delete();
+        $enrollment->enrollmentworkflow()->delete();
+
+        $workflow = Enrollmentworkflow::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'currentStep' => 7,
+            'workflowStatus' => WorkflowStatus::Completed,
+        ]);
+
+        // A signer that is provably not the officer about to press the button, so an
+        // overwrite of the box would show up as a changed signedBy rather than a no-op.
+        $previous = Staffusers::factory()->create(['officeId' => 22]);
+        $this->assertNotSame($previous->userId, $notThisOfficer->userId);
+
+        foreach ([[4, 1], [3, 2], [2, 3], [1, 4], [5, 5], [11, 6], [22, 7]] as [$officeId, $order]) {
+            Workflowsteps::create([
+                'workflowId' => $workflow->workflowId,
+                'officeId' => $officeId,
+                'stepOrder' => $order,
+                'stepStatus' => WorkflowStepStatus::Completed,
+                'signedBy' => $previous->userId,
+                'signedDate' => now()->subWeek(),
+            ]);
+        }
+
+        return $workflow;
+    }
+
+    #[Test]
+    public function validating_a_request_whose_box_is_already_signed_refuses_and_keeps_the_first_signature(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+        $workflow = $this->createFullySignedWorkflow($enrollment, $idStaff);
+        $idBox = $workflow->workflowsteps()->where('officeId', 22)->first();
+        $originalSigner = $idBox->signedBy;
+        $originalDate = $idBox->signedDate;
+
+        $idRequest = Idrequests::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+            'cardPhotoPath' => 'id-photos/test-capture.jpg',
+            'requestDate' => now(),
+            'status' => IdRequestStatus::Pending,
+        ]);
+
+        $this->assertSame(1, Enrollmentworkflow::where('enrollmentId', $enrollment->enrollmentId)->count(), 'the desk must see exactly one workflow');
+
+        $response = $this->from(route('id.show', $idRequest))
+            ->post(route('id.validate', $idRequest));
+
+        // The request did not move, because the signature write rolled the transaction back.
+        $this->assertEquals(IdRequestStatus::Pending, $idRequest->fresh()->status);
+        $this->assertNull($idRequest->fresh()->validatedBy);
+
+        // The box still carries the first officer's signature and date, not this attempt's.
+        $freshBox = $idBox->fresh();
+        $this->assertEquals($originalSigner, $freshBox->signedBy);
+        $this->assertEquals($originalDate->toDateTimeString(), $freshBox->signedDate->toDateTimeString());
+
+        // The desk is told which box refused it and who already signed it — not that the
+        // save failed for an unnamed reason, and not a raw 500.
+        $response->assertRedirect(route('id.show', $idRequest));
+        $error = session('error');
+        $this->assertIsString($error);
+        $this->assertStringContainsString('ID Validation', $error);
+        $this->assertStringContainsString('Nothing on the record changed', $error);
+        $this->assertStringContainsString('corrected by the Registrar with a system administrator', $error);
+    }
+
     #[Test]
     public function test_unauthorized_staff_cannot_create_returns_403(): void
     {

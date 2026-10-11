@@ -2,6 +2,7 @@
 
 use App\Exceptions\InvalidStateTransitionException;
 use App\Exceptions\PrintRendererMissing;
+use App\Exceptions\WorkflowAlreadySignedException;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Database\QueryException;
@@ -56,6 +57,29 @@ return Application::configure(basePath: dirname(__DIR__))
                 .'expected stage of the enrollment workflow — it may have already been '
                 .'processed by another office. Refresh the record and try again. '
                 .'If the problem persists, contact the Registrar.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $friendly], 422);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', $friendly);
+        });
+
+        // A second signature on a closed box. Named in the card rather than left to the
+        // generic stage message above, because the officer needs to know the box is not
+        // theirs to change and that nothing they did rewrote the person before them.
+        // No desk action re-opens a signed box today, so the card says what to hand over
+        // instead of promising a button that does not exist.
+        $exceptions->render(function (WorkflowAlreadySignedException $e, Request $request) {
+            $d = $e->details;
+            $friendly = "{$d['office']} already signed this enrollment — that box was closed by "
+                ."{$d['signedBy']} on {$d['signedDate']}. Nothing on the record changed, and your "
+                .'action did not replace that signature. If the name or date on that box is wrong, '
+                .'note the enrollment number and give it to your office head: a signed box is '
+                .'corrected by the Registrar with a system administrator, not at the desk. '
+                .'Refresh the record to see the stage it is really at.';
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => $friendly], 422);

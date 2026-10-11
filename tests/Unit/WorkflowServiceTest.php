@@ -5,19 +5,24 @@ namespace Tests\Unit;
 use App\Enums\EnrollmentStatus;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
+use App\Events\WorkflowStepSigned;
 use App\Exceptions\InvalidStateTransitionException;
+use App\Exceptions\WorkflowAlreadySignedException;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
 use App\Models\Admissions;
+use App\Models\Auditlogs;
 use App\Models\Courses;
 use App\Models\Enrollments;
+use App\Models\Enrollmentstatushistory;
 use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Services\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -282,6 +287,144 @@ class WorkflowServiceTest extends TestCase
         $this->assertEquals(WorkflowStepStatus::Completed, $step->stepStatus);
         $this->assertEquals($deptStaff->userId, $step->signedBy);
         $this->assertNotNull($step->signedDate);
+    }
+
+    #[Test]
+    public function it_refuses_to_sign_a_box_that_is_already_signed(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+
+        $firstOfficer = Staffusers::factory()->create(['officeId' => 4]);
+        $this->workflowService->signStep($workflow, 1, $firstOfficer);
+
+        // A second officer at the same desk, acting on a record the desk has already
+        // left. This is the case that used to overwrite the signature in place.
+        $secondOfficer = Staffusers::factory()->create(['officeId' => 4]);
+
+        $this->expectException(WorkflowAlreadySignedException::class);
+        $this->workflowService->signStep($workflow, 1, $secondOfficer);
+    }
+
+    #[Test]
+    public function a_refused_second_signature_leaves_the_first_officers_name_and_date_on_the_box(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+
+        $firstOfficer = Staffusers::factory()->create(['officeId' => 4]);
+        $step = $this->workflowService->signStep($workflow, 1, $firstOfficer);
+        $firstDate = $step->signedDate;
+
+        $secondOfficer = Staffusers::factory()->create(['officeId' => 4]);
+        try {
+            $this->workflowService->signStep($workflow, 1, $secondOfficer);
+            $this->fail('The second signature was accepted, so the box was rewritten.');
+        } catch (WorkflowAlreadySignedException $e) {
+            // The card the desk sees has to name the box and the person already there,
+            // or the officer cannot tell whose signature they nearly replaced.
+            $this->assertSame('Department Evaluation', $e->details['office']);
+            $this->assertSame($firstOfficer->name, $e->details['signedBy']);
+            $this->assertNotEmpty($e->details['signedDate']);
+        }
+
+        $fresh = $step->fresh();
+        $this->assertSame($firstOfficer->userId, $fresh->signedBy);
+        $this->assertEquals($firstDate, $fresh->signedDate);
+        $this->assertSame(WorkflowStepStatus::Completed, $fresh->stepStatus);
+    }
+
+    #[Test]
+    public function a_refused_second_signature_does_not_fire_a_second_signing_event(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+
+        Event::fake([WorkflowStepSigned::class]);
+
+        $firstOfficer = Staffusers::factory()->create(['officeId' => 4]);
+        $this->workflowService->signStep($workflow, 1, $firstOfficer);
+
+        $secondOfficer = Staffusers::factory()->create(['officeId' => 4]);
+        try {
+            $this->workflowService->signStep($workflow, 1, $secondOfficer);
+        } catch (WorkflowAlreadySignedException) {
+            // expected
+        }
+
+        Event::assertDispatchedTimes(WorkflowStepSigned::class, 1);
+    }
+
+    #[Test]
+    public function a_box_takes_a_second_signature_only_once_the_record_has_actually_fallen_back_below_it(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+
+        $step = $this->workflowService->signStep($workflow, 1, $deptStaff);
+        $firstDate = $step->signedDate;
+
+        // The Department Evaluation box produces `evaluated`. While the record sits there,
+        // a second act is a double press and is refused.
+        $this->expectException(WorkflowAlreadySignedException::class);
+        $this->workflowService->signStep($workflow, 1, $deptStaff);
+    }
+
+    #[Test]
+    public function a_box_reopens_for_a_record_whose_history_shows_it_came_back_down(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $otherStaff = Staffusers::factory()->create(['officeId' => 4]);
+
+        $this->workflowService->signStep($workflow, 1, $deptStaff);
+
+        // The Registrar sent the record back to the department: the pipeline moved below
+        // the stage this box produces, so the desk is entitled to certify it a second time
+        // and the box must take the new signature rather than refuse the stage it is in.
+        Enrollmentstatushistory::create([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'fromStatus' => EnrollmentStatus::Evaluated,
+            'toStatus' => EnrollmentStatus::ReturnedToEvaluation,
+            'changedBy' => $deptStaff->userId,
+            'remarks' => 'Returned by the Registrar for a corrected subject load.',
+            'changedAt' => now(),
+        ]);
+
+        $again = $this->workflowService->signStep($workflow, 1, $otherStaff);
+
+        $this->assertEquals($otherStaff->userId, $again->signedBy);
+        $this->assertSame(WorkflowStepStatus::Completed, $again->stepStatus);
+    }
+
+    #[Test]
+    public function a_refused_box_does_not_re_sign_but_a_reopened_one_writes_its_previous_signature_into_the_audit_trail(): void
+    {
+        $workflow = $this->workflowService->createWorkflow($this->enrollment);
+        $deptStaff = Staffusers::factory()->create(['officeId' => 4]);
+
+        $step = $this->workflowService->signStep($workflow, 1, $deptStaff);
+
+        Enrollmentstatushistory::create([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'fromStatus' => EnrollmentStatus::Evaluated,
+            'toStatus' => EnrollmentStatus::ReturnedToEvaluation,
+            'changedBy' => $deptStaff->userId,
+            'remarks' => 'Returned by the Registrar.',
+            'changedAt' => now(),
+        ]);
+
+        $otherStaff = Staffusers::factory()->create(['officeId' => 4]);
+        $this->workflowService->signStep($workflow, 1, $otherStaff);
+
+        // The overwrite is allowed by ruling, so the earlier signature has to survive
+        // somewhere a reviewer can read it: the audit observer writes the pre-update row.
+        $audit = Auditlogs::where('entityTable', 'workflowsteps')
+            ->where('entityId', (string) $step->workflowStepId)
+            ->where('action', 'updated')
+            ->latest('auditId')
+            ->first();
+
+        $this->assertNotNull($audit, 'The re-signature left no audit row.');
+        $old = json_decode($audit->oldValues, true);
+        $this->assertEquals($deptStaff->userId, $old['signedBy'], 'The audit row does not name the officer whose signature was replaced.');
     }
 
     #[Test]
