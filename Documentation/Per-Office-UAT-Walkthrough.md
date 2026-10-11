@@ -446,7 +446,6 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 | 15R.2 | Look for any release/cancel action on the desk | None exists, and `idrequests.status` holds only `pending` and `validated` | | ☐ |
 | 15R.3 | Act on an ID request as `office1_head` | Refused by office scope | | ☐ |
 | 15R.4 | Log in as `head22_only` (§2.8: office 22, `OfficeHead` and nothing else), attach a photo and press **Validate** on a pending request | **Refused.** Validation is terminal and it *is* the ID box's signature, so the act asks `id.sign` as well as the counter's `id.validate` (ruling 7, wired into the code 2026-10-05). The request stays `pending`, `validatedBy` and `validatedDate` stay empty, and the office 22 box is unsigned. The same account may still create a request and attach its photo — those are counter work | | ☐ |
-
 | 15R.5 | After a good capture, attach a file that is **not an image** (a text file renamed `.jpg` — the picker's filter is a hint, not a rule) | The desk is told: the card "That step did not go through" with *"The photo field must be an image."* Nothing silent, and the picture already on file survives untouched — the removal of a superseded photo happens only after a write that worked. Validation stays available on the photo that is really there | | ☐ |
 
 > `head22_only` is the ID desk's version of §14's `head11_only`; restore or delete both after §17.
