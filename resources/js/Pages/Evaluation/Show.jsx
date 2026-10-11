@@ -1,16 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone, formatYearLevel, studentTypeTone } from '@/Components/ui';
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 
-const studentTypeToneMap = {
-    firstYear: 'info',
-    continuing: 'success',
-    transferee: 'warning',
-    shifter: 'accent',
-};
 
 export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
@@ -225,7 +219,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             <h2 className="font-heading font-extrabold text-slate-900 text-lg">
                                 {student?.lastName}, {student?.firstName} {student?.middleName ? `${student.middleName[0]}.` : ''}
                             </h2>
-                            <Badge tone={studentTypeToneMap[enrollment.studentType] || 'neutral'}>
+                            <Badge tone={studentTypeTone[enrollment.studentType] ?? 'neutral'}>
                                 {enrollment.studentType}
                             </Badge>
                             <Badge tone={enrollmentStatusTone[enrollment.enrollmentStatus] || 'neutral'}>
@@ -301,7 +295,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                         <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                             <span className="font-bold">Reason:</span> {enrollment.returnReason}
                         </p>
-                        <p className="text-[11px] text-amber-700 mt-1.5">
+                        <p className="text-2xs text-amber-700 mt-1.5">
                             Adjust the subject load below and sign again — the record re-enters Assessment automatically after re-evaluation.
                         </p>
                     </div>
@@ -410,7 +404,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     <p className="text-xs font-semibold text-slate-800 leading-relaxed">
                         {standingReport?.headline || 'Standing evidence is unavailable for this enrollment.'}
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-2xs text-slate-500 mt-1">
                         {standingReport?.gradedSubjectCount ?? 0} graded subject(s) from previous terms
                         {standingReport?.gradedSubjectCount
                             ? ` · passing line ${Number(standingReport.passingCeiling).toFixed(2)}${standingReport?.hasGradeScale ? ' (school grade scale)' : ' (assumed default — no scale on file)'}`
@@ -422,7 +416,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 {(standingReport?.failedSubjects?.length ?? 0) > 0 && (
                     <div className="mb-4 overflow-hidden rounded-xl border border-red-200">
                         <table className="w-full text-xs">
-                            <thead className="bg-red-50 text-left text-[10px] uppercase font-bold text-red-800">
+                            <thead className="bg-red-50 text-left text-3xs uppercase font-bold text-red-800">
                                 <tr>
                                     <th className="px-3 py-2">Failed Subject</th>
                                     <th className="px-3 py-2">Term</th>
@@ -448,7 +442,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 )}
 
                 {(standingReport?.retakenSubjects?.length ?? 0) > 0 && (
-                    <p className="text-[11px] text-slate-500 mb-4">
+                    <p className="text-2xs text-slate-500 mb-4">
                         Repeated on record: {standingReport.retakenSubjects.map((r) => r.subjectCode).join(', ')} — shown as
                         evidence only; no documented rule makes a repeat decide the standing.
                     </p>
@@ -457,13 +451,13 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 {(standingReport?.advisories?.length ?? 0) > 0 && (
                     <ul className="mb-4 space-y-1 list-disc pl-5">
                         {standingReport.advisories.map((note) => (
-                            <li key={note} className="text-[11px] text-amber-800">{note}</li>
+                            <li key={note} className="text-2xs text-amber-800">{note}</li>
                         ))}
                     </ul>
                 )}
 
                 {enrollment.academicStanding && standingReport?.derived && enrollment.academicStanding !== standingReport.derived && (
-                    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[11px] text-amber-900">
+                    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-2xs text-amber-900">
                         This desk recorded <span className="font-bold">{enrollment.academicStanding}</span> while the records
                         derive <span className="font-bold">{standingReport.derived}</span>. The override stands until the
                         Registrar rules on it at approval.
@@ -473,7 +467,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 {canDecideStanding ? (
                     <form onSubmit={handleSaveStanding} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                                 Department Decision *
                             </label>
                             <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Academic standing">
@@ -502,7 +496,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                             />
                                             <span className="capitalize">{value}</span>
                                             {suggested && (
-                                                <span className="text-[10px] font-normal text-slate-500">matches the records</span>
+                                                <span className="text-3xs font-normal text-slate-500">matches the records</span>
                                             )}
                                         </label>
                                     );
@@ -515,7 +509,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                         <div>
                             <label
                                 htmlFor="yearLevel"
-                                className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5"
+                                className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1.5"
                             >
                                 Year Level *
                             </label>
@@ -532,7 +526,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {standingForm.errors.yearLevel && (
                                 <p className="form-error mt-1.5">{standingForm.errors.yearLevel}</p>
                             )}
-                            <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                            <p className="text-2xs text-slate-400 mt-2 leading-relaxed">
                                 Recorded from the credentials on this desk. The prescribed load and the section
                                 search are resolved against it, so change it before proposing subjects.
                             </p>
@@ -551,7 +545,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                     ? 'Recording…'
                                     : (enrollment.academicStanding ? 'Update Department Decision' : 'Record Standing Decision')}
                             </button>
-                            <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                            <p className="text-2xs text-slate-400 mt-2 leading-relaxed">
                                 Recording the standing here does not finalize it — the Registrar confirms or changes it when they
                                 approve the enrollment.
                             </p>
@@ -598,7 +592,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     {canRecordRetention ? (
                         <form onSubmit={handleRecordRetention} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Exam Result *</label>
+                                <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Exam Result *</label>
                                 {/* Pass / Fail as a radio pair, not a dropdown (item 13) */}
                                 <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Retention exam result">
                                     {['pass', 'fail'].map((value) => {
@@ -641,7 +635,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 {retentionForm.errors.examResult && <p className="form-error mt-1.5">{retentionForm.errors.examResult}</p>}
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Date of Examination *</label>
+                                <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Date of Examination *</label>
                                 <input
                                     type="date"
                                     value={retentionForm.data.examDate}
@@ -760,7 +754,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             <div className="flex items-center gap-2">
                                 {curriculum && (
                                     <span
-                                        className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200"
+                                        className="text-3xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200"
                                         title="This enrollment stays pinned to the curriculum version the student was admitted under"
                                     >
                                         {curriculum.curriculumName || `Curriculum #${curriculum.curriculumId}`}
@@ -776,7 +770,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                         <span
                                             key={group.name}
                                             title={`Elective group "${group.name}" requires ${group.min}-${group.max} of ${group.options} subjects`}
-                                            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
+                                            className={`text-3xs font-bold px-2.5 py-1 rounded-lg border ${
                                                 withinBand
                                                     ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                                                     : 'text-red-700 bg-red-50 border-red-200'
@@ -819,12 +813,12 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-mono text-xs font-bold text-slate-900">{subj?.subjectCode}</span>
                                                     {cs.is_elective && cs.elective_group && (
-                                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-700">
+                                                        <span className="text-3xs font-medium px-1.5 py-0.5 rounded border border-amber-200 bg-amber-50 text-amber-700">
                                                             elective · {cs.elective_group}
                                                         </span>
                                                     )}
                                                     {cs.prerequisiteSubject && (
-                                                        <span className={`text-[10px] font-medium px-1.5 py-0.2 rounded border ${
+                                                        <span className={`text-3xs font-medium px-1.5 py-0.2 rounded border ${
                                                             isLocked
                                                                 ? 'text-red-700 bg-red-50 border-red-200'
                                                                 : 'text-amber-700 bg-amber-50 border-amber-200'
@@ -842,7 +836,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                                 <span className="font-bold text-slate-800">
                                                     {Number(subj?.lectureUnits || 0) + Number(subj?.labUnits || 0)} Units
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 block">
+                                                <span className="text-3xs text-slate-400 block">
                                                     Lec: {subj?.lectureUnits || 0} • Lab: {subj?.labUnits || 0}
                                                 </span>
                                             </div>
@@ -870,15 +864,15 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                         {/* Live Units Breakdown Cards */}
                         <div className="grid grid-cols-3 gap-2.5 mb-5 text-center">
                             <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Lecture</span>
+                                <span className="text-3xs uppercase font-bold text-slate-400 block">Lecture</span>
                                 <span className="text-lg font-mono font-bold text-white">{totalLectureUnits}</span>
                             </div>
                             <div className="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Laboratory</span>
+                                <span className="text-3xs uppercase font-bold text-slate-400 block">Laboratory</span>
                                 <span className="text-lg font-mono font-bold text-white">{totalLabUnits}</span>
                             </div>
                             <div className="bg-seait-500/20 rounded-xl p-2.5 border border-seait-500/40">
-                                <span className="text-[10px] uppercase font-bold text-seait-300 block">Total Units</span>
+                                <span className="text-3xs uppercase font-bold text-seait-300 block">Total Units</span>
                                 <span className="text-lg font-mono font-bold text-seait-400">{totalAcademicUnits}</span>
                             </div>
                         </div>
@@ -892,7 +886,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                     <div key={cs.curriculumSubjectId} className="pt-2 flex items-center justify-between">
                                         <div className="min-w-0 pr-2">
                                             <span className="font-mono font-bold text-white">{cs.subject?.subjectCode}</span>
-                                            <p className="text-[11px] text-slate-400 truncate">{cs.subject?.subjectName}</p>
+                                            <p className="text-2xs text-slate-400 truncate">{cs.subject?.subjectName}</p>
                                         </div>
                                         <span className="font-mono font-bold text-slate-200 flex-shrink-0">
                                             {Number(cs.subject?.lectureUnits || 0) + Number(cs.subject?.labUnits || 0)}u
@@ -916,7 +910,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {isSubmitting ? 'Proposing Subject Load...' : 'Save & Propose Subject Load'}
                         </button>
                         {selectedSubjectIds.length === 0 && (
-                            <p className="mt-2 text-center text-[11px] text-slate-500" role="status">
+                            <p className="mt-2 text-center text-2xs text-slate-500" role="status">
                                 Select at least one subject above before proposing the load.
                             </p>
                         )}
@@ -946,7 +940,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 <div key={cs.creditedId} className="flex items-center justify-between p-3 rounded-xl bg-indigo-50/60 border border-indigo-200">
                                     <div className="min-w-0">
                                         <span className="font-bold text-xs text-slate-900">{cs.previousSubjectName}</span>
-                                        <span className="text-[11px] text-slate-500 block">→ credited to {cs.creditedToSubject?.subjectCode || cs.creditedToSubjectId}</span>
+                                        <span className="text-2xs text-slate-500 block">→ credited to {cs.creditedToSubject?.subjectCode || cs.creditedToSubjectId}</span>
                                     </div>
                                     <div className="text-right text-xs">
                                         <span className="font-mono font-bold text-indigo-700">{Number(cs.creditedUnits || 0)} units</span>
@@ -958,7 +952,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Previous Subject Name *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Previous Subject Name *</label>
                             <input
                                 type="text"
                                 value={creditForm.data.previousSubjectName}
@@ -969,7 +963,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {creditForm.errors['credits.0.previousSubjectName'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.previousSubjectName']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Credited To Subject *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Credited To Subject *</label>
                             <select
                                 value={creditForm.data.creditedToSubjectId}
                                 onChange={(e) => creditForm.setData('creditedToSubjectId', e.target.value)}
@@ -984,7 +978,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Credited Units *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Credited Units *</label>
                             <input
                                 type="number"
                                 min="0"
@@ -995,7 +989,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Name *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Name *</label>
                             <input
                                 type="text"
                                 value={creditForm.data.institutionName}
@@ -1006,7 +1000,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {creditForm.errors['credits.0.institutionName'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.institutionName']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Type *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Type *</label>
                             <select
                                 value={creditForm.data.institutionType}
                                 onChange={(e) => creditForm.setData('institutionType', e.target.value)}
@@ -1021,7 +1015,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {creditForm.errors['credits.0.institutionType'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.institutionType']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution City / Municipality *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Institution City / Municipality *</label>
                             <input
                                 type="text"
                                 value={creditForm.data.cityMunicipality}
@@ -1032,7 +1026,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {creditForm.errors['credits.0.cityMunicipality'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.cityMunicipality']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Province *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Institution Province *</label>
                             <input
                                 type="text"
                                 value={creditForm.data.province}
@@ -1043,7 +1037,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             {creditForm.errors['credits.0.province'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.province']}</p>}
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Grade *</label>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Grade *</label>
                             <input
                                 type="number"
                                 min="1"

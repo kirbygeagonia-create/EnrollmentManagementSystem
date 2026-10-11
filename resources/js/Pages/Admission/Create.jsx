@@ -238,7 +238,7 @@ export default function Create({ courses, terms, religions }) {
                     <span className="text-slate-400 hidden md:inline">·</span>
                     <span className="hidden md:inline"><span className="kbd-badge"><kbd>Ctrl+Enter</kbd> submit</span></span>
                 </div>
-                <span className="text-[11px] font-bold text-seait-700 uppercase tracking-wider hidden lg:inline">
+                <span className="text-2xs font-bold text-seait-700 uppercase tracking-wider hidden lg:inline">
                     Auto-Advances Cursor
                 </span>
             </div>

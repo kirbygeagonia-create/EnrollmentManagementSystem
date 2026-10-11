@@ -388,23 +388,23 @@ export default function Show({ enrollment, clinicRecord }) {
                                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                                 <span className="font-heading font-extrabold text-white text-xs uppercase tracking-wider">PhilHealth Verified</span>
                             </div>
-                            <span className="text-[10px] font-mono text-emerald-300">Republic of the Philippines</span>
+                            <span className="text-3xs font-mono text-emerald-300">Republic of the Philippines</span>
                         </div>
 
                         <div className="space-y-2 mb-4">
-                            <p className="text-[10px] text-emerald-300 uppercase tracking-wider font-semibold">Member Identification No.</p>
+                            <p className="text-3xs text-emerald-300 uppercase tracking-wider font-semibold">Member Identification No.</p>
                             <p className="font-mono text-base font-extrabold text-white tracking-widest">
                                 {clinicRecord?.philhealthNumber || 'NOT SUBMITTED'}
                             </p>
                         </div>
 
-                        <div className="flex justify-between border-t border-emerald-700/60 pt-3 text-[11px] text-emerald-200">
+                        <div className="flex justify-between border-t border-emerald-700/60 pt-3 text-2xs text-emerald-200">
                             <div>
-                                <span className="text-[10px] text-emerald-400 block">Member Name</span>
+                                <span className="text-3xs text-emerald-400 block">Member Name</span>
                                 <span className="font-bold text-white">{getStudentName()}</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-[10px] text-emerald-400 block">Status</span>
+                                <span className="text-3xs text-emerald-400 block">Status</span>
                                 <span className="font-bold text-emerald-300">
                                     {clinicRecord?.philhealthRegistered ? 'Active' : 'Unconfirmed'}
                                 </span>

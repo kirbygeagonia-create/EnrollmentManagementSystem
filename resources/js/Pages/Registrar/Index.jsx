@@ -43,7 +43,7 @@ export default function Index({ enrollments, readiness = {}, filters = {} }) {
             return (
                 <div className="space-y-1">
                     <Badge tone={ready ? 'success' : 'pending'}>{`${state.met} of ${state.total} gates`}</Badge>
-                    <p className={`text-[11px] ${ready ? 'text-emerald-700' : 'text-slate-500'}`}>
+                    <p className={`text-2xs ${ready ? 'text-emerald-700' : 'text-slate-500'}`}>
                         {ready
                             ? 'Approvable now'
                             : `Waiting on ${state.waiting.map((gate) => registrarGateLabels[gate] || gate).join(', ')}`}

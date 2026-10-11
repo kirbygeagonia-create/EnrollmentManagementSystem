@@ -50,7 +50,7 @@ export default function AuditLogs({ logs, filters = {} }) {
         ) : '—' },
         { key: 'user', label: 'User', render: (row) => row.user ? (
             <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                <div className="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-3xs font-semibold flex-shrink-0">
                     {row.user.firstName?.[0]}{row.user.lastName?.[0]}
                 </div>
                 <div className="min-w-0">
@@ -68,7 +68,7 @@ export default function AuditLogs({ logs, filters = {} }) {
                 </Badge>
                 {/* Item 3: oversight-role write flag from the audit observer */}
                 {row.adminOverride && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                    <span className="text-4xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                         Admin Override
                     </span>
                 )}
@@ -297,7 +297,7 @@ export default function AuditLogs({ logs, filters = {} }) {
                                 <div className="flex items-center gap-1.5">
                                     <Badge tone={actionToneMap[viewingLog.action] || 'neutral'} className="capitalize">{viewingLog.action?.replace(/_/g, ' ')}</Badge>
                                     {viewingLog.adminOverride && (
-                                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full">
+                                        <span className="text-4xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full">
                                             Admin Override
                                         </span>
                                     )}

@@ -1,24 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Overall clearance status → badge tone
-const overallStatusToneMap = {
-    pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected',
-    waived: 'waived',
-    incomplete: 'incomplete',
-};
 
 // Per-requirement approval status → badge tone
-const approvalToneMap = {
-    pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected',
-    waived: 'waived',
-};
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
 
@@ -200,7 +187,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
             </Badge>
         )},
         { key: 'overallStatus', label: 'Clearance Status', render: (row) => (
-            <Badge tone={overallStatusToneMap[row.overallStatus] || 'neutral'}>
+            <Badge tone={statusToneFor(row.overallStatus)}>
                 {titleCase(row.overallStatus)}
             </Badge>
         )},
@@ -605,7 +592,7 @@ function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip, lostSlipL
             subtitle={`${student?.schoolIdNumber || '—'} • ${periodLabel} • ${done}/${total} Offices Cleared`}
             actions={
                 <div className="flex items-center gap-2">
-                    <Badge tone={overallStatusToneMap[clearance.overallStatus] || 'neutral'}>
+                    <Badge tone={statusToneFor(clearance.overallStatus)}>
                         {titleCase(clearance.overallStatus)}
                     </Badge>
                     <button
@@ -671,17 +658,17 @@ function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip, lostSlipL
                                         <p className="font-heading font-bold text-slate-900 text-xs truncate">
                                             {req?.requirementName || 'Obligation'}
                                         </p>
-                                        <p className="text-[11px] text-slate-500 font-semibold">
+                                        <p className="text-2xs text-slate-500 font-semibold">
                                             {office?.officeName || 'Department Office'}
                                         </p>
                                     </div>
-                                    <Badge tone={approvalToneMap[a.status] || 'neutral'}>
+                                    <Badge tone={statusToneFor(a.status)}>
                                         {titleCase(a.status)}
                                     </Badge>
                                 </div>
 
                                 {a.remarks && (
-                                    <p className="text-[11px] text-slate-600 italic bg-white/80 p-1.5 rounded border border-slate-200/60 mb-2">
+                                    <p className="text-2xs text-slate-600 italic bg-white/80 p-1.5 rounded border border-slate-200/60 mb-2">
                                         "{a.remarks}"
                                     </p>
                                 )}
@@ -691,21 +678,21 @@ function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip, lostSlipL
                                 <div className="flex items-center gap-1.5 pt-3 border-t border-slate-100">
                                     <button
                                         type="button"
-                                        className="btn btn-primary btn-sm flex-1 text-[11px]"
+                                        className="btn btn-primary btn-sm flex-1 text-2xs"
                                         onClick={() => onAct(a, 'approved')}
                                     >
                                         Approve
                                     </button>
                                     <button
                                         type="button"
-                                        className="btn btn-secondary btn-sm text-[11px]"
+                                        className="btn btn-secondary btn-sm text-2xs"
                                         onClick={() => onAct(a, 'waived')}
                                     >
                                         Waive
                                     </button>
                                     <button
                                         type="button"
-                                        className="btn btn-danger btn-sm text-[11px]"
+                                        className="btn btn-danger btn-sm text-2xs"
                                         onClick={() => onAct(a, 'rejected')}
                                     >
                                         Reject

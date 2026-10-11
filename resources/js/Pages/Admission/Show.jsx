@@ -1,21 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLabel, statusToneFor, studentTypeTone } from '@/Components/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
-const admissionStatusToneMap = {
-    pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected',
-};
 
-const applicantTypeToneMap = {
-    firstYear: 'info',
-    transferee: 'warning',
-    continuing: 'success',
-    shifter: 'accent',
-};
 
 const submissionStatusToneMap = {
     pending: 'pending',
@@ -189,7 +178,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                         <p className="text-xs text-brand-600">{banner.desc}</p>
                         {admission.admissionStatus === 'pending' && approvalBlockers.length > 0 && (
                             <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                                <p className="text-2xs font-bold uppercase tracking-wide text-amber-800">
                                     Approval is closed until these are cleared
                                 </p>
                                 <ul className="mt-1.5 space-y-1">
@@ -232,7 +221,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                             </button>
                         </>
                     )}
-                    <Badge tone={admissionStatusToneMap[admission.admissionStatus] || 'neutral'}>
+                    <Badge tone={statusToneFor(admission.admissionStatus)}>
                         {formatStatusLabel(admission.admissionStatus)}
                     </Badge>
                 </div>
@@ -281,7 +270,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                 </FormSection>
                                 <FormSection label="Applicant Type">
                                     <dd>
-                                        <Badge tone={applicantTypeToneMap[admission.applicantType] || 'neutral'}>
+                                        <Badge tone={studentTypeTone[admission.applicantType] ?? 'neutral'}>
                                             {admission.applicantType?.replace(/([A-Z])/g, ' $1') || '—'}
                                         </Badge>
                                     </dd>
@@ -346,8 +335,8 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                                 <p className="text-slate-600 font-mono mt-1">{guardian.contactNumber}</p>
                                                 {guardian.email && <p className="text-slate-500 truncate">{guardian.email}</p>}
                                                 <div className="mt-2 flex flex-wrap gap-1.5">
-                                                    {guardian.isEmergencyContact && <span className="badge badge-info text-[10px]">Emergency</span>}
-                                                    {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning text-[10px]">Authorized</span>}
+                                                    {guardian.isEmergencyContact && <span className="badge badge-info text-3xs">Emergency</span>}
+                                                    {guardian.isAuthorizedToActOnBehalf && <span className="badge badge-warning text-3xs">Authorized</span>}
                                                 </div>
                                             </div>
                                         ))}
@@ -373,7 +362,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
                                                     <p className="font-semibold text-brand-900 text-xs">{req.requirementName}</p>
-                                                    <p className="text-[11px] text-slate-500">
+                                                    <p className="text-2xs text-slate-500">
                                                         {req.appliesTo === 'all' ? 'All applicants' : req.appliesTo}
                                                         {req.isRequired && ' • Required'}
                                                     </p>
@@ -392,7 +381,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                                                 href={route('admission.documents.show', { document: doc.documentId })}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="badge badge-info text-[10px]"
+                                                                className="badge badge-info text-3xs"
                                                                 title="Open the uploaded file before verifying this requirement"
                                                             >
                                                                 Open {documentKindLabel(doc.fileType)}
@@ -400,7 +389,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[11px] text-slate-400">No file attached</span>
+                                                    <span className="text-2xs text-slate-400">No file attached</span>
                                                 )}
 
                                                 <div className="flex items-center gap-1.5">

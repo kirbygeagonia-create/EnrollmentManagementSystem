@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone } from '@/Components/ui';
+import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 
@@ -11,19 +11,7 @@ const studentStatusToneMap = {
     dropped: 'dropped',
 };
 
-const clearanceStatusToneMap = {
-    pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected',
-    waived: 'waived',
-    incomplete: 'incomplete',
-};
 
-const scholarshipStatusToneMap = {
-    approved: 'approved',
-    pending: 'pending',
-    rejected: 'rejected',
-};
 
 // College identity comes from officeBranding.js, keyed to the course's
 // backend unitId — the old keyword heuristic disagreed with the same
@@ -289,7 +277,7 @@ export default function Show({ student }) {
                         }`}
                     >
                         <span>Enrollment Workflows</span>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'enrollments' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold ${activeTab === 'enrollments' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             {enrollments.length}
                         </span>
                     </button>
@@ -303,7 +291,7 @@ export default function Show({ student }) {
                         }`}
                     >
                         <span>Admissions & Exams</span>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'admissions' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold ${activeTab === 'admissions' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             {(student.admissions?.length || 0) + (student.examresults?.length || 0)}
                         </span>
                     </button>
@@ -317,7 +305,7 @@ export default function Show({ student }) {
                         }`}
                     >
                         <span>Clearances & Scholarships</span>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'clearances' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold ${activeTab === 'clearances' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             {(student.studentclearances?.length || 0) + (student.studentscholarships?.length || 0)}
                         </span>
                     </button>
@@ -331,7 +319,7 @@ export default function Show({ student }) {
                         }`}
                     >
                         <span>ID Requests</span>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'credentials' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold ${activeTab === 'credentials' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             {student.idrequests?.length || 0}
                         </span>
                     </button>
@@ -345,7 +333,7 @@ export default function Show({ student }) {
                         }`}
                     >
                         <span>Health & Clinic</span>
-                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeTab === 'clinic' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`px-1.5 py-0.5 rounded-full text-3xs font-mono font-bold ${activeTab === 'clinic' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             {clinicRecords.length}
                         </span>
                     </button>
@@ -443,7 +431,7 @@ export default function Show({ student }) {
                                                     {sc.receivedDate ? `Received ${new Date(sc.receivedDate).toLocaleDateString('en-PH')}` : 'Not yet received'}
                                                 </p>
                                             </div>
-                                            <Badge tone={clearanceStatusToneMap[sc.overallStatus] || sc.overallStatus || 'neutral'}>
+                                            <Badge tone={statusToneFor(sc.overallStatus) || sc.overallStatus || 'neutral'}>
                                                 {formatStatusLabel(sc.overallStatus)}
                                             </Badge>
                                         </div>
@@ -463,7 +451,7 @@ export default function Show({ student }) {
                                             <p className="font-medium text-brand-900">
                                                 {ss.scholarshipType?.scholarshipName || `Scholarship #${ss.scholarshipTypeId}`}
                                             </p>
-                                            <Badge tone={scholarshipStatusToneMap[ss.status] || 'neutral'}>
+                                            <Badge tone={statusToneFor(ss.status)}>
                                                 {formatStatusLabel(ss.status)}
                                             </Badge>
                                         </div>

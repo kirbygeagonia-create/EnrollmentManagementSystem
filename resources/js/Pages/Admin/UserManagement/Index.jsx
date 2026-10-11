@@ -84,7 +84,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                     <div className="text-xs font-medium text-seait-700 truncate">
                         {row.positionTitle || 'Staff Member'}
                     </div>
-                    {row.email && <div className="text-[11px] text-brand-400 truncate">{row.email}</div>}
+                    {row.email && <div className="text-2xs text-brand-400 truncate">{row.email}</div>}
                 </div>
             </div>
         )},
@@ -92,7 +92,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
         { key: 'office', label: 'Office / Department', render: (row) => (
             <div>
                 <div className="font-medium text-brand-800 text-sm">{row.office?.officeName || '—'}</div>
-                {row.unit?.unitName && <div className="text-[11px] text-brand-500">{row.unit.unitName}</div>}
+                {row.unit?.unitName && <div className="text-2xs text-brand-500">{row.unit.unitName}</div>}
             </div>
         )},
         { key: 'role', label: 'System Roles', render: (row) => {
@@ -104,7 +104,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                         {row.role?.replace(/([A-Z])/g, ' $1') || 'Staff'}
                     </span>
                     {spatieRoles.map(r => (
-                        <span key={r.id || r.name} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand-100 text-brand-700">
+                        <span key={r.id || r.name} className="inline-flex items-center px-1.5 py-0.5 rounded text-3xs font-medium bg-brand-100 text-brand-700">
                             {r.name}
                         </span>
                     ))}

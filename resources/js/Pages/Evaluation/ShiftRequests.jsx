@@ -156,15 +156,15 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
 
                                 <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                                     <div>
-                                        <dt className="text-slate-400 uppercase tracking-wide text-[10px] font-bold">Filed</dt>
+                                        <dt className="text-slate-400 uppercase tracking-wide text-3xs font-bold">Filed</dt>
                                         <dd className="text-slate-700">{name(r.requestedByUser)} · {fmt(r.requestedAt)}</dd>
                                     </div>
                                     <div>
-                                        <dt className="text-slate-400 uppercase tracking-wide text-[10px] font-bold">Endorsed</dt>
+                                        <dt className="text-slate-400 uppercase tracking-wide text-3xs font-bold">Endorsed</dt>
                                         <dd className="text-slate-700">{r.departmentSignedAt ? `${name(r.departmentSignedByUser)} · ${fmt(r.departmentSignedAt)}` : '— not signed'}</dd>
                                     </div>
                                     <div>
-                                        <dt className="text-slate-400 uppercase tracking-wide text-[10px] font-bold">Guidance decision</dt>
+                                        <dt className="text-slate-400 uppercase tracking-wide text-3xs font-bold">Guidance decision</dt>
                                         <dd className="text-slate-700">
                                             {r.decidedAt ? `${name(r.decisionByUser)} · ${fmt(r.decidedAt)}` : `— waiting on ${r.requestStatus === 'pending' ? 'the department head' : 'Guidance'}`}
                                         </dd>

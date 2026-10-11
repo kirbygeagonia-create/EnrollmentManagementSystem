@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 const statusOptions = [
@@ -10,11 +10,6 @@ const statusOptions = [
     { value: 'rejected', label: 'Rejected' },
 ];
 
-const statusToneMap = {
-    pending: 'pending',
-    approved: 'approved',
-    rejected: 'rejected',
-};
 
 export default function Index({ admissions, stats = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -39,7 +34,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
             return `${sem} · ${row.term.academicYear?.yearLabel || '—'}`;
         }},
         { key: 'admissionStatus', label: 'Status', render: (row) => (
-            <Badge tone={statusToneMap[row.admissionStatus] || 'neutral'}>
+            <Badge tone={statusToneFor(row.admissionStatus)}>
                 {formatStatusLabel(row.admissionStatus)}
             </Badge>
         )},

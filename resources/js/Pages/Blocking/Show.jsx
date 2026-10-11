@@ -618,7 +618,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                     {Array.from({ length: SLOTS }, (_, s) => {
                                         const isHourMark = s % 2 === 0;
                                         return (
-                                            <div key={`label-${s}`} className="text-[10px] text-brand-400 pr-2 text-right" style={{ gridRow: `${s + 2} / span ${isHourMark ? 2 : 1}`, gridColumn: 1 }}>
+                                            <div key={`label-${s}`} className="text-3xs text-brand-400 pr-2 text-right" style={{ gridRow: `${s + 2} / span ${isHourMark ? 2 : 1}`, gridColumn: 1 }}>
                                                 {isHourMark ? `${(START_HOUR + s / 2) % 12 || 12}:00 ${(START_HOUR + s / 2) >= 12 ? 'PM' : 'AM'}` : ''}
                                             </div>
                                         );
@@ -637,10 +637,10 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                                         className={`bg-brand-100 border rounded-sm px-1.5 py-0.5 overflow-hidden ${extra > 0 ? 'border-amber-400' : 'border-brand-300'}`}
                                                         style={{ gridRow: `${s + 2} / span ${cell.span}`, gridColumn: d + 2 }}
                                                     >
-                                                        <p className="text-[11px] font-medium text-brand-900 leading-tight truncate">{schedule.subject?.subjectCode}</p>
-                                                        <p className="text-[10px] text-brand-600 leading-tight truncate">{schedule.room?.roomName || '—'}</p>
+                                                        <p className="text-2xs font-medium text-brand-900 leading-tight truncate">{schedule.subject?.subjectCode}</p>
+                                                        <p className="text-3xs text-brand-600 leading-tight truncate">{schedule.room?.roomName || '—'}</p>
                                                         {extra > 0 && (
-                                                            <p className="text-[10px] font-bold text-amber-700 leading-tight">+{extra} more</p>
+                                                            <p className="text-3xs font-bold text-amber-700 leading-tight">+{extra} more</p>
                                                         )}
                                                     </div>
                                                 );

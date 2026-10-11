@@ -337,7 +337,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                             </button>
                                         )}
                                         {row.paymentStatus === 'refunded' && (
-                                            <span className="text-[10px] text-slate-500" title={row.refundedReason || 'Refunded'}>
+                                            <span className="text-3xs text-slate-500" title={row.refundedReason || 'Refunded'}>
                                                 returned {row.refundedAt ? new Date(row.refundedAt).toLocaleDateString('en-PH') : ''}
                                             </span>
                                         )}
@@ -381,17 +381,17 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                 </div>
                                 <h3 className="font-heading font-bold text-white text-base">Collect Payment</h3>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                            <span className="text-3xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
                                 Cashier Active
                             </span>
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 mb-3">
+                        <div className="flex items-center justify-between text-2xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 mb-3">
                             <span className="flex items-center gap-1.5">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-[10px]">Enter ↵</kbd> next field</span>
+                                <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-3xs">Enter ↵</kbd> next field</span>
                             </span>
-                            <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-[10px]">Ctrl+Enter</kbd> submit OR</span>
+                            <span><kbd className="px-1.5 py-0.5 bg-slate-700 text-slate-200 rounded font-mono text-3xs">Ctrl+Enter</kbd> submit OR</span>
                         </div>
 
                         <form onSubmit={handleRecordPayment} {...formProps} className="space-y-4 text-xs">
@@ -421,7 +421,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                         <button
                                             type="button"
                                             onClick={() => setQuickAmount(outstanding)}
-                                            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                            className="text-2xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
                                         >
                                             Full Balance ({peso(outstanding)})
                                         </button>
@@ -519,10 +519,10 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                     <div className="bg-amber-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-5 shadow-xs text-slate-800 font-mono text-xs relative">
                         <div className="text-center border-b border-amber-200 pb-3 mb-3">
                             <p className="font-bold uppercase tracking-widest text-sm text-slate-900">SEAIT CASHIER</p>
-                            <p className="text-[10px] text-slate-600">OFFICIAL RECEIPT PREVIEW</p>
-                            <p className="text-[10px] font-bold text-seait-700 mt-1">{data.orNumber || 'OR-PENDING'}</p>
+                            <p className="text-3xs text-slate-600">OFFICIAL RECEIPT PREVIEW</p>
+                            <p className="text-3xs font-bold text-seait-700 mt-1">{data.orNumber || 'OR-PENDING'}</p>
                         </div>
-                        <div className="space-y-1.5 text-[11px]">
+                        <div className="space-y-1.5 text-2xs">
                             <div className="flex justify-between">
                                 <span className="text-slate-500">Student:</span>
                                 <span className="font-bold truncate max-w-[180px]">{studentName}</span>
@@ -544,7 +544,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                 <span className="text-emerald-700 font-mono">{peso(data.amount || 0)}</span>
                             </div>
                         </div>
-                        <p className="text-[9px] text-center text-slate-400 mt-3 uppercase tracking-wider">
+                        <p className="text-4xs text-center text-slate-400 mt-3 uppercase tracking-wider">
                             *** Valid Official Institutional Receipt ***
                         </p>
                     </div>
@@ -603,7 +603,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                 }
             >
                 <form onSubmit={confirmRefundPayment} className="space-y-4">
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
                         <span className="font-bold block mb-0.5">What this does</span>
                         The receipt keeps its number and its collection date, and becomes the record of the payout.
                         {peso(paymentToRefund?.amount)} comes off the money held, so the balance reopens — and if this

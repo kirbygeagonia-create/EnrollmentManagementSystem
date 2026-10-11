@@ -98,7 +98,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                         <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                         <span><strong>Rapid Data Entry:</strong> Press <kbd className="px-1.5 py-0.5 bg-white border border-amber-300 rounded shadow-xs font-mono font-bold">Enter ↵</kbd> to jump to next field · <kbd className="px-1.5 py-0.5 bg-white border border-amber-300 rounded shadow-xs font-mono font-bold">Ctrl+Enter</kbd> to record exam</span>
                     </div>
-                    <span className="hidden sm:inline text-amber-700 font-mono text-[11px] font-bold">AUTO-ADVANCE READY</span>
+                    <span className="hidden sm:inline text-amber-700 font-mono text-2xs font-bold">AUTO-ADVANCE READY</span>
                 </div>
 
                 {/* 2-Column High-Efficiency Form Layout */}

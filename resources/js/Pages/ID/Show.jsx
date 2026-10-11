@@ -375,7 +375,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                                         Validate ID & Sign Workflow Step
                                     </button>
                                     {!canValidateNow && validateBlockReason && (
-                                        <p className="text-[11px] text-slate-500 flex items-start gap-1 px-1">
+                                        <p className="text-2xs text-slate-500 flex items-start gap-1 px-1">
                                             <svg className="w-3.5 h-3.5 mt-px flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                             </svg>
@@ -395,7 +395,7 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                                         </button>
                                     )}
                                     {idRequest.mismatchRemark && (
-                                        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                                        <p className="text-2xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
                                             <span className="font-bold">Flagged: </span>{idRequest.mismatchRemark}
                                         </p>
                                     )}

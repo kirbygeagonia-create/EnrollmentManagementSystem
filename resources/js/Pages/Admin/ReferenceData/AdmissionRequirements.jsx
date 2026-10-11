@@ -18,7 +18,7 @@ const appliesToToneMap = {
     transferee: 'warning',
     shifter: 'accent',
     continuing: 'success',
-    all: 'brand',
+    all: 'neutral',
 };
 
 const statusOptions = [

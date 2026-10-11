@@ -210,13 +210,13 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                             <div>
                                                 <span className="text-xs font-bold">{item.label}</span>
                                                 {!isPassed && blockingReasons[item.key] && (
-                                                    <p className="text-[11px] font-medium text-slate-600 mt-0.5 max-w-md">
+                                                    <p className="text-2xs font-medium text-slate-600 mt-0.5 max-w-md">
                                                         {blockingReasons[item.key]}
                                                     </p>
                                                 )}
                                             </div>
                                         </div>
-                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                        <span className={`text-3xs font-bold uppercase px-2 py-0.5 rounded-full border ${
                                             isPassed
                                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                                 : 'bg-slate-200 text-slate-600 border-slate-300'
@@ -235,7 +235,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                 <h4 className="font-heading font-bold text-slate-900 text-xs uppercase tracking-wider">
                                     Final Academic Standing
                                 </h4>
-                                <span className="text-[10px] text-slate-500">
+                                <span className="text-3xs text-slate-500">
                                     Department recorded:{' '}
                                     <span className="font-bold text-slate-700">
                                         {enrollment.academicStanding ? enrollment.academicStanding : 'nothing yet'}
@@ -248,7 +248,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                     )}
                                 </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
+                            <p className="text-2xs text-slate-500 mb-3 leading-relaxed">
                                 {standingReport?.headline || 'Standing evidence is unavailable.'}
                             </p>
                             <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Final academic standing">
@@ -345,7 +345,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                             type="button"
                                             onClick={() => setDropOpen(true)}
                                             disabled={dropForm.processing}
-                                            className="ml-2 py-1 px-2.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 font-bold text-[10px] uppercase tracking-wide transition-colors"
+                                            className="ml-2 py-1 px-2.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 font-bold text-3xs uppercase tracking-wide transition-colors"
                                         >
                                             Drop
                                         </button>
@@ -423,15 +423,15 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                 <img src="/images/logos/seait-logo.png" alt="Seal" className="h-9 w-9 object-contain" />
                                 <div className="leading-tight">
                                     <p className="font-heading font-extrabold text-sm text-slate-900">SOUTH EAST ASIAN INSTITUTE OF TECHNOLOGY, INC.</p>
-                                    <p className="text-[10px] text-slate-500 font-semibold">National Highway, Crossing Rubber, Tupi, South Cotabato</p>
+                                    <p className="text-3xs text-slate-500 font-semibold">National Highway, Crossing Rubber, Tupi, South Cotabato</p>
                                 </div>
                             </div>
                             <p className="font-heading font-bold text-xs text-seait-700 tracking-wider mt-1 uppercase">CERTIFICATE OF ENROLLMENT</p>
-                            <p className="text-[10px] text-slate-500 font-mono">{termLabel}</p>
+                            <p className="text-3xs text-slate-500 font-mono">{termLabel}</p>
                         </div>
 
                         {/* Student Details */}
-                        <div className="grid grid-cols-2 gap-2 text-[11px] mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div className="grid grid-cols-2 gap-2 text-2xs mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
                             <div>
                                 <span className="text-slate-400 font-semibold block">Student Name:</span>
                                 <span className="font-bold text-slate-900">{studentName}</span>
@@ -454,7 +454,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
 
                         {/* Subject Load Table */}
                         <div className="mb-4">
-                            <table className="w-full text-[11px]">
+                            <table className="w-full text-2xs">
                                 <thead>
                                     <tr className="border-b border-slate-300 text-slate-500 text-left">
                                         <th className="py-1">Code</th>
@@ -483,7 +483,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                         </div>
 
                         {/* Signatures */}
-                        <div className="grid grid-cols-2 gap-6 border-t border-slate-200 pt-4 text-center text-[10px]">
+                        <div className="grid grid-cols-2 gap-6 border-t border-slate-200 pt-4 text-center text-3xs">
                             <div>
                                 <div className="border-b border-slate-400 pb-1 mb-1 font-bold text-slate-800">
                                     {enrollment.evaluatedByUser?.name || 'Academic Dean / Chair'}
@@ -621,7 +621,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                 }
             >
                 <div>
-                    <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
+                    <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-2xs text-rose-800">
                         Dropping erases what the desks signed. The department signature, the assessment,
                         the receipt and this office&rsquo;s approval stop counting from the moment it is
                         dropped, so the reason is required and kept on the record.
@@ -640,7 +640,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                         <p className="form-error mt-1">{dropForm.errors.dropReason}</p>
                     )}
                     {dropForm.data.dropReason.trim().length > 0 && dropForm.data.dropReason.trim().length < 10 && (
-                        <p className="text-[11px] text-amber-600 mt-1">
+                        <p className="text-2xs text-amber-600 mt-1">
                             Minimum 10 characters — {10 - dropForm.data.dropReason.trim().length} more needed.
                         </p>
                     )}

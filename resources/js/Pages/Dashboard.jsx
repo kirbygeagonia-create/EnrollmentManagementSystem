@@ -157,7 +157,7 @@ export default function Dashboard() {
                             <p className="text-xs font-semibold text-slate-600 flex items-center gap-2 mt-0.5">
                                 <span>{currentDateString}</span>
                                 <span className="h-1 w-1 rounded-full bg-slate-300" />
-                                <span className="text-seait-700 font-bold uppercase tracking-wider text-[11px]">
+                                <span className="text-seait-700 font-bold uppercase tracking-wider text-2xs">
                                     {user?.positionTitle || user?.office?.officeName || user?.role}
                                 </span>
                             </p>
@@ -169,7 +169,7 @@ export default function Dashboard() {
                             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span>{currentTerm || 'No active term'}</span>
                         </div>
-                        <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-medium">
+                        <div className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-2xs font-medium">
                             <span>Shortcuts:</span>
                             <span className="kbd-badge"><kbd>Ctrl</kbd>+<kbd>K</kbd> Search</span>
                             <span className="kbd-badge"><kbd>Enter ↵</kbd> Next</span>
@@ -290,7 +290,7 @@ export default function Dashboard() {
                                                                 style={{ width: `${pct}%` }}
                                                             />
                                                         </div>
-                                                        <p className="text-[11px] font-medium text-slate-500 mt-1 truncate leading-tight">
+                                                        <p className="text-2xs font-medium text-slate-500 mt-1 truncate leading-tight">
                                                             {t.courseCode || '—'} · {t.totalSteps > 0 ? `${t.completedSteps}/${t.totalSteps} steps signed` : 'workflow not started'}
                                                             {t.currentPhase ? ` · next: ${t.currentPhase}` : done ? ' · complete' : ''}
                                                         </p>
@@ -320,7 +320,7 @@ export default function Dashboard() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                                 </svg>
                                             </div>
-                                            <p className="text-[11px] font-medium text-slate-600 mt-0.5 truncate leading-tight">
+                                            <p className="text-2xs font-medium text-slate-600 mt-0.5 truncate leading-tight">
                                                 {link.desc}
                                             </p>
                                         </div>
@@ -360,7 +360,7 @@ export default function Dashboard() {
                                                         <p className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-seait-700 truncate">
                                                             {q.label}
                                                         </p>
-                                                        <p className="text-[10px] font-semibold text-slate-500">
+                                                        <p className="text-3xs font-semibold text-slate-500">
                                                             {hasPending ? `${count} waiting in line` : 'Queue clear'}
                                                         </p>
                                                     </div>
@@ -386,15 +386,15 @@ export default function Dashboard() {
                             <Card title="System Overview" subtitle="Campus administrative metrics">
                                 <div className="grid grid-cols-3 gap-2 text-center">
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Staff</p>
+                                        <p className="text-3xs font-bold text-slate-500 uppercase tracking-wider">Staff</p>
                                         <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalStaff ?? '—'}</p>
                                     </div>
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Terms</p>
+                                        <p className="text-3xs font-bold text-slate-500 uppercase tracking-wider">Terms</p>
                                         <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.activeTerms ?? '—'}</p>
                                     </div>
                                     <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Courses</p>
+                                        <p className="text-3xs font-bold text-slate-500 uppercase tracking-wider">Courses</p>
                                         <p className="text-lg font-extrabold text-slate-900 mt-0.5">{stats.totalCourses ?? '—'}</p>
                                     </div>
                                 </div>

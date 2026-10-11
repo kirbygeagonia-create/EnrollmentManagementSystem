@@ -7,7 +7,9 @@ import { router, useForm } from '@inertiajs/react';
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const coverageTypeToneMap = {
-    full: 'info',
+    // Ruled 2026-10-10: full coverage is the good state, so it reads green here as it does on
+    // the Scholarship Types catalog. Partial stays amber — a gap in coverage, not an error.
+    full: 'success',
     partial: 'partial',
 };
 
@@ -16,8 +18,10 @@ const paymentStatusToneMap = {
     // An installment: cash the school holds, account not yet settled (ruling 13).
     partial: 'info',
     pending: 'pending',
-    // Cash handed back to the student — not a cancelled receipt (ruling 14).
-    refunded: 'warning',
+    // Cash handed back to the student — not a cancelled receipt (ruling 14). Ruled 2026-10-10:
+    // it reads danger at both desks, so a refund and a void share a colour and are told apart by
+    // the word on the badge. The distinction ruling 14 draws is in the record, not the palette.
+    refunded: 'danger',
     voided: 'danger',
 };
 
@@ -461,7 +465,7 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
                     }
                 >
                     <form onSubmit={confirmWithdrawGrant} className="space-y-4">
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
                             <span className="font-bold block mb-0.5">What this does</span>
                             The grant stays on the record with this decision on it, and the coverage it carried comes
                             off the fee sheet. If the student has already paid or been approved, the enrollment goes
