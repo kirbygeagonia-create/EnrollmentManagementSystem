@@ -35,7 +35,23 @@ DB_PASSWORD=<strong password>
 
 QUEUE_CONNECTION=database      # requires the worker in §5
 CACHE_STORE=database
+
+FILESYSTEM_DISK=local          # never `public` — see below
 ```
+
+**Uploaded files stay on the private disk.** Requirement documents an applicant
+submits and the face photo captured for an ID are written to the **default** disk and
+read back only through routes that `authorize()` the owning record first
+(`admission.documents.show`, `id.photo.view`). The `local` disk is rooted at
+`storage/app/private`, which no web path reaches. Setting `FILESYSTEM_DISK=public` and
+running `php artisan storage:link` would publish that whole folder under
+`/storage/...`, where the framework serves any file whose name is known with no
+authorization at all — the hashed filename is not a secret, it is only unguessable. If
+a deployment ever needs public file serving for some *other* feature, give that feature
+its own disk; do not move the default. Nothing in `storage/app` is committed: the
+folder's own `.gitignore` keeps a machine full of real signed forms from shipping its
+papers by accident, and the reference photographs of the physical forms are ignored at
+the repository root for the same reason.
 
 The production-debug guard lives in `app/Providers/AppServiceProvider.php`:
 booting with `APP_ENV=production` and `APP_DEBUG=true` throws a
@@ -117,11 +133,20 @@ downloaded. The browser binary comes from the machine instead:
 
 `App\Services\ChromiumLocator` resolves it for both the PDF routes and
 `php artisan ems:print-fidelity`, in this order: `EMS_CHROME_PATH` from `.env`, then
-Chrome/Edge in the usual Windows locations, then `google-chrome`,
-`google-chrome-stable`, `chromium-browser`, `chromium` on Linux. Install Chrome or
-Edge on every desk that prints, or point `EMS_CHROME_PATH` at the binary. If nothing
-is found, Browsershot falls back to Puppeteer's own bundled Chromium (only present if
-the download was allowed).
+Chrome/Edge in the usual Windows machine-wide **and per-user** locations, then
+`google-chrome`, `google-chrome-stable`, `/opt/google/chrome/chrome`,
+`chromium-browser`, `chromium`, `/snap/bin/chromium` on Linux. Install Chrome or
+Edge on every desk that prints, or point `EMS_CHROME_PATH` at the binary.
+
+A configured `EMS_CHROME_PATH` is honored strictly: if that file does not exist the
+printer reports no browser rather than picking a different one, because the four papers
+are signed off against one specific rendering and another layout engine can reflow them.
+If nothing is found at all, `PrintService::generatePdf()` refuses **before** it builds the
+document and the desk is sent back to the screen it was on with a message naming both
+fixes — the download no longer ends on a 500 page. `ems:print-fidelity` answers the same
+question on the command line. Note that the print-log row is written before the render,
+because the document number is printed on the page, so a refusal still consumes the
+number it issued.
 
 Note that the templates reference the letterhead logo through `asset()`, so an
 absolute `APP_URL` must be reachable from the printing process for the seal to appear.
