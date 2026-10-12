@@ -193,11 +193,20 @@ Do not merge with red CI.
    had from the start: every impossible record this project found by hand — a validated ID
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
-   not exist — is one of its ten rules. A non-zero count means a write path regressed or a row
+   not exist — is one of its twelve rules. A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Its one `note` line is different in kind: printed papers attributable to
-   nobody are the owner's open decision (docx §28 G-9), reported so it is measured the same way
-   each time, and it does not fail the run.
+   the status column. Three of those rules are different in kind and only ever `note`, because
+   each one counts a state the owner has already ruled to keep: printed papers attributable to
+   nobody (docx §28 G-9), a Clinic box signed with no health assessment behind it on an
+   older-term record, and an ID box signed with no request behind it — the last being enrollment
+   53, whose contradictory request row was deleted 2026-10-11 while its signature was left
+   standing. A report tool must not decide those over the office's hand, so it counts them and
+   stays green. On a server that has only been migrated and RBAC-seeded — no demo pipeline — all
+   three read 0. On the demo database they measured 21, 7 and 8 on 2026-10-12: the 21
+   unattributable papers; 7 older-term records whose Clinic box the pipeline had signed before it
+   was made to write the assessment that signs it, and 8 whose ID box it had signed before it
+   wrote the validation — seven of those same past-term rows plus enrollment 53, which is in that
+   state because you ruled its contradictory request deleted and its signature left standing.
 7. `php artisan ems:uploads:prune` reports what the private disk holds that no record points at,
    and deletes nothing until told `--delete` (§2).
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Console;
 
+use App\Enums\ClinicRecordStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
 use App\Enums\StudentType;
@@ -11,6 +12,7 @@ use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
+use App\Models\Clinicrecords;
 use App\Models\Courses;
 use App\Models\Documentprintlog;
 use App\Models\Enrollments;
@@ -36,8 +38,10 @@ use Tests\TestCase;
  *
  * Two severities are pinned here on purpose. An IMPOSSIBLE state fails the run, because the
  * application cannot produce it, so its presence means a guard regressed or a row was edited
- * behind a desk's back. The unattributable printed papers are only NOTED, because the owner
- * has not yet decided what to do with them and a report tool must not decide for them.
+ * behind a desk's back. A DECISION is only NOTED, because the owner has already seen that shape
+ * and chosen to keep it — the unattributable printed papers, and since 2026-10-12 the two boxes
+ * that can read signed without the record that signs them — and a report tool must not decide
+ * those over their hand.
  */
 class AuditRecordStatesTest extends TestCase
 {
@@ -173,6 +177,23 @@ class AuditRecordStatesTest extends TestCase
             'requestDate' => now(),
             'status' => IdRequestStatus::Pending,
         ]);
+
+        // The Clinic box above is signed, and recording the assessment *is* that signature
+        // (§14R.2), so a record the desks genuinely produced has the row behind the box. Without
+        // it the clean fixture would trip the rule this file added on 2026-10-12 and the "all
+        // clean" test would be asserting a state the owner called impossible.
+        Clinicrecords::create([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'heightCm' => 170.0,
+            'weightKg' => 65.0,
+            'bloodPressure' => '110/70',
+            'philhealthRegistered' => 1,
+            'assessmentNotes' => 'Cleared for enrollment.',
+            'findings' => 'Normal',
+            'clinicStaffId' => $staff->userId,
+            'assessmentDate' => now()->toDateString(),
+            'status' => ClinicRecordStatus::Completed,
+        ]);
     }
 
     /**
@@ -214,6 +235,8 @@ class AuditRecordStatesTest extends TestCase
             'An enrollment past a stage whose box for it is still open',
             'A notice addressed to a class that does not exist',
             'A printed paper attributable to no enrollment',
+            'A Clinic box signed with no health assessment behind it',
+            'An ID box signed with no validated request behind it',
         ] as $label) {
             $this->assertFlagged('ok', $label);
         }
@@ -221,11 +244,19 @@ class AuditRecordStatesTest extends TestCase
         $this->assertStringContainsString('Every state the application is supposed to prevent is prevented', $out);
         $this->assertStringNotContainsString('FAIL', $out);
 
-        // The summary sentence has to be derived, not typed: count the rule lines that were
-        // marked and require the headline to carry that same number.
+        // The headline number has to be derived from the report, not typed beside it: count the
+        // marked rule lines, then require the summary to carry that same number. Pinning the
+        // literal instead would make every legitimate new rule a test failure — the same trap
+        // ems:preflight avoided for the permission count.
         preg_match_all('/^  (?:ok|FAIL|note)\s+\S/m', $out, $marked);
-        $this->assertCount(10, $marked[0], 'Ten rules should print a marked line each.');
-        $this->assertStringContainsString('Records checked: 10 rules', $out);
+        $this->assertMatchesRegularExpression('/Rules run: (\d+)/', $out, 'The summary should state how many rules ran.');
+        preg_match('/Rules run: (\d+)/', $out, $stated);
+        $this->assertSame(
+            count($marked[0]),
+            (int) $stated[1],
+            'The stated rule count must equal the number of marked lines actually printed.'
+        );
+        $this->assertGreaterThanOrEqual(10, count($marked[0]));
     }
 
     /**
@@ -270,6 +301,33 @@ class AuditRecordStatesTest extends TestCase
         $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
 
         $this->assertFlagged('FAIL', 'A pending ID request under an ID box that is already signed');
+    }
+
+    #[Test]
+    public function a_box_signed_without_the_record_behind_it_is_noted_and_leaves_the_run_green(): void
+    {
+        // The shape the owner ruled on 2026-10-12. A Clinic box is signed by the assessment and an
+        // ID box by the validation, so a signed box with no record behind it cannot come from a
+        // desk — but it can come from a ruling: enrollment 53's contradictory request was deleted
+        // and its signature left standing, and older-term demo records were seated before the
+        // clinic rule was written. Reported, never repaired by the tool that reports it.
+        Clinicrecords::where('enrollmentId', $this->enrollment->enrollmentId)->delete();
+
+        Workflowsteps::where('officeId', OfficeId::IdOffice->value)
+            ->update([
+                'stepStatus' => WorkflowStepStatus::Completed->value,
+                'signedBy' => $this->signer->userId,
+                'signedDate' => now(),
+            ]);
+        Idrequests::where('enrollmentId', $this->enrollment->enrollmentId)->delete();
+        $this->enrollment->fresh()->enrollmentworkflow->update(['workflowStatus' => WorkflowStatus::Completed]);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+
+        $this->assertFlagged('note', 'A Clinic box signed with no health assessment behind it');
+        $this->assertFlagged('note', 'An ID box signed with no validated request behind it');
+        $this->assertStringNotContainsString('FAIL', $this->commandOutput());
+        $this->assertStringContainsString('waiting on a decision this command cannot make', $this->commandOutput());
     }
 
     #[Test]

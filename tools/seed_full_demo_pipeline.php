@@ -1979,6 +1979,34 @@ echo "\n";
 // -------------------------------------------------------------
 // 10h. ID OFFICE — the last box of the seven
 // -------------------------------------------------------------
+// Recording the assessment IS the signature on the Clinic box (§14R.2), so a demo record whose
+// Clinic box reads completed must hold the row that signed it. Two of the three seats below had
+// the signature and no record — the state no desk can produce, which ems:audit:record-states now
+// reports as a note. Measured on live ems 2026-10-12; the owner ruled to repair the seats a desk
+// is told to walk and to leave the older-term records alone as history rather than invent them
+// a clinical past.
+$attestClinic = function (int $enrollmentId, float $heightCm, float $weightKg, string $bloodPressure) use ($deskSigners): void {
+    DB::table('clinicrecords')->updateOrInsert(
+        ['enrollmentId' => $enrollmentId],
+        [
+            'heightCm' => $heightCm,
+            'weightKg' => $weightKg,
+            'bloodPressure' => $bloodPressure,
+            'philhealthNumber' => "PH-DEMO-{$enrollmentId}",
+            'philhealthRegistered' => 1,
+            'assessmentNotes' => 'Cleared for enrollment — no restricting findings.',
+            'findings' => 'Normal',
+            'clinicStaffId' => $deskSigners[OfficeId::Clinic->value],
+            'assessmentDate' => now()->toDateString(),
+            'status' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]
+    );
+
+    echo "✔ Clinic: health assessment on file behind enrollment {$enrollmentId}'s signed Clinic box\n";
+};
+
 // The ID queue lists an enrollment only while the ID Office box is its first
 // still-pending step, so a student standing at any earlier box is invisible
 // here. Kevin Santos is left at Blocking on purpose — the walkthrough needs a
@@ -2010,23 +2038,7 @@ if ($idSeat) {
 
     $seatWorkflow($idSeat, OfficeId::IdOffice->value);
 
-    DB::table('clinicrecords')->updateOrInsert(
-        ['enrollmentId' => $idSeat->enrollmentId],
-        [
-            'heightCm' => 158.0,
-            'weightKg' => 52.0,
-            'bloodPressure' => '110/70',
-            'philhealthNumber' => "PH-DEMO-{$idSeat->enrollmentId}",
-            'philhealthRegistered' => 1,
-            'assessmentNotes' => 'Cleared for enrollment — no restricting findings.',
-            'findings' => 'Normal',
-            'clinicStaffId' => $deskSigners[OfficeId::Clinic->value],
-            'assessmentDate' => now()->toDateString(),
-            'status' => 'completed',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]
-    );
+    $attestClinic((int) $idSeat->enrollmentId, 158.0, 52.0, '110/70');
 
     echo "✔ ID Desk: seated DEMO-2026-016 Danica Sotto (enrollment {$idSeat->enrollmentId})"
         ." — pending ID request with every box ahead of it signed\n";
@@ -2078,7 +2090,10 @@ if (! $enrNena) {
 
 // Re-seated on every run for the same reason Danica is: a live walkthrough leaves the record
 // wherever the desk stopped, and a half-signed form shows an empty queue rather than this seat.
+// Her Clinic box is signed by this run, so the assessment that signs it is written here too —
+// the seat is meant to be acted on at the ID desk, not at the clinic one.
 $seatWorkflow($enrNena, OfficeId::IdOffice->value);
+$attestClinic((int) $enrNena->enrollmentId, 150.0, 47.0, '118/76');
 
 $openSeats = Enrollments::query()
     ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
@@ -2110,6 +2125,7 @@ $kevinSeat = Enrollments::with('student')
 
 if ($kevinSeat) {
     $completeWorkflow($kevinSeat);
+    $attestClinic((int) $kevinSeat->enrollmentId, 172.0, 68.0, '120/80');
 
     $kevinPhoto = $demoFacePhoto('demo-2026-017');
 

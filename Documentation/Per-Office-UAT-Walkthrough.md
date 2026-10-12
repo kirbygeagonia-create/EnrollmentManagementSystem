@@ -42,9 +42,10 @@ the observed evidence.
 | # | Step | What must happen | OK |
 |---|---|---|---|
 | 2.1 | Laragon → **Start All**, confirm Apache and MySQL are running | `http://localhost:8080` serves the app | ☐ |
-| 2.2 | From the project folder: `php tools/seed_full_demo_pipeline.php` | Ends with `DEMO-DAY DATASET FULLY SEEDED!` and prints **no line starting with `!`** | ☐ |
+| 2.2 | From the project folder: `php tools/seed_full_demo_pipeline.php` | Ends with `DEMO-DAY DATASET FULLY SEEDED!` and prints **no line starting with `!`** other than the one 2.4a allows for | ☐ |
 | 2.3 | Read the counter block at the end of that run | `Evaluation — level the record does not support 0`, `Clearance — slips with no enrollment in the period term 0`, `Ledger — enrolled with no fee sheet 0`, `Ledger — past Accounting but still owes 0`, `Ledger — receipts exceeding the assessment 0` | ☐ |
 | 2.4 | Two counters are **expected to be non-zero** (they are demo states, not defects) | `Evaluation — returning records not yet confirmed 3`, `Print trail — issue rows carrying no key at all 21` | ☐ |
+| 2.4a | One `!` line is **expected once §15.1 has been performed** | `! ID Desk: no open ID seat left …` — the pipeline advances one record to the ID box with no request so row 15.1 has something to act on, and a desk opening that request consumes it. The seat is not re-created on a later run, because inventing a second one would silently discard whatever the first desk filed. Re-performing 15.1 needs another enrollment brought to that box (or a restore of the 2.7 dump) | ☐ |
 | 2.5 | `php artisan ems:print-fidelity` | `Done: 8/8 rendered in storage/app/prints/fidelity` | ☐ |
 | 2.6 | `php artisan test tests/Feature/E2E` | 4 passed. These run against the live `ems` database, so they prove the dataset supports a full walkthrough end to end | ☐ |
 | 2.7 | Back the database up once: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-UAT-<date>.sql` | File is > 1 MB | ☐ |
@@ -110,7 +111,7 @@ term chip and `activeTerms` resolve.
 
 | Student | School ID | Enrollment | Where it sits | What it is for |
 |---|---|---|---|---|
-| Juan Dela Cruz | DEMO-2026-001 | 53 | `enrolled`, clinic + ID validated | the completed first-year path |
+| Juan Dela Cruz | DEMO-2026-001 | 53 | `enrolled`, clinic recorded, **ID box signed with no request on file** | the completed first-year path — and the one signed box with no request behind it **by ruling**, not by accident (the contradictory request row was deleted 2026-10-11 and the signature left standing; `ems:audit:record-states` notes it, never fails on it) |
 | Maria Reyes | DEMO-2026-002 | 596 `pending` + 595 `enrolled` (term 10) | clearance slip 27 approved and receipted, pass slip **confirmed** | the approvable returning record |
 | Pedro Santos | DEMO-2026-003 | — | admission 41 `pending` for **BSCrim**, 1 requirement submitted / 2 pending | the Admission desk's blocked approval — first the documents (5.2), then both examinations (5R.4) |
 | Liza Bautista | DEMO-2026-004 | 262 `enrolled` **irregular**, 55 (term 10) + 654 (term 2) `enrolled` | one failed subject on the prior load | standing derived from grades, not typed |
@@ -122,10 +123,10 @@ term chip and `activeTerms` resolve.
 | Grace Tan | DEMO-2026-010 | 86 `paid` | cash + bank check | Registrar approval queue |
 | Christian Lim | DEMO-2026-012 | 87 `assessed`, owes ₱17,500 | nothing held | full payment |
 | Bea Alonzo | DEMO-2026-013 | 88 `assessed`, assessed ₱18,500 / owes ₱10,500 | **₱8,000 already held** | part payment and refund |
-| Patricia Diaz | DEMO-2026-014 | 89 `enrolled`, no block seat | | Blocking's queue |
+| Patricia Diaz | DEMO-2026-014 | 89 `enrolled`, **seated in BSIT 1-A** (3 confirmed subjects) | | the roster §13.3 counts, and §14.1's student with no clinic record |
 | Gabriel Ramos | DEMO-2026-015 | 90 `enrolled`, no block seat | | Blocking's queue |
-| Danica Sotto | DEMO-2026-016 | 91 `enrolled`, clinic + ID validated | | the second completed path |
-| Kevin Santos | DEMO-2026-017 | 92 `enrolled`, ID request open, **no clinic record** | | the clinic-before-ID order |
+| Danica Sotto | DEMO-2026-016 | 91 `enrolled`, clinic recorded, **request pending at an open ID box** | | §15.2 — a request to attach a photo to and validate |
+| Kevin Santos | DEMO-2026-017 | 92 `enrolled`, **every box signed**, request `validated` with its face photo, clinic assessment on file | | the ID desk's finished example — the record that shows what 15.2 ends in |
 | Marco Villanueva | DEMO-2026-018 | 264 `paid` **confirmed**, 263 (term 10) + 656 (term 2) `enrolled` | slip 119 approved | the returning record awaiting approval |
 | Isagani Torres | DEMO-2026-021 | 287 **`returnedToEvaluation`** | a Registrar return with a reason | the return path |
 | Angelica Reyes | DEMO-2026-019 | 285 `evaluated`, no sheet | | Assessment compute |
@@ -133,6 +134,7 @@ term chip and `activeTerms` resolve.
 | Marisol Domingo | DEMO-2026-020 | 286 `assessed`, **owes ₱0** (grant 1, Full Scholarship 100%) | nothing held | settled without a receipt |
 | Iñigo Barrameda | DEMO-2026-024 | 475 `pending` year 2, 657 `enrolled` | BSCrim continuing | retention examination |
 | Relinda Sabla | DEMO-2026-025 | 476 `pending` year 2, 658 `enrolled` | BSCrim continuing | retention examination, **not yet examined** |
+| Nena Alcantara | DEMO-2026-026 | 876 `enrolled`, **no block seat**, clinic recorded, request `pending` | | §15.1's seat — opened by a desk on 2026-10-12, so 15.2 onward runs on it (see §15.1) |
 
 **Sections already open:** block 53 `BSCrim 1-A` year 1 (2 students / 40, 6 class meetings),
 block 75 `BSIT 1-A` year 1 (1/40, 6), block 114 `BSBA 2-A` year 2 (0/40, 6).
@@ -383,7 +385,7 @@ Path: **Blocking** (`/blocking`), a block at `/blocking/{block}`, print at
 |---|---|---|---|---|
 | 13.1 | Create a block for a (program, term, year level) | The block appears with its own `yearLevel` and capacity | | ☐ |
 | 13.2 | Add class schedules to the block: subject, room, teacher, day and time | Two lessons cannot occupy the **same room or the same teacher at the same time**; the demo timetable spreads meetings by subject position in the block, so a fresh block starts clean | | ☐ |
-| 13.3 | Assign **Patricia Diaz (89)** and **Gabriel Ramos (90)** to a block | The seat counter reads **distinct students, not subject rows**: a block holding 2 students × 3 subjects reads `2/40`, not `6/40` | | ☐ |
+| 13.3 | Assign **two of the records the queue lists** — measured on live `ems` 2026-10-12 the unseated ones are DEMO-2026-015 Gabriel Ramos (90), DEMO-2026-004 Liza Bautista (262) and DEMO-2026-026 Nena Alcantara (876); DEMO-2026-014 Patricia Diaz, named here until that date, **already sits in BSIT 1-A** with three confirmed subjects, because the pipeline seats a load whose program, term and year level match a block | The seat counter reads **distinct students, not subject rows**: a block holding 2 students × 3 subjects reads `2/40`, not `6/40` | | ☐ |
 | 13.4 | Assign more students than `maxStudents` allows | Refused with the capacity stated | | ☐ |
 | 13.5 | **Unassign** a student | The seat is released and the roster recomputes | | ☐ |
 | 13.6 | Print the block schedule (screen and PDF) | Lists every class meeting with room, teacher and time; the issue row is keyed to the **block**, not to one representative student | | ☐ |
@@ -406,7 +408,7 @@ Path: **Clinic** (`/clinic`), a record at `/clinic/{enrollment}`.
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
-| 14.1 | Record a health assessment for an enrolled student who has none (Kevin Santos, 92) | A clinic record is created and the workflow box for office 11 closes | | ☐ |
+| 14.1 | Record a health assessment for an enrolled student who has none — **Patricia Diaz (89)**, measured 2026-10-12: no `clinicrecords` row and her Clinic box still pending (Gabriel Ramos 90 and Nena Alcantara 876 serve too) | A clinic record is created and the workflow box for office 11 closes | | ☐ |
 | 14.2 | Amend a record (`PATCH /clinic/records/{clinic}`) | The edit is attributed; nothing re-opens the workflow | | ☐ |
 | 14.3 | **Reopen** a completed record (`POST /clinic/records/{clinic}/reopen`) | Allowed, and the record carries `reopened`. This value is *reachable and tested* — it was challenged as dead code and the owner ruled to keep the feature | | ☐ |
 
@@ -433,7 +435,7 @@ Path: **ID** (`/id`), a request at `/id/{enrollment}`, photo at
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|
-| 15.1 | Create a card request for an enrolled student (`newStudent`) — use **DEMO-2026-026 Alcantara, Nena**, who sits at this desk with no request | A `pending` request is opened. The desk can only open one for an enrollment whose next unsigned box is the ID office's and which holds no request yet (one request per enrollment for its whole life), so the seat is prepared rather than found: the demo pipeline advances Nena to the ID box and deliberately writes no request for her, and prints how many such open seats remain — when that counter reads zero this row has been used and needs a further record advanced to the stage | | ☐ |
+| 15.1 | Create a card request for an enrolled student (`newStudent`) — the seat this row needed was **used on 2026-10-12**, so advance another record to the ID box first, or walk 15.2 onward on the request that now exists | A `pending` request is opened. The desk can only open one for an enrollment whose next unsigned box is the ID office's and which holds no request yet (one request per enrollment for its whole life), so the seat is prepared rather than found: the demo pipeline advances a record to the ID box, deliberately writes no request for it, and prints how many such open seats remain. Measured after the 2026-10-12 walk the counter reads **0** and the run prints its `!` line — DEMO-2026-026 Alcantara, Nena now holds the request a desk opened herself (audit row 75504, `office22_head`, from `::1`), which is the seat doing its job rather than a gap. Rows 15.2, 15.3, 15R.5 and 15R.6 run on it | | ☐ |
 | 15.2 | Attach the face photo, then **Validate** | Before the photo is on file the validate button is disabled and the reason is printed under it. After it, the desk sees the captured face **on the pending request** — not only once it is signed — and re-capturing replaces the picture on file and removes the one it displaced. Validation is **terminal**: status `validated`, the validator and date recorded. There is no release step and no `released` value any more | | ☐ |
 | 15.3 | Open a request whose data looks wrong and record a **mismatch remark** (`POST /id/requests/{idRequest}/remark`, `id.remarkRequest`) | The remark is stored on the **pending** request; a validated request cannot take one | | ☐ |
 | 15.4 | Print the class card / ID-facing documents | Each subject of an expanded card prints, and the issue row is attributable to the student | | ☐ |
@@ -523,5 +525,17 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    record a general pass for a student under one program and open their application to another — the
    second one still refuses. **Worth measuring before you rely on it:** on the demo install no student
    holds a result for more than one course, so no applicant's outcome changed when the rule tightened.
+8. **A signed Clinic or ID box can still sit with no record behind it on the demo set — seven
+   past-term loads and one record left that way on purpose.** Seven enrollments (595, 597, 654-658 —
+   Maria Reyes, Rico Navarro, Liza Bautista, Rafael Cruz, Marco Villanueva, Iñigo Barrameda, Relinda
+   Sabla on their earlier terms) carry a completed Clinic box and an ID box with no request, because
+   the pipeline walked them through both boxes before it was made to write the assessment and the
+   validation that sign them; the two live ID seats and Danica Sotto were corrected on 2026-10-12, so
+   no record a desk is told to walk is in that shape. The eighth signed ID box with no request is
+   **enrollment 53, Juan Dela Cruz, current term — and it stays that way by ruling**: its contradictory
+   request row was deleted 2026-10-11 and its signature left standing, because un-signing a box
+   rewrites an audit trail. `ems:audit:record-states` counts all of them as `note` lines and stays
+   green; a report tool must not undo a ruling. Treat one of these on a **different** current-term
+   record as a finding, and these as limits.
 
 _(Print scope is no longer a known limit: ruled and built 2026-10-06, and tested at §12R.8.)_

@@ -94,6 +94,16 @@ class AuditRecordStates extends Command
                 'severity' => 'decision',
                 'why' => 'Docx §28 G-9: MySQL treats a NULL enrollment as distinct, so the issue sequence cannot reject a repeat for these rows. Pruning or attributing them is the owner\'s call, not a code defect.',
             ],
+            'A Clinic box signed with no health assessment behind it' => [
+                'count' => $this->clinicBoxWithoutRecord(),
+                'severity' => 'decision',
+                'why' => 'Recording the assessment is the signature on this box (§14R.2), so no desk could leave it signed with nothing on file. The records still in this state are older-term demo history seated before that rule was written; the owner ruled on 2026-10-12 to leave them rather than invent a clinic past.',
+            ],
+            'An ID box signed with no validated request behind it' => [
+                'count' => $this->idBoxWithoutValidatedRequest(),
+                'severity' => 'decision',
+                'why' => 'Validation is the ID box signing, so a signed box normally carries the request that signed it. Enrollment 53 is the exception by ruling, not by accident: its contradictory request row was deleted 2026-10-11 and the signature was deliberately left standing.',
+            ],
         ];
 
         $impossible = 0;
@@ -118,7 +128,10 @@ class AuditRecordStates extends Command
         }
 
         $this->newLine();
-        $this->info('Records checked: '.count($findings).' rules across idrequests, workflowsteps, enrollmentworkflow, enrollments, notifications and documentprintlog.');
+        // The rule count is derived from the list above. The table names a previous version of this
+        // sentence enumerated are left out on purpose: a hand-kept inventory of what a command looks
+        // at goes stale the day someone adds a rule, which is the defect pass 92 found in the docx.
+        $this->info('Rules run: '.count($findings).'; each is listed above with its own count and the reason it is worth looking at.');
 
         if ($impossible === 0 && $decisions === 0) {
             $this->info('Every state the application is supposed to prevent is prevented, and no open decision row is on file.');
@@ -238,6 +251,30 @@ class AuditRecordStates extends Command
         return Documentprintlog::whereNull('enrollmentId')
             ->whereNull('studentId')
             ->whereNull('blockId')
+            ->count();
+    }
+
+    /**
+     * An enrollment whose Clinic box reads completed while nothing was ever recorded for it.
+     *
+     * Counted on the enrollment rather than the step, because one enrollment can hold several
+     * boxes and the desk sees one record, not one row per box.
+     */
+    private function clinicBoxWithoutRecord(): int
+    {
+        return Enrollments::whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+            ->where('officeId', OfficeId::Clinic->value)
+            ->where('stepStatus', WorkflowStepStatus::Completed->value))
+            ->whereDoesntHave('clinicrecords')
+            ->count();
+    }
+
+    private function idBoxWithoutValidatedRequest(): int
+    {
+        return Enrollments::whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+            ->where('officeId', OfficeId::IdOffice->value)
+            ->where('stepStatus', WorkflowStepStatus::Completed->value))
+            ->whereDoesntHave('idrequests', fn ($q) => $q->where('status', IdRequestStatus::Validated))
             ->count();
     }
 }
