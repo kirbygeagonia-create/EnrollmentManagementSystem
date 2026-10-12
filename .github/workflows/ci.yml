@@ -109,6 +109,34 @@ jobs:
           DB_PASSWORD: root
         run: php artisan test --log-junit junit.xml || true
 
+      # The walkthrough legs read reference rows that migrations never create, and they cannot run in the
+      # step above: RefreshDatabase migrates fresh, which would wipe anything seeded before it. So they get
+      # their own step, seeded immediately beforehand, and --fail-on-skipped makes a leg that could not run
+      # a hard failure — otherwise this job would report four green skips and prove nothing.
+      - name: Seed the reference data the walkthrough reads
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ems_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --force
+          php artisan db:seed --class=DevReferenceDataSeeder --force
+
+      - name: Run the end-to-end walkthrough against MySQL
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ems_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          E2E_DB_DATABASE: ems_test
+        run: vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped --log-junit junit-e2e.xml
+
       - name: Report test failures (annotations) and fail
         run: |
           php -r '
@@ -128,7 +156,7 @@ jobs:
           '
 
       - name: Refuse a silently skipped check
-        run: php artisan ems:ci:no-silent-skips junit.xml
+        run: php artisan ems:ci:no-silent-skips junit.xml junit-e2e.xml
 
   frontend:
     name: Frontend (ESLint + Vite build)

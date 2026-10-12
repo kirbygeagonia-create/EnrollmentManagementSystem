@@ -14,14 +14,19 @@ use SimpleXMLElement;
  * that drops or relocates Chrome would therefore have made CI green while quietly subtracting proof. This
  * command turns that silence into a red job.
  *
- * It reads the JUnit log the test step already writes. It decides nothing about the code: it compares the
- * skips that happened against the short list below, each with the reason it is allowed, and fails on
+ * It reads the JUnit log(s) the test steps already write. It decides nothing about the code: it compares
+ * the skips that happened against the short list below, each with the reason it is allowed, and fails on
  * anything else — including an allowed test that has gone missing entirely, because a renamed or deleted
  * check would otherwise pass by being absent.
+ *
+ * Several files may be given, because CI runs the end-to-end walkthrough in its own step against a
+ * database it seeded just beforehand — a `RefreshDatabase` test elsewhere in the suite migrates fresh and
+ * would otherwise have wiped the reference rows those legs read. Skips are judged per file and presence
+ * across the union, so an allowlisted test satisfied in either log is enough.
  */
 class AssertNoSilentSkips extends Command
 {
-    protected $signature = 'ems:ci:no-silent-skips {file=junit.xml : the JUnit log written by the test step}';
+    protected $signature = 'ems:ci:no-silent-skips {files?* : the JUnit log(s) written by the test steps}';
 
     protected $description = 'Fail the run if a test skipped for a reason this project has not agreed to';
 
@@ -34,7 +39,7 @@ class AssertNoSilentSkips extends Command
     private const ALLOWED = [
         'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
             'tests' => '*',
-            'reason' => 'it names the live `ems` database in setUp, and the CI service container only creates `ems_test`',
+            'reason' => 'it needs a live seeded MySQL database — CI supplies it as E2E_DB_DATABASE, and the default is `ems`',
         ],
         'Tests\Feature\Console\PreflightTest' => [
             'tests' => ['An absent print folder is not a fault because the print driver makes it'],
@@ -44,23 +49,21 @@ class AssertNoSilentSkips extends Command
 
     public function handle(): int
     {
-        $path = (string) $this->argument('file');
+        $files = (array) $this->argument('files');
 
-        if (! is_file($path)) {
-            $this->error($path.' is missing, so nothing can be said about what skipped.');
-
-            return self::FAILURE;
+        if ($files === []) {
+            $files = ['junit.xml'];
         }
 
-        $xml = simplexml_load_file($path);
+        $skipped = [];
+        $present = [];
 
-        if (! $xml instanceof SimpleXMLElement) {
-            $this->error($path.' could not be parsed as XML.');
-
-            return self::FAILURE;
+        foreach ($files as $file) {
+            if ($this->readLog((string) $file, $skipped, $present) === self::FAILURE) {
+                return self::FAILURE;
+            }
         }
 
-        $skipped = $this->skippedCases($xml);
         $unexpected = 0;
 
         foreach ($skipped as $case) {
@@ -77,7 +80,7 @@ class AssertNoSilentSkips extends Command
             $this->line('  allowed skip  '.$case['name'].'  — '.$allowed);
         }
 
-        $problems = $this->missingAllowed($xml);
+        $problems = $this->missingAllowed($present);
 
         foreach ($problems as $problem) {
             $this->error($problem);
@@ -91,6 +94,46 @@ class AssertNoSilentSkips extends Command
         }
 
         $this->info('Skips observed: '.count($skipped).'; every one is on the allowlist with a reason, and no allowlisted test is missing.');
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Fold one JUnit log into the running sets. Takes the skip list and the present-testcase map by
+     * reference so several logs are judged as one body of evidence.
+     *
+     * @param  array<int, array{class: string, name: string}>  $skipped
+     * @param  array<string, bool>  $present
+     */
+    private function readLog(string $path, array &$skipped, array &$present): int
+    {
+        if (! is_file($path)) {
+            $this->error($path.' is missing, so nothing can be said about what skipped.');
+
+            return self::FAILURE;
+        }
+
+        $xml = simplexml_load_file($path);
+
+        if (! $xml instanceof SimpleXMLElement) {
+            $this->error($path.' could not be parsed as XML.');
+
+            return self::FAILURE;
+        }
+
+        $found = $this->skippedCases($xml);
+        $count = 0;
+
+        foreach ($xml->xpath('//testcase') ?: [] as $case) {
+            $present[(string) $case['class'].'::'.(string) $case['name']] = true;
+            $count++;
+        }
+
+        foreach ($found as $case) {
+            $skipped[] = $case;
+        }
+
+        $this->line('  read '.$path.': '.$count.' testcase(s), '.count($found).' skipped');
 
         return self::SUCCESS;
     }
@@ -129,19 +172,14 @@ class AssertNoSilentSkips extends Command
     }
 
     /**
-     * Every allowlisted test must still appear in the log. A rename or a deletion would satisfy the rule by
-     * producing no skip at all — the same subtraction of proof, arriving the other way.
+     * Every allowlisted test must still appear in the evidence. A rename or a deletion would satisfy the
+     * rule by producing no skip at all — the same subtraction of proof, arriving the other way.
      *
+     * @param  array<string, bool>  $present
      * @return array<int, string>
      */
-    private function missingAllowed(SimpleXMLElement $xml): array
+    private function missingAllowed(array $present): array
     {
-        $present = [];
-
-        foreach ($xml->xpath('//testcase') ?: [] as $case) {
-            $present[(string) $case['class'].'::'.(string) $case['name']] = true;
-        }
-
         $problems = [];
 
         foreach (self::ALLOWED as $class => $rule) {
@@ -157,7 +195,7 @@ class AssertNoSilentSkips extends Command
                 }
 
                 if (! $anyOfThisClass) {
-                    $problems[] = $class.' is allowed to skip every test, yet no test of that class appears in the log.';
+                    $problems[] = $class.' is allowed to skip every test, yet no test of that class appears in the logs.';
                 }
 
                 continue;
@@ -165,7 +203,7 @@ class AssertNoSilentSkips extends Command
 
             foreach ($rule['tests'] as $name) {
                 if (! isset($present[$class.'::'.$name])) {
-                    $problems[] = 'The allowlist expects '.$name.' to exist in '.$class.', and the log has no such test.';
+                    $problems[] = 'The allowlist expects '.$name.' to exist in '.$class.', and the logs have no such test.';
                 }
             }
         }

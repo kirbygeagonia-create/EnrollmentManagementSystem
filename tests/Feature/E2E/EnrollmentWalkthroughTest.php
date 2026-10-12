@@ -16,6 +16,7 @@ use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -47,10 +48,16 @@ class EnrollmentWalkthroughTest extends TestCase
     {
         parent::setUp();
 
-        // Run against the real MySQL database (same pattern as AdminAccessSmokeTest)
+        // Run against a real MySQL database. This walkthrough READS reference rows the suite's own
+        // migrations never create — courses, subjects, rooms, terms, the current curriculum, the seeded
+        // roles — so it needs a seeded install, not merely a migrated one. With nothing set that is the
+        // developer's live `ems`, which is how walkthrough §2.6 runs it; CI names its own seeded
+        // `ems_test` through E2E_DB_DATABASE so the pipeline is exercised on MySQL, not only SQLite.
+        $database = (string) (getenv('E2E_DB_DATABASE') ?: 'ems');
+
         config([
             'database.default' => 'mysql',
-            'database.connections.mysql.database' => 'ems',
+            'database.connections.mysql.database' => $database,
             'database.connections.mysql.host' => '127.0.0.1',
             'database.connections.mysql.port' => '3306',
             'database.connections.mysql.username' => 'root',
@@ -61,7 +68,28 @@ class EnrollmentWalkthroughTest extends TestCase
         try {
             DB::connection('mysql')->getPdo();
         } catch (\Throwable $e) {
-            $this->markTestSkipped('MySQL database is not reachable.');
+            $this->markTestSkipped("MySQL database '{$database}' is not reachable.");
+        }
+
+        // Reachable is not the same as migrated, and migrated is not the same as seeded. Both gaps are an
+        // environment that cannot host this leg, so both say which table is missing and what to run; a null
+        // row four desks into the pipeline would read as a defect in the code instead.
+        foreach (['roles', 'courses', 'subjects', 'rooms', 'academicterms', 'curriculums'] as $table) {
+            try {
+                $rows = DB::connection('mysql')->table($table)->count();
+            } catch (QueryException $e) {
+                $this->markTestSkipped(
+                    "Database '{$database}' has no {$table} table — it was never migrated."
+                    .' Run: php artisan migrate --force'
+                );
+            }
+
+            if ($rows === 0) {
+                $this->markTestSkipped(
+                    "Database '{$database}' has no rows in {$table}; this walkthrough needs a seeded"
+                    .' install. Run: php artisan db:seed && php artisan db:seed --class=DevReferenceDataSeeder'
+                );
+            }
         }
 
         // The trait's transaction began on the ORIGINAL default connection;

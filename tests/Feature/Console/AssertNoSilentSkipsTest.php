@@ -22,16 +22,28 @@ class AssertNoSilentSkipsTest extends TestCase
 {
     private string $lastOutput = '';
 
-    private function runAgainst(string $xml): int
+    /**
+     * Hand the guard one JUnit log or several. CI now writes two — the main suite, and the walkthrough's
+     * own run against a database it seeded just beforehand — and the command judges them as one body of
+     * evidence, so a test present in either log counts as present.
+     */
+    private function runAgainst(string ...$logs): int
     {
-        $path = tempnam(sys_get_temp_dir(), 'junit-').'.xml';
-        file_put_contents($path, $xml);
+        $paths = [];
+
+        foreach ($logs as $i => $xml) {
+            $path = tempnam(sys_get_temp_dir(), 'junit-').'-'.$i.'.xml';
+            file_put_contents($path, $xml);
+            $paths[] = $path;
+        }
 
         try {
-            $code = Artisan::call('ems:ci:no-silent-skips', ['file' => $path]);
+            $code = Artisan::call('ems:ci:no-silent-skips', ['files' => $paths]);
             $this->lastOutput = Artisan::output();
         } finally {
-            @unlink($path);
+            foreach ($paths as $path) {
+                @unlink($path);
+            }
         }
 
         return $code;
@@ -84,7 +96,7 @@ class AssertNoSilentSkipsTest extends TestCase
 
         $this->assertStringContainsString('allowed skip  An absent print folder is not a fault', $this->lastOutput);
         $this->assertStringContainsString('gitignored', $this->lastOutput);
-        $this->assertStringContainsString('ems_test', $this->lastOutput);
+        $this->assertStringContainsString('E2E_DB_DATABASE', $this->lastOutput);
         $this->assertStringContainsString('every one is on the allowlist', $this->lastOutput);
         $this->assertStringNotContainsString('unagreed', $this->lastOutput);
     }
@@ -143,14 +155,67 @@ class AssertNoSilentSkipsTest extends TestCase
 
         $this->assertSame(1, $this->runAgainst($xml));
         $this->assertStringContainsString('EnrollmentWalkthroughTest is allowed to skip every test', $this->lastOutput);
-        $this->assertStringContainsString('the log has no such test', $this->lastOutput);
+        $this->assertStringContainsString('the logs have no such test', $this->lastOutput);
     }
 
     #[Test]
     public function a_missing_log_is_refused_rather_than_passing_for_want_of_evidence(): void
     {
-        $this->assertSame(1, Artisan::call('ems:ci:no-silent-skips', ['file' => 'no-such-junit.xml']));
+        $this->assertSame(1, Artisan::call('ems:ci:no-silent-skips', ['files' => ['no-such-junit.xml']]));
         $this->assertStringContainsString('is missing', Artisan::output());
+    }
+
+    #[Test]
+    public function an_allowlisted_test_seen_in_one_log_satisfies_the_rule_across_both(): void
+    {
+        // The second half of the CI shape: the walkthrough runs in its own step, so the main log still
+        // carries its skip and the second log carries its passes. Presence must be judged over the union,
+        // or the guard would cry wolf about a Preflight row that simply is not in the second file.
+        $main = $this->log([
+            'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
+                ['First year with two stage entrance exam completes full pipeline', true],
+            ],
+            'Tests\Feature\Console\PreflightTest' => [
+                ['An absent print folder is not a fault because the print driver makes it', true],
+            ],
+        ]);
+
+        $walkthrough = $this->log([
+            'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
+                ['First year with two stage entrance exam completes full pipeline', false],
+                ['Shifter with credit transfer completes pipeline', false],
+            ],
+        ]);
+
+        $this->assertSame(0, $this->runAgainst($main, $walkthrough));
+
+        $this->assertStringContainsString('Skips observed: 2', $this->lastOutput);
+        $this->assertStringContainsString('read ', $this->lastOutput);
+    }
+
+    #[Test]
+    public function a_skip_in_the_second_log_is_refused_too(): void
+    {
+        $main = $this->log([
+            'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
+                ['First year with two stage entrance exam completes full pipeline', true],
+            ],
+            'Tests\Feature\Console\PreflightTest' => [
+                ['An absent print folder is not a fault because the print driver makes it', true],
+            ],
+        ]);
+
+        $walkthrough = $this->log([
+            'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
+                ['First year with two stage entrance exam completes full pipeline', false],
+            ],
+            'Tests\Feature\Errors\PrintRendererTest' => [
+                ['An unconfigured server still finds an installed browser', true],
+            ],
+        ]);
+
+        $this->assertSame(1, $this->runAgainst($main, $walkthrough));
+        $this->assertStringContainsString('PrintRendererTest::An unconfigured server still finds an installed browser skipped', $this->lastOutput);
     }
 
     #[Test]

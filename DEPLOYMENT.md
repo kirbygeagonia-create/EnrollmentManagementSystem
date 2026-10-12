@@ -173,17 +173,26 @@ Verify with the print-fidelity smoke test:
 `.github/workflows/ci.yml` runs on every push/PR:
 - **Pest + PHPStan + Pint** against SQLite (fast lane)
 - **Pest against MySQL 8** service container (catches MySQL/SQLite drift —
-  the class of bug behind the `add_auto_increment` migration)
+  the class of bug behind the `add_auto_increment` migration), followed by its own
+  **end-to-end walkthrough** step against the same container
 - **ESLint + Vite build**
-- each backend job ends with `php artisan ems:ci:no-silent-skips junit.xml`, which
+- each backend job ends with `php artisan ems:ci:no-silent-skips`, which
   fails the run when a test skipped for a reason this project has not agreed to
 
-**Two things this job list does not prove.** The MySQL job does not run the E2E walkthrough: that class
-names the live `ems` database in `setUp`, and the service container only creates `ems_test`, so all four
-legs skip (measured on `2986427`: both backend jobs print *5 skipped, 660 passed* — the fifth being the
-Preflight row that needs a `storage/app/prints` folder to move aside, which a fresh checkout has not
-got). Run the E2E legs against a real database before accepting a build, which is what walkthrough §2.6
-asks for. And `ems:print-fidelity` is not a CI step at all, so no PDF layout is verified there.
+**How the walkthrough gets MySQL.** Its legs read reference rows that migrations never create — courses,
+subjects, rooms, terms, the current curriculum, the seeded roles — so they need a *seeded* database, and
+they cannot be seeded before the main suite because `RefreshDatabase` migrates fresh. The MySQL job
+therefore runs the suite first, then `migrate --force && db:seed && db:seed --class=DevReferenceDataSeeder`,
+then `vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped`. A leg names its database through
+`E2E_DB_DATABASE`; with nothing set it uses the developer's live `ems`, which is how walkthrough §2.6 runs
+it locally. `--fail-on-skipped` is what makes that step honest — four green skips would otherwise read as
+four passes, and measured on 2026-10-12 an unseeded target produced exactly that until the flag was added.
+
+**What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
+layout verified there — compare printed papers against the physical forms on the machine that will produce
+them. And an agreed skip is still a skip: the allowlist in `AssertNoSilentSkips.php` is deliberately short
+(the walkthrough's legs when no seeded database answers, one Preflight row that needs a gitignored folder),
+so read it before concluding a green job covered everything.
 
 **The runner image is pinned to `ubuntu-24.04`, not floated.** `ubuntu-latest` was scheduled to move to
 Ubuntu 26 on 2026-10-19, and one check depends on what the image ships: `PrintRendererTest` locates a
