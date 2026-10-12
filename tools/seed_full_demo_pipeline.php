@@ -2034,6 +2034,67 @@ if ($idSeat) {
     echo "  ! ID Desk: DEMO-2026-016 has no ENROLLED record for this term — the desk will list nothing\n";
 }
 
+/*
+ * A second seat at the ID box, and this one deliberately carries no request.
+ *
+ * Walking the ID desk in the running application on 2026-10-11 found that §15.1 of
+ * Documentation/Per-Office-UAT-Walkthrough.md — "create a card request for an enrolled student" —
+ * could not be performed at all. IDPolicy::create asks for two things at once: the enrollment's
+ * next unsigned box must be the ID office's, and the enrollment must hold no request yet, because
+ * one enrollment carries one request for its whole life. The dataset parked exactly one enrollment
+ * at that stage and it already had its request, so the step an office is told to perform had no
+ * record to perform it on.
+ *
+ * So this student exists to be acted on: she reaches the ID desk with nothing beside her, and the
+ * request the office opens is theirs, not the seeder's. Nothing below writes an idrequests row for
+ * her. The counter at the end reports how many open seats are left, which is also the number of
+ * times §15.1 can be walked; when it reads zero the desk has used them and a further run cannot
+ * invent another without a new enrollment reaching this stage.
+ */
+$nena = createDemoStudent('DEMO-2026-026', 'Nena', 'Alcantara', 'demo_nena', 'demo.nena@example.com', 'female');
+
+$enrNena = Enrollments::with('student')
+    ->where('studentId', $nena->studentId)
+    ->where('termId', $termId)
+    ->first();
+
+if (! $enrNena) {
+    $enrNena = Enrollments::create([
+        'studentId' => $nena->studentId,
+        'courseId' => 3,
+        'termId' => $termId,
+        'yearLevel' => 1,
+        'studentType' => StudentType::FirstYear,
+        'enrollmentType' => EnrollmentType::New,
+        'academicStanding' => AcademicStanding::Regular,
+        'evaluatedBy' => 5,
+        'registrarProcessedBy' => 2,
+        'enrolledDate' => now(),
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+    ]);
+
+    echo "✔ ID Desk: seeded DEMO-2026-026 Nena Alcantara (enrollment {$enrNena->enrollmentId}) — ENROLLED\n";
+}
+
+// Re-seated on every run for the same reason Danica is: a live walkthrough leaves the record
+// wherever the desk stopped, and a half-signed form shows an empty queue rather than this seat.
+$seatWorkflow($enrNena, OfficeId::IdOffice->value);
+
+$openSeats = Enrollments::query()
+    ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
+    ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+        ->where('stepStatus', WorkflowStepStatus::Pending->value)
+        ->where('officeId', OfficeId::IdOffice->value)
+        ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending']))
+    ->whereDoesntHave('idrequests')
+    ->count();
+
+if ($openSeats > 0) {
+    echo "✔ ID Desk: {$openSeats} enrolled record(s) sit at the ID box with no request yet — §15.1 (create a card request) can be walked\n";
+} else {
+    echo "  ! ID Desk: no open ID seat left — every enrollment at that stage already holds a request, so §15.1 cannot be performed until one more record reaches the ID box\n";
+}
+
 // Kevin Santos is the desk's finished example — a request that made it all the
 // way through. Two things were wrong with him: the request was written as
 // validated with no face photo and no validator, which is a state
