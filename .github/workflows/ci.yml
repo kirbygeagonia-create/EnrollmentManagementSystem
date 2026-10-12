@@ -5,10 +5,15 @@ on:
     branches: [master, main]
   pull_request:
 
+# The runner image is pinned, not floated. `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19 (GitHub's own
+# annotation on every run since then), and this suite has one check that depends on what the image ships:
+# PrintRendererTest locates a browser and SKIPS rather than fails when none is found, so a new image could
+# have turned CI green into CI proving less with nothing red. Pinning buys the decision; the skip guard at
+# the end of each backend job is what keeps the decision honest when the pin moves.
 jobs:
   backend:
     name: Backend (Pest + PHPStan + Pint) — SQLite
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -58,9 +63,12 @@ jobs:
             exit(1);
           '
 
+      - name: Refuse a silently skipped check
+        run: php artisan ems:ci:no-silent-skips junit.xml
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8
@@ -119,9 +127,12 @@ jobs:
             exit(1);
           '
 
+      - name: Refuse a silently skipped check
+        run: php artisan ems:ci:no-silent-skips junit.xml
+
   frontend:
     name: Frontend (ESLint + Vite build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

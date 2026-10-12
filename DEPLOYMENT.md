@@ -175,6 +175,21 @@ Verify with the print-fidelity smoke test:
 - **Pest against MySQL 8** service container (catches MySQL/SQLite drift —
   the class of bug behind the `add_auto_increment` migration)
 - **ESLint + Vite build**
+- each backend job ends with `php artisan ems:ci:no-silent-skips junit.xml`, which
+  fails the run when a test skipped for a reason this project has not agreed to
+
+**Two things this job list does not prove.** The MySQL job does not run the E2E walkthrough: that class
+names the live `ems` database in `setUp`, and the service container only creates `ems_test`, so all four
+legs skip (measured on `2986427`: both backend jobs print *5 skipped, 660 passed* — the fifth being the
+Preflight row that needs a `storage/app/prints` folder to move aside, which a fresh checkout has not
+got). Run the E2E legs against a real database before accepting a build, which is what walkthrough §2.6
+asks for. And `ems:print-fidelity` is not a CI step at all, so no PDF layout is verified there.
+
+**The runner image is pinned to `ubuntu-24.04`, not floated.** `ubuntu-latest` was scheduled to move to
+Ubuntu 26 on 2026-10-19, and one check depends on what the image ships: `PrintRendererTest` locates a
+browser from the runner and **skips rather than fails** when it finds none — so a leaner image would have
+made CI green while silently subtracting proof. The skip guard above turns that silence red; the pin buys
+the decision about when to move. When you do move it, expect the guard to say what the new image lacks.
 
 Do not merge with red CI.
 
