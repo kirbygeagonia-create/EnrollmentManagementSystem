@@ -17,9 +17,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   cross-file breakage. The SQLite suite is the default (`phpunit.xml` pins `:memory:`, and
   `AdminAccessSmokeTest` builds its own SQLite schema). The E2E walkthrough legs need a **seeded** MySQL
   database: they read courses, subjects, rooms, terms, the current curriculum and the seeded roles, so a
-  migrated-but-empty one is not enough. They take it from `E2E_DB_DATABASE`, defaulting to the live `ems`,
-  and skip — naming the table that is missing — when the database is unreachable or unseeded. CI runs them
-  in their own step against `ems_test` after seeding it, under `--fail-on-skipped`.
+  migrated-but-empty one is not enough. They take the database from `E2E_DB_DATABASE`, defaulting to the
+  live `ems`; host/user/password come from the ordinary `DB_*` env and are never hardcoded (CI's container
+  is `root`/`root`, the repo default is `root` with no password). They skip — naming the host they tried and
+  the table that is missing — when the database is unreachable, unseeded, or the credentials do not match.
+  CI runs them in their own step against `ems_test` after seeding it, under `--fail-on-skipped`.
 - **PHPStan** — 0 errors. **Pint** — `--test` passes. **ESLint** — `npx eslint resources/js --max-warnings=0`.
 - **Vite build** — succeeds. CI runs three jobs (`.github/workflows/ci.yml`: Pest+PHPStan+Pint on
   SQLite, Pest on MySQL 8, ESLint+build). Do not merge red.

@@ -58,17 +58,22 @@ class EnrollmentWalkthroughTest extends TestCase
         config([
             'database.default' => 'mysql',
             'database.connections.mysql.database' => $database,
-            'database.connections.mysql.host' => '127.0.0.1',
-            'database.connections.mysql.port' => '3306',
-            'database.connections.mysql.username' => 'root',
-            'database.connections.mysql.password' => '',
         ]);
         DB::purge('mysql');
+
+        // Host, port, user and password are deliberately not pinned here. Hardcoding them is what broke
+        // the first CI run of this step: the repository's defaults are `root` with no password, while the
+        // CI service container starts MySQL as root/root, so a pinned empty password could never connect
+        // there. Only the connection name and the database are overridden.
+        $mysql = config('database.connections.mysql');
 
         try {
             DB::connection('mysql')->getPdo();
         } catch (\Throwable $e) {
-            $this->markTestSkipped("MySQL database '{$database}' is not reachable.");
+            $this->markTestSkipped(
+                "MySQL at {$mysql['host']}:{$mysql['port']} as {$mysql['username']} cannot open '{$database}': "
+                .trim($e->getMessage())
+            );
         }
 
         // Reachable is not the same as migrated, and migrated is not the same as seeded. Both gaps are an

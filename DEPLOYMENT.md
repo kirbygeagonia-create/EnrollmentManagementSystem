@@ -186,7 +186,7 @@ therefore runs the suite first, then `migrate --force && db:seed && db:seed --cl
 then `vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped`. A leg names its database through
 `E2E_DB_DATABASE`; with nothing set it uses the developer's live `ems`, which is how walkthrough §2.6 runs
 it locally. `--fail-on-skipped` is what makes that step honest — four green skips would otherwise read as
-four passes, and measured on 2026-10-12 an unseeded target produced exactly that until the flag was added.
+four passes, and measured on 2026-10-12 an unseeded target produced exactly that until the flag was added. Host, port, user and password are read from the ordinary `DB_*` configuration and deliberately not pinned in the test: the repository's own defaults are `root` with no password while the CI container runs `root`/`root`, and the first version hardcoded the former, so every leg skipped with `Access denied` and the step exited 1. A skip now names the host, port and user it tried, so a credential mismatch reads as a fact rather than a mystery.
 
 **What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
 layout verified there — compare printed papers against the physical forms on the machine that will produce
