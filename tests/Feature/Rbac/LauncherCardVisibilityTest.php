@@ -85,6 +85,55 @@ class LauncherCardVisibilityTest extends TestCase
     }
 
     #[Test]
+    public function the_two_academic_cards_answer_to_the_rights_behind_them(): void
+    {
+        // A Dean works in an office that owns no launcher card of its own, so the chrome used to grant that
+        // role evaluation.index and blocking.index by route name. One of the two was a door that closes: the
+        // Dean's roles hold evaluation.view but not block.view, which is what live `ems` measured of its only
+        // dean account (dean_academic) on 2026-10-12 — a card that advertised a screen the policy refuses.
+        $dean = $this->staffInOffice(OfficeId::Academic->value, 'Dean');
+
+        $this->assertTrue($dean->hasPermissionTo('evaluation.view'));
+        $this->assertFalse($dean->hasPermissionTo('block.view'));
+
+        $this->actingAs($dean)
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('can.evaluationDesk', true)
+                ->where('can.blockingDesk', false));
+
+        $this->actingAs($dean)->get(route('evaluation.index'))->assertOk();
+        $this->actingAs($dean)->get(route('blocking.index'))->assertForbidden();
+
+        // The desk that does hold the right keeps both the flag and the page, so the fix did not simply
+        // switch a card off for somebody who could use it.
+        $coordinator = $this->staffInOffice(OfficeId::Blocking->value, 'BlockingCoordinator');
+        $this->assertTrue($coordinator->hasPermissionTo('block.view'));
+
+        $this->actingAs($coordinator)
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('can.blockingDesk', true));
+
+        $this->actingAs($coordinator)->get(route('blocking.index'))->assertOk();
+    }
+
+    #[Test]
+    public function the_launcher_asks_those_flags_instead_of_naming_the_two_routes(): void
+    {
+        // A PHP test cannot execute the component, so the pin here is on its source — the same reason this
+        // file scans the chrome for office numbers nobody holds. The two cards must read the shared rights,
+        // and the allow-list that granted them by route name must stay gone, or the dead end comes back with
+        // the flags still correct and nothing left to fail.
+        $src = file_get_contents(resource_path('js/Components/navigation/MegaAppLauncher.jsx'));
+
+        $this->assertStringContainsString('props.can?.evaluationDesk', $src);
+        $this->assertStringContainsString('props.can?.blockingDesk', $src);
+        $this->assertStringContainsString("if (item.route === 'evaluation.index') return canEvaluationDesk;", $src);
+        $this->assertStringContainsString("if (item.route === 'blocking.index') return canBlockingDesk;", $src);
+        $this->assertStringNotContainsString("['evaluation.index', 'blocking.index', 'students.index'].includes(item.route)", $src);
+    }
+
+    #[Test]
     public function no_navigation_descriptor_names_an_office_that_does_not_exist(): void
     {
         // Ruling 12 retired office 8 in the database and the launcher kept speaking it, so the bug

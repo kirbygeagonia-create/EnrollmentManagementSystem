@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\OfficeId;
 use App\Models\Offices;
 use App\Models\Staffusers;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -38,7 +39,7 @@ class StaffusersFactory extends Factory
             'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'passwordHash' => static::$password ??= Hash::make('password'),
-            'officeId' => 1,
+            'officeId' => OfficeId::Registrar->value,
             'contactNo' => fake()->numerify('09##########'),
             'role' => 'staff',
             'status' => 'active',

@@ -81,7 +81,15 @@ class HandleInertiaRequests extends Middleware
                 // The enrollment form is the record as issued, so the desk offers it only to
                 // the counters that may print it. Same reason as above for `can` over
                 // `checkPermissionTo`: an install that has not run RbacSeeder answers false.
-                'printEnrollmentForm' => $staff?->can('print.enrollmentForm') ?? false, 'clearanceDesk' => $staff?->can('clearance.view') ?? false, // the Clearance desk spans offices
+                'printEnrollmentForm' => $staff?->can('print.enrollmentForm') ?? false,
+                // the Clearance desk spans offices, so its card asks the right, not an office number
+                'clearanceDesk' => $staff?->can('clearance.view') ?? false,
+                // The Dean, program heads and instructors work in offices that own no launcher card of their
+                // own, so their two cards used to be granted by route name — which advertised Blocking to the
+                // Dean, whose roles do not hold block.view. They now ask the right the desk's own route asks,
+                // so a card cannot outlive the access behind it.
+                'evaluationDesk' => $staff?->can('evaluation.view') ?? false,
+                'blockingDesk' => $staff?->can('block.view') ?? false,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

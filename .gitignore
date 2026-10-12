@@ -27,3 +27,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# The Windows Python install manager drops its own cache into whatever folder `py` runs from,
+# including the repository root. Not project content.
+/Python/

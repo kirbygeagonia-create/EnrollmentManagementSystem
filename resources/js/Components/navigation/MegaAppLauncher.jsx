@@ -249,6 +249,9 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
     const canStudentsView = props.can?.studentsView ?? false;
     const canRefdataHub = props.can?.refdataHub ?? false;
     const canClearanceDesk = props.can?.clearanceDesk ?? false;
+    // The two cards the academic roles used to get by route name rather than by right.
+    const canEvaluationDesk = props.can?.evaluationDesk ?? false;
+    const canBlockingDesk = props.can?.blockingDesk ?? false;
     const [filterQuery, setFilterQuery] = useState('');
     const inputRef = useRef(null);
 
@@ -284,7 +287,13 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
             // exams), so officeId accepts an array.
             const ids = Array.isArray(item.officeId) ? item.officeId : [item.officeId];
             if (['dean', 'programHead', 'instructor'].includes(user?.role)) {
-                if (['evaluation.index', 'blocking.index', 'students.index'].includes(item.route)) return true;
+                // These two cards used to be granted by route name to all three academic roles, and one of
+                // them was a dead end: the Dean's roles do not hold block.view, so BlockingPolicy::viewAny
+                // refuses the very screen the launcher advertised. They now answer to the right the desk's
+                // own route asks, the same way students, clearance and the catalogs already do. students.index
+                // needs no line here — it was decided above, and falls through to the office list otherwise.
+                if (item.route === 'evaluation.index') return canEvaluationDesk;
+                if (item.route === 'blocking.index') return canBlockingDesk;
                 if (user?.role === 'dean') return ids.some((id) => [4, 6, 7].includes(id));
                 if (user?.role === 'programHead') return ids.some((id) => [4, 6].includes(id));
                 if (user?.role === 'instructor') return ids.some((id) => [4].includes(id));

@@ -1742,9 +1742,9 @@ foreach ($demoInstructors as $person) {
         ['username' => $username],
         [
             'employeeNo' => $person['employeeNo'],
-            // Academic Department: the enum has no case for it, and an instructor
-            // signs no workflow box, so this is a home office for the roster only.
-            'officeId' => 7,
+            // The Academic Department (OfficeId::Academic): an instructor signs no workflow box, so this is
+            // a home office for the roster only.
+            'officeId' => OfficeId::Academic->value,
             'firstName' => $person['firstName'],
             'middleName' => '',
             'lastName' => $person['lastName'],
