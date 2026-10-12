@@ -31,9 +31,15 @@ numbered as in that document.
 
 ### Pass criterion for the whole system
 
-All eleven sections `PASS` or `PASS WITH FINDINGS` with every finding written down, **and**
-the three cross-desk checks in §13 pass. Anything else goes back to the development team with
+All **thirteen** desk sections — §5 through §17, each with its own sign-off line — must read
+`PASS` or `PASS WITH FINDINGS` with every finding written down. That includes §17's three
+cross-desk checks, one per account. Anything else goes back to the development team with
 the observed evidence.
+
+_(This line used to say "eleven sections" and to point the cross-desk checks at **§13**, which is
+the Blocking desk. Counted 2026-10-12: thirteen `Sign-off:` lines exist, §17 holds exactly three
+rows, and a pass criterion that names a section the tester is not told to sign is a step nobody can
+perform — the same failure as a row whose record is missing.)_
 
 ---
 
