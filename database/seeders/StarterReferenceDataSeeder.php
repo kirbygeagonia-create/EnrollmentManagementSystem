@@ -28,7 +28,10 @@ class StarterReferenceDataSeeder extends Seeder
     public function run(): void
     {
         // ---------- Religions (gap D-2) ----------
-        // Roman Catholic keeps id 1 so the historical row is found, not duplicated.
+        // Keyed by name, so a re-run finds the row rather than duplicating it. The id is whatever the
+        // table's counter hands out — an empty counter is the only reason Roman Catholic sits at 1 on the
+        // install, and a rollback does not rewind that counter — so no caller may assume an id here:
+        // either insert the row by id, or read whichever one the table actually holds.
         $religions = [
             'Roman Catholic',
             'Iglesia ni Cristo',

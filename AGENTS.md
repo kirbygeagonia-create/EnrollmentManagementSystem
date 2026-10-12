@@ -72,6 +72,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   SQLite suite depends on that escape hatch.
 - Record timestamps exist only on students, admissions, enrollments, payments, studentassessments,
   studentclearances, clinicrecords and idrequests.
+- Never assume an id from a seeder keyed by *name*. `StarterReferenceDataSeeder` does
+  `firstOrCreate(['religionName' => …])`, so each id is whatever the table's `AUTO_INCREMENT` counter hands
+  out — and a rolled-back insert does not rewind that counter, so a database the suite already ran against
+  seeds `religions` at 53..60, not 1..8. Insert the row by explicit id (as ten other tests do) or read the
+  one that exists. `DevReferenceDataSeeder` is the opposite case: it pins courses and terms by explicit id,
+  so those ids stay safe as literals.
 
 ## Editing the authority docx
 

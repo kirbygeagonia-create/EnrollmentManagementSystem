@@ -25,10 +25,10 @@ use Tests\TestCase;
 /**
  * End-to-end enrollment walkthroughs against the real MySQL `ems` dataset.
  *
- * Each test runs inside a transaction (rolled back after the test) so the
- * 30k-student synthetic dataset is never polluted. Reference data (courses,
- * subjects, fee types, clearance requirements, offices, roles, permissions)
- * is read from the live database, giving realistic coverage of the full
+ * Each test runs inside a transaction (rolled back after the test) so the install it walks —
+ * the developer's live `ems` unless E2E_DB_DATABASE names another — is never left holding the
+ * students it creates. Reference data (courses, subjects, fee types, clearance requirements,
+ * offices, roles, permissions) is read from that database, giving realistic coverage of the full
  * enrollment pipeline:
  *
  *   admission → exam → evaluation → assessment → accounting → registrar
@@ -44,15 +44,29 @@ class EnrollmentWalkthroughTest extends TestCase
 {
     use DatabaseTransactions;
 
+    /**
+     * A religion to put on each student this walkthrough creates.
+     *
+     * Resolved in setUp rather than written as a literal, because the seeder creates religions *by name*,
+     * so each id is whatever the table's AUTO_INCREMENT counter hands out — and a rolled-back insert does
+     * not rewind that counter. Measured in CI's own order on 2026-10-12: the suite leaves `religions` empty
+     * with its counter at 53, the seeders then write ids 53..60, and a hardcoded `religionId => 1` dies on
+     * `students_religionid_foreign`. Courses and terms are the opposite case and stay literals:
+     * DevReferenceDataSeeder pins those ids (`['courseId' => $id]`, `['termId' => $id]`), so an explicit
+     * insert lands where the code says whatever the counter says.
+     */
+    private int $religionId;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // Run against a real MySQL database. This walkthrough READS reference rows the suite's own
-        // migrations never create — courses, subjects, rooms, terms, the current curriculum, the seeded
-        // roles — so it needs a seeded install, not merely a migrated one. With nothing set that is the
-        // developer's live `ems`, which is how walkthrough §2.6 runs it; CI names its own seeded
-        // `ems_test` through E2E_DB_DATABASE so the pipeline is exercised on MySQL, not only SQLite.
+        // migrations never create — courses, subjects, rooms, terms, the current curriculum, a religion
+        // and the seeded roles — so it needs a seeded install, not merely a migrated one. With nothing
+        // set that is the developer's live `ems`, which is how walkthrough §2.6 runs it; CI names its own
+        // seeded `ems_test` through E2E_DB_DATABASE so the pipeline is exercised on MySQL, not only
+        // SQLite.
         $database = (string) (getenv('E2E_DB_DATABASE') ?: 'ems');
 
         config([
@@ -79,7 +93,7 @@ class EnrollmentWalkthroughTest extends TestCase
         // Reachable is not the same as migrated, and migrated is not the same as seeded. Both gaps are an
         // environment that cannot host this leg, so both say which table is missing and what to run; a null
         // row four desks into the pipeline would read as a defect in the code instead.
-        foreach (['roles', 'courses', 'subjects', 'rooms', 'academicterms', 'curriculums'] as $table) {
+        foreach (['roles', 'courses', 'subjects', 'rooms', 'academicterms', 'curriculums', 'religions'] as $table) {
             try {
                 $rows = DB::connection('mysql')->table($table)->count();
             } catch (QueryException $e) {
@@ -96,6 +110,9 @@ class EnrollmentWalkthroughTest extends TestCase
                 );
             }
         }
+
+        // A religion to put on each student, taken from the table rather than asserted of it.
+        $this->religionId = (int) DB::connection('mysql')->table('religions')->min('religionId');
 
         // The trait's transaction began on the ORIGINAL default connection;
         // re-begin it on the real MySQL connection so tests roll back cleanly.
@@ -148,7 +165,7 @@ class EnrollmentWalkthroughTest extends TestCase
             'birthdate' => '2004-01-01',
             'birthplace' => 'Test City',
             'citizenship' => 'Filipino',
-            'religionId' => 1,
+            'religionId' => $this->religionId,
             'civilStatus' => 'single',
             'contactNumber' => '09171234567',
             'telephoneNumber' => null,
@@ -308,7 +325,7 @@ class EnrollmentWalkthroughTest extends TestCase
             'birthplace' => 'Test City',
             'citizenship' => 'Filipino',
             'civilStatus' => 'single',
-            'religionId' => 1,
+            'religionId' => $this->religionId,
             'contactNumber' => '09171234567',
             'telephoneNumber' => null,
             'semestersCompleted' => 0,
@@ -620,7 +637,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'birthdate' => '2004-01-01',
                 'birthplace' => 'Test City',
                 'citizenship' => 'Filipino',
-                'religionId' => 1,
+                'religionId' => $this->religionId,
                 'civilStatus' => 'single',
                 'contactNumber' => '09171234567',
                 'telephoneNumber' => null,
@@ -777,7 +794,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'birthdate' => '2002-01-01',
                 'birthplace' => 'Test City',
                 'citizenship' => 'Filipino',
-                'religionId' => 1,
+                'religionId' => $this->religionId,
                 'civilStatus' => 'single',
                 'contactNumber' => '09171234567',
                 'telephoneNumber' => null,
@@ -858,7 +875,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'birthdate' => '2003-01-01',
                 'birthplace' => 'Test City',
                 'citizenship' => 'Filipino',
-                'religionId' => 1,
+                'religionId' => $this->religionId,
                 'civilStatus' => 'single',
                 'contactNumber' => '09171234567',
                 'telephoneNumber' => null,
@@ -991,7 +1008,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'birthdate' => '2003-01-01',
                 'birthplace' => 'Test City',
                 'citizenship' => 'Filipino',
-                'religionId' => 1,
+                'religionId' => $this->religionId,
                 'civilStatus' => 'single',
                 'contactNumber' => '09171234567',
                 'telephoneNumber' => null,

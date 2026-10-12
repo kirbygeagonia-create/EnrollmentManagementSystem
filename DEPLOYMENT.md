@@ -179,14 +179,28 @@ Verify with the print-fidelity smoke test:
 - each backend job ends with `php artisan ems:ci:no-silent-skips`, which
   fails the run when a test skipped for a reason this project has not agreed to
 
-**How the walkthrough gets MySQL.** Its legs read reference rows that migrations never create — courses,
-subjects, rooms, terms, the current curriculum, the seeded roles — so they need a *seeded* database, and
-they cannot be seeded before the main suite because `RefreshDatabase` migrates fresh. The MySQL job
-therefore runs the suite first, then `migrate --force && db:seed && db:seed --class=DevReferenceDataSeeder`,
-then `vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped`. A leg names its database through
-`E2E_DB_DATABASE`; with nothing set it uses the developer's live `ems`, which is how walkthrough §2.6 runs
-it locally. `--fail-on-skipped` is what makes that step honest — four green skips would otherwise read as
-four passes, and measured on 2026-10-12 an unseeded target produced exactly that until the flag was added. Host, port, user and password are read from the ordinary `DB_*` configuration and deliberately not pinned in the test: the repository's own defaults are `root` with no password while the CI container runs `root`/`root`, and the first version hardcoded the former, so every leg skipped with `Access denied` and the step exited 1. A skip now names the host, port and user it tried, so a credential mismatch reads as a fact rather than a mystery.
+**How the walkthrough gets MySQL.** Its legs read reference rows that migrations never create — courses, subjects,
+rooms, terms, the current curriculum, a religion and the seeded roles — so they need a *seeded* database, and they
+cannot be seeded before the main suite because `RefreshDatabase` migrates fresh. The MySQL job therefore runs the
+suite first, then `migrate --force && db:seed && db:seed --class=DevReferenceDataSeeder`, then `vendor/bin/phpunit
+tests/Feature/E2E --fail-on-skipped`. A leg names its database through `E2E_DB_DATABASE`; with nothing set it uses the
+developer's live `ems`, which is how walkthrough §2.6 runs it locally. `--fail-on-skipped` is what makes that step
+honest — four green skips would otherwise read as four passes, and measured on 2026-10-12 an unseeded target
+produced exactly that until the flag was added. Host, port, user and password are read from the ordinary `DB_*`
+configuration and deliberately not pinned in the test: the repository's own defaults are `root` with no password while
+the CI container runs `root`/`root`, and the first version hardcoded the former, so every leg skipped with `Access
+denied` and the step exited 1. A skip now names the host, port and user it tried, so a credential mismatch reads as a
+fact rather than a mystery.
+
+**Seeding does not pin an id.** `StarterReferenceDataSeeder` keys its lists by *name*, so a reference row's id
+is whatever the table's `AUTO_INCREMENT` counter hands out — and a rollback does not rewind that counter.
+Measured on 2026-10-12 against a rehearsal database driven in CI's own order: after the suite the `religions`
+table was empty with its counter at 53, so the seeders wrote ids 53..60 and the walkthrough's `religionId => 1`
+died on `students_religionid_foreign` — four errors, exit 2 — while the SQLite and Frontend jobs stayed green.
+The walkthrough now reads a religion out of the table instead of assuming one, and `religions` joined its guard
+list so an install without it skips with the table named. Courses and terms are the exception and may stay
+literals: `DevReferenceDataSeeder` pins those ids (`['courseId' => $id]`, `['termId' => $id]`), so an explicit
+insert lands where the code says regardless of the counter.
 
 **What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
 layout verified there — compare printed papers against the physical forms on the machine that will produce

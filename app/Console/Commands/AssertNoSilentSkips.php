@@ -39,7 +39,9 @@ class AssertNoSilentSkips extends Command
     private const ALLOWED = [
         'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
             'tests' => '*',
-            'reason' => 'it needs a live seeded MySQL database — CI supplies it as E2E_DB_DATABASE, and the default is `ems`',
+            'reason' => 'its legs need a seeded MySQL database that only some steps have: the SQLite job ships no '
+                .'MySQL at all, and the MySQL job\'s suite step leaves E2E_DB_DATABASE unset so the legs name `ems`. '
+                .'The one step that must not skip runs them with --fail-on-skipped, so a skip there is already red',
         ],
         'Tests\Feature\Console\PreflightTest' => [
             'tests' => ['An absent print folder is not a fault because the print driver makes it'],
