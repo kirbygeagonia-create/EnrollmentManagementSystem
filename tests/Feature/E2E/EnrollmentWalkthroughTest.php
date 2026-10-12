@@ -61,6 +61,18 @@ class EnrollmentWalkthroughTest extends TestCase
     {
         parent::setUp();
 
+        // Every leg of a walkthrough is supposed to REACH the next desk, so a desk that throws must not be
+        // able to report anything but why it threw. With handling on, an exception inside a POST is rendered
+        // into a response, and four of this class's assertions are a bare `assertRedirect()` that any 302
+        // satisfies; what surfaced instead was `Call to a member function all() on array` — Laravel's own
+        // response-context helper tripping over the flashed `errors` bag — which is what two of the four
+        // legs printed in CI on 2026-10-12 while the other two, which insert the student through the model
+        // instead of the intake route, reported the foreign key honestly. Measured after this line was
+        // added: pointing `religionId` at a row no database holds now fails as
+        // `Illuminate\Validation\ValidationException: The selected religion id is invalid.` from
+        // `AdmissionController::store()` — which is what those two legs had been saying all along.
+        $this->withoutExceptionHandling();
+
         // Run against a real MySQL database. This walkthrough READS reference rows the suite's own
         // migrations never create — courses, subjects, rooms, terms, the current curriculum, a religion
         // and the seeded roles — so it needs a seeded install, not merely a migrated one. With nothing

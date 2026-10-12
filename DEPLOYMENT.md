@@ -196,7 +196,12 @@ fact rather than a mystery.
 is whatever the table's `AUTO_INCREMENT` counter hands out — and a rollback does not rewind that counter.
 Measured on 2026-10-12 against a rehearsal database driven in CI's own order: after the suite the `religions`
 table was empty with its counter at 53, so the seeders wrote ids 53..60 and the walkthrough's `religionId => 1`
-died on `students_religionid_foreign` — four errors, exit 2 — while the SQLite and Frontend jobs stayed green.
+died on `students_religionid_foreign` — four errors, exit 2 — while the SQLite and Frontend jobs stayed
+green. The two legs that insert the student through the model named the constraint; the two that post to the
+intake route were refused by its `exists:religions,religionId` rule and printed Laravel's response-context
+helper instead (`Call to a member function all() on array`), so one cause read two different ways in the
+same log. The class now runs with exception handling off, which makes the intake legs say
+`The selected religion id is invalid.` — the sentence the app had been trying to print.
 The walkthrough now reads a religion out of the table instead of assuming one, and `religions` joined its guard
 list so an install without it skips with the table named. Courses and terms are the exception and may stay
 literals: `DevReferenceDataSeeder` pins those ids (`['courseId' => $id]`, `['termId' => $id]`), so an explicit
