@@ -75,9 +75,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Never assume an id from a seeder keyed by *name*. `StarterReferenceDataSeeder` does
   `firstOrCreate(['religionName' => …])`, so each id is whatever the table's `AUTO_INCREMENT` counter hands
   out — and a rolled-back insert does not rewind that counter, so a database the suite already ran against
-  seeds `religions` at 53..60, not 1..8. Insert the row by explicit id (as ten other tests do) or read the
-  one that exists. `DevReferenceDataSeeder` is the opposite case: it pins courses and terms by explicit id,
-  so those ids stay safe as literals.
+  seeds `religions` at 53..60, not 1..8. Insert the row by explicit id (39 test files do exactly that) or
+  read the one that exists. `DevReferenceDataSeeder` is the opposite case: it pins courses and terms by
+  explicit id, so those ids stay safe as literals. Same trap, bigger consequence:
+  `tools/seed_full_demo_pipeline.php` used to write `feeTypeId => 1..4`, `subjectId => 5`, `roomId => 1` and
+  an office→user map of literals; on a fresh install fee type 1 is the Clearance Slip Replacement, so every
+  demo charge attached to the wrong paper. Resolve by name (`subjectCode`, `roomName`, `feeName`,
+  `officeN_head` usernames) instead.
+- Nothing checks `tools/`: `phpstan.neon` analyses `app` only and `pint.json` excludes `tools`, so a defect
+  there is invisible to every gate — those files are proven only by running them and reading their output.
 
 ## Editing the authority docx
 

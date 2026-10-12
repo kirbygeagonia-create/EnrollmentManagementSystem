@@ -207,6 +207,20 @@ list so an install without it skips with the table named. Courses and terms are 
 literals: `DevReferenceDataSeeder` pins those ids (`['courseId' => $id]`, `['termId' => $id]`), so an explicit
 insert lands where the code says regardless of the counter.
 
+**The same trap sat in the demo seeder, and it was quieter.** `tools/seed_full_demo_pipeline.php` wrote
+`feeTypeId => 1..4`, `subjectId => 5` ("IT101") and `roomId => 1`, plus a hand-kept office to user map,
+on a machine where those numbers happen to be right. On a freshly migrated and seeded install fee type 1
+is the **Clearance Slip Replacement**, so every demo charge attaches to the wrong paper and the foreign
+key accepts it, and subject 5 is RH1 rather than IT101 — a wrong row that lands quietly. Where the reference
+rows had been rebuilt a second time those numbers are absent altogether and the run aborts on the schedule
+insert. Both are fixed by
+resolving names — `subjectCode`, `roomName`, `feeName`, and the seeded `officeN_head` accounts — which
+changes nothing on the developer's database: all fifteen lookups were checked to return the ids the
+literals used. **Not fixed:** the tool still assumes its named demo students exist, aborting on
+`DEMO-2026-004` when they do not, and it prints that failure while exiting 0, so a gate that reads only
+the exit code calls it a pass. Nothing in CI covers `tools/` — PHPStan analyses `app`, and `pint.json`
+excludes `tools`.
+
 **What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
 layout verified there — compare printed papers against the physical forms on the machine that will produce
 them. And an agreed skip is still a skip: the allowlist in `AssertNoSilentSkips.php` is deliberately short

@@ -66,6 +66,64 @@ $workflowService = app(WorkflowService::class);
 $standingService = app(AcademicStandingService::class);
 
 /*
+ * Reference rows are addressed by what they are called, never by a number.
+ *
+ * subjects, feetypes, rooms, religions and staffusers are all seeded by name, so a row's id is whatever that
+ * database's AUTO_INCREMENT counter handed out when it was created. Measured on 2026-10-12 against a freshly
+ * migrated and seeded install: there fee type 1 is the Clearance Slip Replacement rather than Tuition, so
+ * every charge this tool writes landed on the wrong paper; subject 5 is RH1 rather than IT101; and on a
+ * database whose reference rows were rebuilt, the numbers are absent altogether and the run aborts on a
+ * foreign key part-way through the demo. On the developer's own `ems` the numbers happen to line up, which
+ * is how this tool stayed green here while being unrunnable anywhere else.
+ *
+ * A missing reference row raises instead of skipping: this is how every desk queue gets populated, and half
+ * a demo reads as a complete one on the screens.
+ */
+$namedId = function (string $table, string $key, string $matcher, string $value): int {
+    $id = DB::table($table)->where($matcher, $value)->value($key);
+
+    if ($id === null) {
+        throw new RuntimeException(
+            sprintf(
+                '%s in database %s has no row with %s = %s. Run: php artisan db:seed && php artisan db:seed --class=DevReferenceDataSeeder',
+                $table,
+                DB::connection()->getDatabaseName(),
+                $matcher,
+                $value
+            )
+        );
+    }
+
+    return (int) $id;
+};
+
+$religionId = $namedId('religions', 'religionId', 'religionName', 'Roman Catholic');
+$it101SubjectId = $namedId('subjects', 'subjectId', 'subjectCode', 'IT101');
+$room101Id = $namedId('rooms', 'roomId', 'roomName', 'Room 101');
+
+// The four lines every fee sheet in the demo carries. The amounts stay literals; only the name-to-id binding
+// moves, so a re-run on the machine it was written on writes the same rows it always did.
+$feeTuitionId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Tuition Fee (per unit)');
+$feeMiscellaneousId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Miscellaneous Fee');
+$feeLaboratoryId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Laboratory Fee');
+$feeLibraryId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Library Fee');
+
+/*
+ * The desk each workflow box is credited to, read from the account the seeder makes for that office.
+ *
+ * This was seven literals, which is the same mistake one level up: it recorded which user ids this machine
+ * happened to hand out rather than who owns the box. The office is the fact; the user id is a lookup.
+ */
+$deskSigners = [];
+foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, OfficeId::Registrar,
+    OfficeId::Blocking, OfficeId::Clinic, OfficeId::IdOffice] as $deskOffice) {
+    $deskSigners[$deskOffice->value] = $namedId('staffusers', 'userId', 'username', 'office'.$deskOffice->value.'_head');
+}
+
+// Admission owns the approval that opens the pipeline; two demo rows credit it as the evaluator already.
+$admissionHeadId = $namedId('staffusers', 'userId', 'username', 'office'.OfficeId::Admission->value.'_head');
+
+/*
  * G-9: relocate a dataset still sitting on the retired Summer term.
  *
  * Two moves, in this order, because the old history rows occupy the term the current load
@@ -175,9 +233,9 @@ if (! $bsitBlock) {
     ]);
     DB::table('schedules')->insert([
         'blockId' => $bsitBlockId,
-        'subjectId' => 5, // IT101
+        'subjectId' => $it101SubjectId, // by subject code, not by this database's counter
         'instructorId' => $adminUser->userId,
-        'roomId' => 1,
+        'roomId' => $room101Id,
     ]);
     echo "✔ Created block BSIT 1-A with IT101 schedule\n";
 }
@@ -185,7 +243,7 @@ if (! $bsitBlock) {
 // Helper to create basic student
 function createDemoStudent($schoolId, $first, $last, $user, $email, $gender = 'male', $passwordHash = null)
 {
-    global $defaultPassword;
+    global $defaultPassword, $religionId;
     $student = Students::where('schoolIdNumber', $schoolId)->first();
     if ($student) {
         return $student;
@@ -202,7 +260,7 @@ function createDemoStudent($schoolId, $first, $last, $user, $email, $gender = 'm
         'birthplace' => 'Davao City',
         'citizenship' => 'Filipino',
         'civilStatus' => 'single',
-        'religionId' => 1,
+        'religionId' => $religionId,
         'contactNumber' => '0917'.rand(1000000, 9999999),
         'email' => $email,
         'username' => $user,
@@ -239,7 +297,7 @@ if ($juanStudent) {
                     'amount' => 17500.00,
                     'paymentDate' => now()->toDateString(),
                     'paymentMode' => 'cash',
-                    'processedBy' => 3,
+                    'processedBy' => $deskSigners[OfficeId::Accounting->value],
                     'paymentStatus' => 'paid',
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -263,7 +321,7 @@ if (! $admCarlo) {
         'applicantType' => ApplicantType::Transferee,
         'applicationMode' => ApplicationMode::FaceToFace,
         'admissionStatus' => AdmissionStatus::Rejected,
-        'evaluatedBy' => 7, // Admission Head
+        'evaluatedBy' => $admissionHeadId, // Admission, by username
         'evaluatedDate' => now(),
     ]);
     echo "✔ Admissions: Seeded Carlo Mendoza (DEMO-2026-006) - REJECTED with remarks\n";
@@ -282,7 +340,7 @@ if (! $admAna) {
         'applicantType' => ApplicantType::FirstYear,
         'applicationMode' => ApplicationMode::FaceToFace,
         'admissionStatus' => AdmissionStatus::Approved,
-        'evaluatedBy' => 7,
+        'evaluatedBy' => $admissionHeadId,
         'evaluatedDate' => now(),
     ]);
     echo "✔ Admissions: Seeded Ana Gonzales (DEMO-2026-005) - APPROVED\n";
@@ -336,7 +394,7 @@ if (! $enrElena) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Elena Ramos (DEMO-2026-008) - PENDING evaluation queue\n";
@@ -355,7 +413,7 @@ if (! $enrRafael) {
         // C-2 (2026-10-06): a transferee is Irregular from the moment the record exists,
         // which is what the Admission approval now writes for that type too.
         'academicStanding' => AcademicStanding::Irregular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Rafael Cruz (DEMO-2026-009) - PENDING transferee queue\n";
@@ -515,7 +573,7 @@ if (! $enrLiza) {
         'studentType' => StudentType::Continuing,
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Liza Bautista (DEMO-2026-004) - PENDING, repeating the year level\n";
@@ -533,7 +591,7 @@ if (! $marcoPrior) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'enrolledDate' => now()->subMonths(9),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
@@ -551,7 +609,7 @@ if (! $enrMarco) {
         'studentType' => StudentType::Continuing,
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Marco Villanueva (DEMO-2026-018) - PENDING, advancing to year 2\n";
@@ -606,7 +664,7 @@ if (! $enrGrace) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
@@ -646,7 +704,7 @@ if (! $enrChristian) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
@@ -663,10 +721,10 @@ if (! $enrChristian) {
     ]);
     // Fee charges
     DB::table('charges')->insert([
-        ['assessmentId' => $assChristian, 'feeTypeId' => 1, 'amount' => 11250, 'waivedAmount' => 0],
-        ['assessmentId' => $assChristian, 'feeTypeId' => 2, 'amount' => 1500, 'waivedAmount' => 0],
-        ['assessmentId' => $assChristian, 'feeTypeId' => 3, 'amount' => 4500, 'waivedAmount' => 0],
-        ['assessmentId' => $assChristian, 'feeTypeId' => 4, 'amount' => 250, 'waivedAmount' => 0],
+        ['assessmentId' => $assChristian, 'feeTypeId' => $feeTuitionId, 'amount' => 11250, 'waivedAmount' => 0],
+        ['assessmentId' => $assChristian, 'feeTypeId' => $feeMiscellaneousId, 'amount' => 1500, 'waivedAmount' => 0],
+        ['assessmentId' => $assChristian, 'feeTypeId' => $feeLaboratoryId, 'amount' => 4500, 'waivedAmount' => 0],
+        ['assessmentId' => $assChristian, 'feeTypeId' => $feeLibraryId, 'amount' => 250, 'waivedAmount' => 0],
     ]);
     echo "✔ Cashier Desk: Seeded Christian Lim (DEMO-2026-012) - ASSESSED, unpaid balance ₱17,500\n";
 }
@@ -683,7 +741,7 @@ if (! $enrBea) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
@@ -699,10 +757,10 @@ if (! $enrBea) {
         'updated_at' => now(),
     ]);
     DB::table('charges')->insert([
-        ['assessmentId' => $assBea, 'feeTypeId' => 1, 'amount' => 12250, 'waivedAmount' => 0],
-        ['assessmentId' => $assBea, 'feeTypeId' => 2, 'amount' => 1500, 'waivedAmount' => 0],
-        ['assessmentId' => $assBea, 'feeTypeId' => 3, 'amount' => 4500, 'waivedAmount' => 0],
-        ['assessmentId' => $assBea, 'feeTypeId' => 4, 'amount' => 250, 'waivedAmount' => 0],
+        ['assessmentId' => $assBea, 'feeTypeId' => $feeTuitionId, 'amount' => 12250, 'waivedAmount' => 0],
+        ['assessmentId' => $assBea, 'feeTypeId' => $feeMiscellaneousId, 'amount' => 1500, 'waivedAmount' => 0],
+        ['assessmentId' => $assBea, 'feeTypeId' => $feeLaboratoryId, 'amount' => 4500, 'waivedAmount' => 0],
+        ['assessmentId' => $assBea, 'feeTypeId' => $feeLibraryId, 'amount' => 250, 'waivedAmount' => 0],
     ]);
     // Today's partial payment
     DB::table('payments')->insert([
@@ -711,7 +769,7 @@ if (! $enrBea) {
         'amount' => 8000.00,
         'paymentDate' => now()->toDateString(),
         'paymentMode' => 'cash',
-        'processedBy' => 3,
+        'processedBy' => $deskSigners[OfficeId::Accounting->value],
         'paymentStatus' => 'paid',
         'created_at' => now(),
         'updated_at' => now(),
@@ -733,7 +791,7 @@ if (! $enrPat) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Paid,
     ]);
@@ -754,7 +812,7 @@ if (! $enrPat) {
         'amount' => 17500.00,
         'paymentDate' => now()->toDateString(),
         'paymentMode' => 'cash',
-        'processedBy' => 3,
+        'processedBy' => $deskSigners[OfficeId::Accounting->value],
         'paymentStatus' => 'paid',
         'created_at' => now(),
         'updated_at' => now(),
@@ -792,7 +850,7 @@ if (! $enrGab) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'formSignedDate' => now(),
@@ -832,7 +890,7 @@ if (! $enrDan) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -862,7 +920,7 @@ if (! $enrKev) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -875,7 +933,7 @@ if (! $enrKev) {
         'bloodType' => 'B+',
         'cardPhotoPath' => $demoFacePhoto('demo-2026-017'),
         'status' => 'validated',
-        'validatedBy' => 11, // office22_head — the ID Office signer, see $deskSigners
+        'validatedBy' => $deskSigners[OfficeId::IdOffice->value], // the ID Office signer, resolved with the other desks
         'validatedDate' => now(),
         'requestDate' => now(),
         'created_at' => now(),
@@ -895,15 +953,8 @@ if (! $enrKev) {
 // EnrollmentStateMachine so the history panels print is real, and every workflow
 // box is signed by staff who belong to the office that owns that box.
 
-$deskSigners = [
-    OfficeId::Guidance->value => 5,       // office4_head  — Department Evaluation
-    OfficeId::Scholarship->value => 4,    // office3_head  — Assessment
-    OfficeId::Accounting->value => 3,     // office2_head  — Cashier
-    OfficeId::Registrar->value => 2,      // office1_head  — Registrar
-    OfficeId::Blocking->value => 6,       // office5_head  — Blocking & Scheduling
-    OfficeId::Clinic->value => 10,        // office11_head — Clinic
-    OfficeId::IdOffice->value => 11,      // office22_head — ID Office
-];
+// $deskSigners now resolves with the other reference lookups above, where each desk is named by office
+// rather than by the user id this machine happened to hand out.
 
 $stateMachine = app(EnrollmentStateMachine::class);
 
@@ -2079,7 +2130,7 @@ if (! $enrNena) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => 5,
+        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -2376,7 +2427,7 @@ foreach ([
             'studentType' => StudentType::Continuing,
             'enrollmentType' => EnrollmentType::Old,
             'academicStanding' => null,
-            'evaluatedBy' => 5,
+            'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
             'enrollmentStatus' => EnrollmentStatus::Pending,
         ]);
         echo "✔ Department Evaluation: seated {$last}, {$first} ({$schoolId}) — BSCrim year 2, retention pathway\n";
