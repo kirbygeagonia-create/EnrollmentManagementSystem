@@ -154,3 +154,11 @@ One row of this file has been acted on: **2.6**, the doubled weekday, which the 
 than a preference, so it did not need the office's hand. Every other row above is still a paper
 decision first and a code change second, and the code follows the ruling — not the other way
 round.
+
+**The nine open rows were put to the office on 2026-10-11 as
+`Documentation/Registrar-Print-Decision-Sheet-2026-10-11.md`** — one sheet, the questions set out
+under the paper they belong to, each showing what the paper says and what the templates printed on
+the day it was read, a box to tick and an initial, and a table of what each answer costs to carry
+out. This file keeps the evidence; that sheet is where the answers arrive. Neither was allowed to
+drift from the other: every line reference on the sheet was opened and checked against the template
+before it was written down.
