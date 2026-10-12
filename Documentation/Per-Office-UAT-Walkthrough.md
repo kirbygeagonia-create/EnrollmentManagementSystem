@@ -136,8 +136,11 @@ term chip and `activeTerms` resolve.
 | Relinda Sabla | DEMO-2026-025 | 476 `pending` year 2, 658 `enrolled` | BSCrim continuing | retention examination, **not yet examined** |
 | Nena Alcantara | DEMO-2026-026 | 876 `enrolled`, **no block seat**, clinic recorded, request `pending` | | §15.1's seat — opened by a desk on 2026-10-12, so 15.2 onward runs on it (see §15.1) |
 
-**Sections already open:** block 53 `BSCrim 1-A` year 1 (2 students / 40, 6 class meetings),
-block 75 `BSIT 1-A` year 1 (1/40, 6), block 114 `BSBA 2-A` year 2 (0/40, 6).
+**Sections already open:** block 53 `BSCrim 1-A` year 1 (**3 students** / 40 — Juan Dela Cruz 53,
+Danica Sotto 91, Kevin Santos 92 — 6 class meetings), block 75 `BSIT 1-A` year 1 (1/40 — Patricia
+Diaz 89 — 6), block 114 `BSBA 2-A` year 2 (0/40, 6). Measured on live `ems` 2026-10-12; this line
+read 2 students on block 53 until the pipeline seated Kevin, which is the kind of drift §1's rule
+about naming the record exists to catch.
 **Clearance window:** the seeded period sits term 11 and is `open`.
 **Fee types:** id 5 `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
 must both read that row.
