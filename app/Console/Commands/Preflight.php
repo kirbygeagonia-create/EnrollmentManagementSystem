@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\ChromiumLocator;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -83,6 +84,7 @@ class Preflight extends Command
         return [
             $this->environmentPair(),
             $this->databaseReachable(),
+            $this->clocksAgree(),
             $this->migrationsApplied(),
             $this->seededEnough(),
             $this->uploadDiskIsPrivate(),
@@ -123,6 +125,53 @@ class Preflight extends Command
         } catch (\Throwable $e) {
             return ['Database connection', 'FAIL', 'no connection: '.str($e->getMessage())->limit(90)];
         }
+    }
+
+    /**
+     * The two processes that stamp a record must write the same string for the same instant.
+     *
+     * `auditlogs.createdAt` and `enrollmentstatushistory.changedAt` are plain DATETIME columns with a MySQL
+     * `CURRENT_TIMESTAMP` default, and every other timestamp here is written by PHP. A DATETIME carries no
+     * zone, so what a desk reads back is the string the writer happened to produce. Measured on the
+     * development box on 2026-10-12 the two epochs agreed to the second — the clocks are fine — while
+     * `SELECT NOW()` printed 2026-10-12 18:27 and PHP printed 2026-10-13 05:27, because the database session
+     * runs in a zone that is not the app's. A row stamped by the database would then read eleven hours from
+     * its own siblings, and no check anywhere said so. Compared as stored strings for exactly that reason.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function clocksAgree(): array
+    {
+        $connection = DB::connection();
+
+        // Driver-guarded the way every raw query here must be: the SQLite suite has no NOW().
+        $sql = $connection->getDriverName() === 'sqlite' ? "SELECT datetime('now') AS stamp" : 'SELECT NOW() AS stamp';
+
+        try {
+            $dbStamp = (string) $connection->selectOne($sql)->stamp;
+        } catch (\Throwable $e) {
+            return ['Clocks agree', 'WARN', 'the database clock could not be read: '.str($e->getMessage())->limit(70)];
+        }
+
+        $phpStamp = Carbon::now()->toDateTimeString();
+
+        $gap = Carbon::parse($dbStamp)->diffInSeconds(Carbon::parse($phpStamp), false);
+
+        if (abs($gap) <= 300) {
+            return ['Clocks agree', 'OK', 'PHP and '.($connection->getDriverName()).' write the same stamp: '.$phpStamp];
+        }
+
+        return [
+            'Clocks agree',
+            'FAIL',
+            sprintf(
+                'PHP writes %s and the database writes %s for the same moment — %.1f h apart in the column. Set the database session time zone to the app\'s (config/app.php timezone is %s), or the two writers will disagree on every DATETIME.',
+                $phpStamp,
+                $dbStamp,
+                abs($gap) / 3600,
+                (string) config('app.timezone')
+            ),
+        ];
     }
 
     /**

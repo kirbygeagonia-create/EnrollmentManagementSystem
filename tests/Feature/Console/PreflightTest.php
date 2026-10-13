@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Console;
 
+use Carbon\Carbon;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -62,6 +63,42 @@ class PreflightTest extends TestCase
         // cannot tell a laptop from the machine the desks will use, and says so.
         $this->assertStringContainsString('WARN  APP_ENV / APP_DEBUG', $out);
         $this->assertStringContainsString('check(s) worth a look', $out);
+    }
+
+    #[Test]
+    public function a_database_that_stamps_its_own_hours_fails_and_names_the_string_to_fix(): void
+    {
+        // The two DATETIME columns with a MySQL default (auditlogs.createdAt,
+        // enrollmentstatushistory.changedAt) get whatever string the database writes, and every other
+        // timestamp gets whatever PHP writes. A DATETIME keeps no zone, so a session running in a different
+        // one silently puts a record hours from its own siblings. Moving PHP's clock is how this suite can
+        // create that split: the suite database answers in its own time either way.
+        Carbon::setTestNow(Carbon::now()->addHours(11));
+
+        try {
+            $this->assertSame(1, $this->callPreflight());
+        } finally {
+            Carbon::setTestNow(null);
+        }
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('FAIL  Clocks agree', $out);
+        $this->assertStringContainsString('apart in the column', $out);
+        $this->assertStringContainsString('session time zone', $out);
+        $this->assertStringContainsString('1 check(s) will break a desk', $out);
+    }
+
+    #[Test]
+    public function the_server_that_agrees_on_one_clock_says_so_and_does_not_shout(): void
+    {
+        // The other direction matters as much: a rule that fails a healthy server teaches the operator to
+        // ignore the report. SQLite answers datetime('now') in UTC and the app timezone is UTC, so the two
+        // strings are the same instant and the line is a clean OK.
+        $this->assertSame(0, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('OK  Clocks agree', $out);
+        $this->assertStringContainsString('write the same stamp', $out);
     }
 
     #[Test]

@@ -66,6 +66,19 @@ Force HTTPS in the entry point (reverse proxy `X-Forwarded-Proto`, or
 `URL::forceScheme('https')` in `AppServiceProvider::boot` when
 `app()->isProduction()`).
 
+**Time zone: two processes write into these tables.** `config/app.php` carries `timezone => 'UTC'` while
+the school keeps Manila time (UTC+8), so a record made before 08:00 local is stored with the previous day
+and every printed timestamp runs eight hours behind the wall clock in the room. Whether to set
+`APP_TIMEZONE=Asia/Manila` is a decision to take deliberately, not one to inherit. The second half is not
+a decision: measured on the development box on 2026-10-12, PHP stamped `2026-10-13 05:32` while MySQL's
+`NOW()` answered `2026-10-12 18:32` for the same instant. The two epochs agree to the second — the clocks
+are fine — but the database session runs in another zone, and `auditlogs.createdAt` and
+`enrollmentstatushistory.changedAt` carry a MySQL `CURRENT_TIMESTAMP` default into plain DATETIME columns
+that store no zone. Whichever process stamps the row decides the hours a desk reads.
+`php artisan ems:preflight` now fails the run on that disagreement and names both strings; fix it by
+setting the database session time zone to the app's, or the app's zone to the room's — leaving both as
+they are is the one option that keeps the split.
+
 ## 3. Install & migrate
 
 ```bash
@@ -237,7 +250,9 @@ Do not merge with red CI.
 
 ## 8. Post-deploy smoke test
 
-1. `/up` returns 200 (health route).
+1. `php artisan ems:preflight` exits 0 — including `Clocks agree`, the check that a server does
+not stamp the same moment two different ways.
+2. `/up` returns 200 (health route).
 2. `/register` returns 404 (self-registration disabled).
 3. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.
 4. Admin → User Management creates a second account (proves RBAC + hashing).

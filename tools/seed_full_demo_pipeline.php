@@ -46,6 +46,25 @@ use Illuminate\Support\Facades\Storage;
 
 $app->make(Kernel::class)->bootstrap();
 
+/*
+ * A failure of this tool has to look like a failure.
+ *
+ * Measured on 2026-10-12: run against a database that lacked its base demo rows, the tool printed an
+ * exception — "Attempt to read property studentId on null" — and still exited 0, so a gate that reads the
+ * exit code records a pass on a half-seeded demo. Booting the kernel installs Laravel's console renderer,
+ * which reports and returns; this replaces it with one that reports and stops. The message keeps the file
+ * and line, which is what the old output had, and the exit status is what it lacked.
+ */
+set_exception_handler(function (Throwable $e): void {
+    fwrite(STDERR, sprintf(
+        "\n%s\n  at %s:%d\nThe demo dataset may now be partway seeded — fix the cause and run this tool again.\n",
+        $e->getMessage(),
+        $e->getFile(),
+        $e->getLine()
+    ));
+    exit(1);
+});
+
 echo "=======================================================\n";
 echo " SEAIT EMS — COMPREHENSIVE WORKFLOW DEMO-DAY SEEDER   \n";
 echo "=======================================================\n\n";
@@ -122,6 +141,37 @@ foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, Offic
 
 // Admission owns the approval that opens the pipeline; two demo rows credit it as the evaluator already.
 $admissionHeadId = $namedId('staffusers', 'userId', 'username', 'office'.OfficeId::Admission->value.'_head');
+
+/*
+ * Two named students this tool tops up do not come from this file.
+ *
+ * Juan (DEMO-2026-001) and Liza (DEMO-2026-004) arrive with the base demo dataset — the restore command in
+ * Documentation/Demo-Day-Guide.md loads both, and tools/seed_demo_data.php creates Juan on its own — and the
+ * sections below read them without creating them. Checked here, before anything is written, rather than
+ * discovered mid-run at Liza's grading block: by then Juan's payment, the demo block and several schedules
+ * have already landed, and a refusal after half a demo is not a refusal.
+ */
+$presumed = [
+    'DEMO-2026-001' => "Juan Dela Cruz — today's cash payment is recorded against him for the Daily Collections Report",
+    'DEMO-2026-004' => 'Liza Bautista — her prior-term record is graded to show a student repeating the level',
+];
+
+$absent = array_filter(
+    $presumed,
+    fn (string $why, string $schoolId) => ! Students::where('schoolIdNumber', $schoolId)->exists(),
+    ARRAY_FILTER_USE_BOTH
+);
+
+if ($absent !== []) {
+    fwrite(STDERR, "\nThis database does not hold the base demo rows that this tool tops up:\n");
+    foreach ($absent as $schoolId => $why) {
+        fwrite(STDERR, sprintf("  %-14s %s\n", $schoolId, $why));
+    }
+    fwrite(STDERR, "Restore the demo dataset first — Documentation/Demo-Day-Guide.md gives the command:\n"
+        ."  mysql -u root ems < Documentation/ems-demo-backup.sql\n"
+        ."Nothing was written.\n");
+    exit(1);
+}
 
 /*
  * G-9: relocate a dataset still sitting on the retired Summer term.
