@@ -201,8 +201,13 @@ question on the command line. Note that the print-log row is written before the 
 because the document number is printed on the page, so a refusal still consumes the
 number it issued.
 
-Note that the templates reference the letterhead logo through `asset()`, so an
-absolute `APP_URL` must be reachable from the printing process for the seal to appear.
+The letterhead does not travel over HTTP. Every print template embeds it as a data URI
+(`App\Support\PrintAssets::logoDataUri()` reads `public/images/logos/seait-logo.png` from disk,
+measured 2026-10-13: `asset(` appears 0 times in the six files under `resources/views/prints/`),
+so the seal needs no `APP_URL` reachable from the printing process — that inlining is what stops
+a single-threaded server deadlocking on the render, and it is why a PDF is correct with the
+network down. `APP_URL` still matters to the desks: it is the base of every link and asset the
+browser loads.
 
 Verify with the print-fidelity smoke test:
 `php artisan ems:print-fidelity` (renders sample PDFs from real DB data into
