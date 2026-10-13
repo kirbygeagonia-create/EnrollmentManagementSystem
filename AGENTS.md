@@ -84,6 +84,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `officeN_head` usernames) instead.
 - Nothing checks `tools/`: `phpstan.neon` analyses `app` only and `pint.json` excludes `tools`, so a defect
   there is invisible to every gate — those files are proven only by running them and reading their output.
+- Two routes answer with **no login at all**: `GET|HEAD /storage/{path}` and `PUT /storage/{path}`, registered
+  by Laravel because `config/filesystems.php` marks the `local` disk `serve => true`. Their only gate is an
+  HMAC of the path and query keyed by `APP_KEY` — nothing in `app/` or `resources/` ever mints one, so no desk
+  uses them. Never add `'visibility' => 'public'` to a served disk (that switches the check off, measured) and
+  never deploy with `APP_KEY=` blank (the empty secret signs a write that `storage/app/private` accepts — and
+  `local` and `documents` share that root). `ems:preflight` fails both, `ServedUploadPathTest` pins the gate.
 
 ## Editing the authority docx
 

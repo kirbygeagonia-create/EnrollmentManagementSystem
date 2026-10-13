@@ -40,10 +40,12 @@ FILESYSTEM_DISK=local          # never `public` — see below
 ```
 
 **Uploaded files stay on the private disk.** Requirement documents an applicant
-submits and the face photo captured for an ID are written to the **default** disk and
+submits and the face photo captured for an ID are written to the named **`documents`** disk and
 read back only through routes that `authorize()` the owning record first
 (`admission.documents.show`, `id.photo.view`). The `local` disk is rooted at
-`storage/app/private`, which no web path reaches. Setting `FILESYSTEM_DISK=public` and
+`storage/app/private` — the same folder the `documents` disk writes to — and it is reachable
+at `/storage/{path}` for anyone holding a signature; see the two routes below. Setting
+`FILESYSTEM_DISK=public` and
 running `php artisan storage:link` would publish that whole folder under
 `/storage/...`, where the framework serves any file whose name is known with no
 authorization at all — the hashed filename is not a secret, it is only unguessable. If
@@ -52,6 +54,30 @@ its own disk; do not move the default. Nothing in `storage/app` is committed: th
 folder's own `.gitignore` keeps a machine full of real signed forms from shipping its
 papers by accident, and the reference photographs of the physical forms are ignored at
 the repository root for the same reason.
+
+**Two routes answer with no login, and one secret stands in front of them.** Because
+`config/filesystems.php` gives the `local` disk `'serve' => true`, Laravel registers
+`GET|HEAD /storage/{path}` and `PUT /storage/{path}` for it **outside every middleware group** —
+not `auth`, not `web`, no CSRF token. Nothing in the application ever asks for a signature
+(`temporarySignedRoute` and `temporaryUrl` appear nowhere in `app/` or `resources/`), so in
+normal use the two are dead doors, and what stops a stranger walking through one is
+`ServeFile::hasValidSignature()` / `ReceiveFile::hasValidSignature()` — an HMAC of the path and
+query, keyed by `APP_KEY`. Measured 2026-10-12 by driving the route through the HTTP kernel
+(`storage/app/scratch/audit-24b-storage-routes.php`, pinned by `ServedUploadPathTest`): unsigned
+→ 403; signed with this install's key → 204; signed with the **empty** secret, on an install
+that never ran `key:generate` → **204, and the file is written**. Two faults follow, and
+`php artisan ems:preflight` now fails the run for each:
+
+- **`APP_KEY` left blank.** That is the state `.env.example` leaves it in, and §3 corrects it with
+  one line. The damage reads as something else: every login throws on cookie encryption, so a
+  keyless server looks like a broken session while `/storage/{path}` — which needs no encryption
+  at all — keeps accepting uploads from anybody who can compute an HMAC over an empty key.
+- **`'visibility' => 'public'` on the served disk.** That single line switches
+  `ServeFile`'s signature check off: the unsigned `GET` this configuration refuses with 403
+  then walks straight through and only a missing file answers 404 (measured the same way by
+  `audit-24c-servegate.php`). An operator adding it to chase a broken image would publish every
+  applicant paper and face photo, because the served `local` disk and the `documents` disk are
+  rooted at the same folder.
 
 To see what has accumulated there, run `php artisan ems:uploads:prune`. It lists the
 files on the private disk that no record points at — superseded face captures, residue
@@ -93,7 +119,8 @@ php artisan ems:preflight
 
 `ems:preflight` turns this document into a command: it checks the environment pair, the
 database connection, unapplied migrations, an unseeded RBAC, the privacy of the `documents`
-disk, the folders Laravel must write into, a browser for PDFs, and the queue connection — and
+disk, whether that served folder keeps its signature, the application key, the folders Laravel
+must write into, a browser for PDFs, and the queue connection — and
 for each failure it names the fix rather than the symptom. It writes nothing and changes
 nothing, so it is safe to run before §4 and again after any change below. A non-zero exit code
 means at least one desk would break on this server.
@@ -251,17 +278,18 @@ Do not merge with red CI.
 ## 8. Post-deploy smoke test
 
 1. `php artisan ems:preflight` exits 0 — including `Clocks agree`, the check that a server does
-not stamp the same moment two different ways.
+not stamp the same moment two different ways, and `Application key` and `Served folder`, the two
+rows that check the routes nobody logs in to use (§2).
 2. `/up` returns 200 (health route).
-2. `/register` returns 404 (self-registration disabled).
-3. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.
-4. Admin → User Management creates a second account (proves RBAC + hashing).
-5. Download one paper from each desk and confirm it arrives as a PDF. Printing is **not** queued
+3. `/register` returns 404 (self-registration disabled).
+4. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.
+5. Admin → User Management creates a second account (proves RBAC + hashing).
+6. Download one paper from each desk and confirm it arrives as a PDF. Printing is **not** queued
    work (§5/§6): Browsershot runs inside the request, so this step proves the browser binary, not
    the worker. Then confirm the notification bell of the desk that must act next shows the row the
    action just wrote — on this machine (`sync`) that happens in the same request; on production it
    is the worker's job, so check `jobs` is empty and the row exists.
-6. `php artisan ems:audit:record-states` exits 0. This is the command the audit should have
+7. `php artisan ems:audit:record-states` exits 0. This is the command the audit should have
    had from the start: every impossible record this project found by hand — a validated ID
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
@@ -279,7 +307,7 @@ not stamp the same moment two different ways.
    was made to write the assessment that signs it, and 8 whose ID box it had signed before it
    wrote the validation — seven of those same past-term rows plus enrollment 53, which is in that
    state because you ruled its contradictory request deleted and its signature left standing.
-7. `php artisan ems:uploads:prune` reports what the private disk holds that no record points at,
+8. `php artisan ems:uploads:prune` reports what the private disk holds that no record points at,
    and deletes nothing until told `--delete` (§2).
 
 ---

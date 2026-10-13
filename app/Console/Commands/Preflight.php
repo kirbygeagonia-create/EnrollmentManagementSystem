@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\File;
  * Every check here exists because that document records a real incident or a real trap: the
  * private disk an upload was sitting on the public one, the browser binary a PDF 503s without,
  * the migrations a fresh server does not have, the seed that leaves every desk locked out, the
- * folder Laravel cannot write into. It writes nothing and changes nothing — a deployment check
+ * folder Laravel cannot write into, the application key a stranger can sign an upload with if it
+ * was never generated. It writes nothing and changes nothing — a deployment check
  * that mutates the deployment is not a check.
  */
 class Preflight extends Command
@@ -82,17 +83,94 @@ class Preflight extends Command
     private function checks(): array
     {
         return [
+            $this->applicationKeyIsReal(),
             $this->environmentPair(),
             $this->databaseReachable(),
             $this->clocksAgree(),
             $this->migrationsApplied(),
             $this->seededEnough(),
             $this->uploadDiskIsPrivate(),
+            $this->servedFolderStaysPrivate(),
             $this->foldersWritable(),
             $this->printFolderArrives(),
             $this->browserForPdfs(),
             $this->queueConnection(),
         ];
+    }
+
+    /**
+     * The one secret standing between a stranger and an unauthenticated write into the upload
+     * folder. `config/filesystems.php` gives the `local` disk `'serve' => true`, and Laravel
+     * registers `GET|HEAD /storage/{path}` and `PUT /storage/{path}` for it with **no auth
+     * middleware at all** — measured with `storage/app/scratch/audit-24b-storage-routes.php`,
+     * driving the route through the HTTP kernel: a genuine relative signature returns 204, and
+     * a signature computed with the *empty* secret returns 204 on a server whose APP_KEY was
+     * never generated, which is the state `.env.example` leaves it in. The same forgery against
+     * this install returns 403, and so does an unsigned request: the key is the gate.
+     *
+     * A blank key is not a hypothetical. It is one skipped line in DEPLOYMENT.md §3, and the
+     * symptom it produces elsewhere — every login throwing on cookie encryption — reads like a
+     * broken session driver, while the route that needs no encryption keeps answering.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function applicationKeyIsReal(): array
+    {
+        $key = (string) config('app.key');
+
+        if ($key === '') {
+            return ['Application key', 'FAIL', 'APP_KEY is blank, so anyone can sign their own /storage upload — run: php artisan key:generate, then php artisan config:clear if §3 cached the config'];
+        }
+
+        $raw = str_starts_with($key, 'base64:') ? base64_decode(substr($key, 7), true) : $key;
+
+        if (! is_string($raw) || strlen($raw) !== 32) {
+            return ['Application key', 'FAIL', 'APP_KEY is not a 32-byte key ('.strlen($raw).'), and AES-256 will refuse it at the first login — run: php artisan key:generate'];
+        }
+
+        return ['Application key', 'OK', '32 bytes, so /storage/{path} answers only to a signature made with it'];
+    }
+
+    /**
+     * The other door into the same folder, and the one an operator opens by accident.
+     * `ServeFile::hasValidSignature()` waves the signature check through when the served disk
+     * declares `'visibility' => 'public'` — measured with `audit-24c-servegate.php`: the unsigned
+     * `GET /storage/{path}` that this configuration refuses with 403 walks straight past the gate
+     * against that single line, and only the missing file stops it with 404. Someone adding it to
+     * fix a broken image URL would be publishing every applicant paper and face photo, because the
+     * served `local` disk is rooted at `storage/app/private` — the same root the `documents` disk
+     * writes to. Unlike a leaked key, this is a change made on purpose, which is why it gets its
+     * own row instead of a paragraph.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function servedFolderStaysPrivate(): array
+    {
+        $names = [];
+        $sharesUploadRoot = false;
+
+        foreach ((array) config('filesystems.disks') as $name => $disk) {
+            if (! is_array($disk) || ($disk['driver'] ?? null) !== 'local' || ! ($disk['serve'] ?? false)) {
+                continue;
+            }
+
+            $names[] = (string) $name;
+
+            if (($disk['visibility'] ?? 'private') === 'public') {
+                return ['Served folder', 'FAIL', 'disk "'.$name.'" is served at /storage/{path} and declared public, which switches the signature check off — papers and face photos become reachable by path'];
+            }
+
+            if (($disk['root'] ?? '') === storage_path('app/private')) {
+                $sharesUploadRoot = true;
+            }
+        }
+
+        if ($names === []) {
+            return ['Served folder', 'OK', 'no local disk asks Laravel to serve /storage, so the uploads have only the routes that authorize them'];
+        }
+
+        return ['Served folder', 'OK', 'disk(s) '.implode(', ', $names).' served private: every read needs a signature'
+            .($sharesUploadRoot ? ' — and it is rooted where the uploads live, so that signature is the door' : '')];
     }
 
     /**

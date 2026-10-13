@@ -102,6 +102,80 @@ class PreflightTest extends TestCase
     }
 
     #[Test]
+    public function a_server_that_never_generated_its_key_fails_and_names_the_command(): void
+    {
+        // `.env.example` ships `APP_KEY=` blank, and DEPLOYMENT.md §3 generates it with one line
+        // between `npm run build` and `migrate`. Skipping that line does not look like a storage
+        // problem — it looks like a broken login — while /storage/{path}, which needs no session
+        // encryption, keeps answering. Measured end to end by ServedUploadPathTest.
+        config(['app.key' => '']);
+
+        $this->assertSame(1, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('FAIL  Application key', $out);
+        $this->assertStringContainsString('php artisan key:generate', $out);
+        $this->assertStringContainsString('/storage upload', $out);
+    }
+
+    #[Test]
+    public function a_key_of_the_wrong_length_fails_because_the_cipher_would_refuse_the_first_login(): void
+    {
+        config(['app.key' => 'twenty-three-characters-raw']);
+
+        $this->assertSame(1, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('FAIL  Application key', $out);
+        $this->assertStringContainsString('not a 32-byte key', $out);
+    }
+
+    #[Test]
+    public function a_served_disk_declared_public_fails_because_that_line_switches_the_gate_off(): void
+    {
+        // ServeFile::hasValidSignature() returns true with no signature at all once the served
+        // disk says its visibility is public. This configuration refuses the same unsigned read
+        // (403, measured in audit-24c-servegate.php); with the flag set it walks through and only
+        // a missing file answers 404. The served `local` disk is rooted at storage/app/private —
+        // the same root as the documents disk — so that one line publishes every uploaded paper.
+        config(['filesystems.disks.local.visibility' => 'public']);
+
+        $this->assertSame(1, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('FAIL  Served folder', $out);
+        $this->assertStringContainsString('switches the signature check off', $out);
+        $this->assertStringContainsString('reachable by path', $out);
+    }
+
+    #[Test]
+    public function a_server_that_serves_no_folder_reports_the_uploads_as_having_one_door(): void
+    {
+        config(['filesystems.disks.local.serve' => false]);
+
+        $this->assertSame(0, $this->callPreflight());
+
+        $this->assertStringContainsString(
+            'no local disk asks Laravel to serve',
+            $this->commandOutput()
+        );
+    }
+
+    #[Test]
+    public function the_two_new_rows_do_not_shout_at_a_server_that_is_already_correct(): void
+    {
+        // The pair to the failures above: a rule that FAILs a healthy install teaches the
+        // operator to ignore the whole report, so the OK wording is pinned too.
+        $this->assertSame(0, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('OK  Application key', $out);
+        $this->assertStringContainsString('answers only to a signature made with it', $out);
+        $this->assertStringContainsString('OK  Served folder', $out);
+        $this->assertStringContainsString('served private: every read needs a signature', $out);
+    }
+
+    #[Test]
     public function a_documents_disk_that_exposes_a_url_fails_and_says_why(): void
     {
         config(['filesystems.disks.documents' => [
