@@ -102,6 +102,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `officeN_head` usernames) instead.
 - Nothing checks `tools/`: `phpstan.neon` analyses `app` only and `pint.json` excludes `tools`, so a defect
   there is invisible to every gate — those files are proven only by running them and reading their output.
+- Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
+  citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
+  moves lines — `php storage/app/scratch/dump-docx-flat.php` then
+  `php storage/app/scratch/sweep-docx-citations.php` (549 citations over 108 files; it exits non-zero on a
+  citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
+  lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
+  the sentence catches that.
 - A staff account's Spatie roles come from its `role` enum through `RbacSeeder::assignDeskRolesFromEnums()`.
   Any seeder that creates accounts must call it afterwards: §3 and CI seed `db:seed` *before*
   `DevReferenceDataSeeder`, and measured on a fresh database that order left **10 of 17 accounts with no
