@@ -229,16 +229,27 @@ class CollegeDeskScopeTest extends TestCase
         $this->assertSame(['BTA'], array_column($picker, 'courseCode'));
 
         // Refused rather than answered with an empty list: a blank roster would tell the desk its college
-        // has nobody, when the truth is that it asked for someone else's. Note measured here: the abort's
-        // own reason never reaches the screen — resources/views/errors/403.blade.php prints no message — so
-        // what the desk learns is the refusal, not the explanation.
+        // has nobody, when the truth is that it asked for someone else's. The reason is what the boundary
+        // is for, and both ways a screen can reach this are pinned: the page a desk is sent to prints it
+        // (lane 28 — errors/403.blade.php used to interpolate nothing) and the JSON Exam/Create.jsx reads
+        // carries it in `message`.
         $this->actingAs($this->deskA)
             ->get(route('exam.students', [
                 'courseId' => $this->courseB->courseId,
                 'termId' => $this->term->termId,
                 'type' => 'courseSpecific',
             ]))
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertSee('Program “BTS” belongs to another college', false);
+
+        $this->actingAs($this->deskA)
+            ->getJson(route('exam.students', [
+                'courseId' => $this->courseB->courseId,
+                'termId' => $this->term->termId,
+                'type' => 'courseSpecific',
+            ]))
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Program “BTS” belongs to another college; a department records its own.');
 
         // The control on the same route, so the refusal above is the boundary and not a broken endpoint.
         $this->actingAs($this->deskA)

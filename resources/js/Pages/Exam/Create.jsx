@@ -14,6 +14,7 @@ const resultOptions = [
 export default function Create({ courses, terms, selectedCourse, selectedTerm, stage, type }) {
     const [students, setStudents] = useState([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
+    const [rosterError, setRosterError] = useState('');
     const { formProps } = useFormKeyboardNav();
 
     const isCourseSpecific = type === 'courseSpecific';
@@ -35,15 +36,29 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 stage,
                 type,
             });
-            fetch(route('exam.students') + `?${params}`)
-                .then((res) => res.json())
+            // Accept: application/json is what makes the refusal readable. /exam/students answers a
+            // program outside the desk's college with the program named (lane 26); without the header a
+            // plain fetch sends Accept: */*, Laravel treats that as an HTML caller and returns the 403
+            // page, res.json() throws, and the catch below hid a refusal behind "nothing to score here".
+            fetch(route('exam.students') + `?${params}`, { headers: { Accept: 'application/json' } })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'The roster could not be loaded.');
+                    return data;
+                })
                 .then((data) => {
                     setStudents(data.students || []);
+                    setRosterError('');
                     setLoadingStudents(false);
                 })
-                .catch(() => setLoadingStudents(false));
+                .catch((err) => {
+                    setStudents([]);
+                    setRosterError(err.message);
+                    setLoadingStudents(false);
+                });
         } else {
             setStudents([]);
+            setRosterError('');
         }
     }, [form.data.courseId, form.data.termId, stage, type]);
 
@@ -161,6 +176,17 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                             placeholder={isCourseSpecific ? 'Search & select a passer or a waived transferee...' : 'Search & select candidate student...'}
                                             required
                                         />
+                                    ) : rosterError ? (
+                                        /* The server refused this roster, in its own words. The empty state
+                                           below would report that the program has no candidates, and for a
+                                           refusal that is the opposite of the truth — the desk asked for a
+                                           program another college owns (lane 26). */
+                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-danger-50 border border-danger-200" role="alert">
+                                            <svg className="h-5 w-5 text-danger-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span className="text-danger-700 text-xs font-medium">{rosterError}</span>
+                                        </div>
                                     ) : (
                                         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
                                             <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -87,9 +87,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
   `exam.students`) are read with `->json()` as normal.
-- `abort(403, 'a reason')` does not reach the desk: `resources/views/errors/403.blade.php` interpolates
-  nothing, so the officer sees "Access denied" without the explanation. Where the *reason* is what the desk
-  needs, return a validation error (`withErrors`) — that path is what the toast and the inline list read.
+- A refusal that *said why* now reaches the desk two ways (lane 28): `resources/views/errors/403.blade.php`
+  prints the reason for a desk the browser lands on, and `bootstrap/app.php` returns it as `{"message": …}`
+  for a caller that asked for JSON. Both ask `App\Support\DenialReason::of()` — Laravel's placeholder
+  "This action is unauthorized." counts as no reason, so a bare policy denial still prints only the page's
+  own copy. Two traps when you rely on this: `shouldRenderJsonWhen` limits JSON to `api/*`, so a refused
+  web endpoint needs that render callback; and a plain `fetch()` sends `Accept: */*`, which is *not*
+  `expectsJson()` — a screen reading `res.json()` must send `Accept: application/json` and check `res.ok`
+  or it parses the 403 page, throws, and shows its own empty state instead of the refusal. Where the desk
+  was mid-form, `withErrors` still beats a dead-end page: that is the path the toast and inline list read,
+  and it leaves them on the record.
 - Never assume an id from a seeder keyed by *name*. `StarterReferenceDataSeeder` does
   `firstOrCreate(['religionName' => …])`, so each id is whatever the table's `AUTO_INCREMENT` counter hands
   out — and a rolled-back insert does not rewind that counter, so a database the suite already ran against

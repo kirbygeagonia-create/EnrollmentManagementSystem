@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+@php
+    // The handler renders this page with ['exception' => $e], so a refusal that carried a reason —
+    // abort(403, 'why') or abort_unless(...) — has always had one to print. Two kinds of refusal land here
+    // and only one of them is actionable: a route the account has no right to, where the generic copy below
+    // is the whole truth, and a boundary that refused one named record, where the desk needs that record.
+    $reason = \App\Support\DenialReason::of($exception ?? null);
+@endphp
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,6 +22,8 @@
     .accent { width: 56px; height: 4px; background: #ff7900; border-radius: 2px; margin: 20px auto; }
     h1 { font-size: 22px; color: #1e293b; margin-bottom: 10px; }
     p { font-size: 15px; line-height: 1.6; color: #64748b; margin-bottom: 28px; }
+    .reason { background: #fff7ed; border: 1px solid #fdba74; color: #7c2d12; border-radius: 10px;
+              padding: 12px 16px; font-size: 15px; line-height: 1.55; margin-bottom: 14px; text-align: left; }
     a.btn { display: inline-block; background: #ff7900; color: #fff; text-decoration: none;
             font-weight: 600; font-size: 15px; padding: 12px 28px; border-radius: 10px; }
     a.btn:hover { background: #e66d00; }
@@ -26,8 +35,14 @@
     <div class="code">403</div>
     <div class="accent"></div>
     <h1>You don't have access to this page</h1>
-    <p>Your account isn't authorized to view this area. If you believe you should have access,
-       contact your system administrator or your office head.</p>
+    @if ($reason !== null)
+        <p class="reason">{{ $reason }}</p>
+        <p>The system stopped that request and your account's rights are what decided it. If you believe
+           this is wrong, contact your system administrator or your office head.</p>
+    @else
+        <p>Your account isn't authorized to view this area. If you believe you should have access,
+           contact your system administrator or your office head.</p>
+    @endif
     <a class="btn" href="/dashboard">Back to Dashboard</a>
     <div class="brand">SEAIT · Enrollment Management System</div>
 </div>
