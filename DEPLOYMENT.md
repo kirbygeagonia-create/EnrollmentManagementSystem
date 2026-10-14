@@ -114,14 +114,23 @@ written without a timestamp fails loudly instead of silently landing eleven hour
 The `useCurrent()` on `jobs.failed_at` stays — that column belongs to the framework's own queue schema,
 which Laravel writes.
 
-**The server half is a setting, not a migration, and it is still owed on every machine.** Tell MySQL to
-answer in the app's zone: `default-time-zone='+00:00'` in the server's own config (Laragon: `my.ini`;
-production: `my.cnf`) and restart it, or set `time_zone` per connection. Until that is done,
+**The server half is a setting, not a migration.** Tell MySQL to answer in the app's zone:
+`default-time-zone='+00:00'` in the server's own config (Laragon: `my.ini`; production: `my.cnf`) and
+restart it, or set `time_zone` per connection. Until that is done,
 `php artisan ems:preflight` fails the run and prints both strings — on the development box `NOW()`
 answered `2026-10-13 03:52` where PHP stamped `2026-10-13 14:52`, the epochs agreeing to the second
 while `session` and `global` resolve to `SYSTEM` and `system_time_zone` reads UTC-11. Nothing in the
 schema now offers the database the chance to answer, which is why the two zones being apart is a report
 to clear rather than a corruption in progress.
+
+**State on 2026-10-13.** The line is written into the development box's
+`C:\laragon\bin\mysql\mysql-8.4.3-winx64\my.ini` under `[mysqld]`, and it is *not in force yet*: MySQL has
+not been restarted, and only the person running Laragon does that — the agent editing this repository does
+not stop or start the database service. `ems:preflight` still reports `Clocks agree — FAIL` for exactly
+that reason, and re-running it after the restart is the proof the setting took. Re-measured on the day the
+line was added: PHP wrote `2026-10-14 08:53:11` and the database wrote `2026-10-13 21:53:11`, 11.0 h apart.
+The school's server still needs the same line in its own `my.cnf`; §8 step 1 will fail there until it has
+it, which is the check doing its job rather than a new problem.
 
 ## 3. Install & migrate
 

@@ -77,10 +77,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   into an `admissions` insert fails with "no column named createdAt"; the two namings coexist on purpose.
 - A staff account with a non-null `unitId` is **college-bound**, and `App\Support\CollegeScope` is the only
   place that boundary is expressed: the policies ask `holds()` / `holdsStudent()`, every list the desk reads
-  goes through an `of*()` method, and a null `unitId` means bounded by nothing. That null is load-bearing —
-  `office4_head` holds 29 enrollments, 15 still in progress, across three colleges, so bounding it would
-  leave papers nobody could close; `office7_head` and the seeded instructors are unbounded for the same
-  kind of reason (the walkthrough is written against them). A record whose course names no college is *not*
+  goes through an `of*()` method, and a null `unitId` means bounded by nothing. The null is a decision, not
+  an oversight, and its reason has now moved: it used to be that bounding `office4_head` would strand the
+  29 enrollments it was credited with across three colleges — those credits were repointed to each row's own
+  college desk on 2026-10-13 (#89), so that argument is gone and the account is still unbounded, because an
+  office head's work belongs to the office rather than to one college (it is credited with 0 enrollments and
+  has 3 open Department Evaluation boxes, all CTIC, plus 20 closed ones). `office7_head` and the seeded
+  instructors stay unbounded because §7 of the walkthrough walks two colleges in one login. Note for
+  whoever re-measures this: `shiftingrequests` has 0 rows on live `ems`, so the cross-college shift docket
+  is not currently evidence either way. A record whose course names no college is *not*
   the desk's, and the dropdown must be filtered by the same rule the policy asks, or the screen offers work
   the save refuses.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
