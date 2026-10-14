@@ -99,11 +99,29 @@ and every printed timestamp runs eight hours behind the wall clock in the room. 
 a decision: measured on the development box on 2026-10-12, PHP stamped `2026-10-13 05:32` while MySQL's
 `NOW()` answered `2026-10-12 18:32` for the same instant. The two epochs agree to the second — the clocks
 are fine — but the database session runs in another zone, and `auditlogs.createdAt` and
-`enrollmentstatushistory.changedAt` carry a MySQL `CURRENT_TIMESTAMP` default into plain DATETIME columns
+`enrollmentstatushistory.changedAt` carried a MySQL `CURRENT_TIMESTAMP` default into plain DATETIME columns
 that store no zone. Whichever process stamps the row decides the hours a desk reads.
-`php artisan ems:preflight` now fails the run on that disagreement and names both strings; fix it by
-setting the database session time zone to the app's, or the app's zone to the room's — leaving both as
-they are is the one option that keeps the split.
+
+**Ruled 2026-10-13: match the database to the app, and take the defaults away.** The repository
+half is in the repository: `auditlogs.createdAt` and `enrollmentstatushistory.changedAt` were DATETIME
+columns with a `CURRENT_TIMESTAMP` default. Three of the four writers already passed `now()` —
+`AuditLogObserver` and `EnrollmentStateMachine` both did — while the two `Auditlogs::create` calls in
+`UserManagementController`, which write the `assigned` row when someone's roles change, did not: they
+were the one path where MySQL stamped a record with its own clock. The models fill the column themselves now
+(`Auditlogs::booted()` and `Enrollmentstatushistory::booted()`), and
+`2026_10_13_1000000001_drop_database_stamped_audit_defaults.php` removes the two defaults, so a row
+written without a timestamp fails loudly instead of silently landing eleven hours from its neighbours.
+The `useCurrent()` on `jobs.failed_at` stays — that column belongs to the framework's own queue schema,
+which Laravel writes.
+
+**The server half is a setting, not a migration, and it is still owed on every machine.** Tell MySQL to
+answer in the app's zone: `default-time-zone='+00:00'` in the server's own config (Laragon: `my.ini`;
+production: `my.cnf`) and restart it, or set `time_zone` per connection. Until that is done,
+`php artisan ems:preflight` fails the run and prints both strings — on the development box `NOW()`
+answered `2026-10-13 03:52` where PHP stamped `2026-10-13 14:52`, the epochs agreeing to the second
+while `session` and `global` resolve to `SYSTEM` and `system_time_zone` reads UTC-11. Nothing in the
+schema now offers the database the chance to answer, which is why the two zones being apart is a report
+to clear rather than a corruption in progress.
 
 ## 3. Install & migrate
 
@@ -284,7 +302,10 @@ Do not merge with red CI.
 
 1. `php artisan ems:preflight` exits 0 — including `Clocks agree`, the check that a server does
 not stamp the same moment two different ways, and `Application key` and `Served folder`, the two
-rows that check the routes nobody logs in to use (§2).
+rows that check the routes nobody logs in to use (§2). `Clocks agree` is the one that reports whether
+the §2 ruling is actually in force on this machine: it prints the string PHP writes and the string the
+database writes for the same instant, so on a server where MySQL was never told the zone, step 1 fails
+and says so instead of the audit trail quietly disagreeing with itself.
 2. `/up` returns 200 (health route).
 3. `/register` returns 404 (self-registration disabled).
 4. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.

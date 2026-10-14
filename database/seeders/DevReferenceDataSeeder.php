@@ -826,6 +826,71 @@ class DevReferenceDataSeeder extends Seeder
             $i++;
         }
 
+        // ---------- One Academic Department desk per college ----------
+        // Ruled 2026-10-13 on the open question of who performs Department evaluation. The docx office
+        // table names office 7 for the act, but the install credited a generic desk: every seeded staff
+        // row carries `unitId = null`, and the two accounts that could sign at all (office7_head and
+        // three instructors) belong to no college in particular — so a BSIT proposal and a BSA proposal
+        // were stamped by the same anonymous desk while the launcher's card was keyed to Guidance's
+        // office id, which hid it from office 7 entirely.
+        //
+        // One account per college, seated in that college's `unitId`, enum 'instructor' — RbacSeeder
+        // step 3 maps that enum to Instructor + DeptEvaluator, which is exactly the set the act needs
+        // (evaluation.view, .create, .sign) and none of the office-wide rights an 'officeHead' account
+        // also picks up. Keyed by unitId because this seeder pins the units to explicit ids 1-6 above,
+        // the same reason courses and terms may stay literals here.
+        $departmentDesks = [
+            1 => ['caf', 'Agriculture and Fisheries'],
+            2 => ['cjc', 'Criminal Justice'],
+            3 => ['cbg', 'Business and Governance'],
+            4 => ['ctic', 'Information and Communication Technology'],
+            5 => ['cee', 'Civil and Electrical Engineering'],
+            6 => ['cte', 'Teacher Education'],
+        ];
+
+        $namedColleges = [];
+        foreach (Academicunits::where('unitType', 'college')->orderBy('unitId')->get() as $college) {
+            if (! isset($departmentDesks[$college->unitId])) {
+                // Loud, not silent: an un-mapped college has no desk to evaluate its students, which is
+                // the exact defect this block exists to remove. The walkthrough would otherwise meet a
+                // queue with nobody in it and no reason printed.
+                $this->command?->warn("DevReferenceDataSeeder: college {$college->unitId} ({$college->unitName}) "
+                    .'has no Academic Department desk — add it to $departmentDesks in this seeder.');
+
+                continue;
+            }
+
+            [$slug, $label] = $departmentDesks[$college->unitId];
+            $username = "dept.{$slug}";
+
+            Staffusers::firstOrCreate(
+                ['username' => $username],
+                [
+                    'employeeNo' => 'EMP-'.str_pad((string) (21000 + (int) $college->unitId), 5, '0', STR_PAD_LEFT),
+                    'firstName' => $label,
+                    'middleName' => '',
+                    'lastName' => 'Department Evaluator',
+                    'email' => "{$username}@seait.edu.ph",
+                    'passwordHash' => Hash::make('password'),
+                    'officeId' => OfficeId::Academic->value,
+                    'unitId' => $college->unitId,
+                    'contactNo' => '',
+                    'role' => 'instructor',
+                    'status' => 'active',
+                ]
+            );
+
+            // No syncRoles here on purpose: the call to RbacSeeder::assignDeskRolesFromEnums() at the end
+            // of this seeder is the single place an enum becomes a set of roles, and duplicating the
+            // pairing per account is how the two would drift.
+            $namedColleges[] = $college->unitId;
+        }
+
+        if ($namedColleges !== []) {
+            $this->command?->info('DevReferenceDataSeeder: '.count($namedColleges)
+                .' Academic Department desk(s) seated, one per college.');
+        }
+
         // ---------- Department signatories the workflows require ----------
         // The dean signature is a real step, not decoration: the evaluation form is
         // co-signed by the dean or program head (BR14), and the shift paper cannot be
@@ -858,6 +923,14 @@ class DevReferenceDataSeeder extends Seeder
         // to roles; step 3 then widens it to Dean + DeptEvaluator, which is the pairing a
         // real install gives a dean who also evaluates.
         $dean->syncRoles(['Dean']);
+
+        // Every account this file creates — the nine office heads, the dean, the per-college department
+        // desks — arrives AFTER RbacSeeder has run its enum pass, because DEPLOYMENT.md §3 and CI both seed
+        // `db:seed` first and this seeder second. Measured on a fresh database in that order: 10 of 17
+        // accounts ended with no Spatie roles at all, every `officeN_head` plus `staff8`, refusing their own
+        // desks — the cause behind the UAT rows §2.8 that could not be performed. Re-deriving here makes the
+        // result independent of the order, which is what live `ems` already reflects from its history.
+        RbacSeeder::assignDeskRolesFromEnums();
 
         $this->command?->info(class_basename($this).': done.');
     }

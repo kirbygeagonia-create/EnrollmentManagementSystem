@@ -485,6 +485,27 @@ class RbacSeeder extends Seeder
         // ===========================================
         // 3. ASSIGN REALISTIC DESK ROLES TO STAFF USERS
         // ===========================================
+        self::assignDeskRolesFromEnums();
+
+        $this->command->info('RbacSeeder completed successfully!');
+    }
+
+    /**
+     * Give every staff account the Spatie roles its `role` enum stands for.
+     *
+     * Public and static for one reason, measured on 2026-10-13: DEPLOYMENT.md §3 and CI both seed in the
+     * order `db:seed` (this seeder) then `db:seed --class=DevReferenceDataSeeder`, and that second file is
+     * what creates the nine office heads, the dean and the department desks. A fresh install run in that
+     * order therefore derived roles over a `staffusers` table that did not contain them yet, and came up
+     * with **10 of 17 accounts holding no role at all** — every `officeN_head` plus `staff8`, refusing
+     * their own desks. Live `ems` hides it because those pivot rows predate the ordering. This is the reason
+     * `DevReferenceDataSeeder` calls this method after it seats accounts, and the reason §2.8's
+     * `head11_only` / `head22_only` UAT rows could not be performed.
+     *
+     * Idempotent by construction: `syncRoles` replaces the assignment, so calling it twice is the same state.
+     */
+    public static function assignDeskRolesFromEnums(): void
+    {
         foreach (Staffusers::all() as $user) {
             $rolesToSync = [];
             $roleVal = $user->role?->value ?? 'staff';
@@ -530,7 +551,5 @@ class RbacSeeder extends Seeder
 
             $user->syncRoles($rolesToSync);
         }
-
-        $this->command->info('RbacSeeder completed successfully!');
     }
 }

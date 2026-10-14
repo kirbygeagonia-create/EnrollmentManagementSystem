@@ -84,6 +84,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `officeN_head` usernames) instead.
 - Nothing checks `tools/`: `phpstan.neon` analyses `app` only and `pint.json` excludes `tools`, so a defect
   there is invisible to every gate — those files are proven only by running them and reading their output.
+- A staff account's Spatie roles come from its `role` enum through `RbacSeeder::assignDeskRolesFromEnums()`.
+  Any seeder that creates accounts must call it afterwards: §3 and CI seed `db:seed` *before*
+  `DevReferenceDataSeeder`, and measured on a fresh database that order left **10 of 17 accounts with no
+  roles at all** (every `officeN_head` plus `staff8`), unable to open their own desks. Live `ems` hides it
+  because its pivots predate the order.
+- In `tools/seed_full_demo_pipeline.php` a shared helper must be a plain function, not a closure: most call
+  sites sit inside closures that capture only the variables they list, so a closure-valued helper throws
+  `Undefined variable` the moment the pipeline reaches it. Rehearsing the whole chain on a copy caught this;
+  no test executes `tools/`.
 - Two routes answer with **no login at all**: `GET|HEAD /storage/{path}` and `PUT /storage/{path}`, registered
   by Laravel because `config/filesystems.php` marks the `local` disk `serve => true`. Their only gate is an
   HMAC of the path and query keyed by `APP_KEY` — nothing in `app/` or `resources/` ever mints one, so no desk

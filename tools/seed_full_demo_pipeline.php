@@ -22,6 +22,7 @@ use App\Enums\ExamResult;
 use App\Enums\ExamStage;
 use App\Enums\ExamType;
 use App\Enums\OfficeId;
+use App\Enums\StaffRole;
 use App\Enums\StudentType;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
@@ -141,6 +142,59 @@ foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, Offic
 
 // Admission owns the approval that opens the pipeline; two demo rows credit it as the evaluator already.
 $admissionHeadId = $namedId('staffusers', 'userId', 'username', 'office'.OfficeId::Admission->value.'_head');
+
+/*
+ * The college that owns a program evaluates its students (ruled 2026-10-13).
+ *
+ * Every demo enrollment used to credit Guidance's head with the act — nineteen rows — because `$deskSigners`
+ * was built from office heads and Guidance's was the one whose paired enum happened to hold `evaluation.view`.
+ * The docx names office 7, the Academic Department, and `DevReferenceDataSeeder` now seats one department
+ * account per college, so the credit is resolved from the course each line already names rather than from a
+ * user id this machine happens to have handed out. Same reason the fee lookups above stop rather than write
+ * a charge onto the wrong paper: a wrong row that lands quietly is worse than a run that refuses.
+ *
+ * A plain function, not a closure: most of these call sites sit inside closures that list exactly the
+ * variables they capture, and a first version written as a closure threw `Undefined variable` the moment the
+ * pipeline reached its first evaluation row — the rehearsal caught it, the suite could not, because nothing
+ * in `tests/` executes `tools/`.
+ */
+function department_evaluator_for_course($courseId): int
+{
+    static $cache = [];
+
+    $courseId = (int) $courseId;
+    if (isset($cache[$courseId])) {
+        return $cache[$courseId];
+    }
+
+    $unitId = DB::table('courses')->where('courseId', $courseId)->value('unitId');
+    if ($unitId === null) {
+        throw new RuntimeException(sprintf(
+            'courseId %d has no unitId, so no college owns its Department evaluation. '
+            .'Run: php artisan db:seed --class=DevReferenceDataSeeder',
+            $courseId
+        ));
+    }
+
+    $userId = DB::table('staffusers')
+        ->where('officeId', App\Enums\OfficeId::Academic->value)
+        ->where('unitId', (int) $unitId)
+        ->where('role', App\Enums\StaffRole::Instructor->value)
+        ->orderBy('userId')
+        ->value('userId');
+
+    if ($userId === null) {
+        throw new RuntimeException(sprintf(
+            'no Academic Department desk is seated for college %d (office %d, role %s). '
+            .'Run: php artisan db:seed --class=DevReferenceDataSeeder',
+            (int) $unitId,
+            App\Enums\OfficeId::Academic->value,
+            App\Enums\StaffRole::Instructor->value
+        ));
+    }
+
+    return $cache[$courseId] = (int) $userId;
+}
 
 /*
  * Two named students this tool tops up do not come from this file.
@@ -444,7 +498,7 @@ if (! $enrElena) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Elena Ramos (DEMO-2026-008) - PENDING evaluation queue\n";
@@ -463,7 +517,7 @@ if (! $enrRafael) {
         // C-2 (2026-10-06): a transferee is Irregular from the moment the record exists,
         // which is what the Admission approval now writes for that type too.
         'academicStanding' => AcademicStanding::Irregular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(3),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Rafael Cruz (DEMO-2026-009) - PENDING transferee queue\n";
@@ -623,7 +677,7 @@ if (! $enrLiza) {
         'studentType' => StudentType::Continuing,
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course($lizaPrior->courseId),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Liza Bautista (DEMO-2026-004) - PENDING, repeating the year level\n";
@@ -641,7 +695,7 @@ if (! $marcoPrior) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'enrolledDate' => now()->subMonths(9),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
@@ -659,7 +713,7 @@ if (! $enrMarco) {
         'studentType' => StudentType::Continuing,
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     echo "✔ Evaluation Desk: Seeded Marco Villanueva (DEMO-2026-018) - PENDING, advancing to year 2\n";
@@ -714,7 +768,7 @@ if (! $enrGrace) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
@@ -754,7 +808,7 @@ if (! $enrChristian) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
@@ -791,7 +845,7 @@ if (! $enrBea) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(5),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
@@ -841,7 +895,7 @@ if (! $enrPat) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Paid,
     ]);
@@ -900,7 +954,7 @@ if (! $enrGab) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'formSignedDate' => now(),
@@ -940,7 +994,7 @@ if (! $enrDan) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -970,7 +1024,7 @@ if (! $enrKev) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -1185,7 +1239,9 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
         return null;
     }
 
-    $evaluator = Staffusers::find($deskSigners[OfficeId::Guidance->value]);
+    // The department that owns the program proposes the load and is credited with the act — the same
+    // rule the enrollment rows above now follow, applied to the workflow steps that name an actor.
+    $evaluator = Staffusers::find(department_evaluator_for_course($enrollment->courseId));
     $assessmentOfficer = Staffusers::find($deskSigners[OfficeId::Scholarship->value]);
     $cashier = Staffusers::find($deskSigners[OfficeId::Accounting->value]);
 
@@ -1292,7 +1348,6 @@ foreach (Studentclearances::with('approvals')->get() as $clearance) {
 //      department confirms it below; the other is still pending, so the block stays
 //      demonstrable as well.
 if ($openPeriod !== null) {
-    $evaluationDesk = Staffusers::find($deskSigners[OfficeId::Guidance->value]);
     $issuer = app(EnrollmentIssuer::class);
     $slipStudentsSeated = 0;
 
@@ -1337,7 +1392,7 @@ if ($openPeriod !== null) {
             'enrollmentType' => EnrollmentType::Old,
             'academicStanding' => 'regular',
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
-            'evaluatedBy' => $evaluationDesk?->userId,
+            'evaluatedBy' => department_evaluator_for_course($program->courseId),
             'enrolledDate' => now(),
             'formIssuedDate' => now()->toDateString(),
             'formSignedDate' => now(),
@@ -1352,7 +1407,7 @@ if ($openPeriod !== null) {
             'yearLevel' => $program->yearLevel,
             'studentType' => StudentType::Continuing,
             'academicStanding' => null,
-        ], $evaluationDesk);
+        ], Staffusers::find(department_evaluator_for_course($program->courseId)));
 
         $slipStudentsSeated++;
         echo "✔ Clearance: {$student->schoolIdNumber} seated — enrollment {$current->enrollmentId} on term {$openPeriod->termId} is the record slip {$slip->studentClearanceId} clears"
@@ -1438,7 +1493,7 @@ foreach (Enrollments::where('yearLevel', '>=', 2)
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => 'regular',
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value] ?? 1,
+        'evaluatedBy' => department_evaluator_for_course($claim->courseId),
         'enrolledDate' => now(),
         'formIssuedDate' => $priorTerm->startDate,
         'formSignedDate' => now(),
@@ -1616,7 +1671,7 @@ if ($openPeriod !== null) {
 
         if ($returning->clearanceConfirmedBy === null) {
             $returning->update([
-                'clearanceConfirmedBy' => $deskSigners[OfficeId::Guidance->value] ?? 1,
+                'clearanceConfirmedBy' => department_evaluator_for_course($returning->courseId),
                 'clearanceConfirmedAt' => now(),
             ]);
             $confirmedNow++;
@@ -1646,7 +1701,7 @@ if (! $enrAngelica) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
@@ -1671,7 +1726,7 @@ if (! $enrMarisol) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
@@ -1707,13 +1762,14 @@ if (! $enrIsagani) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     $seedLoad($enrIsagani);
 
-    $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Evaluated, Staffusers::find($deskSigners[OfficeId::Guidance->value]), 'Subject load proposed by Department Evaluation');
+    $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Evaluated,
+        Staffusers::find(department_evaluator_for_course(1)), 'Subject load proposed by Department Evaluation');
     $isaganiAssessment = $assessmentFor($enrIsagani, 17500.00);
     $chargeDemoFees($isaganiAssessment);
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Assessed, Staffusers::find($deskSigners[OfficeId::Scholarship->value]), 'Fees computed by Assessment');
@@ -2180,7 +2236,7 @@ if (! $enrNena) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => 2,
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -2281,7 +2337,7 @@ if (! $enrCamille) {
         'studentType' => StudentType::FirstYear,
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
-        'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+        'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
@@ -2477,7 +2533,7 @@ foreach ([
             'studentType' => StudentType::Continuing,
             'enrollmentType' => EnrollmentType::Old,
             'academicStanding' => null,
-            'evaluatedBy' => $deskSigners[OfficeId::Guidance->value],
+            'evaluatedBy' => department_evaluator_for_course(3),
             'enrollmentStatus' => EnrollmentStatus::Pending,
         ]);
         echo "✔ Department Evaluation: seated {$last}, {$first} ({$schoolId}) — BSCrim year 2, retention pathway\n";

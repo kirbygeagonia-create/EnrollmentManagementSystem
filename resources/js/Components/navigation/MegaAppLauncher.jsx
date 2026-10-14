@@ -59,7 +59,13 @@ const subSystems = [
                 name: 'Academic Evaluation',
                 phase: 'Phase 2',
                 route: 'evaluation.index',
-                officeId: 4,
+                // Was `officeId: 4`. The desk the docx names for this act is office 7, and the office
+                // list hid the card from exactly that office — measured 2026-10-13: office7_head and
+                // the per-college department accounts hold evaluation.view and .sign, but their enum
+                // role is not dean/programHead/instructor, so they fell through to `ids.includes(7)`
+                // against [4] and were refused the screen they own. Like clearance, it answers to the
+                // right the desk's own route asks.
+                officeId: null,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
                 color: 'from-blue-600 to-cyan-700',
                 textColor: 'text-blue-700 bg-blue-50 border-blue-200',
@@ -280,6 +286,10 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         // Campus Clearance is signed by every office, so no single officeId owns the card; the same
         // right the desk's own gate asks (ClearancePolicy::viewAny) decides whether it appears.
         if (item.route === 'clearance.index') return canClearanceDesk;
+        // Department Evaluation spans offices too: the owning college's department account is an
+        // 'instructor' enum at office 7, its head is an 'officeHead', and a dean signs the same paper —
+        // so no role list and no office number describes it. One right decides, for every account.
+        if (item.route === 'evaluation.index') return canEvaluationDesk;
         if (item.roles && !item.roles.includes(user?.role)) return false;
         if (item.officeId) {
             // Item 4 — some modules serve two offices (the Exam module is
@@ -287,12 +297,11 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
             // exams), so officeId accepts an array.
             const ids = Array.isArray(item.officeId) ? item.officeId : [item.officeId];
             if (['dean', 'programHead', 'instructor'].includes(user?.role)) {
-                // These two cards used to be granted by route name to all three academic roles, and one of
-                // them was a dead end: the Dean's roles do not hold block.view, so BlockingPolicy::viewAny
-                // refuses the very screen the launcher advertised. They now answer to the right the desk's
-                // own route asks, the same way students, clearance and the catalogs already do. students.index
-                // needs no line here — it was decided above, and falls through to the office list otherwise.
-                if (item.route === 'evaluation.index') return canEvaluationDesk;
+                // This card used to be granted by route name to all three academic roles, and that was
+                // a dead end: the Dean's roles do not hold block.view, so BlockingPolicy::viewAny
+                // refuses the very screen the launcher advertised. It answers to the desk's own right
+                // now, the way students, clearance, evaluation and the catalogs already do. The other
+                // two are decided above — students.index and evaluation.index never reach this branch.
                 if (item.route === 'blocking.index') return canBlockingDesk;
                 if (user?.role === 'dean') return ids.some((id) => [4, 6, 7].includes(id));
                 if (user?.role === 'programHead') return ids.some((id) => [4, 6].includes(id));

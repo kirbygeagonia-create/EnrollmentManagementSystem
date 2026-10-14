@@ -13,6 +13,15 @@ class Enrollmentstatushistory extends Model
 
     public $timestamps = false;
 
+    /**
+     * Same rule as `Auditlogs`: the application stamps the row, because `changedAt` no longer carries a
+     * database default to disagree with `config('app.timezone')` about. See Auditlogs::booted().
+     */
+    protected static function booted(): void
+    {
+        static::creating(fn (self $row) => $row->changedAt ??= now());
+    }
+
     protected $fillable = ['enrollmentId', 'fromStatus', 'toStatus', 'changedBy', 'remarks', 'changedAt'];
 
     protected function casts(): array
