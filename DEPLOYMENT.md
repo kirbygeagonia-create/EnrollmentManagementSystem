@@ -123,14 +123,24 @@ while `session` and `global` resolve to `SYSTEM` and `system_time_zone` reads UT
 schema now offers the database the chance to answer, which is why the two zones being apart is a report
 to clear rather than a corruption in progress.
 
-**State on 2026-10-13.** The line is written into the development box's
-`C:\laragon\bin\mysql\mysql-8.4.3-winx64\my.ini` under `[mysqld]`, and it is *not in force yet*: MySQL has
-not been restarted, and only the person running Laragon does that — the agent editing this repository does
-not stop or start the database service. `ems:preflight` still reports `Clocks agree — FAIL` for exactly
-that reason, and re-running it after the restart is the proof the setting took. Re-measured on the day the
-line was added: PHP wrote `2026-10-14 08:53:11` and the database wrote `2026-10-13 21:53:11`, 11.0 h apart.
-The school's server still needs the same line in its own `my.cnf`; §8 step 1 will fail there until it has
-it, which is the check doing its job rather than a new problem.
+**State on the development box: in force and verified.** The line sits in
+`C:\laragon\bin\mysql\mysql-8.4.3-winx64\my.ini` under `[mysqld]`, and MySQL has been restarted by the
+owner — the agent editing this repository does not stop or start the database service, which is why the
+restart is a human step and not something that "just happens" when the file changes. Verified against the
+server itself rather than assumed: `@@global.time_zone` is `+00:00`, `@@system_time_zone` still reads
+`UTC-11` (the Windows zone, which the setting deliberately overrides), and `NOW()` and `UTC_TIMESTAMP()`
+return the same string. `php artisan ems:preflight` reports `OK Clocks agree — PHP and mysql write the same
+stamp`. Before the restart, the same command had reported PHP writing `2026-10-14 08:53:11` against the
+database's `2026-10-13 21:53:11`, eleven hours apart, so the row is what distinguishes a config file that
+*contains* a setting from a server that is *running* with it.
+
+**Still owed: the school's server.** It needs the same line in its own `my.cnf` (`[mysqld]`) and a restart,
+or `SET GLOBAL time_zone='+00:00'` as a stopgap that dies on the next start. Until then §8 step 1 fails
+there with `Clocks agree — FAIL`, which is the check doing its job rather than a new problem. Note also
+what the two sides now agree *on*: `config/app.php` still carries `timezone => 'UTC'`, so records are stamped
+in UTC, eight hours behind the wall clock in the room — `DEPLOYMENT.md` §2 above explains why moving to
+`APP_TIMEZONE=Asia/Manila` is a ruling to take deliberately rather than a setting to inherit, and the owner
+has not taken it yet.
 
 ## 3. Install & migrate
 
