@@ -162,7 +162,11 @@ about naming the record exists to catch.
 **Clearance window:** the seeded period sits term 11 and is `open`.
 **Fee types:** id 5 `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
 must both read that row.
-**Shift docket:** `shiftingrequests` holds **0 rows**; §7 files the first one.
+**Shift docket:** `shiftingrequests` holds **0 rows**, and that is by design — **§8** (not §7) files the
+first one, so §8 starts from an empty table and fills it as it runs. Its preconditions were measured on live
+`ems` on 2026-10-14 rather than assumed: `dean_academic` exists and holds `shift.request.create` **and**
+`shift.sign.department` (it reads `dean`, the 2026-10-06 fix §8.3 names), `office4_head` holds `shift.grant`,
+and 12 enrollments sit at `enrolled` across three colleges for §8.1 to file against.
 **Two applicant gaps, deliberate:** the demo set has **no applicant to a board-only program** (BSA,
 BSCE, BSEE) and **no pending transferee** — Carlo Mendoza's transferee application (44) is `rejected`,
 which is the rejection path it is there for. Measured 2026-10-09 across all four admissions: 27 and 41
@@ -276,7 +280,7 @@ the start of this section; the walkthrough fills it.
 | 8.3 | Endorse as `dean_academic` | Status `endorsed`, the dean's signature and date recorded. If this refuses, check the account before the rule: `dean_academic` held only `DeptEvaluator + OfficeHead` until 2026-10-06, because it was seeded with the `officeHead` enum and `RbacSeeder` step 3 re-derives roles from that column — it now reads `dean`, so the account holds **Dean + DeptEvaluator** and `shift.sign.department` is reachable | | ☐ |
 | 8.4 | **Decide (grant)** as a Guidance councillor (`office4_head`) | Status `granted`; the receiving enrollment is created with `studentType = shifter`, **`academicStanding = irregular`** (C-2, ruled 2026-10-06 — a program change is irregular by what it means, so the record no longer arrives undecided), its own block seat, the curriculum pinned, and **no examination requirement** attached to it (ruling 11's proof is the form plus credit evaluation) | | ☐ |
 | 8.5 | Open both enrollment ids named on the granted paper | If the record being left sat in the **same term**, it is now `dropped` with the reason naming the shift request, and its proposed/confirmed subject rows are retired — the seat is not held twice. An earlier term is left alone as history | | ☐ |
-| 8.6 | File a second paper for a student who already holds another active enrollment in the target term and try to grant it | **Refused**, pointing at the Registrar's drop action — the shift paper is not a way around ruling 17 | | ☐ |
+| 8.6 | File a second paper for a student who already holds another active enrollment in the target term and try to grant it. **The record that does this on the demo set, measured 2026-10-14:** **DEMO-2026-004 Liza Bautista** holds three live enrollments — 654 (BSBA term 2), 55 (BSBA term 10) and 262 (BSBA term 11) — all `enrolled`. File on **262** and have §8.3's endorsement carry a receiving **term 10**, which is where 55 sits: the guard at `ShiftRequestController.php:263-275` then sees an active row that is not the one this paper leaves. Marco Villanueva (656 / 263 / 264) is the same shape if you want a second. Do not pick a student whose only other row is already `dropped` — the guard excludes those, and the paper grants instead of refusing | **Refused**, naming the other enrollment id and its status, and pointing at the Registrar's drop action — the shift paper is not a way around ruling 17 | | ☐ |
 | 8.7 | Decide a different paper as **rejected** | Status `rejected`; no enrollment is created, and nothing on the student's current record changes | | ☐ |
 
 Sign-off: ____________ (role ____________) date ________ result ______ findings ______

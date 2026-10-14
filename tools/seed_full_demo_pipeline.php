@@ -140,6 +140,37 @@ foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, Offic
     $deskSigners[$deskOffice->value] = $namedId('staffusers', 'userId', 'username', 'office'.$deskOffice->value.'_head');
 }
 
+/**
+ * The account that owns one office's box, looked up by username, refusing when it is not seated.
+ *
+ * Three call sites used to stamp a literal user id instead, which recorded whichever number this machine's
+ * AUTO_INCREMENT happened to hand out (userId 5 here is office4_head; on a fresh install it need not be),
+ * and two more used `?? 1`, defaulting to an Admin the write-boundary rule in WorkflowService excludes from
+ * every mutation. A signature is the strongest claim a workflow row makes, so the tool stops rather than
+ * guesses a signer: a box attributed to an officer who never touched it reads as signed to every desk that
+ * opens it, and nothing downstream can tell.
+ *
+ * A plain function, not a closure: the call sites sit in blocks that capture only the variables they list.
+ */
+function desk_signer_for(int $officeId): int
+{
+    static $cache = [];
+
+    if (! isset($cache[$officeId])) {
+        $username = 'office'.$officeId.'_head';
+        $id = DB::table('staffusers')->where('username', $username)->value('userId');
+
+        if ($id === null) {
+            fwrite(STDERR, "REFUSE: no account {$username} is seated, so office {$officeId}'s box cannot be signed by its own desk.\n");
+            exit(1);
+        }
+
+        $cache[$officeId] = (int) $id;
+    }
+
+    return $cache[$officeId];
+}
+
 // Admission owns the approval that opens the pipeline; two demo rows credit it as the evaluator already.
 $admissionHeadId = $namedId('staffusers', 'userId', 'username', 'office'.OfficeId::Admission->value.'_head');
 
@@ -786,7 +817,7 @@ if (! $enrGrace) {
             'officeId' => $off,
             'stepOrder' => $order,
             'stepStatus' => $order === 1 ? WorkflowStepStatus::Completed : WorkflowStepStatus::Pending,
-            'signedBy' => $order === 1 ? 5 : null,
+            'signedBy' => $order === 1 ? desk_signer_for($off) : null,
             'signedDate' => $order === 1 ? now() : null,
         ]);
     }
@@ -933,7 +964,7 @@ if (! $enrPat) {
             'officeId' => $off,
             'stepOrder' => $order,
             'stepStatus' => $done ? WorkflowStepStatus::Completed : WorkflowStepStatus::Pending,
-            'signedBy' => $done ? 3 : null,
+            'signedBy' => $done ? desk_signer_for($off) : null,
             'signedDate' => $done ? now() : null,
         ]);
     }
@@ -955,7 +986,7 @@ if (! $enrGab) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'registrarProcessedBy' => 2,
+        'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
         'formSignedDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -973,7 +1004,7 @@ if (! $enrGab) {
             'officeId' => $off,
             'stepOrder' => $order,
             'stepStatus' => $done ? WorkflowStepStatus::Completed : WorkflowStepStatus::Pending,
-            'signedBy' => $done ? 2 : null,
+            'signedBy' => $done ? desk_signer_for($off) : null,
             'signedDate' => $done ? now() : null,
         ]);
     }
@@ -995,7 +1026,7 @@ if (! $enrDan) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
-        'registrarProcessedBy' => 2,
+        'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
@@ -1025,7 +1056,7 @@ if (! $enrKev) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
-        'registrarProcessedBy' => 2,
+        'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
@@ -1087,7 +1118,7 @@ $seatWorkflow = function (Enrollments $enrollment, int $officeId) use ($workflow
         $ahead = $step->stepOrder < $target->stepOrder;
         DB::table('workflowsteps')->where('workflowStepId', $step->workflowStepId)->update([
             'stepStatus' => $ahead ? WorkflowStepStatus::Completed->value : WorkflowStepStatus::Pending->value,
-            'signedBy' => $ahead ? ($deskSigners[$step->officeId] ?? 1) : null,
+            'signedBy' => $ahead ? desk_signer_for($step->officeId) : null,
             'signedDate' => $ahead ? now() : null,
         ]);
     }
@@ -1111,7 +1142,7 @@ $completeWorkflow = function (Enrollments $enrollment) use ($workflowService, $d
     foreach ($steps as $step) {
         DB::table('workflowsteps')->where('workflowStepId', $step->workflowStepId)->update([
             'stepStatus' => WorkflowStepStatus::Completed->value,
-            'signedBy' => $deskSigners[$step->officeId] ?? 1,
+            'signedBy' => desk_signer_for($step->officeId),
             'signedDate' => now(),
         ]);
     }
@@ -2110,7 +2141,7 @@ foreach ($timetableByBlock as $blockId => $schedules) {
         if ($blockingBox) {
             DB::table('workflowsteps')->where('workflowStepId', $blockingBox->workflowStepId)->update([
                 'stepStatus' => WorkflowStepStatus::Completed->value,
-                'signedBy' => $deskSigners[OfficeId::Blocking->value],
+                'signedBy' => desk_signer_for(OfficeId::Blocking->value),
                 'signedDate' => now(),
             ]);
 
@@ -2237,7 +2268,7 @@ if (! $enrNena) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
-        'registrarProcessedBy' => 2,
+        'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
@@ -2717,6 +2748,23 @@ $queuedFor = [
     'Ledger — receipts exceeding the assessment' => count($ledgerWarnings),
 ];
 
+// A box signed by an officer from another office is not a cosmetic mismatch: it is a signature the
+// application cannot produce, because signStep() refuses it (BR14) on every HTTP path. Printing it here is
+// what keeps a future edit of this file from reintroducing one quietly — nothing in tests/ executes
+// tools/, PHPStan analyses only app/, and Pint excludes this directory.
+$foreignSigners = DB::table('workflowsteps as ws')
+    ->join('staffusers as s', 's.userId', '=', 'ws.signedBy')
+    ->where('ws.stepStatus', WorkflowStepStatus::Completed->value)
+    ->whereRaw('s.officeId <> ws.officeId')
+    ->get(['ws.workflowStepId', 'ws.officeId', 'ws.signedBy', 's.username', 's.officeId as signerOffice']);
+
+if ($foreignSigners->isNotEmpty()) {
+    $who = $foreignSigners->pluck('username')->implode(', ');
+
+    $deskIntegrity[] = 'Signatures: '.$foreignSigners->count().' completed box(es) name an officer from '
+        .'another office ('.$who.') — no desk could have signed them, so the demo data claims a cross-office '
+        .'signature the application refuses to write';
+}
 echo "=======================================================\n";
 echo " WHAT EACH DESK WILL SHOW\n";
 echo "=======================================================\n";
