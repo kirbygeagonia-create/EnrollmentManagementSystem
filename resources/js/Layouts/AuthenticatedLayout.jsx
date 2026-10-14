@@ -35,6 +35,10 @@ export default function AuthenticatedLayout({ header, children }) {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    // 'loading' → 'live' once the bell answers → 'stalled' the moment it stops answering. The bell is
+    // painted from these, because a list that failed to refresh looks identical to one that is empty.
+    const [bellState, setBellState] = useState('loading');
+    const [bellNotice, setBellNotice] = useState('');
 
     // Global keyboard shortcuts (Ctrl+K or Cmd+K for search, Escape closes popovers)
     useEffect(() => {
@@ -56,13 +60,20 @@ export default function AuthenticatedLayout({ header, children }) {
     // Fetch notifications
     useEffect(() => {
         const fetchNotifications = () => {
-            fetch(route('notifications.index'))
-                .then((res) => res.json())
+            fetch(route('notifications.index'), { headers: { Accept: 'application/json' } })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'The bell did not answer.');
+                    return data;
+                })
                 .then((data) => {
                     setNotifications(data.notifications || []);
                     setUnreadCount(data.unreadCount || 0);
+                    setBellState('live');
                 })
-                .catch(() => {});
+                // The last list stays on screen, but it stops being presented as current: an officer who
+                // reads a stale bell as "nothing new" misses the paper waiting at another desk.
+                .catch(() => setBellState('stalled'));
         };
 
         fetchNotifications();
@@ -83,12 +94,21 @@ export default function AuthenticatedLayout({ header, children }) {
                 'Accept': 'application/json',
             },
         })
-            .then((res) => res.json())
+            .then(async (res) => {
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'Nothing was marked read.');
+                return data;
+            })
             .then(() => {
                 setUnreadCount(0);
                 setNotifications((prev) => prev.map((n) => ({ ...n, read_at: new Date().toISOString() })));
+                setBellNotice('');
             })
-            .catch(() => {});
+            // This used to repaint the bell for ANY body that parsed. The session-expiry handler answers a
+            // POST that asked for JSON with {"message": …} and status 419 — so an officer returning to a
+            // tab left open overnight clicked "Mark all read", watched the badge go to zero and every row
+            // turn read, while the server had written nothing. Only an accepted response may repaint it.
+            .catch((err) => setBellNotice(err.message));
     };
 
     // Determine active desk
@@ -241,8 +261,22 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 Mark all read
                                             </button>
                                         </div>
+                                        {bellNotice && (
+                                            <div className="px-4 py-2 text-xs font-medium text-danger-700 bg-danger-50 border-b border-danger-200" role="alert">
+                                                {bellNotice}
+                                            </div>
+                                        )}
+                                        {bellState === 'stalled' && !bellNotice && (
+                                            <div className="px-4 py-2 text-[10px] font-semibold text-slate-600 bg-slate-50 border-b border-slate-100">
+                                                These stopped updating — reload to see the current bell.
+                                            </div>
+                                        )}
                                         <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                                            {notifications.length === 0 ? (
+                                            {bellState === 'loading' ? (
+                                                <div className="px-4 py-8 text-center text-xs text-slate-400">
+                                                    Checking the bell…
+                                                </div>
+                                            ) : notifications.length === 0 ? (
                                                 <div className="px-4 py-8 text-center text-xs text-slate-400">
                                                     No notifications yet.
                                                 </div>

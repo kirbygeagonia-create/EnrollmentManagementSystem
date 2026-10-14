@@ -7,6 +7,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [searchError, setSearchError] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef(null);
 
@@ -25,14 +26,25 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
         const timer = setTimeout(() => {
             setLoading(true);
-            fetch(route('students.quick-search') + `?query=${encodeURIComponent(query)}`)
-                .then((res) => res.json())
+            setSearchError('');
+            fetch(route('students.quick-search') + `?query=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'The search did not answer.');
+                    return data;
+                })
                 .then((data) => {
                     setResults(data.results || []);
                     setSelectedIndex(0);
                     setLoading(false);
                 })
-                .catch(() => {
+                // This used to keep the PREVIOUS query's rows on screen while clearing only the spinner, so
+                // the list went on answering a question nobody had just asked — and when there were no
+                // earlier rows, the block below declared "No students found matching" for a search that
+                // never reached the records. An unanswered search is said so, now, instead.
+                .catch((err) => {
+                    setResults([]);
+                    setSearchError(err.message);
                     setLoading(false);
                 });
         }, 200);
@@ -126,6 +138,11 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                             </svg>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Search Students Across All 10 Desks</p>
                             <p className="text-xs text-slate-400 mt-1">Type at least 2 characters to search by ID number, last name, or program.</p>
+                        </div>
+                    ) : searchError ? (
+                        <div className="py-12 px-6 text-center" role="alert">
+                            <p className="text-sm font-medium text-danger-700">{searchError}</p>
+                            <p className="text-xs text-slate-400 mt-1">This is not &ldquo;nobody matches&rdquo; — the search never reached the records. Try again, and tell your office head if it keeps refusing.</p>
                         </div>
                     ) : activeResults.length === 0 && !loading ? (
                         <div className="py-12 px-6 text-center text-slate-400">

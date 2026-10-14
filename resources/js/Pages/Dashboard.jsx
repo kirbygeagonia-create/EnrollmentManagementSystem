@@ -70,15 +70,27 @@ export default function Dashboard() {
     const progressTracking = usePage().props.progressTracking || [];
     const queueKeys = usePage().props.queueKeys || [];
     const [queueCounts, setQueueCounts] = useState({});
+    // 'loading' until the first poll answers, 'live' while it does, 'stalled' the moment it stops. The
+    // queue rows are painted from this, never from a number the server did not send.
+    const [queueState, setQueueState] = useState('loading');
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     // Poll live queue counts every 30s
     useEffect(() => {
         const fetchQueueCounts = () => {
-            fetch(route('dashboard.queue-counts'))
-                .then((res) => res.json())
-                .then((data) => setQueueCounts(data.queueCounts || {}))
-                .catch(() => {});
+            fetch(route('dashboard.queue-counts'), { headers: { Accept: 'application/json' } })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.message || 'The queues did not answer.');
+                    return data;
+                })
+                .then((data) => {
+                    setQueueCounts(data.queueCounts || {});
+                    setQueueState('live');
+                })
+                // A refused or expired poll used to leave queueCounts at {} so every row fell back to 0:
+                // a desk was told eight queues were clear by a request that never answered.
+                .catch(() => setQueueState('stalled'));
         };
 
         fetchQueueCounts();
@@ -336,18 +348,29 @@ export default function Dashboard() {
                         {visibleQueues.length > 0 && (
                             <Card
                                 title="Live Office Queues"
-                                subtitle="Pending student workload · Real-time 30s sync"
+                                subtitle={queueState === 'live'
+                                    ? 'Pending student workload · Real-time 30s sync'
+                                    : queueState === 'stalled'
+                                        ? 'Pending student workload · Not updating — the last count did not reach this screen'
+                                        : 'Pending student workload · Checking the queues…'}
                                 actions={
                                     <span className="flex h-2 w-2 relative">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                        {queueState === 'live' && (
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                        )}
+                                        <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                                            queueState === 'live' ? 'bg-emerald-500'
+                                                : queueState === 'stalled' ? 'bg-slate-400'
+                                                    : 'bg-slate-300 animate-pulse'}`} />
                                     </span>
                                 }
                             >
                                 <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                                     {visibleQueues.map((q) => {
-                                        const count = queueCounts[q.key] !== undefined ? Number(queueCounts[q.key]) : 0;
-                                        const hasPending = count > 0;
+                                        const count = queueState === 'live' && queueCounts[q.key] !== undefined
+                                            ? Number(queueCounts[q.key])
+                                            : null;
+                                        const hasPending = count !== null && count > 0;
                                         return (
                                             <Link
                                                 key={q.key}
@@ -355,23 +378,25 @@ export default function Dashboard() {
                                                 className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-200 bg-white hover:border-seait-400 hover:bg-slate-50/80 transition-all duration-150 group"
                                             >
                                                 <div className="flex items-center gap-2.5 min-w-0">
-                                                    <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${hasPending ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                                                    <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${hasPending ? 'bg-amber-500 animate-pulse' : count === null ? 'bg-slate-300' : 'bg-emerald-500'}`} />
                                                     <div className="min-w-0">
                                                         <p className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-seait-700 truncate">
                                                             {q.label}
                                                         </p>
                                                         <p className="text-3xs font-semibold text-slate-500">
-                                                            {hasPending ? `${count} waiting in line` : 'Queue clear'}
+                                                            {count === null
+                                                                ? (queueState === 'stalled' ? 'No count from the server' : 'Counting…')
+                                                                : hasPending ? `${count} waiting in line` : 'Queue clear'}
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                                    <span className={`text-base font-extrabold font-mono ${hasPending ? 'text-amber-700' : 'text-slate-400'}`}>
-                                                        {count}
+                                                    <span className={`text-base font-extrabold font-mono ${hasPending ? 'text-amber-700' : count === null ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                        {count === null ? '—' : count}
                                                     </span>
-                                                    <Badge tone={hasPending ? 'warning' : 'success'}>
-                                                        {hasPending ? 'Incoming' : 'Clear'}
+                                                    <Badge tone={hasPending ? 'warning' : count === null ? 'neutral' : 'success'}>
+                                                        {count === null ? 'Unknown' : hasPending ? 'Incoming' : 'Clear'}
                                                     </Badge>
                                                 </div>
                                             </Link>

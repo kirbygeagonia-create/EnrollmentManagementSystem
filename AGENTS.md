@@ -97,6 +97,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   or it parses the 403 page, throws, and shows its own empty state instead of the refusal. Where the desk
   was mid-form, `withErrors` still beats a dead-end page: that is the path the toast and inline list read,
   and it leaves them on the record.
+- Every `fetch()` in `resources/js` checks `res.ok` before it paints, and sends `Accept: application/json`
+  if it parses the answer. Lane 29 measured four that did not, and each was a *different* way of lying: a
+  fallback that reads as data (`Dashboard.jsx` painted `0` with a green "Queue clear" for a count the server
+  never sent), a `.catch()` that clears only the spinner so the **previous** query's rows stay on screen
+  (`GlobalSearchModal.jsx`), and a success repaint driven by any body that parsed — which a 419 from the
+  session-expiry handler is (`AuthenticatedLayout.jsx` mark-all-read zeroed the bell on a write that did not
+  happen). No screen may show a plausible zero for a number it does not have: show a dash and say it is not
+  updating. There is no JS test suite, so these are proven by reading the chain end to end — the gate that
+  catches them is `eslint`, which cannot.
 - Never assume an id from a seeder keyed by *name*. `StarterReferenceDataSeeder` does
   `firstOrCreate(['religionName' => …])`, so each id is whatever the table's `AUTO_INCREMENT` counter hands
   out — and a rolled-back insert does not rewind that counter, so a database the suite already ran against
