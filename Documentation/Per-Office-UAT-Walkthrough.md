@@ -79,6 +79,7 @@ Every account's password is `password`.
 | `office7_head` | 7 Academic Department | DeptEvaluator + OfficeHead | §7, §8 |
 | `dean_academic` | 7 Academic Department | Dean | §8.3 (endorsement) |
 | `instr.alvarez` | 7 Academic Department | DeptEvaluator + Instructor | §7 (a plain evaluator) |
+| `dept.caf` `dept.cjc` `dept.cbg` `dept.ctic` `dept.cee` `dept.cte` — one per college | 7 Academic Department | DeptEvaluator + Instructor | §7 and §8, **for the records of their own college only** — see the note below |
 | `office3_head` | 3 Scholarship | ScholarshipOfficer + OfficeHead | §9 |
 | `office2_head` | 2 Accounting | AccountingStaff + OfficeHead | §10, §11.8 |
 | `office1_head` | 1 Registrar | RegistrarApprover + OfficeHead | §11, §12 — and the office-scope refusals §13R.1, §15R.3 |
@@ -100,6 +101,17 @@ the Registrar desk. The two accounts §2.8 creates are therefore the only identi
 because a **signature is missing** rather than because an office is wrong, which is why §12R.1,
 §14R.2, §15R.4 and §17.1 use them. `office8_head` still refuses `evaluation.sign` and
 `payment.refund`, and refuses them for the right reason — no role it holds grants either.
+
+**A college's own desk is given only its college.** Ruled 2026-10-13: `dept.<college>` receives the
+pending loads, the applicants, the students and the shift papers whose program belongs to that college,
+and nothing else — that is what "each college department must receive every student or applicant related
+to their college" means in a queue. So **§7 is written against `instr.alvarez` and `office7_head`, the two
+department accounts that belong to no college**, because its rows walk seven records across two colleges
+plus a BSCE applicant in a third. Open §7.1 from `dept.ctic` and the queue correctly lists its college's
+four rows instead of seven: a shorter list at a college desk is the rule, not a missing record. The
+`tests/Feature/Rbac/CollegeDeskScopeTest` suite pins both halves — the desk is given *every* load of its
+own college, and none of another's — and the shift paper is deliberately visible to both the college the
+student leaves and the one they arrive at.
 
 `dean_academic` was `DeptEvaluator + OfficeHead` on the live install until 2026-10-06: its
 `staffusers.role` said `officeHead`, and the pairing above overwrote the Dean grant the seeder had
@@ -215,6 +227,10 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
 Path: **Evaluation** (`/evaluation`), one record at `/evaluation/{enrollment}`.
 
 This is the busiest section. Take the records in this order.
+
+Run these rows as an account that belongs to **no college** (`office7_head`, `instr.alvarez`). A college's
+own desk — `dept.ctic`, `dept.cjc` — sees only its college's rows, which is the ruling in §3, so its list
+here is shorter by design.
 
 | # | Do this | The system must | Observed | OK |
 |---|---|---|---|---|

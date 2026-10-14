@@ -17,6 +17,7 @@ use App\Models\Shiftingrequests;
 use App\Models\Students;
 use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentStateMachine;
+use App\Support\CollegeScope;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,11 +59,19 @@ class ShiftRequestController extends Controller
     {
         $this->authorize('viewAny', Shiftingrequests::class);
 
-        $requests = Shiftingrequests::with([
-            'student', 'currentCourse', 'targetCourse', 'term.academicYear',
-            'currentEnrollment.course', 'grantedEnrollment',
-            'requestedByUser', 'departmentSignedByUser', 'decisionByUser',
-        ])
+        $desk = $request->user();
+
+        // Ruled 2026-10-13: a shift paper reaches the department on either side of the move — the
+        // college the student leaves endorses it and the college they arrive at takes them on, so a
+        // one-sided list would leave the receiving desk blind to a student it is about to receive.
+        $requests = CollegeScope::ofShiftRequests(
+            Shiftingrequests::with([
+                'student', 'currentCourse', 'targetCourse', 'term.academicYear',
+                'currentEnrollment.course', 'grantedEnrollment',
+                'requestedByUser', 'departmentSignedByUser', 'decisionByUser',
+            ]),
+            $desk
+        )
             ->when($request->status, fn ($q, $status) => $q->where('requestStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq
                 ->where('lastName', 'like', "%{$search}%")
@@ -73,33 +82,35 @@ class ShiftRequestController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $user = $request->user();
-
         return Inertia::render('Evaluation/ShiftRequests', [
             'requests' => $requests,
             'filters' => $request->only(['search', 'status']),
             // Only a desk that can file the paper is given the pick-lists, and the
             // candidates are limited to students who already hold a program to leave.
-            'students' => $user->checkPermissionTo('shift.request.create')
-                ? Students::whereHas('enrollments')
+            'students' => $desk->checkPermissionTo('shift.request.create')
+                ? CollegeScope::ofStudents(Students::whereHas('enrollments'), $desk)
                     ->with(['enrollments' => fn ($q) => $q->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
                         ->latest('termId')->limit(1)->with('course:courseId,courseCode,courseName')])
                     ->orderBy('lastName')->orderBy('firstName')
                     ->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName'])
                 : [],
+            // Not bounded by the college, unlike every other list on this screen: a shift's whole purpose
+            // is a move to a program in another college, so the desk filing it has to be able to name it.
             'courses' => Courses::orderBy('courseName')->get(['courseId', 'courseCode', 'courseName']),
             'terms' => Academicterms::with('academicYear:academicYearId,yearLabel')->orderByDesc('termId')
                 ->get(['termId', 'academicYearId', 'semester', 'startDate', 'endDate']),
             'can' => [
-                'file' => $user->checkPermissionTo('shift.request.create'),
-                'endorse' => $user->checkPermissionTo('shift.sign.department'),
-                'decide' => $user->checkPermissionTo('shift.grant'),
+                'file' => $desk->checkPermissionTo('shift.request.create'),
+                'endorse' => $desk->checkPermissionTo('shift.sign.department'),
+                'decide' => $desk->checkPermissionTo('shift.grant'),
             ],
+            // The counters answer to the same boundary as the list above them, or the screen would report
+            // work it is not showing — the disagreement this audit keeps finding on desk headers.
             'stats' => [
-                'pending' => Shiftingrequests::where('requestStatus', ShiftRequestStatus::Pending)->count(),
-                'endorsed' => Shiftingrequests::where('requestStatus', ShiftRequestStatus::Endorsed)->count(),
-                'granted' => Shiftingrequests::where('requestStatus', ShiftRequestStatus::Granted)->count(),
-                'rejected' => Shiftingrequests::where('requestStatus', ShiftRequestStatus::Rejected)->count(),
+                'pending' => CollegeScope::ofShiftRequests(Shiftingrequests::where('requestStatus', ShiftRequestStatus::Pending), $desk)->count(),
+                'endorsed' => CollegeScope::ofShiftRequests(Shiftingrequests::where('requestStatus', ShiftRequestStatus::Endorsed), $desk)->count(),
+                'granted' => CollegeScope::ofShiftRequests(Shiftingrequests::where('requestStatus', ShiftRequestStatus::Granted), $desk)->count(),
+                'rejected' => CollegeScope::ofShiftRequests(Shiftingrequests::where('requestStatus', ShiftRequestStatus::Rejected), $desk)->count(),
             ],
         ]);
     }
@@ -130,6 +141,22 @@ class ShiftRequestController extends Controller
         if ($current === null) {
             return back()->withErrors([
                 'studentId' => "{$student->lastName}, {$student->firstName} holds no enrollment to leave — a student coming into SEAIT for the first time is admitted, not shifted.",
+            ]);
+        }
+
+        // Ruled 2026-10-13 with the rest of the boundary: a desk may file the paper only where its own
+        // college is one of the two sides of the move — the same rule its queue answers to. Without this,
+        // the pick-list hides the student but the route still accepts the id, and the desk ends up holding
+        // a paper it will never see again. Answered with an error the desk reads, not a 403 page that
+        // prints no reason (AGENTS.md: errors/403.blade.php interpolates nothing).
+        $mine = CollegeScope::holds($request->user(), $current->course?->unitId)
+            || CollegeScope::holds($request->user(), Courses::find($validated['targetCourseId'])?->unitId);
+
+        if (! $mine) {
+            return back()->withErrors([
+                'studentId' => "{$student->lastName}, {$student->firstName} is not a student of your college, "
+                    .'and your college is not the program they would move into — the department that owns one '
+                    .'of those two sides files the paper.',
             ]);
         }
 

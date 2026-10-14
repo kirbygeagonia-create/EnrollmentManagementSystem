@@ -26,6 +26,7 @@ use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
 use App\Policies\AdmissionPolicy;
 use App\Services\EnrollmentIssuer;
+use App\Support\CollegeScope;
 use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +50,12 @@ class AdmissionController extends Controller
     {
         $this->authorize('viewAny', Admissions::class);
 
-        $query = Admissions::with(['student', 'course', 'term.academicYear', 'evaluatedByUser'])
+        // Ruled 2026-10-13: the department also receives the applicants to its own college — an
+        // application is the only record a not-yet-enrolled student has, and it names a course.
+        $query = CollegeScope::ofAdmissions(
+            Admissions::with(['student', 'course', 'term.academicYear', 'evaluatedByUser']),
+            $request->user()
+        )
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('admissionId');

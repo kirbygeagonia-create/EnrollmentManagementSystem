@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Support\CollegeScope;
 
 /**
  * Student directory / Student 360 authorization (audit §2.2).
@@ -34,7 +35,14 @@ class StudentPolicy
      */
     public function view(Staffusers $user, Students $student): bool
     {
-        return $user->hasAnyPermission('students.view');
+        if (! $user->hasAnyPermission('students.view')) {
+            return false;
+        }
+
+        // Ruled 2026-10-13: the college's desk is given the students related to that college, which also
+        // means it is not given the others. A `students` row names no program, so the relation is read
+        // through the enrollment or the application — see CollegeScope::holdsStudent.
+        return CollegeScope::holdsStudent($user, $student);
     }
 
     /**

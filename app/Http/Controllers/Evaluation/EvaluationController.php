@@ -31,6 +31,7 @@ use App\Models\Gradescale;
 use App\Models\Guardians;
 use App\Models\Religions;
 use App\Models\Shiftingrequests;
+use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
@@ -40,6 +41,7 @@ use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\CollegeScope;
 use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -69,7 +71,13 @@ class EvaluationController extends Controller
     {
         $this->authorize('viewAny', Enrollments::class);
 
-        $query = Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedByUser'])
+        // Ruled 2026-10-13: a college's department receives the enrollments of its own college. A desk
+        // belonging to no college (Registrar, Guidance, Accounting, the clinic) is bounded by nothing and
+        // keeps the whole queue, which is what the ruling says about those desks.
+        $query = CollegeScope::ofEnrollments(
+            Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedByUser']),
+            $request->user()
+        )
             // Item 8: enrollments returned by the Registrar land back on this
             // desk with a return reason, alongside fresh Pending records.
             ->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])
@@ -88,12 +96,17 @@ class EvaluationController extends Controller
             'enrollments' => $enrollments,
             'filters' => $request->only(['search']),
             'canIssueEnrollment' => $canIssue,
-            'returningStudents' => $canIssue ? $this->returningStudents() : [],
+            'returningStudents' => $canIssue ? $this->returningStudents($request->user()) : [],
             'terms' => $canIssue
                 ? Academicterms::with('academicYear:academicYearId,yearLabel')->orderByDesc('termId')
                     ->get(['termId', 'academicYearId', 'semester', 'startDate', 'endDate'])
                 : [],
-            'courses' => $canIssue ? Courses::orderBy('courseName')->get(['courseId', 'courseCode', 'courseName']) : [],
+            // The same rule the save asks, so the dropdown never offers a program this desk cannot enrol
+            // into (EvaluationPolicy::create).
+            'courses' => $canIssue
+                ? CollegeScope::ofCourses(Courses::orderBy('courseName'), $request->user())
+                    ->get(['courseId', 'courseCode', 'courseName'])
+                : [],
         ]);
     }
 
@@ -198,11 +211,11 @@ class EvaluationController extends Controller
      *
      * @return array<int, array<string, mixed>>
      */
-    private function returningStudents(): array
+    private function returningStudents(?Staffusers $desk): array
     {
         $notDropped = fn ($query) => $query->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value]);
 
-        $students = Students::whereHas('enrollments', $notDropped)
+        $students = CollegeScope::ofStudents(Students::whereHas('enrollments', $notDropped), $desk)
             ->with(['enrollments' => fn ($q) => $q->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
                 ->latest('termId')->limit(1)->with(['course:courseId,courseCode,courseName', 'major:majorId,majorName', 'term:termId,semester'])])
             ->orderBy('lastName')->orderBy('firstName')

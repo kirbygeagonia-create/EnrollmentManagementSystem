@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Students;
+use App\Support\CollegeScope;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,7 +20,9 @@ class StudentController extends Controller
     {
         $this->authorize('viewAny', Students::class);
 
-        $query = Students::query()
+        // Ruled 2026-10-13: the directory and the quick search answer to the same boundary as the policy
+        // on this file's `show`, so a desk is never offered a row its own screen then refuses.
+        $query = CollegeScope::ofStudents(Students::query(), $request->user())
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('lastName', 'like', "%{$search}%")
                     ->orWhere('firstName', 'like', "%{$search}%")
@@ -79,7 +82,10 @@ class StudentController extends Controller
             return response()->json(['results' => []]);
         }
 
-        $students = Students::with(['enrollments.course', 'enrollments.term'])
+        $students = CollegeScope::ofStudents(
+            Students::with(['enrollments.course', 'enrollments.term']),
+            $request->user()
+        )
             ->where(function ($sq) use ($search) {
                 $sq->where('lastName', 'like', "%{$search}%")
                     ->orWhere('firstName', 'like', "%{$search}%")

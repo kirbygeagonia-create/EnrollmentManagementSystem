@@ -71,7 +71,25 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
   SQLite suite depends on that escape hatch.
 - Record timestamps exist only on students, admissions, enrollments, payments, studentassessments,
-  studentclearances, clinicrecords and idrequests.
+  studentclearances, clinicrecords and idrequests — and on those eight the columns are snake_case
+  `created_at`/`updated_at`, measured on live `ems` and in the migrations. The audit-type tables
+  (`auditlogs`, `enrollmentstatushistory`) use camelCase `createdAt`/`changedAt`. Writing `createdAt`
+  into an `admissions` insert fails with "no column named createdAt"; the two namings coexist on purpose.
+- A staff account with a non-null `unitId` is **college-bound**, and `App\Support\CollegeScope` is the only
+  place that boundary is expressed: the policies ask `holds()` / `holdsStudent()`, every list the desk reads
+  goes through an `of*()` method, and a null `unitId` means bounded by nothing. That null is load-bearing —
+  `office4_head` holds 29 enrollments, 15 still in progress, across three colleges, so bounding it would
+  leave papers nobody could close; `office7_head` and the seeded instructors are unbounded for the same
+  kind of reason (the walkthrough is written against them). A record whose course names no college is *not*
+  the desk's, and the dropdown must be filtered by the same rule the policy asks, or the screen offers work
+  the save refuses.
+- In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
+  `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
+  "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
+  `exam.students`) are read with `->json()` as normal.
+- `abort(403, 'a reason')` does not reach the desk: `resources/views/errors/403.blade.php` interpolates
+  nothing, so the officer sees "Access denied" without the explanation. Where the *reason* is what the desk
+  needs, return a validation error (`withErrors`) — that path is what the toast and the inline list read.
 - Never assume an id from a seeder keyed by *name*. `StarterReferenceDataSeeder` does
   `firstOrCreate(['religionName' => …])`, so each id is whatever the table's `AUTO_INCREMENT` counter hands
   out — and a rolled-back insert does not rewind that counter, so a database the suite already ran against

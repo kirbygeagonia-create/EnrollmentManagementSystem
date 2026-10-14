@@ -10,6 +10,7 @@ use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Support\CollegeScope;
 
 class EvaluationPolicy
 {
@@ -26,7 +27,14 @@ class EvaluationPolicy
      */
     public function view(Staffusers $user, Enrollments $enrollment): bool
     {
-        return $user->hasPermissionTo('evaluation.view');
+        if (! $user->hasPermissionTo('evaluation.view')) {
+            return false;
+        }
+
+        // Ruled 2026-10-13: a college's department receives the students of its own college. The queue
+        // already hides the rest, and this is what stops the same row being reached by typing its id —
+        // a list the policy does not back is only a folded page, not a boundary.
+        return CollegeScope::holds($user, $enrollment->course?->unitId);
     }
 
     /**
@@ -37,6 +45,12 @@ class EvaluationPolicy
     public function create(Staffusers $user, Students $student, Courses $course): bool
     {
         if (! $user->hasPermissionTo('evaluation.create')) {
+            return false;
+        }
+
+        // The program decides the college, so the college is asked of the course being enrolled into —
+        // not of the desk's office, and not of the student, who has no college until this row exists.
+        if (! CollegeScope::holds($user, $course->unitId)) {
             return false;
         }
 

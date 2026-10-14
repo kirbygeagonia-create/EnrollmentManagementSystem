@@ -14,6 +14,7 @@ use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Students;
+use App\Support\CollegeScope;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -115,8 +116,12 @@ class ExamController extends Controller
         $courseId = $request->courseId;
         $termId = $request->termId;
 
-        // Course list: entrance-exam courses only.
-        $courses = Courses::where('requiresEntranceExam', true);
+        // Course list: entrance-exam courses only, and for a college's own desk only the programs of
+        // that college (ruled 2026-10-13 — the department is given its own students and applicants).
+        $courses = CollegeScope::ofCourses(
+            Courses::where('requiresEntranceExam', true),
+            $request->user()
+        );
 
         return Inertia::render('Exam/Create', [
             'courses' => $courses->get(['courseId', 'courseName', 'courseCode']),
@@ -152,6 +157,10 @@ class ExamController extends Controller
         ]);
 
         $course = Courses::find($request->courseId);
+
+        // The roster is asked for one program at a time, so the boundary is checked against that program
+        // rather than only filtering the picker — an empty list would read as "this college has nobody".
+        $this->refuseOtherCollege($request, $course);
 
         if ($type === ExamType::CourseSpecific && $course?->requiresEntranceExam) {
             // Item 4 — the passer transfer (BR9): these are the School Entrance
@@ -226,6 +235,23 @@ class ExamController extends Controller
         }
 
         return response()->json(['students' => $students]);
+    }
+
+    /**
+     * A desk bound to a college may not record or read another college's examination population.
+     *
+     * Ruled 2026-10-13: the department receives the students and applicants of its own college. Refused
+     * with the program named, because the screen reached this by a course id chosen from a picker that
+     * already hides the other colleges — arriving here means the id was typed, and a silent empty roster
+     * would tell the desk its college has nobody rather than that it asked for someone else's.
+     */
+    private function refuseOtherCollege(Request $request, ?Courses $course): void
+    {
+        abort_unless(
+            CollegeScope::holds($request->user(), $course?->unitId),
+            403,
+            "Program “{$course?->courseCode}” belongs to another college; a department records its own."
+        );
     }
 
     /**
@@ -307,6 +333,8 @@ class ExamController extends Controller
         ]);
 
         $course = Courses::findOrFail($validated['courseId']);
+        $this->refuseOtherCollege($request, $course);
+
         if (! $course->requiresEntranceExam && ! $course->requiresCourseSpecificExam) {
             return back()->withErrors(['courseId' => 'This course administers no entrance examination.']);
         }
