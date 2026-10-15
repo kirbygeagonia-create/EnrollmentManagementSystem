@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\Preflight;
 use Carbon\Carbon;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use PDO;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -301,5 +303,74 @@ class PreflightTest extends TestCase
         }
 
         $this->assertTrue(File::isDirectory($prints), 'The sample folder was not put back.');
+    }
+
+    #[Test]
+    public function a_green_clock_row_says_so_when_only_the_application_carries_the_zone(): void
+    {
+        // The third arm of the check, and the one the school's server will hit: clocks agree because
+        // config/database.php forces the session, while the server itself still defaults to something else.
+        // Nothing fails here, but the operator has to be told that a dump, a cron job or phpMyAdmin on that
+        // machine will stamp a different hour into the same zone-less DATETIME column.
+        $note = Preflight::zoneNote('+00:00', 'SYSTEM');
+
+        $this->assertStringContainsString("'s session is +00:00", $note);
+        $this->assertStringContainsString('defaults to SYSTEM', $note);
+        $this->assertStringContainsString('DEPLOYMENT.md §2', $note);
+        $this->assertStringContainsString('mysqldump', $note);
+    }
+
+    #[Test]
+    public function a_server_that_already_agrees_gets_no_note_and_a_zone_that_cannot_be_read_stays_silent(): void
+    {
+        // Both of these must return '' rather than a warning: the development box after the my.ini edit
+        // reports session and global identical, and a note on every healthy server is how a report learns
+        // its operator to skim it.
+        $this->assertSame('', Preflight::zoneNote('+00:00', '+00:00'));
+        $this->assertSame('', Preflight::zoneNote('', 'SYSTEM'), 'an unreadable session must not guess');
+        $this->assertSame('', Preflight::zoneNote('+00:00', ''), 'nor may an unreadable server default');
+    }
+
+    #[Test]
+    public function the_application_zone_is_still_utc_so_wiring_the_env_var_changed_nothing(): void
+    {
+        // DEPLOYMENT.md names APP_TIMEZONE as the knob; until now config/app.php ignored it. Reading the
+        // variable makes the document true, and this pins the other half: with neither .env nor
+        // .env.example setting it, the value is still UTC, which is what the owner ruled on 2026-10-14.
+        $this->assertSame('UTC', config('app.timezone'));
+        $this->assertSame('UTC', Carbon::now()->getTimezone()->getName());
+    }
+
+    #[Test]
+    public function the_connection_states_its_zone_and_an_empty_setting_drops_the_statement_instead_of_sending_it(): void
+    {
+        // Re-reading the config file is the only way to test this: the option is built once, at config
+        // load, from env(), and the connection the suite is already using cannot be reconfigured mid-run.
+        $options = function (): array {
+            return require base_path('config/database.php');
+        };
+
+        putenv('DB_SESSION_TIME_ZONE');
+        $byDefault = $options()['connections']['mysql']['options'];
+        $this->assertSame(
+            "SET time_zone = '+00:00'",
+            $byDefault[PDO::MYSQL_ATTR_INIT_COMMAND] ?? null,
+            'with nothing set, every connection must state the zone rather than inherit the server\'s');
+
+        // The escape hatch DEPLOYMENT.md §2 offers has to be a hatch. Measured first: env() answers '' for
+        // `DB_SESSION_TIME_ZONE=`, and `SET time_zone = ''` is not a no-op — MySQL rejects it, so the
+        // statement would fail *every* connection in the application instead of merely losing the setting.
+        putenv('DB_SESSION_TIME_ZONE=');
+        $declined = $options()['connections']['mysql']['options'];
+        $this->assertArrayNotHasKey(PDO::MYSQL_ATTR_INIT_COMMAND, $declined,
+            'an empty DB_SESSION_TIME_ZONE must remove the statement, not send an empty zone');
+
+        putenv('DB_SESSION_TIME_ZONE=+08:00');
+        $manila = $options()['connections']['mysql']['options'];
+        $this->assertSame("SET time_zone = '+08:00'", $manila[PDO::MYSQL_ATTR_INIT_COMMAND],
+            'a zone that is set for real still reaches the server');
+
+        // Leave the environment exactly as found, or a later test in this process connects in Manila.
+        putenv('DB_SESSION_TIME_ZONE');
     }
 }

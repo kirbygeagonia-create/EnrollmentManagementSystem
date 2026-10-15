@@ -63,9 +63,16 @@ return [
     | will be used by the PHP date and date-time functions. The timezone
     | is set to "UTC" by default as it is suitable for most use cases.
     |
+    | This was hardcoded 'UTC' while DEPLOYMENT.md §2 told the deployer to decide the zone with
+    | APP_TIMEZONE=Asia/Manila — an instruction that did nothing, the same kind of gap lane 24 found in
+    | §2's other two claims. Reading the variable makes the document true and changes no behaviour today:
+    | neither .env nor .env.example sets it, so the value is still UTC, which is the owner's ruling of
+    | 2026-10-14. If it is ever set, DB_SESSION_TIME_ZONE in config/database.php has to move with it, and
+    | `ems:preflight`'s "Clocks agree" row is what catches anyone who sets one and not the other.
+    |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

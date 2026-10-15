@@ -3,6 +3,16 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+// Ruled 2026-10-14: every connection states the zone it wants instead of inheriting whatever the server's OS
+// clock happens to be. The school's server may never get a `my.cnf` edit, and a plain DATETIME stores no
+// zone — so an inherited UTC-11 session silently decides what hour a desk reads on a row the application
+// stamped. The development box did exactly that until MySQL was restarted. Must match config/app.php's
+// timezone; `ems:preflight`'s "Clocks agree" row is what catches the two drifting apart, and it reports
+// whether the agreement comes from this line or from the server. Set DB_SESSION_TIME_ZONE= (empty) to drop
+// the statement and rely on my.cnf alone — an empty value must not reach MySQL, which rejects `''` and
+// would then fail every connection in the application with a syntax error at connect time.
+$sessionZone = trim((string) env('DB_SESSION_TIME_ZONE', '+00:00'));
+
 return [
 
     /*
@@ -61,6 +71,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_INIT_COMMAND => $sessionZone === '' ? null : "SET time_zone = '{$sessionZone}'",
             ]) : [],
         ],
 

@@ -92,15 +92,20 @@ Force HTTPS in the entry point (reverse proxy `X-Forwarded-Proto`, or
 `URL::forceScheme('https')` in `AppServiceProvider::boot` when
 `app()->isProduction()`).
 
-**Time zone: two processes write into these tables.** `config/app.php` carries `timezone => 'UTC'` while
-the school keeps Manila time (UTC+8), so a record made before 08:00 local is stored with the previous day
-and every printed timestamp runs eight hours behind the wall clock in the room. Whether to set
-`APP_TIMEZONE=Asia/Manila` is a decision to take deliberately, not one to inherit. The second half is not
-a decision: measured on the development box on 2026-10-12, PHP stamped `2026-10-13 05:32` while MySQL's
-`NOW()` answered `2026-10-12 18:32` for the same instant. The two epochs agree to the second — the clocks
-are fine — but the database session runs in another zone, and `auditlogs.createdAt` and
-`enrollmentstatushistory.changedAt` carried a MySQL `CURRENT_TIMESTAMP` default into plain DATETIME columns
-that store no zone. Whichever process stamps the row decides the hours a desk reads.
+**Time zone: two processes write into these tables.** `config/app.php` resolves
+`'timezone' => env('APP_TIMEZONE', 'UTC')` and nothing in `.env` or `.env.example` sets that variable, so the
+application runs in UTC while the school keeps Manila time (UTC+8) — a record made before 08:00 local is
+stored with the previous day and every printed timestamp runs eight hours behind the wall clock in the room.
+Whether to set `APP_TIMEZONE=Asia/Manila` is a decision to take deliberately, not one to inherit, and the
+owner has declined it twice (most recently 2026-10-14, with the state above recorded as a known condition
+rather than a defect). Until 2026-10-14 the variable did nothing at all: the config line was the literal
+`'UTC'`, so this paragraph's own instruction could not be followed — the same species of gap as the two §2
+claims that turned out to be false. The second half is not a decision: measured on the development box on
+2026-10-12, PHP stamped `2026-10-13 05:32` while MySQL's `NOW()` answered `2026-10-12 18:32` for the same
+instant. The two epochs agree to the second — the clocks are fine — but the database session runs in another
+zone, and `auditlogs.createdAt` and `enrollmentstatushistory.changedAt` carried a MySQL `CURRENT_TIMESTAMP`
+default into plain DATETIME columns that store no zone. Whichever process stamps the row decides the hours a
+desk reads.
 
 **Ruled 2026-10-13: match the database to the app, and take the defaults away.** The repository
 half is in the repository: `auditlogs.createdAt` and `enrollmentstatushistory.changedAt` were DATETIME
@@ -134,13 +139,33 @@ stamp`. Before the restart, the same command had reported PHP writing `2026-10-1
 database's `2026-10-13 21:53:11`, eleven hours apart, so the row is what distinguishes a config file that
 *contains* a setting from a server that is *running* with it.
 
+**Ruled 2026-10-14, in addition: the application forces its own connections.** `config/database.php` sets
+`PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+00:00'"` from `DB_SESSION_TIME_ZONE`, so every connection
+Laravel opens states the zone instead of inheriting the operating system's — which matters because the school's
+server may never get a `my.cnf` edit, and a DATETIME stores no zone to fall back on. Proven rather than
+assumed: with `DB_SESSION_TIME_ZONE='+07:00'` the app's own session moved to `+07:00` while
+`@@global.time_zone` stayed `+00:00`, and `NOW()` moved with it. Three consequences to keep in view:
+
+- **This covers the application's clients only.** A `mysqldump`, a cron job, phpMyAdmin or the next
+  developer's `tinker` does not carry the init command and still stamps the server's own hour into the same
+  column. The `my.cnf` line below is therefore not made redundant by this — it is the fix, and forcing is the
+  safety net.
+- **`ems:preflight`'s "Clocks agree" would now pass on an unconfigured server**, because the app agrees with
+  itself. So the row carries a note when the session and the server default differ, naming both and the
+  clients left outside it; a check that can only be red or silent is a check an operator learns to skim.
+- **`DB_SESSION_TIME_ZONE=` (empty) turns the forcing off**, and it does so by removing the statement rather
+  than sending an empty zone. The second half is not pedantry: `env()` answers `''` for an empty variable, and
+  MySQL rejects `SET time_zone = ''` — so the obvious way to write this switch would have failed *every*
+  connection in the application instead of merely losing the setting. Both sides are pinned by
+  `tests/Feature/Console/PreflightTest.php`, and the empty-value case was proved by removing the guard and
+  watching that test go red.
+
+If `APP_TIMEZONE` is ever set, `DB_SESSION_TIME_ZONE` has to move with it, and `preflight` is what catches
+anyone who sets one and not the other.
+
 **Still owed: the school's server.** It needs the same line in its own `my.cnf` (`[mysqld]`) and a restart,
-or `SET GLOBAL time_zone='+00:00'` as a stopgap that dies on the next start. Until then §8 step 1 fails
-there with `Clocks agree — FAIL`, which is the check doing its job rather than a new problem. Note also
-what the two sides now agree *on*: `config/app.php` still carries `timezone => 'UTC'`, so records are stamped
-in UTC, eight hours behind the wall clock in the room — `DEPLOYMENT.md` §2 above explains why moving to
-`APP_TIMEZONE=Asia/Manila` is a ruling to take deliberately rather than a setting to inherit, and the owner
-has not taken it yet.
+or `SET GLOBAL time_zone='+00:00'` as a stopgap that dies on the next start. Until then, the `Clocks agree`
+row there will read OK *with* the note above — the note is the thing to act on, not the colour of the line.
 
 ## 3. Install & migrate
 
@@ -323,8 +348,11 @@ Do not merge with red CI.
 not stamp the same moment two different ways, and `Application key` and `Served folder`, the two
 rows that check the routes nobody logs in to use (§2). `Clocks agree` is the one that reports whether
 the §2 ruling is actually in force on this machine: it prints the string PHP writes and the string the
-database writes for the same instant, so on a server where MySQL was never told the zone, step 1 fails
-and says so instead of the audit trail quietly disagreeing with itself.
+database writes for the same instant. Read the *note*, not only the colour — since 2026-10-14 the
+application forces its own session zone, so a server nobody configured still comes up OK, and the line
+then says `this connection's session is X while the server defaults to Y`. That sentence is the one to
+act on: it means `mysqldump`, cron and phpMyAdmin are stamping Y. A plain FAIL means `APP_TIMEZONE` and
+`DB_SESSION_TIME_ZONE` were set apart from each other.
 2. `/up` returns 200 (health route).
 3. `/register` returns 404 (self-registration disabled).
 4. Login as the SysAdmin from §4 works over HTTPS; session cookie has `Secure`.

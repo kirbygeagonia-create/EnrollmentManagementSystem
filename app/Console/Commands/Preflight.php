@@ -236,7 +236,22 @@ class Preflight extends Command
         $gap = Carbon::parse($dbStamp)->diffInSeconds(Carbon::parse($phpStamp), false);
 
         if (abs($gap) <= 300) {
-            return ['Clocks agree', 'OK', 'PHP and '.($connection->getDriverName()).' write the same stamp: '.$phpStamp];
+            // Agreeing is not the same as being configured. `config/database.php` now forces the session
+            // zone on every connection, so this row would pass on a server whose own time zone is wrong —
+            // the exact situation that would otherwise never be reported. Read the server's answer and say
+            // which of the two is holding the line.
+            $from = '';
+
+            if ($connection->getDriverName() !== 'sqlite') {
+                try {
+                    $zones = (array) $connection->selectOne('SELECT @@session.time_zone AS s, @@global.time_zone AS g');
+                    $from = self::zoneNote((string) ($zones['s'] ?? ''), (string) ($zones['g'] ?? ''));
+                } catch (\Throwable $e) {
+                    $from = ' (the server zone could not be read: '.str($e->getMessage())->limit(40).')';
+                }
+            }
+
+            return ['Clocks agree', 'OK', 'PHP and '.($connection->getDriverName()).' write the same stamp: '.$phpStamp.$from];
         }
 
         return [
@@ -250,6 +265,33 @@ class Preflight extends Command
                 (string) config('app.timezone')
             ),
         ];
+    }
+
+    /**
+     * Say what the agreement is resting on, because agreeing is not the same as being configured.
+     *
+     * `config/database.php` forces the session zone on every MySQL connection the application opens, so the
+     * "Clocks agree" row would pass on a server whose own zone is still the operating system's. That is the
+     * situation this box was in until 2026-10-14, and it is the one the school's server will arrive with:
+     * the app reads `now()` in UTC, and a `mysqldump`, a cron job, a phpMyAdmin window or the next
+     * developer's `tinker` connects with no such forcing and stamps a different hour into the same
+     * zone-less DATETIME column. So when the session and the server default disagree, say so on the line
+     * that is otherwise green — a check that can only be red or silent is a check that gets ignored.
+     *
+     * Compared from what the server reports rather than from `env()`, because under `config:cache` an
+     * `env()` call in a command returns null and the note would describe a setting that is not in force.
+     *
+     * @return string the parenthetical to append, or '' when the two already agree
+     */
+    public static function zoneNote(string $session, string $global): string
+    {
+        if ($session === '' || $global === '' || $session === $global) {
+            return '';
+        }
+
+        return " (this connection's session is {$session} while the server defaults to {$global}"
+            .' — anything that connects without the application (mysqldump, a cron job, phpMyAdmin, tinker)'
+            .' stamps a different hour; set default-time-zone per DEPLOYMENT.md §2)';
     }
 
     /**
