@@ -35,6 +35,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 
 ## Working with the live `ems` database
 
+- **Never clone a database by editing a mysqldump with `sed`.** With `--databases --add-drop-database`,
+  mysqldump emits the drop as an *executable version comment* — `/*!40000 DROP DATABASE IF EXISTS `ems`*/;` —
+  so `grep '^DROP DATABASE'` finds nothing and it still runs. Rewriting only the `CREATE DATABASE` and `USE`
+  lines to retarget a dump leaves a live drop of the **source** database in the file you are about to pipe into
+  `mysql`. This destroyed live `ems` on 2026-10-14; it was restored from the dump taken seconds earlier and
+  verified row-by-row (30 enrollments, the #89 credit split, 157 boxes, 3,348 audit rows), so nothing was
+  lost — but only because the dump existed. Clone instead by creating the target first and piping
+  (`mysqldump --no-create-info --no-create-db src | mysql target`), or hand-write the `CREATE`/`USE` preamble.
+  And after any clone, verify counts **in the target**, then confirm the source still exists.
 - Dump before every live write: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-<what>-<date>.sql`,
   then verify the file landed and contains the table you are about to change.
 - `php artisan db:seed --class=RbacSeeder` prunes permissions the seeder no longer declares, so
