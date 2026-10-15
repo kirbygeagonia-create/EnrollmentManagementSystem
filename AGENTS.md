@@ -140,18 +140,27 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  107 symbol/range pairs inside 665 cited ranges) and is what found the five drifted citations pass 117 fixed:
-  for each citation it takes the construct the prose names and asks whether that name lives in the cited span
-  or encloses it. Read it as a **queue, not a verdict** — six flag classes are known noise and are listed in
-  its own header (`OfficeId::Clinic` on a line whose whole point is that it says `11`; `Foo::class`; a
-  framework verb like `array_values`; two ranges glossed in prose order; a label across a semicolon;
-  `Payments::held()` landing on the accounting range its clause opened with). The attribution rule is the
-  delicate part: a name whose gap to the next range is short and holds no comma, period or closing paren
-  labels the range AFTER it (`signStepByOffice() :289-305`), and anything else labels the range BEFORE it
-  (`:748-756 builds each line from ProvisionalClearanceRequirements::NAMES`) — plain nearest-distance hung
-  `NAMES` on `:62-104` across a comma and invented two document defects that did not exist. Run it after the
-  line sweep on any batch that moves lines, and re-prove it with a planted moved-range
-  (`mutate-lane32-sweep.php`) before trusting its silence: a checker that cannot fail has checked nothing.
+  107 symbol/range pairs inside 665 cited ranges). It takes the construct the prose *names* and asks whether
+  that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
+  then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
+  Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
+  the middle of another method (`EvaluationController.php:945-993` for `confirmClearance()`, which is 958-999).
+  **A flag that looks like noise must be measured before it is dismissed** — the Clinic item looked like a
+  case-sensitivity artifact and was actually the document asserting a bare integer `11` that the code stopped
+  writing on 2026-10-01. Four flag classes remain after that cleanup, all verified by hand: two ranges glossed
+  in prose order (`:30 and :49 (ChromiumLocator::locate, then setChromePath)`); a label whose nearest range is
+  on the other side of a comma or semicolon (`Payments::held()` landing on the accounting range its clause
+  opened with; `recordIssue()` landing on a controller action, while its own `PrintService.php:115` sits later
+  in the same sentence); and a name that is not this file's construct at all.
+- The attribution rule is the delicate part, and it took three attempts. A name labels the range AFTER it when
+  the gap is short and clean (`signStepByOffice() :289-305`, `recordIssue() at :115`) **or** when the name
+  opens a parenthesis that the range sits inside (`confirmClearance() records the act ( :958-999 , permission
+  … )`); otherwise it labels the range BEFORE it (`:748-756 builds each line from
+  ProvisionalClearanceRequirements::NAMES`). Plain nearest-distance hung `NAMES` on `:62-104` across a comma;
+  "short gap only" missed the parenthetical and kept flagging a citation that was correct. Run the sweep after
+  the line sweep on any batch that moves lines, and re-prove it with planted moved-ranges
+  (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
+  silence: a checker that cannot fail has checked nothing.
 - A staff account's Spatie roles come from its `role` enum through `RbacSeeder::assignDeskRolesFromEnums()`.
   Any seeder that creates accounts must call it afterwards: §3 and CI seed `db:seed` *before*
   `DevReferenceDataSeeder`, and measured on a fresh database that order left **10 of 17 accounts with no
