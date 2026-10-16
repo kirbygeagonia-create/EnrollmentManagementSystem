@@ -144,7 +144,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
   Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
-  the middle of another method (`EvaluationController.php:945-993` for `confirmClearance()`, which is 958-999).
+  the middle of another method — the range in both places opened on a blank line of that controller and ended
+  six lines short of `confirmClearance()`, which is 958-999; both were re-pointed. (Quoting the broken range as
+  Quoting the broken range as a live citation here would have made this file carry the false pointer it warns
+  about — and did, until
+  `repo-file-line-citations.php` read this paragraph and flagged it.)
   **A flag that looks like noise must be measured before it is dismissed** — the Clinic item looked like a
   case-sensitivity artifact and was actually the document asserting a bare integer `11` that the code stopped
   writing on 2026-10-01. Four flag classes remain after that cleanup, all verified by hand: two ranges glossed
@@ -161,6 +165,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the line sweep on any batch that moves lines, and re-prove it with planted moved-ranges
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
+- The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 838 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 90 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 214 references PHP comments and the markdown files
+  point into the document, the acceptance script and the audit file — three separate numbering systems; and
+  `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
+  walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
+  `…:945-993` written while describing it was flagged a minute later — a citation-shaped token is a
+  citation, even in prose about citations). Three citation forms mean
+  three different things and the rules were written from the forms measured in the text: "§28 G-9" claims
+  where the row lives, "(§12.5, G-3)" is the behaviour-then-finding convention and may cross chapters, and
+  §19.3 is titled after its own finding. All three were proved by planted mutants — `mutate-lane37-sweep.php`
+  on a scratch copy, `mutate-lane37b-sweep.php` which plants defects in the real tree and restores it
+  byte-for-byte — before their silence was believed. What none of them can check is whether a citation is
+  about the right *subject*: §28 G-9 and §25 P-14 both exist and both resolve, and only reading caught the
+  mix-up. So: a pointer into another document names that document ("§14R.2 of the acceptance script"), and a
+  citation whose subject is a finding you have not opened in the register is worth reading once, not trusting.
 - A `§NN <letter>-<number>` reference is a pointer into one of the document's registers, and the ids repeat
   across chapters, so **reading the row before citing it is not optional**. §28 G-9 is "the demo term offered no
   curriculum subject at the levels the students sat"; the print-log NULL limit that the record-state audit
@@ -189,8 +210,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `:1518`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
   nothing, so the retirement looked like a missing year to be refilled, and `$completeWorkflow()` signed every
   box on the way. (Measured 2026-10-15: the seat guard is
-  `tools/seed_full_demo_pipeline.php:1589` and the record it seats at `:1595` — the file grew by half a hundred
-  lines that day, so re-measure before repeating those numbers.) The fix was in the generator —
+  `tools/seed_full_demo_pipeline.php:1590` and the record it seats at `:1596` — the file has grown twice today,
+  so re-measure before repeating those numbers.) The fix was in the generator —
   `attest_completed_desks()` now writes the act behind each
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
   dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch

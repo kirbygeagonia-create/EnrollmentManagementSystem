@@ -364,8 +364,9 @@ function demo_face_photo(string $slug): string {
  * Write the two acts behind the boxes a completed workflow claims to have signed.
  *
  * `$completeWorkflow()` marks every box completed, and two of those signatures are not strokes of a pen:
- * recording the health assessment IS the Clinic box's signature (§14R.2) and validating the card request IS
- * the ID box's (§16). Until the owner's ruling of 2026-10-15 the tool signed both and wrote neither, so every
+ * recording the health assessment IS the Clinic box's signature (§14R.2 of the acceptance script) and
+ * validating the card request IS the ID box's (§16). Until the owner's ruling of 2026-10-15 the tool signed
+ * both and wrote neither, so every
  * record it seats as a completed year behind a returning student arrived holding two boxes no desk ever acted
  * on — the state `ems:audit:record-states` reports, on rows only this file writes. A tool that signs a desk's
  * box writes that desk's record.
@@ -1637,8 +1638,8 @@ if ($levelEvidence === 0) {
 // the report quiet for good rather than for one run.
 //
 // Scoped to records on a term other than the demo term on purpose: a current-term record whose Clinic box is
-// still unsigned is the desk's own work (§14R.2 walks it), and seating the assessment here would be the
-// invented past the owner refused on 2026-10-12.
+// still unsigned is the desk's own work (§14R.2 of the acceptance script walks it), and seating the
+// assessment here would be the invented past the owner refused on 2026-10-12.
 $staleSeats = Enrollments::query()
     ->where('enrollmentType', EnrollmentType::Old->value)
     ->where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
@@ -2293,12 +2294,14 @@ echo "\n";
 // -------------------------------------------------------------
 // 10h. ID OFFICE — the last box of the seven
 // -------------------------------------------------------------
-// Recording the assessment IS the signature on the Clinic box (§14R.2), so a demo record whose
-// Clinic box reads completed must hold the row that signed it. Two of the three seats below had
-// the signature and no record — the state no desk can produce, which ems:audit:record-states now
-// reports as a note. Measured on live ems 2026-10-12; the owner ruled to repair the seats a desk
-// is told to walk and to leave the older-term records alone as history rather than invent them
-// a clinical past.
+// Recording the assessment IS the signature on the Clinic box (§14R.2 of the acceptance script), so a demo
+// record whose Clinic box reads completed must hold the row that signed it. Two of the three seats below
+// had the signature and no record — the state no desk can produce, which ems:audit:record-states now
+// reports. Measured on live ems 2026-10-12; the owner ruled to repair the seats a desk is told to walk
+// and to leave the older-term records alone rather than invent them a clinical past. The older-term rows
+// still in that shape were retired on 2026-10-15 and the seeder was changed the same day to attest every
+// box it signs (`attest_completed_desks`), which is why this helper is no longer the only place the act
+// gets written.
 $attestClinic = function (int $enrollmentId, float $heightCm, float $weightKg, string $bloodPressure) use ($deskSigners): void {
     DB::table('clinicrecords')->updateOrInsert(
         ['enrollmentId' => $enrollmentId],

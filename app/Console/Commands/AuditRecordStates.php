@@ -101,7 +101,7 @@ class AuditRecordStates extends Command
             'A Clinic box signed with no health assessment behind it' => [
                 'count' => $this->clinicBoxWithoutRecord(),
                 'severity' => 'decision',
-                'why' => 'Recording the assessment is the signature on this box (§14R.2), so no desk could leave it signed with nothing on file. The seven past-term records that sat here were retired on 2026-10-15 and the demo seeder now writes the assessment behind every box it signs, so a non-zero count names a live box no desk will close — a dropped enrollment is excluded above, because a retired record is not work.',
+                'why' => 'Recording the assessment is the signature on this box (§14R.2 of the acceptance script), so no desk could leave it signed with nothing on file. The seven past-term records that sat here were retired on 2026-10-15 and the demo seeder now writes the assessment behind every box it signs, so a non-zero count names a live box no desk will close — a dropped enrollment is excluded above, because a retired record is not work.',
             ],
             'An ID box signed with no validated request behind it' => [
                 'count' => $this->idBoxWithoutValidatedRequest(),
