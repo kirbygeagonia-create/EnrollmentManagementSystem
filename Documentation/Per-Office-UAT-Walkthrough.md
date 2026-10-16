@@ -50,7 +50,7 @@ perform — the same failure as a row whose record is missing.)_
 | 2.1 | Laragon → **Start All**, confirm Apache and MySQL are running | `http://localhost:8080` serves the app | ☐ |
 | 2.2 | From the project folder: `php tools/seed_full_demo_pipeline.php` | Ends with `DEMO-DAY DATASET FULLY SEEDED!` and prints **no line starting with `!`** other than the one 2.4a allows for | ☐ |
 | 2.3 | Read the counter block at the end of that run | `Evaluation — level the record does not support 0`, `Clearance — slips with no enrollment in the period term 0`, `Ledger — enrolled with no fee sheet 0`, `Ledger — past Accounting but still owes 0`, `Ledger — receipts exceeding the assessment 0` | ☐ |
-| 2.4 | Two counters are **expected to be non-zero** (they are demo states, not defects) | `Evaluation — returning records not yet confirmed 3`, `Print trail — issue rows carrying no key at all 21` | ☐ |
+| 2.4 | One counter is **expected to be non-zero** (a demo state, not a defect); one that used to be now reads 0 | `Evaluation — returning records not yet confirmed 3`. `Print trail — issue rows carrying no key at all` is **0**: it held 21 legacy rows through the 2026-10-12 walk, and the owner ruled them pruned on 2026-10-15 (§18 item 3 below), so a non-zero count there today is a print logged without a key, not demo history | ☐ |
 | 2.4a | One `!` line is **expected once §15.1 has been performed** | `! ID Desk: no open ID seat left …` — the pipeline advances one record to the ID box with no request so row 15.1 has something to act on, and a desk opening that request consumes it. The seat is not re-created on a later run, because inventing a second one would silently discard whatever the first desk filed. Re-performing 15.1 needs another enrollment brought to that box (or a restore of the 2.7 dump) | ☐ |
 | 2.5 | `php artisan ems:print-fidelity` | `Done: 8/8 rendered in storage/app/prints/fidelity` | ☐ |
 | 2.6 | `php artisan test tests/Feature/E2E` | 4 passed. These run against the live `ems` database, so they prove the dataset supports a full walkthrough end to end | ☐ |
@@ -356,8 +356,8 @@ Path: **Clearance** (`/clearance`), windows at `/clearance/periods`, slips at
 | 11.5 | Record the desk receipt on a fully approved slip | `overallStatus = approved` with `receivedBy` — the receipt is the act that makes the clearance approved | | ☐ |
 | 11.6 | **Close** the window while any clearance is still pending | **Refused with the count named** (ruling 16). Rico Navarro's slip 42 is the pending one that blocks this | | ☐ |
 | 11.7 | **Extend** the window (`PATCH /clearance/periods/{period}/extend`) | Status `extended`, and the extension is visible to every reader: slips are still accepted, and the Registrar still treats clearance season as live | | ☐ |
-| 11.8 | **Replace a lost slip** (`POST /clearance/slip/replace`) as `office2_head`, then as `office1_head` | Both are accepted — Accounting and the Registrar perform this act; the replacement fee is filed as the OR, and the reissued slip gets a fresh number that continues **past** the unattributable pile | | ☐ |
-| 11.9 | Print the replacement slip | Number is unique against every other printed slip of that type, including the 21 legacy rows that carry no key | | ☐ |
+| 11.8 | **Replace a lost slip** (`POST /clearance/slip/replace`) as `office2_head`, then as `office1_head` | Both are accepted — Accounting and the Registrar perform this act; the replacement fee is filed as the OR, and the reissued slip gets a fresh number that climbs **past** every number that paper has ever carried | | ☐ |
+| 11.9 | Print the replacement slip | Number is unique against every other printed slip of that type, including a row that carries no key at all — the 21 such rows live `ems` held were pruned 2026-10-15, and the sequence still steps over any that appear | | ☐ |
 
 **Refusal checks**
 
@@ -530,12 +530,18 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    program, the year level or the term — `enrollment-form.blade.php` prints student type and
    standing and no academic period at all. That is finding **P-2**, still open: report a missing
    field on that paper as P-2, not as a broken print action.
-3. **21 print rows carry no key at all** (19 legacy clearanceSlip rows and 2 blockSchedule
-   rows). They are kept untouched by ruling 6, and the sequence deliberately steps over the
-   numbers they hold rather than reusing them.
-4. **`documentprintlog` still has no unique index over (enrollmentId, documentType,
-   documentNumber)** for the NULL-keyed rows; MySQL treats NULLs as distinct, so the guarantee
-   for new prints is the sequencing rule, not the schema.
+3. **Print rows that carry no key at all — retired, so state it as retired.** On the day this script was
+   written, 21 of them did (19 legacy clearanceSlip rows and 2 blockSchedule rows). The owner ruled them
+   pruned on 2026-10-15 and each was written to a manifest before it was deleted, so a walk should find
+   none; the sequence still steps over any number such a row holds rather than reusing it, which is what
+   §25 P-14 asked for. If `php artisan ems:audit:record-states` names a non-zero count there, that is a
+   print logged without a key — report it as a defect, not as legacy data.
+4. **The print log's unique index sees only half the table.** `uq_documentprintlog_issue` is unique over
+   (enrollmentId, documentType, documentNumber) — measured on the server — so it governs the
+   enrollment-scoped papers, but MySQL treats NULLs as distinct, which puts a key-less row beyond it, and
+   the student- and block-scoped groups have no unique index at all. For those three the guarantee is
+   `PrintService::recordIssue()` and its row lock, not the schema. (This row used to say the index did not
+   exist; it was added with the print keys in the ruling 6 batch and the note was never re-timed.)
 5. **Demo data, not real records.** Real Registrar spreadsheets replace §4's table; re-run this
    script against the migrated data before accepting the system for production.
 6. **Notifications depend on a worker nobody has confirmed is installed.** The two listeners that   write them (`SendEnrollmentNotification`, `SendWorkflowNotification`) are queued, the queue
@@ -554,17 +560,20 @@ Sign-off: ____________ (role ____________) date ________ result ______ findings 
    record a general pass for a student under one program and open their application to another — the
    second one still refuses. **Worth measuring before you rely on it:** on the demo install no student
    holds a result for more than one course, so no applicant's outcome changed when the rule tightened.
-8. **A signed Clinic or ID box can still sit with no record behind it on the demo set — seven
-   past-term loads and one record left that way on purpose.** Seven enrollments (595, 597, 654-658 —
-   Maria Reyes, Rico Navarro, Liza Bautista, Rafael Cruz, Marco Villanueva, Iñigo Barrameda, Relinda
-   Sabla on their earlier terms) carry a completed Clinic box and an ID box with no request, because
-   the pipeline walked them through both boxes before it was made to write the assessment and the
-   validation that sign them; the two live ID seats and Danica Sotto were corrected on 2026-10-12, so
-   no record a desk is told to walk is in that shape. The eighth signed ID box with no request is
-   **enrollment 53, Juan Dela Cruz, current term — and it stays that way by ruling**: its contradictory
-   request row was deleted 2026-10-11 and its signature left standing, because un-signing a box
-   rewrites an audit trail. `ems:audit:record-states` counts all of them as `note` lines and stays
-   green; a report tool must not undo a ruling. Treat one of these on a **different** current-term
-   record as a finding, and these as limits.
+8. **A signed Clinic or ID box with no record behind it — closed on the demo set, and kept only for
+   enrollment 53.** This was a standing limit: seven enrollments (595, 597, 654-658 — Maria Reyes, Rico
+   Navarro, Liza Bautista, Rafael Cruz, Marco Villanueva, Iñigo Barrameda, Relinda Sabla on their earlier
+   terms) carried a completed Clinic box and an ID box with no request, because the pipeline walked them
+   through both boxes before it was made to write the assessment and the validation that sign them. Both
+   halves were closed on 2026-10-15, and the second is the one that matters: the seven were retired through
+   the Registrar's own drop, and **the next run of the pipeline re-created five of them inside the hour** —
+   those rows are the seeder's own year-level evidence (G-2), so dropping one only frees the seat it checks
+   before seating it. The seeder now writes the act behind every box it signs (`attest_completed_desks`,
+   dated into the record's own term rather than the run), so `php artisan ems:audit:record-states` reads 0
+   for the Clinic rule and 1 for the ID rule. The one it names is **enrollment 53, Juan Dela Cruz, current
+   term — and it stays that way by ruling**: its contradictory request row was deleted 2026-10-11 and its
+   signature left standing, because un-signing a box rewrites an audit trail. A report tool must not undo a
+   ruling. Treat one of these on **any other** record as a finding now — there is no demo state left to
+   explain it away, and the print rule (`§25 P-14`) fails the run outright rather than noting.
 
 _(Print scope is no longer a known limit: ruled and built 2026-10-06, and tested at §12R.8.)_

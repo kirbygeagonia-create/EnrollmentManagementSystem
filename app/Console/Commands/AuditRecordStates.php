@@ -91,13 +91,17 @@ class AuditRecordStates extends Command
             ],
             'A printed paper attributable to no enrollment, student or block' => [
                 'count' => $this->unattributablePrintRows(),
-                'severity' => 'decision',
-                'why' => 'Docx §28 G-9: MySQL treats a NULL enrollment as distinct, so the issue sequence cannot reject a repeat for these rows. Pruning or attributing them is the owner\'s call, not a code defect.',
+                // Promoted from `decision` on 2026-10-15, after the owner's ruling on the 21 legacy rows. It
+                // was only ever a note because somebody had to decide whether to prune or attribute them; the
+                // decision is made, so a key-less row left in the table can only be a write that logged a
+                // paper without any of its three keys.
+                'severity' => 'impossible',
+                'why' => 'Docx §25 P-14: MySQL treats a NULL enrollment as distinct, so the unique index cannot reject a repeat for a key-less row and no scope counts it. No paper this application prints leaves all three keys NULL — a slip carries its student, a roster its block, everything else its enrollment — so this count is a write path, not legacy data. The 21 rows live `ems` carried were pruned under an owner ruling on 2026-10-15.',
             ],
             'A Clinic box signed with no health assessment behind it' => [
                 'count' => $this->clinicBoxWithoutRecord(),
                 'severity' => 'decision',
-                'why' => 'Recording the assessment is the signature on this box (§14R.2), so no desk could leave it signed with nothing on file. The records still in this state are older-term demo history seated before that rule was written; the owner ruled on 2026-10-12 to leave them rather than invent a clinic past.',
+                'why' => 'Recording the assessment is the signature on this box (§14R.2), so no desk could leave it signed with nothing on file. The seven past-term records that sat here were retired on 2026-10-15 and the demo seeder now writes the assessment behind every box it signs, so a non-zero count names a live box no desk will close — a dropped enrollment is excluded above, because a retired record is not work.',
             ],
             'An ID box signed with no validated request behind it' => [
                 'count' => $this->idBoxWithoutValidatedRequest(),
@@ -265,6 +269,11 @@ class AuditRecordStates extends Command
         return Enrollments::whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
             ->where('officeId', OfficeId::Clinic->value)
             ->where('stepStatus', WorkflowStepStatus::Completed->value))
+            // A retired enrollment's bare box is history, not a decision waiting to be made: no desk will ever
+            // act on it again, so counting it keeps the note non-zero forever and teaches the operator to
+            // skim the one number that is meant to be acted on. Lane 36 found this on a rehearsal clone —
+            // seven enrollments were dropped and the count stayed 7.
+            ->where('enrollmentStatus', '!=', EnrollmentStatus::Dropped->value)
             ->whereDoesntHave('clinicrecords')
             ->count();
     }
@@ -274,6 +283,7 @@ class AuditRecordStates extends Command
         return Enrollments::whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
             ->where('officeId', OfficeId::IdOffice->value)
             ->where('stepStatus', WorkflowStepStatus::Completed->value))
+            ->where('enrollmentStatus', '!=', EnrollmentStatus::Dropped->value)
             ->whereDoesntHave('idrequests', fn ($q) => $q->where('status', IdRequestStatus::Validated))
             ->count();
     }

@@ -104,13 +104,13 @@ class PrintService
      * (`uq_documentprintlog_issue`); the student- and block-scoped groups are held to
      * their sequence by the row lock below, since MySQL compares NULL keys as unrelated.
      *
-     * A number already printed by an unattributable row is skipped. Those rows (the 21
-     * on live `ems`, kept untouched by ruling 6) carry no key, so no scope counts them
-     * and no index can compare against them — without the skip, a fresh student's second
-     * slip would be issued the same number as a historical one and the ledger would hold
-     * the same document number twice. The skip is the only half of that collision this
-     * can fix without rewriting history: copies already printed keep the number they were
-     * issued with.
+     * A number already printed by an unattributable row is skipped. Those rows carry no key, so no scope
+     * counts them and no index can compare against them — without the skip, a fresh student's second slip
+     * would be issued the same number as a historical one and the ledger would hold that number twice.
+     * The skip is the only half of that collision this can fix without rewriting history: copies already
+     * printed keep the number they were issued with. Live `ems` held 21 such rows until an owner ruling on
+     * 2026-10-15 pruned them behind a manifest; the skip stays, because a key-less row means a print was
+     * logged without a key — a write path to fix, not a past that has closed.
      */
     public function recordIssue(
         ?int $enrollmentId,

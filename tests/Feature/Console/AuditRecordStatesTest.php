@@ -3,6 +3,7 @@
 namespace Tests\Feature\Console;
 
 use App\Enums\ClinicRecordStatus;
+use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
 use App\Enums\StudentType;
@@ -331,6 +332,36 @@ class AuditRecordStatesTest extends TestCase
     }
 
     #[Test]
+    public function a_retired_enrollment_stops_counting_towards_the_two_ruled_notes(): void
+    {
+        // Lane 36 (2026-10-15). The record-state review found the seven enrollments behind both notes are
+        // SUPERSEDED copies — each student already holds a later enrollment — and the owner ruled to retire
+        // them through the Registrar's own drop. Rehearsing that on a clone showed the report did not move at
+        // all: both rules asked only "completed box, no record", never "is this enrollment still live?", so a
+        // decision the owner took would have changed the data and left the number identical. Retired rows stop
+        // counting here; the same fixture, left `enrolled`, still counts — asserted in the test above, so
+        // neither half of the rule can quietly go dead.
+        Clinicrecords::where('enrollmentId', $this->enrollment->enrollmentId)->delete();
+
+        Workflowsteps::where('officeId', OfficeId::IdOffice->value)
+            ->update([
+                'stepStatus' => WorkflowStepStatus::Completed->value,
+                'signedBy' => $this->signer->userId,
+                'signedDate' => now(),
+            ]);
+        Idrequests::where('enrollmentId', $this->enrollment->enrollmentId)->delete();
+        $this->enrollment->fresh()->enrollmentworkflow->update(['workflowStatus' => WorkflowStatus::Completed]);
+
+        $this->enrollment->fresh()->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+
+        $this->assertFlagged('ok', 'A Clinic box signed with no health assessment behind it');
+        $this->assertFlagged('ok', 'An ID box signed with no validated request behind it');
+        $this->assertStringNotContainsString('FAIL', $this->commandOutput());
+    }
+
+    #[Test]
     public function a_box_whose_signature_and_status_disagree_is_reported_in_both_directions(): void
     {
         $clinic = Workflowsteps::where('officeId', OfficeId::Clinic->value)->first();
@@ -417,8 +448,14 @@ class AuditRecordStatesTest extends TestCase
     }
 
     #[Test]
-    public function unattributable_printed_papers_are_noted_and_do_not_fail_the_run(): void
+    public function an_unattributable_printed_paper_is_impossible_and_fails_the_run(): void
     {
+        // Lane 36 (2026-10-15), after the owner's ruling on the 21 rows. This rule was a `decision` for one
+        // reason: the rows existed, and deleting them or attributing them was somebody's call rather than a
+        // code defect. That call has been made, the rows are behind a manifest, and what is left is the write
+        // path — no paper this application can print leaves all three keys NULL (a slip carries its student, a
+        // roster its block, everything else its enrollment), so a key-less row now belongs in the same
+        // category as the other nine rules: a state the application is supposed to prevent.
         Documentprintlog::insert([
             'documentType' => 'clearanceSlip',
             'documentNumber' => 1,
@@ -429,12 +466,11 @@ class AuditRecordStatesTest extends TestCase
             'blockId' => null,
         ]);
 
-        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
 
         $out = $this->commandOutput();
-        $this->assertStringContainsString('note', $out);
-        $this->assertStringContainsString('A printed paper attributable to no enrollment', $out);
-        $this->assertStringContainsString('waiting on a decision this command cannot make', $out);
-        $this->assertStringNotContainsString('FAIL', $out);
+        $this->assertFlagged('FAIL', 'A printed paper attributable to no enrollment');
+        $this->assertStringContainsString('record(s) in a state no desk action can produce', $out);
+        $this->assertStringNotContainsString('waiting on a decision this command cannot make', $out);
     }
 }

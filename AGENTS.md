@@ -135,7 +135,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (549 citations over 108 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (554 citations over 110 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -161,6 +161,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the line sweep on any batch that moves lines, and re-prove it with planted moved-ranges
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
+- A `§NN <letter>-<number>` reference is a pointer into one of the document's registers, and the ids repeat
+  across chapters, so **reading the row before citing it is not optional**. §28 G-9 is "the demo term offered no
+  curriculum subject at the levels the students sat"; the print-log NULL limit that the record-state audit
+  reports is **§25 P-14**. Three files — `AuditRecordStates.php`'s own `why`, DEPLOYMENT.md §8 step 7, and the
+  UAT walkthrough — cited G-9 for the print hazard, and I added a fourth myself while writing a test comment in
+  the same batch, because the phrase "§28 G-9" had been copied around as if it were the name of the condition.
+  When prose moves, re-ask *which* register the sentence belongs to. Same batch, second lesson:
+  `ems:audit:record-states` must count what a desk can still act on. Two of its ruled-to-keep notes could never
+  reach 0 — they counted past-term demo rows that had been retired — so both predicates now exclude a dropped
+  enrollment, and the retirement and the predicate ship in one batch (`AuditRecordStatesTest` pins the
+  exclusion; without it the seven drops left the note at 7 and the number stopped meaning anything).
 - A staff account's Spatie roles come from its `role` enum through `RbacSeeder::assignDeskRolesFromEnums()`.
   Any seeder that creates accounts must call it afterwards: §3 and CI seed `db:seed` *before*
   `DevReferenceDataSeeder`, and measured on a fresh database that order left **10 of 17 accounts with no
@@ -170,6 +181,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   sites sit inside closures that capture only the variables they list, so a closure-valued helper throws
   `Undefined variable` the moment the pipeline reaches it. Rehearsing the whole chain on a copy caught this;
   no test executes `tools/`.
+- **A data decision that a seed tool regenerates is not a decision — go find the generator.** Seven
+  `enrollments` whose Clinic and ID boxes were signed with no assessment and no validated request behind them
+  were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
+  `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
+  them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
+  `:1518`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
+  nothing, so the retirement looked like a missing year to be refilled, and `$completeWorkflow()` signed every
+  box on the way. (Measured 2026-10-15: the seat guard is
+  `tools/seed_full_demo_pipeline.php:1589` and the record it seats at `:1595` — the file grew by half a hundred
+  lines that day, so re-measure before repeating those numbers.) The fix was in the generator —
+  `attest_completed_desks()` now writes the act behind each
+  box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
+  dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch
+  the data again.
 - Two routes answer with **no login at all**: `GET|HEAD /storage/{path}` and `PUT /storage/{path}`, registered
   by Laravel because `config/filesystems.php` marks the `local` disk `serve => true`. Their only gate is an
   HMAC of the path and query keyed by `APP_KEY` — nothing in `app/` or `resources/` ever mints one, so no desk

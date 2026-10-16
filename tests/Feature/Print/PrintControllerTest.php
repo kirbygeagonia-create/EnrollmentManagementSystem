@@ -603,9 +603,13 @@ class PrintControllerTest extends TestCase
             ->has('block'));
 
         // BR: every print inserts a log row — a block schedule printed from the
-        // desk must be as visible in the trail as one rendered to PDF.
+        // desk must be as visible in the trail as one rendered to PDF. The block itself has to be
+        // named: a row that logs only the type and the officer is one of the key-less issuance rows
+        // §25 P-14 is about, and the 21 live `ems` held were pruned on 2026-10-15 precisely because
+        // nothing could answer whose schedule they were.
         $this->assertDatabaseHas('documentprintlog', [
             'documentType' => DocumentType::BlockSchedule->value,
+            'blockId' => $block->blockId,
             'printedBy' => $blockingStaff->userId,
         ]);
     }

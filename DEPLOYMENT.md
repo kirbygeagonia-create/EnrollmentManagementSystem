@@ -368,18 +368,25 @@ act on: it means `mysqldump`, cron and phpMyAdmin are stamping Y. A plain FAIL m
    open under a box its own office had already signed, a notice addressed to a class that does
    not exist — is one of its twelve rules. A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Three of those rules are different in kind and only ever `note`, because
-   each one counts a state the owner has already ruled to keep: printed papers attributable to
-   nobody (docx §28 G-9), a Clinic box signed with no health assessment behind it on an
-   older-term record, and an ID box signed with no request behind it — the last being enrollment
-   53, whose contradictory request row was deleted 2026-10-11 while its signature was left
-   standing. A report tool must not decide those over the office's hand, so it counts them and
-   stays green. On a server that has only been migrated and RBAC-seeded — no demo pipeline — all
-   three read 0. On the demo database they measured 21, 7 and 8 on 2026-10-12: the 21
-   unattributable papers; 7 older-term records whose Clinic box the pipeline had signed before it
-   was made to write the assessment that signs it, and 8 whose ID box it had signed before it
-   wrote the validation — seven of those same past-term rows plus enrollment 53, which is in that
-   state because you ruled its contradictory request deleted and its signature left standing.
+   the status column. Two of those twelve are different in kind and only ever `note`, because each counts
+   a state an office has ruled on rather than a defect: a Clinic box signed with no health assessment
+   behind it, and an ID box signed with no validated request behind it — the second one is enrollment 53,
+   whose contradictory request row was deleted 2026-10-11 while its signature was deliberately left
+   standing. A report tool must not decide those over the office's hand, so it counts them and stays
+   green. The other ten fail the run, and the third of the once-noted rules joined them on 2026-10-15:
+   printed papers attributable to nobody (docx §25 P-14) had been kept as a note only because 21 legacy
+   rows sat in that state and pruning or attributing them was somebody's call. That call is made — the
+   rows are behind a manifest — and no paper this application prints can leave all three keys NULL, so a
+   key-less row now names a write path. On a server that has only been migrated and RBAC-seeded — no demo
+   pipeline — every rule reads 0. On the demo database the three read 21, 7 and 8 on 2026-10-12; on live
+   `ems` they read 0, 0 and 1 on 2026-10-15: the 21 key-less print rows were pruned behind a manifest, the
+   7 past-term records whose Clinic box the pipeline had signed before it was made to write the assessment
+   were retired through the Registrar drop — and the seeder was changed the same day, because that drop
+   only freed the seat its G-2 step checks, and the next run re-created five of the seven within the hour.
+   It now writes the assessment and the validated request behind every box it signs, so these two counts
+   stay where they are; a retired enrollment is excluded from the rules either way, since a number nobody
+   will act on teaches the operator to skim it. What remains is enrollment 53: the ID box whose
+   contradictory request row was deleted 2026-10-11 while its signature was deliberately left standing.
 8. `php artisan ems:uploads:prune` reports what the private disk holds that no record points at,
    and deletes nothing until told `--delete` (§2).
 

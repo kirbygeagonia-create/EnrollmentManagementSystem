@@ -336,7 +336,7 @@ if (DB::table('enrollments')->where('termId', $relocatedFromTermId)->exists()) {
  * own rule could never have produced — and the request screen has nothing to
  * display where the face should be.
  */
-$demoFacePhoto = function (string $slug): string {
+function demo_face_photo(string $slug): string {
     $disk = Storage::disk('documents');
     $path = 'id-photos/'.$slug.'.png';
 
@@ -358,7 +358,83 @@ $demoFacePhoto = function (string $slug): string {
     }
 
     return $path;
-};
+}
+
+/**
+ * Write the two acts behind the boxes a completed workflow claims to have signed.
+ *
+ * `$completeWorkflow()` marks every box completed, and two of those signatures are not strokes of a pen:
+ * recording the health assessment IS the Clinic box's signature (§14R.2) and validating the card request IS
+ * the ID box's (§16). Until the owner's ruling of 2026-10-15 the tool signed both and wrote neither, so every
+ * record it seats as a completed year behind a returning student arrived holding two boxes no desk ever acted
+ * on — the state `ems:audit:record-states` reports, on rows only this file writes. A tool that signs a desk's
+ * box writes that desk's record.
+ *
+ * Dates come from the record's own term rather than the clock: an assessment stamped today on a 2024-2025
+ * year is the invented past the owner refused on 2026-10-12, and it is also the thing that would make this
+ * row disagree with the year it is supposed to evidence. The vitals are derived from the id so a re-run
+ * writes the same numbers instead of new ones.
+ */
+function attest_completed_desks(int $enrollmentId, string $facePhoto): void
+{
+    $seat = DB::table('enrollments as e')
+        ->join('students as s', 's.studentId', '=', 'e.studentId')
+        ->join('academicterms as t', 't.termId', '=', 'e.termId')
+        ->where('e.enrollmentId', $enrollmentId)
+        ->first(['s.lastName', 't.startDate as termOpens']);
+
+    if ($seat === null) {
+        fwrite(STDERR, "REFUSE: enrollment {$enrollmentId} has no student or term, so its desk acts cannot be seated.\n");
+        exit(1);
+    }
+
+    $day = (string) ($seat->termOpens ?? now()->toDateString());
+
+    if (DB::table('clinicrecords')->where('enrollmentId', $enrollmentId)->exists()) {
+        echo "  • Clinic: enrollment {$enrollmentId} already holds an assessment — left as the desk wrote it\n";
+    } else {
+        DB::table('clinicrecords')->insert([
+            'enrollmentId' => $enrollmentId,
+            'heightCm' => round(150 + ($enrollmentId % 28) + (($enrollmentId % 3) * 0.5), 1),
+            'weightKg' => round(44 + ($enrollmentId % 26) + (($enrollmentId % 2) * 0.5), 1),
+            'bloodPressure' => ['110/70', '118/76', '120/80'][$enrollmentId % 3],
+            'philhealthNumber' => "PH-DEMO-{$enrollmentId}",
+            'philhealthRegistered' => 1,
+            'assessmentNotes' => 'Cleared for enrollment — no restricting findings.',
+            'findings' => 'Normal',
+            'clinicStaffId' => desk_signer_for(OfficeId::Clinic->value),
+            'assessmentDate' => $day,
+            'status' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    if (DB::table('idrequests')->where('enrollmentId', $enrollmentId)->where('status', 'validated')->exists()) {
+        echo "  • ID Office: enrollment {$enrollmentId} already holds a validated request — left as the desk wrote it\n";
+
+        return;
+    }
+
+    DB::table('idrequests')->updateOrInsert(
+        ['enrollmentId' => $enrollmentId],
+        [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => ['Maria', 'Jose', 'Rosa', 'Ana'][$enrollmentId % 4].' '.$seat->lastName,
+            'emergencyContactNumber' => '0917'.str_pad((string) (1000000 + $enrollmentId * 37), 7, '0', STR_PAD_LEFT),
+            'bloodType' => ['A+', 'B+', 'O+', 'AB+'][$enrollmentId % 4],
+            'cardPhotoPath' => $facePhoto,
+            'requestDate' => $day,
+            'status' => 'validated',
+            'validatedBy' => desk_signer_for(OfficeId::IdOffice->value),
+            'validatedDate' => $day.' 09:00:00',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]
+    );
+
+    echo "  • Clinic and ID: assessment and validated request seated behind enrollment {$enrollmentId}, dated into its own term\n";
+}
 
 // Ensure BSIT 1-A block exists
 $bsitBlock = DB::table('blocks')->where('courseId', 1)->where('termId', $termId)->first();
@@ -1066,7 +1142,7 @@ if (! $enrKev) {
         'emergencyContactName' => 'Rosa Santos',
         'emergencyContactNumber' => '09171234500',
         'bloodType' => 'B+',
-        'cardPhotoPath' => $demoFacePhoto('demo-2026-017'),
+        'cardPhotoPath' => demo_face_photo('demo-2026-017'),
         'status' => 'validated',
         'validatedBy' => $deskSigners[OfficeId::IdOffice->value], // the ID Office signer, resolved with the other desks
         'validatedDate' => now(),
@@ -1430,6 +1506,7 @@ if ($openPeriod !== null) {
         ]);
         $seedLoad($prior, 3, 'confirmed');
         $completeWorkflow($prior);
+        attest_completed_desks((int) $prior->enrollmentId, demo_face_photo(strtolower($student->schoolIdNumber)));
 
         $current = $issuer->issue([
             'studentId' => $student->studentId,
@@ -1532,6 +1609,12 @@ foreach (Enrollments::where('yearLevel', '>=', 2)
 
     $gradePriorLoad($earned, ['1.50', '2.00', '2.50']);
     $completeWorkflow($earned);
+    // The year behind the record is evidence only if the desks that signed it exist; the assessment and the
+    // validated request are the two whose signature is a record rather than a stroke.
+    attest_completed_desks(
+        (int) $earned->enrollmentId,
+        demo_face_photo(strtolower((string) ($claim->student?->schoolIdNumber ?? 'enrollment-'.$earned->enrollmentId)))
+    );
     $levelEvidence++;
 
     echo "✔ G-2: {$claim->student?->schoolIdNumber} earned the year behind enrollment {$claim->enrollmentId}"
@@ -1540,6 +1623,49 @@ foreach (Enrollments::where('yearLevel', '>=', 2)
 
 if ($levelEvidence === 0) {
     echo "  • G-2: every record at year 2 or above already has a completed year behind it\n";
+}
+
+// 10h2. PRIOR-TERM RECORDS — every box this tool signed on a completed year keeps its record.
+//
+// The loop above fires only for a student who still lacks the year behind them, so the records an earlier
+// run seated — and signed every box of — stay exactly as that run left them. Until the owner's ruling of
+// 2026-10-15 that left past-year rows whose Clinic box reads completed with no assessment on file and whose
+// ID box reads completed with no validated request behind it: the two states `ems:audit:record-states`
+// counts, on rows only this file wrote. Measured the same day — seven such enrollments were retired through
+// the Registrar's own drop, the report fell to 0, and the next run of this tool re-seated five of them
+// within minutes, because the drop released the seat the guard above then refilled. This pass is what makes
+// the report quiet for good rather than for one run.
+//
+// Scoped to records on a term other than the demo term on purpose: a current-term record whose Clinic box is
+// still unsigned is the desk's own work (§14R.2 walks it), and seating the assessment here would be the
+// invented past the owner refused on 2026-10-12.
+$staleSeats = Enrollments::query()
+    ->where('enrollmentType', EnrollmentType::Old->value)
+    ->where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
+    ->where('termId', '!=', $termId)
+    ->where(fn ($q) => $q
+        ->whereHas('enrollmentworkflow.workflowsteps', fn ($w) => $w
+            ->where('officeId', OfficeId::Clinic->value)
+            ->where('stepStatus', WorkflowStepStatus::Completed->value))
+        ->orWhereHas('enrollmentworkflow.workflowsteps', fn ($w) => $w
+            ->where('officeId', OfficeId::IdOffice->value)
+            ->where('stepStatus', WorkflowStepStatus::Completed->value)))
+    ->where(fn ($q) => $q
+        ->whereDoesntHave('clinicrecords')
+        ->orWhereDoesntHave('idrequests', fn ($r) => $r->where('status', 'validated')))
+    ->orderBy('enrollmentId')
+    ->with('student')
+    ->get();
+
+foreach ($staleSeats as $stale) {
+    attest_completed_desks(
+        (int) $stale->enrollmentId,
+        demo_face_photo(strtolower((string) ($stale->student?->schoolIdNumber ?? 'enrollment-'.$stale->enrollmentId)))
+    );
+}
+
+if ($staleSeats->isEmpty()) {
+    echo "  • Clinic and ID: every prior-term record this tool signed already holds the act behind its box\n";
 }
 
 // 10b-1d. One academic year holds one year level.
@@ -2315,7 +2441,7 @@ if ($kevinSeat) {
     $completeWorkflow($kevinSeat);
     $attestClinic((int) $kevinSeat->enrollmentId, 172.0, 68.0, '120/80');
 
-    $kevinPhoto = $demoFacePhoto('demo-2026-017');
+    $kevinPhoto = demo_face_photo('demo-2026-017');
 
     if (DB::table('idrequests')->where('enrollmentId', $kevinSeat->enrollmentId)->exists()) {
         DB::table('idrequests')->where('enrollmentId', $kevinSeat->enrollmentId)->update([
