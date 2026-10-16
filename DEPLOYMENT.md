@@ -163,9 +163,17 @@ assumed: with `DB_SESSION_TIME_ZONE='+07:00'` the app's own session moved to `+0
 If `APP_TIMEZONE` is ever set, `DB_SESSION_TIME_ZONE` has to move with it, and `preflight` is what catches
 anyone who sets one and not the other.
 
-**Still owed: the school's server.** It needs the same line in its own `my.cnf` (`[mysqld]`) and a restart,
-or `SET GLOBAL time_zone='+00:00'` as a stopgap that dies on the next start. Until then, the `Clocks agree`
-row there will read OK *with* the note above — the note is the thing to act on, not the colour of the line.
+**The server line, and where it applies.** The same line belongs in the `my.cnf` of whichever machine the
+campus install lands on — `default-time-zone='+00:00'` under `[mysqld]` — followed by a restart, or
+`SET GLOBAL time_zone='+00:00'` as a stopgap that dies on the next start. That machine is not provisioned
+yet: this repository holds no host, credential, compose file or deploy script for it, and the build plan
+still lists the on-campus server as an unchecked box. So this is a step for whoever installs the system, not
+open work on the code — and it is written here rather than tracked as a task, because a task for a machine
+that does not exist reads as forgotten work to every reader after the first.
+
+On a server where the line has not been applied, the `Clocks agree` row there still reads OK *with* the note
+above — the application agrees with itself, since it forces its own session zone. The note is the thing to
+act on, not the colour of the line.
 
 ## 3. Install & migrate
 
