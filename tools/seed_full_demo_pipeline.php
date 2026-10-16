@@ -269,72 +269,13 @@ function department_evaluator_for_course($courseId): int
 }
 
 /*
- * Two named students the sections below read without ever writing them.
- *
- * Juan (DEMO-2026-001) is the enrollment today's cash receipt is filed against, which is what puts a
- * row on the Daily Collections Report. Liza (DEMO-2026-004) supplies the completed prior-term load
- * that section 4b grades with one failed subject — the only standing evidence the Evaluation desk
- * has for a student repeating a year. Both rows used to arrive with the base demo dataset
- * (Documentation/ems-demo-backup.sql, restored by the command in Documentation/Demo-Day-Guide.md),
- * and this file refused when a database did not hold them. That made the dump half of the
- * requirement for a reproducible dataset: a fresh install could not seed the demo, and neither
- * could CI.
- *
- * Created here, on the position the refusal held, because both are read further down and a row that
- * appears after the block that reads it silently writes nothing — the payment block skips its
- * insert, and section 4b falls through to the create that copies the prior record's program and
- * level, so a late Juan would cost today's receipt and a late Liza would cost her whole case.
- *
- * createDemoStudent is declared below this block and is still callable here: a top-level function
- * declaration is hoisted. The trap recorded in AGENTS.md is about closure-valued variables, which
- * are assigned when execution reaches them and are not.
- *
- * What a self-created Juan does NOT carry, stated because the demo-day guides walk it: no admission
- * row, no entrance-exam result, no validated ID request. Documentation/Demo-Day-Guide.md's intake,
- * examination and ID steps belong to the restored dataset, which stays the one to open on demo day.
- * These two rows exist so that everything this tool writes can be written again from an empty
- * schema — not so that the guide can be walked from one.
- */
-$juan = createDemoStudent('DEMO-2026-001', 'Juan', 'Dela Cruz', 'demo_juan', 'demo.juan@example.com');
-
-if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId)->exists()) {
-    Enrollments::create([
-        'studentId' => $juan->studentId,
-        'courseId' => 3, // BSCrim — the program both demo-day guides put him in
-        'termId' => $termId,
-        'yearLevel' => 1,
-        'studentType' => StudentType::FirstYear,
-        'enrollmentType' => EnrollmentType::New,
-        'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => department_evaluator_for_course(3),
-        'enrolledDate' => now()->subMonths(9),
-        'formSignedDate' => now()->subMonths(9),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
-    ]);
-    echo "✔ Base row created: Juan Dela Cruz (DEMO-2026-001) — BSCrim year 1 on term {$termId}, the record today's receipt is filed against\n";
-}
-
-$liza = createDemoStudent('DEMO-2026-004', 'Liza', 'Bautista', 'demo_liza', 'demo.liza@example.com', 'female');
-
-if (! Enrollments::where('studentId', $liza->studentId)->where('termId', $priorTermId)->exists()) {
-    Enrollments::create([
-        'studentId' => $liza->studentId,
-        'courseId' => 5, // BSBA — the program both demo-day guides put her in, and a retention-exam one
-        'termId' => $priorTermId,
-        'yearLevel' => 2,
-        'studentType' => StudentType::Continuing,
-        'enrollmentType' => EnrollmentType::Old,
-        'academicStanding' => AcademicStanding::Regular,
-        'evaluatedBy' => department_evaluator_for_course(5),
-        'enrolledDate' => now()->subMonths(15),
-        'formSignedDate' => now()->subMonths(15),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
-    ]);
-    echo "✔ Base row created: Liza Bautista (DEMO-2026-004) — BSBA year 2 completed on term {$priorTermId}, the load section 4b grades one failed subject into\n";
-}
-
-/*
  * G-9: relocate a dataset still sitting on the retired Summer term.
+ *
+ * Runs BEFORE the two named base rows are created below, and that order is load-bearing: a Juan
+ * created here first would sit on term 11, be dragged back to term 10 by move 1, and a Liza created
+ * on term 10 would then collide with the history row the same move put there. Measured on a copy of
+ * Documentation/ems-demo-backup.sql — the move produced "seat collision: student 56 holds 2 active
+ * enrollments in term 10" and left Juan's own base row on the wrong term.
  *
  * Two moves, in this order, because the old history rows occupy the term the current load
  * is moving on to: move them off first or they would be dragged forward with the load they
@@ -400,6 +341,79 @@ if (DB::table('enrollments')->where('termId', $relocatedFromTermId)->exists()) {
     } else {
         echo "  ✔ no student holds two active enrollments in one term after the move\n";
     }
+}
+
+/*
+ * Two named students the sections below read without ever writing them.
+ *
+ * Juan (DEMO-2026-001) is the enrollment today's cash receipt is filed against, which is what puts a
+ * row on the Daily Collections Report. Liza (DEMO-2026-004) supplies the completed prior-term load
+ * that section 4b grades with one failed subject — the only standing evidence the Evaluation desk
+ * has for a student repeating a year. Both rows used to arrive with the base demo dataset
+ * (Documentation/ems-demo-backup.sql, restored by the command in Documentation/Demo-Day-Guide.md),
+ * and this file refused when a database did not hold them. That made the dump half of the
+ * requirement for a reproducible dataset: a fresh install could not seed the demo, and neither
+ * could CI.
+ *
+ * Created after the relocation above and before every block that reads them. The first half of that
+ * order is why they are not where the refusal stood; the second half still holds — a row that
+ * appears after the block that reads it silently writes nothing: the payment block skips its
+ * insert, and section 4b falls through to the create that copies the prior record's program and
+ * level, so a late Juan would cost today's receipt and a late Liza would cost her whole case.
+ *
+ * createDemoStudent is declared below this block and is still callable here: a top-level function
+ * declaration is hoisted. The trap recorded in AGENTS.md is about closure-valued variables, which
+ * are assigned when execution reaches them and are not.
+ *
+ * What a self-created Juan does NOT carry, stated because the demo-day guides walk it: no admission
+ * row, no entrance-exam result, no validated ID request. Documentation/Demo-Day-Guide.md's intake
+ * and examination steps belong to the restored dataset, and its ID step to Kevin Santos
+ * (DEMO-2026-017), whose validated request this tool writes at the ID desk below. These two rows
+ * exist so that everything this tool writes can be written again from an empty schema — not so that
+ * the guide can be walked from one.
+ */
+$seededBaseRows = [];
+
+$juan = createDemoStudent('DEMO-2026-001', 'Juan', 'Dela Cruz', 'demo_juan', 'demo.juan@example.com');
+
+if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId)->exists()) {
+    $seededBaseRows[] = 'DEMO-2026-001';
+
+    Enrollments::create([
+        'studentId' => $juan->studentId,
+        'courseId' => 3, // BSCrim — the program both demo-day guides put him in
+        'termId' => $termId,
+        'yearLevel' => 1,
+        'studentType' => StudentType::FirstYear,
+        'enrollmentType' => EnrollmentType::New,
+        'academicStanding' => AcademicStanding::Regular,
+        'evaluatedBy' => department_evaluator_for_course(3),
+        'enrolledDate' => now()->subMonths(9),
+        'formSignedDate' => now()->subMonths(9),
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+    ]);
+    echo "✔ Base row created: Juan Dela Cruz (DEMO-2026-001) — BSCrim year 1 on term {$termId}, the record today's receipt is filed against\n";
+}
+
+$liza = createDemoStudent('DEMO-2026-004', 'Liza', 'Bautista', 'demo_liza', 'demo.liza@example.com', 'female');
+
+if (! Enrollments::where('studentId', $liza->studentId)->where('termId', $priorTermId)->exists()) {
+    $seededBaseRows[] = 'DEMO-2026-004';
+
+    Enrollments::create([
+        'studentId' => $liza->studentId,
+        'courseId' => 5, // BSBA — the program both demo-day guides put her in, and a retention-exam one
+        'termId' => $priorTermId,
+        'yearLevel' => 2,
+        'studentType' => StudentType::Continuing,
+        'enrollmentType' => EnrollmentType::Old,
+        'academicStanding' => AcademicStanding::Regular,
+        'evaluatedBy' => department_evaluator_for_course(5),
+        'enrolledDate' => now()->subMonths(15),
+        'formSignedDate' => now()->subMonths(15),
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+    ]);
+    echo "✔ Base row created: Liza Bautista (DEMO-2026-004) — BSBA year 2 completed on term {$priorTermId}, the load section 4b grades one failed subject into\n";
 }
 
 /**
@@ -3071,3 +3085,36 @@ echo "=======================================================\n";
 echo " DEMO-DAY DATASET FULLY SEEDED!                      \n";
 echo " Every single desk and workflow queue is populated.    \n";
 echo "=======================================================\n";
+
+if ($seededBaseRows !== []) {
+    // The banner above is true about desk queues and misleading about demo day, and this file can no longer
+    // assume the operator knows which of the two they are looking at: a database that had no base rows got
+    // them from this run, and the guide's script walks three students this tool does not build. Measured
+    // 2026-10-16 by storage/app/scratch/lane39-guide-preconditions.php, which turns Demo-Day-Guide.md §3
+    // into 19 preconditions: 18 of 19 hold on the restored dataset, 6 of 19 on one seeded from empty.
+    //
+    // The five commands are printed because the committed dump is not a one-command restore. Measured on a
+    // scratch copy of it the same day: loaded alone it walks 10 of 19 (10 of its 11 enrollments sit on the
+    // retired term 18, and Juan holds none on the demo term); after migrate + both seeders + this tool it
+    // walks 18 of 19, the same single gap the live box carries.
+    //
+    // Stated as a scope, not as a finding — it does not fail the run. What a self-created student cannot be
+    // given is a history: an admission someone verified, an exam someone scored, a paper someone uploaded.
+    // Kevin Santos is different in kind — he is this tool's own cast, so writing his validated request and its
+    // placeholder portrait is the desk doing its job, not inventing a record of something that happened.
+    echo "\nSCOPE — this database had no base demo rows, so they were created here (".implode(', ', $seededBaseRows).").\n"
+        ." Documentation/Demo-Day-Guide.md §3 cannot be walked from this dataset alone: the script's cast\n"
+        ." includes Pedro Santos (DEMO-2026-003) and Maria Reyes (DEMO-2026-002), which this tool never\n"
+        ." creates, and a self-created Juan Dela Cruz holds no admission, no entrance-exam result, no clinic\n"
+        ." assessment and no DEMO-OR-0001. That is 6 of the guide's 19 records here against 18 of 19 on the\n"
+        ." restored box — whose own gap is step 13: Juan's ID box is signed with no request behind it, by\n"
+        ." ruling, and the guide shows Kevin Santos (DEMO-2026-017) there instead.\n"
+        ." Those papers come from a dump of the demo database, so take your own the night before (guide §5).\n"
+        ." Documentation/ems-demo-backup.sql is a 2026-09-20 snapshot and needs all five of:\n"
+        ."   mysql -u root ems < Documentation/ems-demo-backup.sql\n"
+        ."   php artisan migrate --force\n"
+        ."   php artisan db:seed\n"
+        ."   php artisan db:seed --class=DevReferenceDataSeeder\n"
+        ."   php tools/seed_full_demo_pipeline.php\n"
+        ." Re-measure with: php storage/app/scratch/lane39-guide-preconditions.php\n";
+}

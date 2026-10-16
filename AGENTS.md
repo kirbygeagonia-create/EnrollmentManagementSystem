@@ -221,12 +221,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
   `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
   them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
-  `:1607`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
+  `:1685`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
   nothing, so the retirement looked like a missing year to be refilled, and `$completeWorkflow()` signed every
-  box on the way. (Measured 2026-10-16: the seat guard is
-  `tools/seed_full_demo_pipeline.php:1730` and the record it seats at `:1736` — that file has grown on every
-  batch since, so re-measure before repeating those numbers, and measure by *meaning*: at 1666 the line sweep
-  was content with a `]);` and at 1672 with a comment.) The fix was in the generator —
+  box on the way. (Measured again 2026-10-16, after a batch that moved the first 140 lines of this file: the
+  seat guard is `tools/seed_full_demo_pipeline.php:1744` and the record it seats at `:1750` — re-measure before
+  repeating those numbers, and measure by *meaning*. The pair they replaced, `:1730` and `:1736`, land on a
+  blank line and on a `->first();` belonging to the term lookup two steps earlier, and the older `:1607` sits
+  in the clearance-slip seating block, which is not this step at all.) The fix was in the generator —
   `attest_completed_desks()` now writes the act behind each
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
   dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch

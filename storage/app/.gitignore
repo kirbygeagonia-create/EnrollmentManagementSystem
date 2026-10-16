@@ -2,3 +2,19 @@
 !private/
 !public/
 !.gitignore
+
+# The audit tooling lives in scratch/ and the repository's own instructions invoke it by path — AGENTS.md
+# tells anyone doing a batch to run storage/app/scratch/sweep-docx-citations.php, and the docx editing
+# procedure tells them to require docx-edit-engine.php. Those paths resolved to nothing on a fresh clone,
+# because the `*` above ignored the whole folder, so the documented gates were only ever runnable on the one
+# machine that had built them. Track the code; leave the artifacts out.
+#
+# The order is load-bearing: git cannot re-include a file whose directory is excluded, so scratch/ comes back
+# first, its contents go away again, and only then are the code extensions let back in. That keeps out the
+# 126 docx pass-backups, the .sql dumps, audit.sqlite, the prune manifests and the run logs — machine state
+# and institutional data, not tools, and this repository's remote is public.
+!scratch/
+scratch/*
+!scratch/*.php
+!scratch/*.ps1
+!scratch/*.mjs

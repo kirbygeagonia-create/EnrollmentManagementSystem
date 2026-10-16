@@ -109,7 +109,12 @@ if ($juanEnrollment !== null) {
         ->where('w.enrollmentId', $juanEnrollment->enrollmentId)->where('ws.officeId', 4)
         ->where('ws.stepStatus', 'completed')->whereNotNull('ws.signedBy')->count() > 0);
 } else {
-    $add('6  Evaluation', 'Juan holds an enrollment on the demo term', false);
+    // All three rows still count when the enrollment is absent. Collapsing them into one made this
+    // file's own denominator move — a dataset with no term-11 Juan reads "10 of 17" against another's
+    // "18 of 19", which is the incomparable-totals mistake the note above already records.
+    $add('6  Evaluation', 'Juan holds an enrollment on the demo term', false, 'no enrollment on term '.$term);
+    $add('6  Evaluation', 'his load was proposed from the curriculum', false, 'no enrollment to carry a load');
+    $add('6  Evaluation', "his record carries the department's signature", false, 'no enrollment to sign');
 }
 
 $add(

@@ -10,12 +10,12 @@ and how to restore the demo data if anything goes wrong.
 
 | Item | Before | After |
 |---|---|---|
-| Figtree font (400/500/600) | Loaded from `fonts.bunny.net` CDN | Self-hosted at `public/fonts/` (6 woff2 files, ~53 KB) via `@font-face` in `resources/css/app.css` |
-| Content-Security-Policy | Allowed `fonts.bunny.net`, `fonts.googleapis.com`, `fonts.gstatic.com` | `style-src 'self'`, `font-src 'self'` — fully closed to third parties |
-| QR codes | Already local — `react-qr-code` was bundled into `public/build/` at build time | Package removed with the card-making flow (no QR rendering remains) |
-| Fonts / assets in built JS/CSS | — | Verified: **zero external URLs** in `public/build/assets/*` |
+| Figtree font (400/500/600/700/800, latin + latin-ext) | Loaded from `fonts.bunny.net` CDN | Self-hosted at `public/fonts/` — re-counted 2026-10-16: **10 woff2 files, 88,516 bytes (~86 KB)** — via `@font-face` in `resources/css/app.css` |
+| Content-Security-Policy | Allowed `fonts.bunny.net`, `fonts.googleapis.com`, `fonts.gstatic.com` | `default-src 'self'`, `style-src 'self' 'unsafe-inline'`, `font-src 'self' data:` — no third-party host in any directive (`app/Http/Middleware/SecurityHeaders.php:31-34`) |
+| QR codes | Already local — `react-qr-code` was bundled into `public/build/` at build time | Package removed with the card-making flow (`grep -c qr package.json` → 0); no QR rendering remains |
+| Fonts / assets in built JS/CSS | — | Re-checked 2026-10-16: **nothing in `public/build/assets/*` is fetched**. The only remote strings are `http://www.w3.org/…` XML namespaces, `http://localhost` literals, and one `https://reactjs.org/docs/error-decoder.html` link inside React's own error text — three text values, zero requests |
 | Page resources (links/scripts/images) | — | Verified on dashboard, exam, blocking, student pages: all refs point to `localhost` |
-| Mail / sessions / queue | Already local (`MAIL_MAILER=log`, `SESSION_DRIVER=file`, `QUEUE_CONNECTION=database`) | No change needed |
+| Mail / sessions / queue | Already local (`MAIL_MAILER=log`, `SESSION_DRIVER=file`) | No change needed. `.env` now runs `QUEUE_CONNECTION=sync` — a job is executed in the request instead of waiting on a worker; `.env.example` still ships `database` |
 
 Every HTTP request the browser makes during a demo resolves to
 `http://localhost:8080`. Disconnecting Wi-Fi changes nothing.
@@ -52,43 +52,66 @@ Run through this ~10 minutes before presenting:
 
 | Student | School ID | State |
 |---|---|---|
-| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic → ID **validated** (face photo on file) |
-| Maria Reyes (`demo_maria_r`) | DEMO-2026-002 | Clearance slip generated + **all 10 offices approved** + receipt recorded |
+| Juan Dela Cruz (`demo_juan`) | DEMO-2026-001 | First-year BSCrim, walked the **entire pipeline**: admission → 2-stage entrance exam → evaluation → assessment → payment → registrar → blocking → clinic. His ID **box** is signed with no request behind it — that row was deleted under the owner's ruling of 2026-10-11 and the signature left standing, so the ID desk shows Kevin |
+| Maria Reyes (`demo_maria_r`) | DEMO-2026-002 | Clearance slip generated + **all 9 requirement lines approved** + receipt recorded (the legacy Clearance office was folded into the Registrar, ruling 12) |
 | Pedro Santos (`demo_pedro`) | DEMO-2026-003 | **Pending admission** (BSCrim) — shows up as an entrance-exam candidate in the Exam form |
-| Liza Bautista (`demo_liza`) | DEMO-2026-004 | **Enrolled BSBA** — shows up as a retention-exam candidate in the Exam form |
+| Liza Bautista (`demo_liza`) | DEMO-2026-004 | BSBA, completed year 2 on the prior term — the retention-exam candidate, and the standing evidence the Evaluation desk repeats her into year 2 with |
+| Kevin Santos (`demo_kevin`) | DEMO-2026-017 | BSCrim year 1 on the demo term, every box signed, ID request **validated** with a **face photo on file** — the ID desk's finished example |
 
 ### Suggested demo storyline (follows the real workflow)
 
 1. **Admission** (office6_head): open the admission of Pedro Santos — pending, awaiting exam.
-2. **Entrance exam** (office4_head): Exam → Record Entrance Exam → BSCrim + term 18 → Pedro appears in the candidate dropdown → record **pass**, then course-specific **pass** (office7_head records that one).
+2. **Entrance exam** (office4_head): Exam → Record Entrance Exam → BSCrim + the demo term (termId 11, AY 2025-2026 2nd semester) → Pedro appears in the candidate dropdown → record **pass**, then course-specific **pass** (office7_head records that one).
 3. **Evaluation** (office7_head): open Juan Dela Cruz's evaluation — profile captured, subjects proposed, signed.
-4. **Assessment → Payment → Registrar** (offices 3, 2, 1): show Juan's computed charges, the recorded payment (OR DEMO-OR-0001), and registrar approval.
+4. **Assessment → Payment → Registrar** (offices 3, 2, 1): show Juan's computed charges (₱17,500 across four fee types), the recorded receipts (OR DEMO-OR-0001 ₱12,000 on 2026-09-13 and OR DEMO-OR-TODAY-01 ₱5,500 on the current day), and registrar approval.
 5. **Blocking** (office5_head): open block BSCrim 1-A — Juan assigned.
 6. **Clinic** (office11_head): Juan's health record.
-7. **ID** (office22_head): Juan's validated ID request — face photo on file.
-8. **Retention exam** (office7_head): Exam → Record Retention → BSBA → Liza Bautista appears → record pass.
-9. **Clearance** (office8_head): Maria Reyes's slip — all 10 offices approved, receipt recorded.
+7. **ID** (office22_head): the hub lists only **open** ID boxes — on this box Danica Sotto (DEMO-2026-016) and Nena Alcantara (DEMO-2026-026). Attach Danica's face photo and press **Validate**; that act signs the box, so she leaves the queue. Then **Kevin Santos**'s history shows the finished state (`validated`) on his record page — the hub itself keeps no list of validated requests.
+8. **Retention exam** (office7_head): on the **Department Evaluation** screen, not the Exam module — `POST evaluation/{enrollment}/retention` (FDD 5.6, BR10). Liza Bautista's repeating-year record is the one to record it against; Maria Reyes's is already on file.
+9. **Clearance** (staff8): Maria Reyes's slip — **all 9 requirement lines approved**, receipt printed. `office8_head` exists for the opposite demo: it holds **no** sign right, so an approval attempted there is refused (rulings 7 and 12).
 
 ## If the demo data gets lost
 
-Restore from the backup (created 2026-09-13, includes everything above):
+**Restore a dump you took of the current `ems`, not the one in `Documentation/`.**
+`Documentation/ems-demo-backup.sql` is a **2026-09-20** snapshot, and loading it is
+one of five commands, not the whole recovery — `Documentation/Demo-Day-Guide.md` §5
+carries the order and, row by row, what the snapshot puts back (10 of its 11
+enrollments come back on the retired term 18, its schema predates 19 migrations and
+has no `shiftingrequests`, and it re-creates the contradictory ID request the owner
+ruled deleted on 2026-10-11).
 
 ```powershell
-# from the project folder, in Laragon's MySQL bin
-C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < Documentation\ems-demo-backup.sql
+# Laragon running (MySQL up), from PowerShell — take this the night before:
+C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqldump.exe -u root --single-transaction ems > "C:\Users\ADMIN\ems-backups\ems-pre-demo-<date>.sql"
 ```
 
-Re-seed from scratch instead (rebuilds the two full-pipeline students; Pedro/Liza
-come from the scripts inside the file's git history — the backup is the safer option):
+Rebuilding from empty instead runs every desk and workflow queue and leaves **no**
+record in a state a desk could not have produced — measured 2026-10-16 on a scratch
+database: all four steps exit 0, the pipeline reports no findings, and
+`php artisan ems:audit:record-states` reads all 12 rules quiet:
 
 ```powershell
-C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe seed_demo_data.php
+C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe artisan migrate:fresh --force
+C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe artisan db:seed
+C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe artisan db:seed --class=DevReferenceDataSeeder
+C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe tools\seed_full_demo_pipeline.php
 ```
 
-## Offline verification (already performed — 2026-09-13)
+What that dataset does **not** hold is the named cast the storyline above walks: no
+Pedro Santos, no Maria Reyes, no `office8_head`, and no intake papers, exam results,
+clinic record or DEMO-OR-0001 on the Juan it creates — 6 of the 19 records the
+walkthrough needs, against 18 of 19 on the restored box. The pipeline prints exactly
+that as a `SCOPE —` block after its own success banner, so a box built from empty
+says so out loud instead of failing quietly at step 4.
 
-- Built assets contain **no external URLs** (fonts, CDNs, scripts).
+## Offline verification (performed 2026-09-13; the asset and env bullets re-checked 2026-10-16)
+
+- Nothing fetched from a remote host in the built assets — the only remote strings
+  are XML namespaces, `localhost` literals and one React error-decoder link in text.
 - Every `<link>/<script>/<img>` on dashboard / exam / blocking / student pages resolves to `localhost`.
 - CSP header: `font-src 'self' data:` — no external font hosts.
 - `/fonts/figtree-latin-400-normal.woff2` served locally (HTTP 200, `font/woff2`).
-- All env drivers local: mail → log file, sessions → file, queue → database.
+- All env drivers local: mail → log file, sessions → file, queue → `sync` (`.env`
+  line 41; a job runs inside the request, so no worker is needed to demo offline.
+  `.env.example` still ships `database` — set it to `sync` on a fresh box or a
+  queued job sits in `jobs` unrun).

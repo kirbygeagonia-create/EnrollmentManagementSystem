@@ -47,10 +47,24 @@ You should see the SEAIT EMS login page.
 2. Press **Ctrl+K**, type `Dela` → **Juan Dela Cruz (DEMO-2026-001)** appears
    → open him → you're on the Student 360° page. ✅
 3. Open **http://localhost:8080/accounting/daily-report?date=2026-09-13** →
-   OR **DEMO-OR-0001** (₱17,500) is listed. ✅
-   *(Needed because the Daily Collections Report defaults to **today**; the
-   seeded payment is dated 2026-09-13. Just bookmark this URL.)*
+   OR **DEMO-OR-0001** (₱12,000) is listed. ✅
+   *(Needed because the Daily Collections Report defaults to **today**. That
+   receipt is fixed-dated 2026-09-13 and is the one the bookmark finds; Juan's
+   second receipt, **DEMO-OR-TODAY-01** (₱5,500), is re-dated to the current day
+   by `php tools/seed_full_demo_pipeline.php`, so the report without the `?date=`
+   is never empty either. The two sum to his ₱17,500 assessment.)*
 4. Log out. **You are ready.**
+
+> **This walkthrough is written against the restored dataset, not a bare re-seed.**
+> `php tools/seed_full_demo_pipeline.php` populates every desk and workflow queue
+> and is safe to run any time — but on a database it has only ever touched itself,
+> it creates no **Pedro Santos** and no **Maria Reyes**, and the Juan Dela Cruz it
+> creates has no admission, no entrance-exam result, no clinic assessment and no
+> DEMO-OR-0001. Measured: **6 of the 19 records steps 4-14 below need** on a
+> self-seeded database, **18 of 19** on this machine's restored `ems`. The single
+> gap on the restored box is step 13's Juan — see that step. Re-measure with
+> `php storage/app/scratch/lane39-guide-preconditions.php`, and read §5 before
+> restoring anything.
 
 ### If something looks wrong
 | Symptom | Fix |
@@ -58,7 +72,7 @@ You should see the SEAIT EMS login page.
 | "This site can't be reached" | Apache isn't running — Laragon → **Start All** again |
 | Login page loads but login fails | MySQL isn't running — check Laragon's Database light |
 | Page looks unstyled (no fonts/colors) | Wrong URL — use `http://localhost:8080` exactly, then Ctrl+F5 |
-| Daily report shows "No payments" | Add `?date=2026-09-13` to the URL (see Step 3.3) |
+| Daily report shows "No payments" | Add `?date=2026-09-13` to the URL (see Step 3.3). That day only holds a receipt once the dataset is restored; a re-seeded database has just today's DEMO-OR-TODAY-01 |
 | Data looks wrong / demo students missing | Restore the backup (see §5) |
 
 ---
@@ -82,9 +96,18 @@ You should see the SEAIT EMS login page.
 | `office5_head` | Blocking | 9.0 Block Sections & Schedules |
 | `office6_head` | Admission | 3.0 Admissions — intake, requirements, approval |
 | `office7_head` | Academic Department | 4.0 Exams — Course-Specific Entrance (Stage 2) + 5.0 Retention Exam |
-| `office8_head` | Registrar (the retired Clearance office's login) | kept for one purpose: it holds **no** sign right, so it demonstrates the ruling 7 split |
+| `office8_head` | Registrar (the retired Clearance office's login) | kept for one purpose: it holds **no** sign right, so it demonstrates the ruling 7 split. It exists only on this machine's dataset — `DevReferenceDataSeeder` seats the nine offices ruling 12 left standing, so a database built from empty has 20 accounts and no `office8_head` (measured 2026-10-16) |
 | `office11_head` | Clinic | 11.0 Clinic Assessments |
 | `office22_head` | ID Office | 12.0 Student IDs |
+
+> **The box holds 21 staff accounts, not the 11 above.** The other ten are the
+> college-bound Academic Department desks `DevReferenceDataSeeder` seats —
+> `dept.caf`, `dept.cbg`, `dept.cee`, `dept.cjc`, `dept.cte`, `dept.ctic`, one per
+> college (the owner's ruling of 2026-10-13) — plus `dean_academic` and
+> `instr.alvarez`, `instr.mendoza`, `instr.salazar`. Use a `dept.*` login when the
+> professor asks how a department sees only its own college's students;
+> `office7_head` and the three `instr.*` accounts carry no college, so they are
+> bounded by nothing.
 
 > **RBAC demo tip (FDD 15.0):** stay logged in as `staff8`, open **Desks &
 > Apps** and scroll — you'll see all 14 desks including the admin-only
@@ -101,10 +124,11 @@ You should see the SEAIT EMS login page.
 ### Student demo data (records you'll click through — not logins)
 | Student | School ID | Role in the demo |
 |---|---|---|
-| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic → **ID validated, face photo on file** |
+| **Juan Dela Cruz** | DEMO-2026-001 | The fully-processed first-year: admission → exams → evaluation → assessment → payment → registrar → block → clinic. His **ID box is signed with no ID request behind it** — that request row was deleted under the owner's ruling on 2026-10-11 and the signature was left standing, so step 13 uses Kevin instead |
 | **Maria Reyes** | DEMO-2026-002 | Continuing student: **retention exam passed**, clearance slip with **all 9 requirement lines approved** + desk receipt, and her pass slip **confirmed at Department Evaluation** |
 | **Pedro Santos** | DEMO-2026-003 | **Pending admission** — 3 requirement submissions, Form 138 PDF attached; the entrance-exam candidate |
 | **Liza Bautista** | DEMO-2026-004 | Enrolled BSBA from a prior term — the retention-exam candidate |
+| **Kevin Santos** | DEMO-2026-017 | The ID desk's finished example: BSCrim year 1, every box signed, request **validated** with a **face photo on file** — shown on his Student 360 page, because the hub lists only open boxes (step 13). `tools/seed_full_demo_pipeline.php` writes his validation, so a re-seed keeps him and the September dump alone loses him (see §5) |
 
 ---
 
@@ -157,13 +181,16 @@ intake end and **Juan** (fully processed) for everything after.
    department, never in the Exam module; Maria's retention result is
    already on record.
 7. **(6.0 Fee Assessment)** **Desks & Apps → Scholarship & Assessment.**
-   Open Juan's assessment: itemized charges per fee type (FDD 6.2),
-   finalized (FDD 6.3). If asked about corrections — FDD 6.4 lets you edit
-   computed charge amounts.
+   Open Juan's assessment: itemized charges per fee type (FDD 6.2) — ₱11,250
+   tuition, ₱4,500 laboratory, ₱1,500 miscellaneous, ₱250 library, ₱17,500
+   assessed — finalized (FDD 6.3). If asked about corrections — FDD 6.4 lets
+   you edit computed charge amounts.
 8. **(7.0 Payments)** **Desks & Apps → Cashier Payment Desk.** Juan's
-   payment — OR **DEMO-OR-0001**, ₱17,500, status paid (FDD 7.2). Then the
+   receipts — OR **DEMO-OR-0001**, ₱12,000, status paid, against that ₱17,500
+   sheet (FDD 7.2), and OR **DEMO-OR-TODAY-01**, ₱5,500, which the seed tool
+   re-dates to the current day. Then the
    **Daily Collections Report** tab — and show the bookmarked URL from §1
-   (`?date=2026-09-13`) so his OR appears in the day's collections
+   (`?date=2026-09-13`) so DEMO-OR-0001 appears in the day's collections
    (FDD 7.3). *Strong moment if the professor wants action: record a live
    payment on any assessment still on screen — the report updates to
    today instantly.*
@@ -193,17 +220,32 @@ intake end and **Juan** (fully processed) for everything after.
 12. **(11.0 Clinic)** **Desks & Apps → School Clinic.** Juan's health
     assessment — height, weight, blood pressure, PhilHealth, physical exam
     findings (FDD 11.2–11.3).
-13. **(12.0 Student IDs)** **Desks & Apps → Student ID Hub.** Juan's ID:
-    request **validated** with the **face photo on file**. That's FDD
-    12.1–12.4 end-to-end. Validation is the desk's last action — the EMS no
-    longer records card production or hand-over.
+13. **(12.0 Student IDs)** **Desks & Apps → Student ID Hub.** The hub is a queue of
+    work still to do: it lists the enrollments whose ID box is still open, which on
+    this box is **Danica Sotto (DEMO-2026-016)** and **Nena Alcantara
+    (DEMO-2026-026)** — requests `pending`, every box ahead of them signed. Open
+    Danica: with no photo on file the **Validate** button is disabled and the reason
+    prints under it; attach the face photo (FDD 12.2), press **Validate** (FDD 12.3) —
+    the desk shows the captured face on the pending request — and the box signs itself,
+    so she leaves the queue. That is FDD 12.1–12.4 **done** rather than displayed.
+    Validation is the desk's last action; the EMS no longer records card production or
+    hand-over. For the finished state press **Ctrl+K** and open **Kevin Santos**
+    (DEMO-2026-017): his ID-request history reads `validated`. If the professor wants
+    to see the face on a completed record, type the desk's own address for him —
+    `/id/92` on this box (the id is Kevin's enrollment, and it moves on a rebuilt
+    database). *Two honest gaps: the hub keeps no list of already-validated requests,
+    so a finished record leaves the desk's sight the moment its box signs; and Juan's
+    ID box is signed with no request behind it — that row claimed validated with no
+    photo and no validator, was deleted under the owner's ruling on 2026-10-11, and the
+    signature was deliberately left standing, which is the one note `php artisan
+    ems:audit:record-states` still reports.*
 
 ### Cross-cutting modules (FDD 13.0 → 15.0)
 14. **(13.0 Student 360°)** Press **Ctrl+K**, type `Dela`, open Juan —
     **the student's whole life on one page**: admission history, exams,
-    enrollment, subjects, payments, clearances, clinic records, ID request
-    validation, documents (FDD 13.1–13.4). This is also your fastest
-    navigation tool all demo long.
+    enrollment, subjects, payments, clearances, clinic records, documents
+    (FDD 13.1–13.4). Open **Kevin** instead for the ID-request line, for the reason
+    step 13 gives. This is also your fastest navigation tool all demo long.
 15. **(14.0 Reference Data)** **Desks & Apps → Reference Catalogs** (admin
     section). Show 3–4 catalogs quickly — Courses, Fee Types, Blocks,
     Admission Requirements — and point out search/filters run server-side
@@ -237,21 +279,73 @@ intake end and **Juan** (fully processed) for everything after.
 
 ## 5. EMERGENCY: restore the demo data
 
-If data gets corrupted or the professor experiments and changes something:
+**The dump to restore on demo day is the one you take the night before.** It is
+the only file that re-creates exactly what §3 walks. Take it while the box is
+right, keep it outside the repo (the remote is public; a dump of the working
+database is not synthetic data). The one file in `Documentation/` earns its place
+by being synthetic: all 16 of its students carry a `DEMO-2026-###` school id and
+every student email in it is `@example.com` — re-check that before ever
+committing a newer dump.
 
 ```powershell
 # Laragon running (MySQL up), from PowerShell:
-C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < "C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\Documentation\ems-demo-backup.sql"
+C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqldump.exe -u root --single-transaction ems > "C:\Users\ADMIN\ems-backups\ems-pre-demo-<date>.sql"
 ```
 
-Then refresh the browser (Ctrl+F5). All four students, all workflow states,
-and all 11 accounts return exactly as documented above.
+If data gets corrupted or the professor experiments and changes something,
+restore that file and refresh the browser (Ctrl+F5):
 
-Backup taken **2026-09-19** — 63 tables, all demo rows included (refreshed
-after the curriculum expansion: all 16 SEAIT programs carry their own
-curriculum with per-program major subjects plus the shared CHED GE pool,
-and every subject carries code, name, description, prerequisites, and
-lecture/lab units).
+```powershell
+C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < "C:\Users\ADMIN\ems-backups\ems-pre-demo-<date>.sql"
+```
+
+### If there is no fresh dump: `Documentation/ems-demo-backup.sql`
+
+One command is **not** enough with that file. It is a **2026-09-20** snapshot —
+its newest applied migration is `2026_09_20_1000000000_add_schedule_status_to_blocks_table`
+and its newest audit row is 07:57 that morning, so every ruling and repair since
+that date is simply not in it — and what it does put back was measured by loading
+it into a scratch database and walking §3 (`php
+storage/app/scratch/lane39-dump-contents.php` re-reads it; `php
+storage/app/scratch/lane39-guide-preconditions.php` re-walks it). Its curriculum
+half is still sound: 16 programs, the same 16 courses the live catalog holds.
+
+| What the snapshot returns | What that costs you |
+|---|---|
+| 10 of its 11 enrollments on **term 18** — the Summer term this build retired | every desk that reads the demo term shows nothing: **10 of 19** §3 records are walkable, and Juan holds no enrollment on that term at all |
+| 63 tables, including the retired `studentids`, and **no `shiftingrequests`** | the Shift Requests module has no table until `php artisan migrate --force` re-runs the 19 migrations the snapshot predates |
+| 11 staff accounts | the 10 added since — 6 per-college Academic Department desks, the dean, 3 instructors — don't exist until both seeders run |
+| Maria's slip with **10** approved requirement lines | step 9 would open a slip that contradicts the count the guide says out loud; `db:seed` retires legacy office 8 in foreign-key order (ruling 12) and the slip reads 9 lines again |
+| `idrequests` row 53: `validated`, `cardPhotoPath` NULL, no validator | the contradictory row deleted under the owner's ruling on 2026-10-11 comes back, and `php artisan ems:audit:record-states` reports it again |
+| 12 `documentprintlog` rows with no student, enrollment or block key | the same command reports those 12 too (§25 P-14) |
+| 2 completed boxes on enrollment 89, signed by `office2_head` for offices 4 and 3 | the seed tool exits **1** naming them — the current build refuses a cross-office signature, and those rows are the snapshot's, not the tool's |
+
+Run all five, in this order — each step's output is what the next one depends on:
+
+```powershell
+C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < "C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\Documentation\ems-demo-backup.sql"
+php artisan migrate --force
+php artisan db:seed
+php artisan db:seed --class=DevReferenceDataSeeder
+php tools/seed_full_demo_pipeline.php
+```
+
+`db:seed` is not optional: without it the pipeline stops at its first named cause
+— `scholarshiptypes … has no row with scholarshipName = Full Scholarship` — and
+warns that the dataset may be partway seeded. The last command relocates the cast
+off term 18 onto the demo term (it prints `G-9: … 18 -> 11`), re-dates the
+clearance window to that term's calendar, and re-creates Kevin Santos's validated
+ID request with its photo. It then exits 1 on the two September signatures above;
+read that line rather than chasing it, because no action this build offers could
+have written them and none can un-write them.
+
+Afterwards the box walks 18 of §3's 19 records — the same single gap this machine
+already carries, step 13's Juan — and `ems:audit:record-states` reports the 14
+rows the snapshot re-introduced. Run the pipeline once per restore: its
+`SCOPE —` banner prints only on a run that had to create the two base demo rows
+itself, so a second run on the same database says nothing — and that banner is
+what tells you the dataset in front of you was built by the tool rather than
+restored.
 
 ---
 
@@ -273,10 +367,13 @@ ID Office:  office22_head     / password
 
 Navigate:   "Desks & Apps" button (top bar)  |  Ctrl+K = search any student
 
-Students:   Juan Dela Cruz   DEMO-2026-001  (full pipeline, ID validated)
-            Maria Reyes     DEMO-2026-002  (retention + clearance complete)
+Students:   Juan Dela Cruz   DEMO-2026-001  (full pipeline; ID box signed, no request behind it — ruled)
+            Maria Reyes     DEMO-2026-002  (retention + clearance complete, 9 lines)
             Pedro Santos    DEMO-2026-003  (pending admission, exam candidate)
             Liza Bautista   DEMO-2026-004  (BSBA, retention candidate)
+            Kevin Santos    DEMO-2026-017  (ID validated + face photo, on his 360 page)
+            Danica Sotto    DEMO-2026-016  (open ID box — this is who step 13 validates)
 
-Daily report (seeded OR):  http://localhost:8080/accounting/daily-report?date=2026-09-13
+Daily report (fixed-date OR DEMO-OR-0001, ₱12,000):  http://localhost:8080/accounting/daily-report?date=2026-09-13
+Daily report (today): DEMO-OR-TODAY-01, ₱5,500 — re-dated to the current day by the seed tool
 ```
