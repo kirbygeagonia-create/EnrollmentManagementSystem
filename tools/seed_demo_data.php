@@ -5,10 +5,27 @@
 // drives), leaving persistent rows in the `ems` database so every parametrized
 // page has data to render during the presentation.
 //
-// Usage: php seed_demo_data.php
-require 'vendor/autoload.php';
-$app = require 'bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
+// STATUS (measured 2026-10-15, on a database built the way CI builds one — migrate, db:seed,
+// DevReferenceDataSeeder): this file boots and reports honestly, but it does NOT complete. The capture step is
+// refused by the application's own rule ("The addresses field must have at least 2 items", where this file
+// sends one), and Department Evaluation then refuses to sign an enrollment that is still `pending`. Three
+// defects were fixed on the way to that finding — the bootstrap that made the file unrunnable, two desk
+// assignments that the sign-rights split and BR9 had reversed, and a reporter that printed "ok" for a
+// validation redirect — and none of them rebuilt the dataset. So this is not the way to make a demo database,
+// and `tools/seed_full_demo_pipeline.php` is right to refuse when the base rows are missing: the presentation
+// dataset still comes from Documentation/ems-demo-backup.sql, which is a September snapshot.
+//
+// Usage: php tools/seed_demo_data.php   (from the project root)
+//
+// The bootstrap paths are absolute and the kernel is named in full, because neither was before: `use`
+// aliases resolve positionally in PHP, so `Kernel::class` on this line did not see the `use` at the bottom
+// of the import block and died with `Class "Kernel" does not exist` — measured in a two-line probe, not
+// guessed. And
+// `require 'vendor/autoload.php'` only worked from one working directory while the header told the reader to
+// run it from another.
+require dirname(__DIR__).'/vendor/autoload.php';
+$app = require dirname(__DIR__).'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Enums\EnrollmentStatus;
 use App\Models\Admissions;
@@ -67,10 +84,59 @@ function demoFaceUpload(string $name = 'face.png'): UploadedFile
 function ok(string $label, $response)
 {
     $code = $response->getStatusCode();
-    if (! in_array($code, [200, 302])) {
+    if (! in_array($code, [200, 302], true)) {
         echo "FAIL $label -- HTTP $code: ".substr($response->getContent(), 0, 300)."\n";
         exit(1);
     }
+
+    // A redirect off a form post is also how Laravel says "your input did not validate" — the status code is
+    // 302 either way, so a step that was refused and a step that worked print the same line. Reading the error
+    // bag the request flashed is the only difference, and calling 302 `ok` without it is how this tool reported
+    // nine green lines over a database whose enrollment had never left `pending`.
+    if ($code === 302) {
+        $session = app('session.store');
+        $bag = $session->get('errors');
+        $messages = [];
+
+        // Whatever the session hands back depends on whether it has been through serialisation, so nothing is
+        // assumed about its shape: providers are unwrapped and the rest is walked for strings. A flattener
+        // that casts reached for `strval()` on an array of messages and died with "Array to string
+        // conversion" — the report must not be able to lie by crashing.
+        $strings = function ($value) use (&$strings): array {
+            if (is_string($value) && $value !== '') {
+                return [$value];
+            }
+            if (! is_array($value) && ! $value instanceof Traversable) {
+                return [];
+            }
+            $out = [];
+            foreach ($value as $inner) {
+                foreach ($strings($inner) as $line) {
+                    $out[] = $line;
+                }
+            }
+
+            return $out;
+        };
+
+        $raw = $bag;
+        if ($raw instanceof Illuminate\Support\ViewErrorBag) {
+            $raw = $raw->getBag('default');
+        }
+        if ($raw instanceof Illuminate\Contracts\Support\MessageProvider) {
+            $raw = $raw->getMessages();
+        }
+        $messages = $strings($raw);
+
+        $flashed = array_merge($strings($session->get('error')), $strings($session->get('warning')));
+        $session->forget(['errors', 'error', 'warning']);
+
+        if ($messages !== [] || $flashed !== []) {
+            echo 'FAIL '.$label.' -- refused on a 302: '.implode(' | ', array_merge($messages, $flashed))."\n";
+            exit(1);
+        }
+    }
+
     echo "ok   $label ($code)\n";
 }
 
@@ -112,14 +178,21 @@ DB::table('studentrequirementsubmissions')->where('admissionId', $admission->adm
 echo "ok   requirements verified\n";
 
 // ---------- 2. Entrance exams (2-stage for BSCrim) ----------
+// The two arms belong to different desks, and this file had them the wrong way round: BR9 gives Guidance
+// (office 4) the general entrance exam and the department (office 7) the course-specific one, which is what
+// `ExamPolicy::record` asks — `exam.record.general` is held by office4_head and never by an office-7 account,
+// and `exam.record.courseSpecific` is the reverse. Both posts were 403. Nobody saw it because the file could
+// not reach line 11 until the bootstrap import above was fixed.
 $examData = ['studentId' => $studentId, 'courseId' => 3, 'termId' => 11, 'examResult' => 'pass', 'examDate' => now()->toDateString()];
-ok('exam.general.record', req($staff(7), 'POST', route('exam.general.record'), $examData));
-ok('exam.course-specific.record', req($staff(4), 'POST', route('exam.course-specific.record'), $examData));
+ok('exam.general.record', req($staff(4), 'POST', route('exam.general.record'), $examData));
+ok('exam.course-specific.record', req($staff(7), 'POST', route('exam.course-specific.record'), $examData));
 $admission->refresh();
 echo "     admission status: {$admission->admissionStatus->value}\n";
 
 // ---------- 3. Evaluation ----------
-$evaluator = $staff(4);
+// Department Evaluation is office 7's box: `evaluation.sign` is held by the dean, the per-college dept.*
+// accounts and office7_head — never by Guidance (office 4), which is what this line said.
+$evaluator = $staff(7);
 $enrollment = Enrollments::create([
     'studentId' => $studentId,
     'courseId' => 3,
