@@ -173,6 +173,32 @@ class WorkflowService
     }
 
     /**
+     * Whether this account may put its name on a box that belongs to another office.
+     *
+     * The rule as a predicate, so a reader of the data can ask the same question the choke point asked at
+     * write time. `tools/seed_full_demo_pipeline.php`'s desk report needs this: a completed box or an approved
+     * clearance line naming an officer from elsewhere is only impossible if no desk could have written it, and
+     * two accounts can sign across offices — SysAdmin, because `AuthServiceProvider`'s `Gate::before` grants
+     * it every ability before any policy runs, and a Guidance box's academic signers (BR14 as built). The
+     * audit observer already leaves SysAdmin writes unflagged for the same reason; a report that called them
+     * findings would mark the demo's own admin login a defect.
+     */
+    public static function maySignAcrossOffices(Staffusers $signer, int $officeId): bool
+    {
+        if ((int) $signer->officeId === $officeId) {
+            return true;
+        }
+
+        $isAcademicSigner = $officeId === OfficeId::Guidance->value && (
+            in_array($signer->role->value, ['dean', 'programHead', 'instructor'], true)
+            || $signer->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator'])
+            || $signer->unitId !== null
+        );
+
+        return $isAcademicSigner || $signer->hasRole('SysAdmin');
+    }
+
+    /**
      * Sign a workflow step. Only the assigned office can sign.
      * Steps must be signed in order (BR13/BR14), and one signing is the most a box takes.
      *
@@ -220,21 +246,13 @@ class WorkflowService
             );
         }
 
-        // Check office scope (BR14)
-        $isAcademicSigner = $step->officeId === OfficeId::Guidance->value && (
-            in_array($signedBy->role->value, ['dean', 'programHead', 'instructor'])
-            || $signedBy->hasRole(['Dean', 'ProgramHead', 'Instructor', 'DeptEvaluator'])
-            || $signedBy->unitId !== null
-        );
-
-        // Item 3 write-boundary: only SysAdmin may sign across offices. The
-        // Admin role is read-everywhere with NO mutation permissions
-        // (RbacSeeder), and every HTTP path into signStep authorizes first
-        // with an office-scoped permission Admin lacks — so including Admin
-        // here inverted the boundary at the one choke point every step write
-        // routes through, and would hand Admin a silent cross-office write
-        // the moment a caller forgets its authorize() call.
-        if ($step->officeId !== $signedBy->officeId && ! $isAcademicSigner && ! $signedBy->hasRole('SysAdmin')) {
+        // Check office scope (BR14). Item 3 write-boundary: only SysAdmin may sign across offices, plus the
+        // academic signers Guidance accepts — the Admin role is read-everywhere with NO mutation permissions
+        // (RbacSeeder), and every HTTP path into signStep authorizes first with an office-scoped permission
+        // Admin lacks, so admitting Admin here would invert the boundary at the one choke point every step
+        // write routes through. The rule lives in maySignAcrossOffices() so the data can be asked the same
+        // question after the fact.
+        if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId)) {
             throw new InvalidStateTransitionException(
                 "Staff member {$signedBy->name} cannot sign step {$stepOrder} (requires office {$step->officeId})."
             );

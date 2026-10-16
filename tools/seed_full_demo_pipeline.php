@@ -128,15 +128,26 @@ $feeMiscellaneousId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Miscellaneou
 $feeLaboratoryId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Laboratory Fee');
 $feeLibraryId = $namedId('feetypes', 'feeTypeId', 'feeName', 'Library Fee');
 
-/*
- * The desk each workflow box is credited to, read from the account the seeder makes for that office.
- *
- * This was seven literals, which is the same mistake one level up: it recorded which user ids this machine
- * happened to hand out rather than who owns the box. The office is the fact; the user id is a lookup.
- */
+// Marisol's grant is named the same way. `scholarshiptypes` is seeded by `scholarshipName`, so a literal 1
+// here is a claim about this database's counter, not about the grant — and on a schema whose counter has been
+// spent it attaches the demo student to whatever row number 1 happens to be.
+$scholarshipFullId = $namedId('scholarshiptypes', 'scholarshipTypeId', 'scholarshipName', 'Full Scholarship');
+
+// The desk each workflow box is credited to, read from the account the seeder makes for that office.
+//
+// This was seven literals, which is the same mistake one level up: it recorded which user ids this machine
+// happened to hand out rather than who owns the box. The office is the fact; the user id is a lookup.
+//
+// All nine offices that own a workflow box or a clearance line are in the map, because the clearance checklist
+// is seeded from ProvisionalClearanceRequirements::NAMES — Admission and Academic own two of its nine lines.
+// When the map covered seven, three approval sites fell back to a literal Admin id for those two, which CI
+// caught on 2026-10-16 (its Pest step spends staffusers' AUTO_INCREMENT before the seeders run, so user 1 was
+// not there to fall back to and the insert died on the foreign key). $namedId raises when an office has no
+// head, so the map's domain cannot quietly fall behind the data again without saying so.
 $deskSigners = [];
-foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, OfficeId::Registrar,
-    OfficeId::Blocking, OfficeId::Clinic, OfficeId::IdOffice] as $deskOffice) {
+foreach ([OfficeId::Registrar, OfficeId::Accounting, OfficeId::Scholarship, OfficeId::Guidance,
+    OfficeId::Blocking, OfficeId::Admission, OfficeId::Academic, OfficeId::Clinic,
+    OfficeId::IdOffice] as $deskOffice) {
     $deskSigners[$deskOffice->value] = $namedId('staffusers', 'userId', 'username', 'office'.$deskOffice->value.'_head');
 }
 
@@ -146,9 +157,10 @@ foreach ([OfficeId::Guidance, OfficeId::Scholarship, OfficeId::Accounting, Offic
  * Three call sites used to stamp a literal user id instead, which recorded whichever number this machine's
  * AUTO_INCREMENT happened to hand out (userId 5 here is office4_head; on a fresh install it need not be),
  * and two more used `?? 1`, defaulting to an Admin the write-boundary rule in WorkflowService excludes from
- * every mutation. A signature is the strongest claim a workflow row makes, so the tool stops rather than
- * guesses a signer: a box attributed to an officer who never touched it reads as signed to every desk that
- * opens it, and nothing downstream can tell.
+ * every mutation — those two were the clearance approvals, and they are what CI's counter finally caught.
+ * A signature is the strongest claim a workflow row makes, so the tool stops rather than guesses a signer:
+ * a box attributed to an officer who never touched it reads as signed to every desk that opens it, and nothing
+ * downstream can tell.
  *
  * A plain function, not a closure: the call sites sit in blocks that capture only the variables they list.
  */
@@ -173,6 +185,35 @@ function desk_signer_for(int $officeId): int
 
 // Admission owns the approval that opens the pipeline; two demo rows credit it as the evaluator already.
 $admissionHeadId = $namedId('staffusers', 'userId', 'username', 'office'.OfficeId::Admission->value.'_head');
+
+/**
+ * Of the rows that name an officer from another office, the ones no desk could have produced.
+ *
+ * `WorkflowService::maySignAcrossOffices()` is the predicate `signStep()` itself consults at write time, so
+ * the report never calls a legitimate signature a defect: SysAdmin crosses offices because
+ * `AuthServiceProvider.php:106-110` grants it every ability before any policy runs, and Guidance's academic
+ * signers cross because BR14 as built allows them. Restating that in SQL here is how the two would drift.
+ *
+ * A plain function for the same reason as `desk_signer_for()`: closure-valued helpers are not visible inside
+ * the closures that call them.
+ *
+ * @param  array<int,object>  $rows
+ * @return array<int,object>
+ */
+function impossible_cross_office_signers(array $rows, string $signerKey, string $officeKey): array
+{
+    $offenders = [];
+
+    foreach ($rows as $row) {
+        $signer = Staffusers::find($row->{$signerKey});
+
+        if ($signer !== null && ! WorkflowService::maySignAcrossOffices($signer, (int) $row->{$officeKey})) {
+            $offenders[] = $row;
+        }
+    }
+
+    return $offenders;
+}
 
 /*
  * The college that owns a program evaluates its students (ruled 2026-10-13).
@@ -614,7 +655,7 @@ if ($period) {
                 'studentClearanceId' => $clrRico->studentClearanceId,
                 'clearanceRequirementId' => $req->clearanceRequirementId,
                 'status' => $isApp ? 'approved' : 'pending',
-                'approvedBy' => $isApp ? 1 : null,
+                'approvedBy' => $isApp ? desk_signer_for($req->officeId) : null,
                 'approvalDate' => $isApp ? now() : null,
                 'remarks' => $isApp ? 'Cleared' : '',
             ]);
@@ -1264,9 +1305,32 @@ $completeWorkflow = function (Enrollments $enrollment) use ($workflowService, $d
     ]);
 };
 
+/**
+ * The four lines every demo fee sheet carries, keyed by the fee types THIS database holds.
+ *
+ * A plain function for the same reason as `desk_signer_for()`: the call sites sit in closures that capture
+ * only the variables they list, and `feetypes` is seeded by name, so its ids follow the counter. A default
+ * argument cannot hold variables, which is why the map is built here rather than written as a parameter
+ * default — and why the default that used to sit there read `[1 => 11250, 2 => 1500, 3 => 4500, 4 => 250]`:
+ * on a database whose `feetypes` counter had been spent (every database CI's Pest step touches) fee type 1 is
+ * not Tuition, and the insert died on `charges_feetypeid_foreign`. Measured 2026-10-16 against exactly such a
+ * schema, in the rehearsal that exists to find this class of thing.
+ */
+function demo_fee_lines(float $tuition = 11250.0): array
+{
+    global $feeTuitionId, $feeMiscellaneousId, $feeLaboratoryId, $feeLibraryId;
+
+    return [
+        $feeTuitionId => $tuition,
+        $feeMiscellaneousId => 1500,
+        $feeLaboratoryId => 4500,
+        $feeLibraryId => 250,
+    ];
+}
+
 // The fee sheet every demo student is charged, from the seeded fee types.
-$chargeDemoFees = function (int $assessmentId, array $amounts = [1 => 11250, 2 => 1500, 3 => 4500, 4 => 250]): void {
-    foreach ($amounts as $feeTypeId => $amount) {
+$chargeDemoFees = function (int $assessmentId, ?array $amounts = null): void {
+    foreach ($amounts ?? demo_fee_lines() as $feeTypeId => $amount) {
         DB::table('charges')->updateOrInsert(
             ['assessmentId' => $assessmentId, 'feeTypeId' => $feeTypeId],
             ['amount' => $amount, 'waivedAmount' => 0]
@@ -1460,7 +1524,7 @@ foreach (Studentclearances::with('approvals')->get() as $clearance) {
             'studentClearanceId' => $clearance->studentClearanceId,
             'clearanceRequirementId' => $requirement->clearanceRequirementId,
             'status' => $cleared ? 'approved' : 'pending',
-            'approvedBy' => $cleared ? ($deskSigners[$requirement->officeId] ?? 1) : null,
+            'approvedBy' => $cleared ? desk_signer_for($requirement->officeId) : null,
             'approvalDate' => $cleared ? now()->toDateString() : null,
             'remarks' => $cleared ? 'Cleared' : '',
         ]);
@@ -1832,7 +1896,7 @@ foreach ($seatedForRegistrar as $seat) {
             ],
             [
                 'status' => 'approved',
-                'approvedBy' => $deskSigners[$requirement->officeId] ?? 1,
+                'approvedBy' => desk_signer_for($requirement->officeId),
                 'approvalDate' => now()->toDateString(),
                 'remarks' => 'No outstanding account',
             ]
@@ -1971,7 +2035,7 @@ if (! $enrMarisol) {
 DB::table('studentscholarships')->updateOrInsert(
     ['studentId' => $marisol->studentId, 'termId' => $termId],
     [
-        'scholarshipTypeId' => 1, // Full Scholarship, 100%
+        'scholarshipTypeId' => $scholarshipFullId, // Full Scholarship, 100% — by name, not by counter
         'status' => 'active',
         'approvedBy' => $deskSigners[OfficeId::Scholarship->value],
         'awardedBeforeEnrollment' => true,
@@ -2045,8 +2109,8 @@ foreach (['DEMO-2026-012' => 17500.00, 'DEMO-2026-013' => 18500.00] as $schoolId
     $assessmentId = DB::table('studentassessments')->where('enrollmentId', $enrollment->enrollmentId)->value('assessmentId');
     if ($assessmentId) {
         $chargeDemoFees((int) $assessmentId, $schoolId === 'DEMO-2026-013'
-            ? [1 => 12250, 2 => 1500, 3 => 4500, 4 => 250]
-            : [1 => 11250, 2 => 1500, 3 => 4500, 4 => 250]);
+            ? demo_fee_lines(12250.0)   // her account is priced one unit higher, same four lines
+            : demo_fee_lines());
         $paid = (float) DB::table('payments')->where('enrollmentId', $enrollment->enrollmentId)->where('paymentStatus', 'paid')->sum('amount');
         DB::table('studentassessments')->where('assessmentId', $assessmentId)->update(['remainingBalance' => max(0, $assessed - $paid)]);
     }
@@ -2922,20 +2986,58 @@ $queuedFor = [
 
 // A box signed by an officer from another office is not a cosmetic mismatch: it is a signature the
 // application cannot produce, because signStep() refuses it (BR14) on every HTTP path. Printing it here is
-// what keeps a future edit of this file from reintroducing one quietly — nothing in tests/ executes
-// tools/, PHPStan analyses only app/, and Pint excludes this directory.
-$foreignSigners = DB::table('workflowsteps as ws')
-    ->join('staffusers as s', 's.userId', '=', 'ws.signedBy')
-    ->where('ws.stepStatus', WorkflowStepStatus::Completed->value)
-    ->whereRaw('s.officeId <> ws.officeId')
-    ->get(['ws.workflowStepId', 'ws.officeId', 'ws.signedBy', 's.username', 's.officeId as signerOffice']);
+// what keeps a future edit of this file from reintroducing a cross-office signer quietly — nothing in tests/
+// executes tools/, PHPStan analyses only app/, and Pint excludes this directory.
+//
+// The exception is asked of the application, not restated here. Two accounts may legitimately sign outside
+// their own office — SysAdmin, whose blanket grant `Gate::before` applies before any policy runs, and the
+// academic signers Guidance accepts — and an earlier version of this report flagged them too, which would have
+// called the demo's own admin login a defect the first time a walkthrough signed as staff8. The same predicate
+// signStep() uses answers it, so the report cannot drift from the rule.
+$foreignSigners = impossible_cross_office_signers(
+    DB::table('workflowsteps as ws')
+        ->join('staffusers as s', 's.userId', '=', 'ws.signedBy')
+        ->where('ws.stepStatus', WorkflowStepStatus::Completed->value)
+        ->whereRaw('s.officeId <> ws.officeId')
+        ->get(['ws.workflowStepId', 'ws.officeId', 'ws.signedBy', 's.username'])
+        ->all(),
+    'signedBy',
+    'officeId'
+);
 
-if ($foreignSigners->isNotEmpty()) {
-    $who = $foreignSigners->pluck('username')->implode(', ');
+if ($foreignSigners !== []) {
+    $who = implode(', ', array_map(fn ($row): string => $row->username, $foreignSigners));
 
-    $deskIntegrity[] = 'Signatures: '.$foreignSigners->count().' completed box(es) name an officer from '
+    $deskIntegrity[] = 'Signatures: '.count($foreignSigners).' completed box(es) name an officer from '
         .'another office ('.$who.') — no desk could have signed them, so the demo data claims a cross-office '
         .'signature the application refuses to write';
+}
+
+// The same rule on the other signature-bearing table. This is the counter that would have caught the bug CI
+// found on 2026-10-16 by hand: three approval sites fell back to a literal Admin user id for the two clearance
+// lines whose office was missing from $deskSigners, and on a database where user 1 exists the row simply lands
+// — signed by an officer who owns neither the requirement nor the desk.
+$foreignApprovals = impossible_cross_office_signers(
+    DB::table('clearanceapprovals as ca')
+        ->join('clearancerequirements as cr', 'cr.clearanceRequirementId', '=', 'ca.clearanceRequirementId')
+        ->join('staffusers as s', 's.userId', '=', 'ca.approvedBy')
+        ->where('ca.status', 'approved')
+        ->whereRaw('s.officeId <> cr.officeId')
+        ->get(['ca.clearanceApprovalId', 'cr.officeId', 'ca.approvedBy', 's.username'])
+        ->all(),
+    'approvedBy',
+    'officeId'
+);
+
+if ($foreignApprovals !== []) {
+    $who = implode(', ', array_map(
+        fn ($row): string => $row->username.' for office '.$row->officeId,
+        array_values(array_unique(array_map(fn ($row): string => $row->username.'|'.$row->officeId, $foreignApprovals)))
+    ));
+
+    $deskIntegrity[] = 'Clearance: '.count($foreignApprovals).' approved line(s) name an officer from another '
+        .'office ('.$who.') — a slip signed by a desk that does not own that requirement prints that name as '
+        .'its approval, and ClearancePolicy::approveRequirement refuses the act for anyone but SysAdmin';
 }
 echo "=======================================================\n";
 echo " WHAT EACH DESK WILL SHOW\n";

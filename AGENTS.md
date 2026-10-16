@@ -131,7 +131,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `tools/seed_full_demo_pipeline.php` used to write `feeTypeId => 1..4`, `subjectId => 5`, `roomId => 1` and
   an office→user map of literals; on a fresh install fee type 1 is the Clearance Slip Replacement, so every
   demo charge attached to the wrong paper. Resolve by name (`subjectCode`, `roomName`, `feeName`,
-  `officeN_head` usernames) instead.
+  `officeN_head` usernames) instead. **A `?? 1` fallback is the same bug wearing a costume:** three clearance
+  approval sites wrote `$deskSigners[$officeId] ?? 1` and a bare `1`, because that map covered seven offices
+  while the checklist is seeded from `ProvisionalClearanceRequirements::NAMES` — nine. Admission and Academic
+  lines were signed by whichever account was userId 1. Fixed 2026-10-16 by mapping all nine offices and routing
+  every signer through `desk_signer_for()`, which refuses an unseated desk.
+- **A rehearsal schema with clean counters cannot find a counter assumption.** The bug above passed on a
+  schema built from the CI recipe because nothing had spent `staffusers` yet; CI caught it because its Pest
+  step runs *before* the seeders and every rolled-back test insert still spends its id. When a rehearsal is
+  meant to prove a path CI will take, reproduce CI's order (suite → migrate → seed → the thing under test) —
+  MySQL 8 will not show a spent counter on an empty table, so bumping `AUTO_INCREMENT` is not a substitute.
 - Nothing *analyses* `tools/`: `phpstan.neon` covers `app` only and `pint.json` excludes `tools`, so a defect
   there is invisible to the static gates — those files are proven by running them and reading their output.
   Since 2026-10-16 `tools/seed_full_demo_pipeline.php` is also *executed* by CI (the MySQL job's step between
@@ -215,8 +224,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `:1607`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
   nothing, so the retirement looked like a missing year to be refilled, and `$completeWorkflow()` signed every
   box on the way. (Measured 2026-10-16: the seat guard is
-  `tools/seed_full_demo_pipeline.php:1666` and the record it seats at `:1672` — that file has grown on every
-  batch since, so re-measure before repeating those numbers.) The fix was in the generator —
+  `tools/seed_full_demo_pipeline.php:1730` and the record it seats at `:1736` — that file has grown on every
+  batch since, so re-measure before repeating those numbers, and measure by *meaning*: at 1666 the line sweep
+  was content with a `]);` and at 1672 with a comment.) The fix was in the generator —
   `attest_completed_desks()` now writes the act behind each
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
   dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch

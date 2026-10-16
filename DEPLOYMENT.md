@@ -331,7 +331,23 @@ prior-term load her standing evidence is graded into, so an empty schema comes o
 demo — and it exits 1 whenever its own desk report lists a finding, instead of printing the success banner over
 it and returning 0 (proved against a planted overpayment: exit 1, banner withheld, and 0 again once the receipt
 was restored). What that makes testable is `tests/Feature/E2E/DemoDatasetRecordStatesTest`, which reads
-`ems:audit:record-states` line by line against that dataset. `tools/` itself is still outside every gate —
+`ems:audit:record-states` line by line against that dataset.
+
+**And the step earned its keep on the first run.** CI's Pest step runs before the seeders, so every insert a
+test rolled back had still spent its `AUTO_INCREMENT` value — and two counter assumptions that a locally built
+schema could not see died on it. `charges` was still being written from the closure default
+`[1 => 11250, 2 => 1500, 3 => 4500, 4 => 250]`, which is not fee type 1 on a spent schema, so the run aborted on
+`charges_feetypeid_foreign`; that map is now `demo_fee_lines()`, keyed by the four `feeName` lookups. And three
+clearance-approval sites fell back to a literal Admin user id for the two checklist lines whose office was
+missing from the desk map — the map covered seven offices while `ProvisionalClearanceRequirements::NAMES` holds
+nine — so Admission and Academic lines were signed by whichever account happened to be `userId` 1. The map now
+covers all nine, every signer resolves through `desk_signer_for()`, and the desk report refuses an approval or a
+box signed across offices by asking `WorkflowService::maySignAcrossOffices()` — the same predicate the write
+path uses, so SysAdmin's legitimate cross-office signature is not reported as a defect (both edges proved:
+an office head's cross-office signature exits 1, staff8's does not). The rehearsal that finds this class of
+thing is CI's own order against a MySQL schema — `migrate`, the seeders, the pipeline, then
+`vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped` — measured green locally that way before the push.
+`tools/` itself is still outside every static gate — PHPStan analyses `app`, and `pint.json` excludes `tools`. `tools/` itself is still outside every gate —
 PHPStan analyses `app`, and `pint.json` excludes `tools` — so the file is proven by running it and reading what
 it prints, which is now also what CI does.
 
