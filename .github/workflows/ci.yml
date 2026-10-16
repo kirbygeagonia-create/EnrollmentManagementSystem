@@ -126,6 +126,22 @@ jobs:
           php artisan db:seed --force
           php artisan db:seed --class=DevReferenceDataSeeder --force
 
+      # The demo pipeline is what fills every desk queue, and until 2026-10-16 it could not run here at all: it
+      # refused on a schema that did not already hold its two named base students, and only
+      # `Documentation/ems-demo-backup.sql` and the developer's live `ems` have those. It creates them now, so
+      # this is the first place the dataset the project presents is built by a recipe nobody has to run by
+      # hand — and the step is a gate rather than a log line, because the tool exits 1 on any finding its own
+      # desk report lists (measured against a planted overpayment: exit 1, success banner withheld).
+      - name: Seed the full demo pipeline
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ems_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php tools/seed_full_demo_pipeline.php
+
       - name: Run the end-to-end walkthrough against MySQL
         env:
           DB_CONNECTION: mysql

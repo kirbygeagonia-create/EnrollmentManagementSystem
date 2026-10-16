@@ -43,6 +43,13 @@ class AssertNoSilentSkips extends Command
                 .'MySQL at all, and the MySQL job\'s suite step leaves E2E_DB_DATABASE unset so the legs name `ems`. '
                 .'The one step that must not skip runs them with --fail-on-skipped, so a skip there is already red',
         ],
+        'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+            'tests' => '*',
+            'reason' => 'it measures the demo dataset, which sits in the same seeded MySQL schema the walkthrough '
+                .'legs need, and skips for the same two reasons: the SQLite job ships no MySQL at all, and the '
+                .'MySQL job\'s suite step leaves E2E_DB_DATABASE unset so the class names `ems`, a database the '
+                .'service container never creates. The step that seeds the pipeline runs it with --fail-on-skipped',
+        ],
         'Tests\Feature\Console\PreflightTest' => [
             'tests' => ['An absent print folder is not a fault because the print driver makes it'],
             'reason' => 'storage/app/prints is gitignored, so a fresh checkout has nothing to move aside',

@@ -14,7 +14,9 @@
 All five must pass, then watch CI to green and read `gh`'s own exit code:
 
 - **Pest** — run `php artisan test` **whole**, never per-directory; per-directory runs hide
-  cross-file breakage. The SQLite suite is the default (`phpunit.xml` pins `:memory:`, and
+  cross-file breakage (the 2026-10-16 instance: allowing one more class to skip in
+  `AssertNoSilentSkips::ALLOWED` broke that guard's own three fixtures, which are hand-built to be CI's shape —
+  each green on its own file, three red in the full run). The SQLite suite is the default (`phpunit.xml` pins `:memory:`, and
   `AdminAccessSmokeTest` builds its own SQLite schema). The E2E walkthrough legs need a **seeded** MySQL
   database: they read courses, subjects, rooms, terms, the current curriculum and the seeded roles, so a
   migrated-but-empty one is not enough. They take the database from `E2E_DB_DATABASE`, defaulting to the
@@ -130,8 +132,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   an office→user map of literals; on a fresh install fee type 1 is the Clearance Slip Replacement, so every
   demo charge attached to the wrong paper. Resolve by name (`subjectCode`, `roomName`, `feeName`,
   `officeN_head` usernames) instead.
-- Nothing checks `tools/`: `phpstan.neon` analyses `app` only and `pint.json` excludes `tools`, so a defect
-  there is invisible to every gate — those files are proven only by running them and reading their output.
+- Nothing *analyses* `tools/`: `phpstan.neon` covers `app` only and `pint.json` excludes `tools`, so a defect
+  there is invisible to the static gates — those files are proven by running them and reading their output.
+  Since 2026-10-16 `tools/seed_full_demo_pipeline.php` is also *executed* by CI (the MySQL job's step between
+  the seeders and the walkthrough legs) and it exits 1 when its own desk report lists a finding, so a fatal or
+  a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
@@ -207,11 +212,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
   `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
   them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
-  `:1518`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
+  `:1607`): the guard asks only whether the student still holds a record on that term, and a dropped one holds
   nothing, so the retirement looked like a missing year to be refilled, and `$completeWorkflow()` signed every
-  box on the way. (Measured 2026-10-15: the seat guard is
-  `tools/seed_full_demo_pipeline.php:1590` and the record it seats at `:1596` — the file has grown twice today,
-  so re-measure before repeating those numbers.) The fix was in the generator —
+  box on the way. (Measured 2026-10-16: the seat guard is
+  `tools/seed_full_demo_pipeline.php:1666` and the record it seats at `:1672` — that file has grown on every
+  batch since, so re-measure before repeating those numbers.) The fix was in the generator —
   `attest_completed_desks()` now writes the act behind each
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
   dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch

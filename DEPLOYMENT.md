@@ -280,7 +280,7 @@ Verify with the print-fidelity smoke test:
 `.github/workflows/ci.yml` runs on every push/PR:
 - **Pest + PHPStan + Pint** against SQLite (fast lane)
 - **Pest against MySQL 8** service container (catches MySQL/SQLite drift —
-  the class of bug behind the `add_auto_increment` migration), followed by its own
+  the class of bug behind the `add_auto_increment` migration), followed by the **demo pipeline** and its own
   **end-to-end walkthrough** step against the same container
 - **ESLint + Vite build**
 - each backend job ends with `php artisan ems:ci:no-silent-skips`, which
@@ -289,7 +289,9 @@ Verify with the print-fidelity smoke test:
 **How the walkthrough gets MySQL.** Its legs read reference rows that migrations never create — courses, subjects,
 rooms, terms, the current curriculum, a religion and the seeded roles — so they need a *seeded* database, and they
 cannot be seeded before the main suite because `RefreshDatabase` migrates fresh. The MySQL job therefore runs the
-suite first, then `migrate --force && db:seed && db:seed --class=DevReferenceDataSeeder`, then `vendor/bin/phpunit
+suite first, then `migrate --force && db:seed && db:seed --class=DevReferenceDataSeeder`, then
+`php tools/seed_full_demo_pipeline.php` (every desk queue, and a step that fails on any finding the tool's own
+report lists), then `vendor/bin/phpunit
 tests/Feature/E2E --fail-on-skipped`. A leg names its database through `E2E_DB_DATABASE`; with nothing set it uses the
 developer's live `ems`, which is how walkthrough §2.6 runs it locally. `--fail-on-skipped` is what makes that step
 honest — four green skips would otherwise read as four passes, and measured on 2026-10-12 an unseeded target
@@ -323,15 +325,21 @@ rows had been rebuilt a second time those numbers are absent altogether and the 
 insert. Both are fixed by
 resolving names — `subjectCode`, `roomName`, `feeName`, and the seeded `officeN_head` accounts — which
 changes nothing on the developer's database: all fifteen lookups were checked to return the ids the
-literals used. **Not fixed:** the tool still assumes its named demo students exist, aborting on
-`DEMO-2026-004` when they do not, and it prints that failure while exiting 0, so a gate that reads only
-the exit code calls it a pass. Nothing in CI covers `tools/` — PHPStan analyses `app`, and `pint.json`
-excludes `tools`.
+literals used. **Closed on 2026-10-16.** The tool no longer assumes its named demo students exist: it creates
+`DEMO-2026-001` with the enrollment today's receipt is filed against and `DEMO-2026-004` with the completed
+prior-term load her standing evidence is graded into, so an empty schema comes out of one run holding the whole
+demo — and it exits 1 whenever its own desk report lists a finding, instead of printing the success banner over
+it and returning 0 (proved against a planted overpayment: exit 1, banner withheld, and 0 again once the receipt
+was restored). What that makes testable is `tests/Feature/E2E/DemoDatasetRecordStatesTest`, which reads
+`ems:audit:record-states` line by line against that dataset. `tools/` itself is still outside every gate —
+PHPStan analyses `app`, and `pint.json` excludes `tools` — so the file is proven by running it and reading what
+it prints, which is now also what CI does.
 
 **What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
 layout verified there — compare printed papers against the physical forms on the machine that will produce
 them. And an agreed skip is still a skip: the allowlist in `AssertNoSilentSkips.php` is deliberately short
-(the walkthrough's legs when no seeded database answers, one Preflight row that needs a gitignored folder),
+(the walkthrough's legs and the demo-dataset check, both needing the seeded database only the later steps have,
+and one Preflight row that needs a gitignored folder),
 so read it before concluding a green job covered everything.
 
 **The runner image is pinned to `ubuntu-24.04`, not floated.** `ubuntu-latest` was scheduled to move to

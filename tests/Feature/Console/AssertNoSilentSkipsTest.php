@@ -68,7 +68,16 @@ class AssertNoSilentSkipsTest extends TestCase
         return $out."</testsuites>\n";
     }
 
-    /** The exact shape CI produces today: the four E2E legs skipped, the prints row skipped, nothing else. */
+    /**
+     * The exact shape CI produces today: the four E2E legs and the four demo-dataset checks skipped, the
+     * prints row skipped, nothing else.
+     *
+     * Both E2E classes need the seeded MySQL database that only the later steps have, so both skip in the
+     * suite step and both run in the walkthrough step. They are here as four cases rather than one because
+     * the allowlist grants a whole class at a time and this fixture is the evidence that a class joining it
+     * still has to appear in the log: one testcase of `DemoDatasetRecordStatesTest` present satisfies the
+     * rule, and a rename that leaves none behind is what the loud test below exists to catch.
+     */
     private function ciShapedLog(): string
     {
         return $this->log([
@@ -77,6 +86,12 @@ class AssertNoSilentSkipsTest extends TestCase
                 ['Continuing path skips assessment', true],
                 ['Transferee path credits a passing transfer', true],
                 ['Shifter path grants without an examination', true],
+            ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', true],
+                ['A signed box with no record behind it names only the enrollment the owner ruled on', true],
+                ['The two base rows the pipeline creates are the ones its own reporters read', true],
+                ['A completed box without a signer fails the run it is supposed to gate', true],
             ],
             'Tests\Feature\Console\PreflightTest' => [
                 ['A server that meets the documented requirements passes', false],
@@ -111,6 +126,9 @@ class AssertNoSilentSkipsTest extends TestCase
             'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
                 ['First year path walks the whole pipeline', true],
             ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', false],
+            ],
             'Tests\Feature\Console\PreflightTest' => [
                 ['An absent print folder is not a fault because the print driver makes it', true],
             ],
@@ -131,6 +149,9 @@ class AssertNoSilentSkipsTest extends TestCase
             ],
             'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
                 ['First year path walks the whole pipeline', true],
+            ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', false],
             ],
             'Tests\Feature\Console\PreflightTest' => [
                 ['An absent print folder is not a fault because the print driver makes it', true],
@@ -155,6 +176,7 @@ class AssertNoSilentSkipsTest extends TestCase
 
         $this->assertSame(1, $this->runAgainst($xml));
         $this->assertStringContainsString('EnrollmentWalkthroughTest is allowed to skip every test', $this->lastOutput);
+        $this->assertStringContainsString('DemoDatasetRecordStatesTest is allowed to skip every test', $this->lastOutput);
         $this->assertStringContainsString('the logs have no such test', $this->lastOutput);
     }
 
@@ -175,6 +197,9 @@ class AssertNoSilentSkipsTest extends TestCase
             'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
                 ['First year with two stage entrance exam completes full pipeline', true],
             ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', true],
+            ],
             'Tests\Feature\Console\PreflightTest' => [
                 ['An absent print folder is not a fault because the print driver makes it', true],
             ],
@@ -185,11 +210,15 @@ class AssertNoSilentSkipsTest extends TestCase
                 ['First year with two stage entrance exam completes full pipeline', false],
                 ['Shifter with credit transfer completes pipeline', false],
             ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', false],
+            ],
         ]);
 
         $this->assertSame(0, $this->runAgainst($main, $walkthrough));
 
-        $this->assertStringContainsString('Skips observed: 2', $this->lastOutput);
+        $this->assertStringContainsString('Skips observed: 3', $this->lastOutput);
+        $this->assertStringContainsString('allowed skip  The record state audit passes on the seeded demo dataset', $this->lastOutput);
         $this->assertStringContainsString('read ', $this->lastOutput);
     }
 
@@ -209,6 +238,9 @@ class AssertNoSilentSkipsTest extends TestCase
             'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
                 ['First year with two stage entrance exam completes full pipeline', false],
             ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', false],
+            ],
             'Tests\Feature\Errors\PrintRendererTest' => [
                 ['An unconfigured server still finds an installed browser', true],
             ],
@@ -224,6 +256,9 @@ class AssertNoSilentSkipsTest extends TestCase
         $xml = $this->log([
             'Tests\Feature\E2E\EnrollmentWalkthroughTest' => [
                 ['First year path walks the whole pipeline', false],
+            ],
+            'Tests\Feature\E2E\DemoDatasetRecordStatesTest' => [
+                ['The record state audit passes on the seeded demo dataset', false],
             ],
             'Tests\Feature\Console\PreflightTest' => [
                 ['An absent print folder is not a fault because the print driver makes it', false],

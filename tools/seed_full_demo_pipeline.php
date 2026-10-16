@@ -228,34 +228,68 @@ function department_evaluator_for_course($courseId): int
 }
 
 /*
- * Two named students this tool tops up do not come from this file.
+ * Two named students the sections below read without ever writing them.
  *
- * Juan (DEMO-2026-001) and Liza (DEMO-2026-004) arrive with the base demo dataset — the restore command in
- * Documentation/Demo-Day-Guide.md loads both, and tools/seed_demo_data.php creates Juan on its own — and the
- * sections below read them without creating them. Checked here, before anything is written, rather than
- * discovered mid-run at Liza's grading block: by then Juan's payment, the demo block and several schedules
- * have already landed, and a refusal after half a demo is not a refusal.
+ * Juan (DEMO-2026-001) is the enrollment today's cash receipt is filed against, which is what puts a
+ * row on the Daily Collections Report. Liza (DEMO-2026-004) supplies the completed prior-term load
+ * that section 4b grades with one failed subject — the only standing evidence the Evaluation desk
+ * has for a student repeating a year. Both rows used to arrive with the base demo dataset
+ * (Documentation/ems-demo-backup.sql, restored by the command in Documentation/Demo-Day-Guide.md),
+ * and this file refused when a database did not hold them. That made the dump half of the
+ * requirement for a reproducible dataset: a fresh install could not seed the demo, and neither
+ * could CI.
+ *
+ * Created here, on the position the refusal held, because both are read further down and a row that
+ * appears after the block that reads it silently writes nothing — the payment block skips its
+ * insert, and section 4b falls through to the create that copies the prior record's program and
+ * level, so a late Juan would cost today's receipt and a late Liza would cost her whole case.
+ *
+ * createDemoStudent is declared below this block and is still callable here: a top-level function
+ * declaration is hoisted. The trap recorded in AGENTS.md is about closure-valued variables, which
+ * are assigned when execution reaches them and are not.
+ *
+ * What a self-created Juan does NOT carry, stated because the demo-day guides walk it: no admission
+ * row, no entrance-exam result, no validated ID request. Documentation/Demo-Day-Guide.md's intake,
+ * examination and ID steps belong to the restored dataset, which stays the one to open on demo day.
+ * These two rows exist so that everything this tool writes can be written again from an empty
+ * schema — not so that the guide can be walked from one.
  */
-$presumed = [
-    'DEMO-2026-001' => "Juan Dela Cruz — today's cash payment is recorded against him for the Daily Collections Report",
-    'DEMO-2026-004' => 'Liza Bautista — her prior-term record is graded to show a student repeating the level',
-];
+$juan = createDemoStudent('DEMO-2026-001', 'Juan', 'Dela Cruz', 'demo_juan', 'demo.juan@example.com');
 
-$absent = array_filter(
-    $presumed,
-    fn (string $why, string $schoolId) => ! Students::where('schoolIdNumber', $schoolId)->exists(),
-    ARRAY_FILTER_USE_BOTH
-);
+if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId)->exists()) {
+    Enrollments::create([
+        'studentId' => $juan->studentId,
+        'courseId' => 3, // BSCrim — the program both demo-day guides put him in
+        'termId' => $termId,
+        'yearLevel' => 1,
+        'studentType' => StudentType::FirstYear,
+        'enrollmentType' => EnrollmentType::New,
+        'academicStanding' => AcademicStanding::Regular,
+        'evaluatedBy' => department_evaluator_for_course(3),
+        'enrolledDate' => now()->subMonths(9),
+        'formSignedDate' => now()->subMonths(9),
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+    ]);
+    echo "✔ Base row created: Juan Dela Cruz (DEMO-2026-001) — BSCrim year 1 on term {$termId}, the record today's receipt is filed against\n";
+}
 
-if ($absent !== []) {
-    fwrite(STDERR, "\nThis database does not hold the base demo rows that this tool tops up:\n");
-    foreach ($absent as $schoolId => $why) {
-        fwrite(STDERR, sprintf("  %-14s %s\n", $schoolId, $why));
-    }
-    fwrite(STDERR, "Restore the demo dataset first — Documentation/Demo-Day-Guide.md gives the command:\n"
-        ."  mysql -u root ems < Documentation/ems-demo-backup.sql\n"
-        ."Nothing was written.\n");
-    exit(1);
+$liza = createDemoStudent('DEMO-2026-004', 'Liza', 'Bautista', 'demo_liza', 'demo.liza@example.com', 'female');
+
+if (! Enrollments::where('studentId', $liza->studentId)->where('termId', $priorTermId)->exists()) {
+    Enrollments::create([
+        'studentId' => $liza->studentId,
+        'courseId' => 5, // BSBA — the program both demo-day guides put her in, and a retention-exam one
+        'termId' => $priorTermId,
+        'yearLevel' => 2,
+        'studentType' => StudentType::Continuing,
+        'enrollmentType' => EnrollmentType::Old,
+        'academicStanding' => AcademicStanding::Regular,
+        'evaluatedBy' => department_evaluator_for_course(5),
+        'enrolledDate' => now()->subMonths(15),
+        'formSignedDate' => now()->subMonths(15),
+        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+    ]);
+    echo "✔ Base row created: Liza Bautista (DEMO-2026-004) — BSBA year 2 completed on term {$priorTermId}, the load section 4b grades one failed subject into\n";
 }
 
 /*
@@ -1528,6 +1562,48 @@ if ($openPeriod !== null) {
     }
 }
 
+// -------------------------------------------------------------
+// 10b-1c0. RETENTION PATHWAY — returning students in a program that examines them
+// -------------------------------------------------------------
+// Concern #14 gates the Department Evaluation signature on a passing retention
+// examination, but only for a continuing or shifting student in a program flagged
+// requiresRetentionExam — and every returning demo student sat BSIT, a program the
+// reference data deliberately does not flag. The gate therefore had nothing to
+// demonstrate: the desk signed straight through and a reviewer could not tell the
+// rule existed at all. Two Criminology students are seated here, one per outcome the
+// rule produces; section 10k records the pass for the older and leaves the newest
+// unexamined so both halves are on the desk at once.
+//
+// Seated above the G-2 pass that follows rather than beside the examination that reads
+// them, because both claim year 2: written after that pass, they reach the end of the run
+// holding a level no record of theirs supports, and this tool's own desk report prints
+// "Evaluation — level the record does not support 2". Measured 2026-10-16 against a schema
+// built from CI's recipe — the count was 2 on the first run and 0 on the second, because the
+// pass then found them. An empty schema has to come out of ONE run clean, since nothing
+// re-runs this file and a counter that needs a second pass is a warning an operator learns to
+// ignore.
+foreach ([
+    ['DEMO-2026-024', 'Iñigo', 'Barrameda', 'demo_inigo', 'demo.inigo@example.com', 'male'],
+    ['DEMO-2026-025', 'Relinda', 'Sabla', 'demo_relinda', 'demo.relinda@example.com', 'female'],
+] as [$schoolId, $first, $last, $username, $email, $gender]) {
+    $returning = createDemoStudent($schoolId, $first, $last, $username, $email, $gender);
+
+    if (! Enrollments::where('studentId', $returning->studentId)->where('termId', $termId)->exists()) {
+        Enrollments::create([
+            'studentId' => $returning->studentId,
+            'courseId' => 3, // BSCrim — flagged requiresRetentionExam in the reference data
+            'termId' => $termId,
+            'yearLevel' => 2,
+            'studentType' => StudentType::Continuing,
+            'enrollmentType' => EnrollmentType::Old,
+            'academicStanding' => null,
+            'evaluatedBy' => department_evaluator_for_course(3),
+            'enrollmentStatus' => EnrollmentStatus::Pending,
+        ]);
+        echo "✔ Department Evaluation: seated {$last}, {$first} ({$schoolId}) — BSCrim year 2, retention pathway\n";
+    }
+}
+
 // 10b-1c. G-2: a record may not claim a year it has not completed.
 //
 //      The application now reads a year level from the student's own history — an enrolled
@@ -2668,39 +2744,6 @@ DB::table('studentrequirementsubmissions as s')
     ->update(['submissionStatus' => 'verified']);
 
 // -------------------------------------------------------------
-// 10j2. RETENTION PATHWAY — returning students in a program that examines them
-// -------------------------------------------------------------
-// Concern #14 gates the Department Evaluation signature on a passing retention
-// examination, but only for a continuing or shifting student in a program flagged
-// requiresRetentionExam — and every returning demo student sat BSIT, a program the
-// reference data deliberately does not flag. The gate therefore had nothing to
-// demonstrate: the desk signed straight through and a reviewer could not tell the
-// rule existed at all. Two Criminology students are seated here, one per outcome the
-// rule produces; the next section records the pass for the older and leaves the
-// newest unexamined so both halves are on the desk at once.
-foreach ([
-    ['DEMO-2026-024', 'Iñigo', 'Barrameda', 'demo_inigo', 'demo.inigo@example.com', 'male'],
-    ['DEMO-2026-025', 'Relinda', 'Sabla', 'demo_relinda', 'demo.relinda@example.com', 'female'],
-] as [$schoolId, $first, $last, $username, $email, $gender]) {
-    $returning = createDemoStudent($schoolId, $first, $last, $username, $email, $gender);
-
-    if (! Enrollments::where('studentId', $returning->studentId)->where('termId', $termId)->exists()) {
-        Enrollments::create([
-            'studentId' => $returning->studentId,
-            'courseId' => 3, // BSCrim — flagged requiresRetentionExam in the reference data
-            'termId' => $termId,
-            'yearLevel' => 2,
-            'studentType' => StudentType::Continuing,
-            'enrollmentType' => EnrollmentType::Old,
-            'academicStanding' => null,
-            'evaluatedBy' => department_evaluator_for_course(3),
-            'enrollmentStatus' => EnrollmentStatus::Pending,
-        ]);
-        echo "✔ Department Evaluation: seated {$last}, {$first} ({$schoolId}) — BSCrim year 2, retention pathway\n";
-    }
-}
-
-// -------------------------------------------------------------
 // 10k. RETENTION EXAMINATION — the proof a returning student moves up
 // -------------------------------------------------------------
 // Concern #14 made this result a precondition of the Department Evaluation
@@ -2901,11 +2944,28 @@ foreach ($queuedFor as $desk => $count) {
     printf("  %-40s %d\n", $desk, $count);
 }
 
-foreach ([...$ledgerWarnings, ...$deskIntegrity] as $warning) {
+$findings = [...$ledgerWarnings, ...$deskIntegrity];
+
+foreach ($findings as $warning) {
     echo "  ! {$warning}\n";
 }
 
-echo "\n=======================================================\n";
+echo "\n";
+
+if ($findings !== []) {
+    // The banner used to print whatever this list held, and the process still returned success. Measured
+    // 2026-10-12 against a database missing its base rows: the tool printed an exception and exited 0, so a
+    // gate reading the status — CI's step, or DEPLOYMENT.md §8 followed by hand — recorded a pass on half a
+    // demo. Several of the findings above are counted rather than repaired on purpose, because inventing a
+    // curriculum offering or an enrollment to quiet a number would be worse than the number; counting one is
+    // still the report's job, and refusing to call it a success is the same report's other half.
+    fwrite(STDERR, count($findings)." finding(s) listed above: the rows are written, but at least one desk would"
+        ." open a record no action of its own could have produced.\n");
+
+    exit(1);
+}
+
+echo "=======================================================\n";
 echo " DEMO-DAY DATASET FULLY SEEDED!                      \n";
 echo " Every single desk and workflow queue is populated.    \n";
 echo "=======================================================\n";
