@@ -25,6 +25,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -1060,5 +1061,126 @@ class IDControllerTest extends TestCase
 
         $this->post(route('id.remark', $idRequest), ['mismatchRemark' => 'Wrong face.'])
             ->assertForbidden();
+    }
+
+    /**
+     * Inertia serves HTML until X-Inertia is sent, so props come from viewData('page'), not json().
+     *
+     * @return array<string, mixed>
+     */
+    private function props(TestResponse $response): array
+    {
+        return $response->viewData('page')['props'];
+    }
+
+    /** @param  array<int, array<string, mixed>>  $rows */
+    private function ids(array $rows): array
+    {
+        return array_column($rows, 'enrollmentId');
+    }
+
+    #[Test]
+    public function a_validated_request_stays_reachable_on_the_issued_tab_once_it_leaves_the_queue(): void
+    {
+        $idStaff = $this->staffForOffice(22);
+        $this->actingAs($idStaff);
+
+        $enrollment = $this->createEnrollment();
+        $this->post(route('id.create', $enrollment), [
+            'requestReason' => 'newStudent',
+            'emergencyContactName' => 'Contact',
+            'emergencyContactNumber' => '09171234569',
+            'bloodType' => 'O+',
+        ])->assertSessionHasNoErrors();
+
+        $idRequest = $enrollment->fresh()->idrequests->first();
+        $idRequest->update(['cardPhotoPath' => 'id-photos/test-capture.jpg']);
+        $this->post(route('id.validate', $idRequest))->assertSessionHasNoErrors();
+
+        $queue = $this->props($this->get(route('id.index')));
+        $this->assertNotContains(
+            $enrollment->enrollmentId,
+            $this->ids($queue['enrollments']['data']),
+            'signing the box retires the row from the queue — that part is the design, and the old bug lived here'
+        );
+
+        $issued = $this->props($this->get(route('id.index', ['tab' => 'issued'])));
+        $this->assertSame('issued', $issued['tab']);
+        $this->assertContains(
+            $enrollment->enrollmentId,
+            $this->ids($issued['enrollments']['data']),
+            'the desk must be able to reopen a request it validated without typing /id/N from memory'
+        );
+        $this->assertGreaterThanOrEqual(1, $issued['stats']['validated']);
+        $this->assertGreaterThanOrEqual(1, $issued['tabs']['issued']['count']);
+
+        // The tab's row is only a fix if the link it renders actually opens.
+        $this->get(route('id.show', $enrollment))->assertOk();
+    }
+
+    #[Test]
+    public function a_signed_box_with_no_request_behind_it_is_listed_on_the_issued_tab_rather_than_hidden(): void
+    {
+        $officer = $this->staffForOffice(22);
+        $this->actingAs($officer);
+
+        $enrollment = $this->createEnrollment();
+        $this->createFullySignedWorkflow($enrollment, $officer);
+
+        $issued = $this->props($this->get(route('id.index', ['tab' => 'issued'])));
+        $rows = $issued['enrollments']['data'];
+        $this->assertContains($enrollment->enrollmentId, $this->ids($rows));
+
+        $row = collect($rows)->firstWhere('enrollmentId', $enrollment->enrollmentId);
+        $this->assertEmpty($row['idrequests'] ?? [], 'a box signed with nothing on file is shown as such, not omitted');
+        $this->assertSame(
+            0,
+            $issued['stats']['validated'],
+            'a signed box with no request row is not a validated request and must not be counted as one'
+        );
+    }
+
+    #[Test]
+    public function the_two_tabs_stay_disjoint_an_open_box_is_queue_only_and_a_signed_one_issued_only(): void
+    {
+        $officer = $this->staffForOffice(22);
+        $this->actingAs($officer);
+
+        $open = $this->createEnrollment();
+        $signed = $this->createEnrollment();
+        $this->createFullySignedWorkflow($signed, $officer);
+
+        $queueRows = $this->ids($this->props($this->get(route('id.index')))['enrollments']['data']);
+        $issuedRows = $this->ids($this->props($this->get(route('id.index', ['tab' => 'issued'])))['enrollments']['data']);
+
+        $this->assertContains($open->enrollmentId, $queueRows);
+        $this->assertNotContains($open->enrollmentId, $issuedRows, 'the issued tab is finished work, not the queue again');
+        $this->assertContains($signed->enrollmentId, $issuedRows);
+        $this->assertNotContains($signed->enrollmentId, $queueRows, 'a signed box must not still read as a task');
+    }
+
+    #[Test]
+    public function the_desk_screen_sends_the_officer_back_to_the_tab_the_record_was_opened_from(): void
+    {
+        $officer = $this->staffForOffice(22);
+        $this->actingAs($officer);
+
+        $enrollment = $this->createEnrollment();
+        $this->createFullySignedWorkflow($enrollment, $officer);
+
+        // Opening a record straight from its id is the queue's business, and the screen must say so.
+        $this->assertSame(
+            'queue',
+            $this->props($this->get(route('id.show', $enrollment)))['backTab'],
+            'the default is the pending list, which is what the desk was before the second tab existed'
+        );
+
+        // The Issued tab's own links carry the query; the screen has to send the officer back there, because
+        // dropping them on the pending list after reading a finished record loses the list they were working.
+        $this->assertSame(
+            'issued',
+            $this->props($this->get(route('id.show', ['enrollment' => $enrollment, 'tab' => 'issued'])))['backTab'],
+            'a record opened from the Issued tab must return to the Issued tab'
+        );
     }
 }

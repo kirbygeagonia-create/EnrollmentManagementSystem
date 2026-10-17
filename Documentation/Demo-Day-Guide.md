@@ -229,16 +229,17 @@ intake end and **Juan** (fully processed) for everything after.
     the desk shows the captured face on the pending request — and the box signs itself,
     so she leaves the queue. That is FDD 12.1–12.4 **done** rather than displayed.
     Validation is the desk's last action; the EMS no longer records card production or
-    hand-over. For the finished state press **Ctrl+K** and open **Kevin Santos**
-    (DEMO-2026-017): his ID-request history reads `validated`. If the professor wants
-    to see the face on a completed record, type the desk's own address for him —
-    `/id/92` on this box (the id is Kevin's enrollment, and it moves on a rebuilt
-    database). *Two honest gaps: the hub keeps no list of already-validated requests,
-    so a finished record leaves the desk's sight the moment its box signs; and Juan's
-    ID box is signed with no request behind it — that row claimed validated with no
-    photo and no validator, was deleted under the owner's ruling on 2026-10-11, and the
-    signature was deliberately left standing, which is the one note `php artisan
-    ems:audit:record-states` still reports.*
+    hand-over. Finished work now stays on the same screen: press the **Issued** tab and
+    the desk lists every enrollment whose ID box is signed (seven on this box, against
+    the two still in the queue), so **Kevin Santos** (DEMO-2026-017) opens from there
+    with his request reading `validated` — no typing `/id/92`, and no dependence on an
+    enrollment id that moves when the database is rebuilt. The tab is the desk's
+    history, and its rows link to the same screen the queue's do. *One honest note
+    remains: Juan's ID box is signed with no request behind it — that row claimed
+    validated with no photo and no validator, was deleted under the owner's ruling on
+    2026-10-11, and the signature was deliberately left standing, which is the one
+    note `php artisan ems:audit:record-states` still reports. The Issued tab shows him
+    with ID Status reading **None** rather than hiding the row.*
 
 ### Cross-cutting modules (FDD 13.0 → 15.0)
 14. **(13.0 Student 360°)** Press **Ctrl+K**, type `Dela`, open Juan —

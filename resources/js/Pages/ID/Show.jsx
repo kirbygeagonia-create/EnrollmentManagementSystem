@@ -14,7 +14,7 @@ const bloodTypeOptions = [
     { value: 'O-', label: 'O-' },
 ];
 
-export default function Show({ enrollment, idRequest, requestReasons }) {
+export default function Show({ enrollment, idRequest, requestReasons, backTab = 'queue' }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showValidateConfirm, setShowValidateConfirm] = useState(false);
     const [showRemarkModal, setShowRemarkModal] = useState(false);
@@ -163,8 +163,11 @@ export default function Show({ enrollment, idRequest, requestReasons }) {
                     phaseBadge="Phase 8 · ID Office"
                     officeBadge="ID Validation Desk"
                     actions={
-                        <Link href={route('id.index')} className="btn btn-secondary btn-sm">
-                            Back to Queue
+                        <Link
+                            href={route('id.index', backTab === 'issued' ? { tab: 'issued' } : {})}
+                            className="btn btn-secondary btn-sm"
+                        >
+                            {backTab === 'issued' ? 'Back to Issued' : 'Back to Queue'}
                         </Link>
                     }
                 />

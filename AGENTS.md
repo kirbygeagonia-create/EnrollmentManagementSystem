@@ -62,6 +62,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   was absent from it for six weeks — the section still said "eight keys" while §23.3's own Total row had moved.
   The checker reads the regenerated `docx-flat.txt`, so re-dump before believing a green run; its harness
   mutates a **copy** through `--dump=` and includes a case proving that flag is read rather than accepted.
+  **A mutant anchored on a generated line ordinal is a mutant that sleeps.** Its two row cases planted defects
+  by replacing text prefixed `ROW 1237:` — docx pass 141b inserted one paragraph in §18.3, every ordinal after it
+  moved by one, both `str_replace` calls matched nothing, and those cases reported the checker's *clean* output as
+  a failure to complain. Rows are now located by their own cell content and every case refuses outright when its
+  mutation leaves the dump byte-identical, which is proved by running a variant whose anchor cannot match.
 - **After any batch that adds a table with foreign keys, or touches a delete path**, run
   `php storage/app/scratch/lane43-delete-guards.php` and prove it with
   `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 100 foreign keys: only four
@@ -198,7 +203,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (554 citations over 110 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (557 citations over 113 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -229,9 +234,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 838 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 90 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 214 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 848 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 94 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 241 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
@@ -314,6 +319,15 @@ before believing a clean verdict from any checker, feed it a mutant and watch it
 then prove the file still opens — `docx-ooxml-check.php`, `verify-docx.php`, and
 `word-open-copy-test.ps1`, which opens a hash-identical copy in real Word and quits only the
 Word instance it started.
+
+Run **Pint before writing the citations**, not after. On 2026-10-17 a pass re-pointed five
+`IDController.php` ranges onto the line numbers read off the edited file; Pint then added one
+`use` line to that same controller and moved every one of them by a row — a checker's clean verdict
+hid it, because the sweep only refuses a line past the end of the file. And a sentence this document
+needs to add cannot always ride on a text needle: §18.3's column list ends with the last name in a
+Consolas run and its full stop in a plain one, so no string spans the end of that paragraph — such an
+addition goes in as an inserted `<w:p>` (the engine's `inserts` argument), which the container guard
+counts as exactly the paragraph pair it contributes.
 
 ## Agent dispatch
 

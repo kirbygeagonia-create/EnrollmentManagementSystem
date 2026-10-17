@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Services\WorkflowService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,28 +32,86 @@ class IDController extends Controller
 
     /**
      * Display ID request queue.
+     *
+     * Two tabs, because the desk asks two questions and one list answered only one. "Queue" is work still
+     * open: enrollments whose EARLIEST pending step is the ID office's. "Issued" is work finished: the ID
+     * box is signed. Validating a request signs the box, so the act used to remove the record from the one
+     * screen that links to it — measured on live `ems` 2026-10-17, seven enrollments carry a signed ID box
+     * and six of the eight request rows are validated, while the queue holds two. Those six were reachable
+     * only by typing /id/N.
+     *
+     * A signed box is listed whether or not a request row survives beside it, and the ID Status column reads
+     * "None" in that case rather than the row disappearing: a box this office signed with nothing on file is
+     * evidence worth seeing. Enrolled rows only — a dropped record is retired work, the same rule
+     * `ems:audit:record-states` applies to its box-without-record check.
      */
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Idrequests::class);
 
-        $base = Enrollments::query()
+        $tab = $request->query('tab') === 'issued' ? 'issued' : 'queue';
+        $search = $request->search;
+
+        $withSearch = fn ($q) => $q->when($search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq
+            ->where('lastName', 'like', "%{$search}%")
+            ->orWhere('firstName', 'like', "%{$search}%")
+            ->orWhere('schoolIdNumber', $search)));
+
+        $queueBase = $withSearch(Enrollments::query()
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
             ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
                 ->where('stepStatus', WorkflowStepStatus::Pending->value)
                 ->where('officeId', OfficeId::IdOffice->value)
                 ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
-            )
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
+            ));
 
-        $enrollments = (clone $base)
+        $issuedBase = $withSearch(Enrollments::query()
+            ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
+            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
+                ->where('stepStatus', WorkflowStepStatus::Completed->value)
+                ->where('officeId', OfficeId::IdOffice->value)
+            ));
+
+        // Clone, as the single-tab version did: paginate() mutates the builder it runs on, and both tiles are
+        // computed from these same bases afterwards.
+        $enrollments = (clone ($tab === 'issued' ? $issuedBase : $queueBase))
             ->with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
             ->orderByDesc('enrollmentId')
             ->paginate(20)->withQueryString();
 
-        // ID-request status counts across the whole filtered set — first
-        // request per enrollment, matching what the table shows (audit 2026-09-25).
-        $idStats = (clone $base)
+        // Each tile counts the set its own tab shows. Counting validated rows inside the queue asked one
+        // enrollment to hold a signed ID box and a pending one at once, which is why the tile read zero on
+        // a database holding six validated requests (audit 2026-09-25 kept the first-request rule).
+        $queueStats = $this->firstRequestStats($queueBase);
+        $issuedStats = $this->firstRequestStats($issuedBase);
+
+        return Inertia::render('ID/Index', [
+            'enrollments' => $enrollments,
+            'tab' => $tab,
+            'tabs' => [
+                'queue' => ['label' => 'Awaiting validation', 'count' => $queueStats['total']],
+                'issued' => ['label' => 'Issued', 'count' => $issuedStats['total']],
+            ],
+            'stats' => [
+                'pending' => $queueStats['pending'],
+                'validated' => $issuedStats['validated'],
+            ],
+            'filters' => $request->only(['search', 'tab']),
+        ]);
+    }
+
+    /**
+     * The size of a set, and the status of the first request on each enrollment in it.
+     *
+     * "First" is the row the desk screen opens — show() loads `$enrollment->idrequests->first()` — so the
+     * counts describe what a row on this screen actually leads to.
+     *
+     * @param  Builder<Enrollments>  $base
+     * @return array{total: int, pending: int, validated: int}
+     */
+    private function firstRequestStats($base): array
+    {
+        $rows = (clone $base)
             ->join('idrequests', fn ($join) => $join
                 ->on('idrequests.enrollmentId', '=', 'enrollments.enrollmentId')
                 ->whereRaw('idrequests.idrequestId = (SELECT MIN(ir2.idrequestId) FROM idrequests ir2 WHERE ir2.enrollmentId = enrollments.enrollmentId)'))
@@ -60,21 +119,18 @@ class IDController extends Controller
             ->groupBy('idrequests.status')
             ->pluck('aggregate', 'status');
 
-        return Inertia::render('ID/Index', [
-            'enrollments' => $enrollments,
-            'stats' => [
-                'pending' => (int) ($idStats[IdRequestStatus::Pending->value] ?? 0),
-                'validated' => (int) ($idStats[IdRequestStatus::Validated->value] ?? 0),
-            ],
-            'filters' => $request->only(['search']),
-        ]);
+        return [
+            'total' => (clone $base)->count(),
+            'pending' => (int) ($rows[IdRequestStatus::Pending->value] ?? 0),
+            'validated' => (int) ($rows[IdRequestStatus::Validated->value] ?? 0),
+        ];
     }
 
     /**
      * Show ID validation desk.
      * Phase 8: ID request, photo, emergency contact, blood type
      */
-    public function show(Enrollments $enrollment): Response
+    public function show(Request $request, Enrollments $enrollment): Response
     {
         $this->authorize('id.viewAtDesk', $enrollment);
 
@@ -85,6 +141,10 @@ class IDController extends Controller
         return Inertia::render('ID/Show', [
             'enrollment' => $enrollment,
             'idRequest' => $idRequest,
+            // Which list the officer came from, so the screen can send them back to it. Read off the link the
+            // desk screen itself builds (Index passes ?tab=issued), not off the session: an officer who opens
+            // /id/92 directly is answering for the queue.
+            'backTab' => $request->query('tab') === 'issued' ? 'issued' : 'queue',
             'requestReasons' => collect(IdRequestReason::cases())->map(fn ($c) => [
                 'value' => $c->value,
                 'label' => match ($c) {
