@@ -11,6 +11,7 @@ use App\Models\Offices;
 use App\Models\Permissions;
 use App\Models\Roles;
 use App\Models\Settings;
+use App\Models\Shiftingrequests;
 use App\Models\Staffusers;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -219,6 +220,12 @@ class UserManagementController extends Controller
             || $user->enrollmentstatushistory()->exists()
             || $user->payments()->exists()
             || $user->schedules()->exists()
+            // The docket's requester is the schema's one RESTRICT key: `shiftingrequests.requestedBy` refuses
+            // the delete rather than nulling it, because a program change with no one standing behind it is not
+            // a document anyone can act on. Staffusers declares no relation for it, so the check is direct —
+            // without it the account still survives on the catch below, but for a reason the screen never
+            // states, and a guard that names the wrong reason is a guard the next reader will distrust.
+            || Shiftingrequests::where('requestedBy', $user->userId)->exists()
             || $user->studentclearances()->exists()
             || $user->validatedIdrequests()->exists()
             || $user->studentscholarships()->exists()

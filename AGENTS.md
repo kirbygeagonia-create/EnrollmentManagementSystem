@@ -54,6 +54,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `RbacSeeder` declared 17 roles on that date. Both checkers resolve figures per *paragraph*, last mention
   wins, and a claim whose text cannot be found is reported `UNBOUND` and refuses the run — an unread claim
   must never look like a checked one.
+- **After any batch that adds a table with foreign keys, or touches a delete path**, run
+  `php storage/app/scratch/lane43-delete-guards.php` and prove it with
+  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 100 foreign keys: only four
+  cascade (the RBAC pivots `RbacSeeder`'s prune relies on), one is RESTRICT (`shiftingrequests.requestedBy`),
+  and 70 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
+  — `blockedDeletionMessage()`, a `->exists()` chain, a private helper, or a relation check — and a list that omits
+  one does not produce a 500: `bootstrap/app.php:140` renders the `QueryException` as a generic "conflicts with
+  information already on file… reload and retry", which names no record and tells the desk to repeat something
+  that can never work. Lane 43 found exactly that in two screens: the shift module named `courses` twice and
+  `staffusers` once, and neither guard had been told. A checker that reports zero sites must refuse (it once
+  matched nothing because PSR-12 puts the opening brace on its own line, and an empty verdict looked like a
+  clean one); its mutants must delete the **table reference**, not a label — renaming a key leaves the guard
+  intact and the mutant asleep.
 - **Split lines on `\n`, never `preg_split('/\R/')`, when a script reports line numbers.** `\R` also matches
   the byte 0x85, which occurs as a UTF-8 continuation byte inside emoji: it read a 55-line report as 71
   lines and printed line numbers no editor would show. Every `File.php:NN` citation this repository writes

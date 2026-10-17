@@ -153,6 +153,13 @@ class ReferenceDataController extends Controller
             'major' => DB::table('majors')->where('courseId', $course->courseId)->count(),
             'curriculum' => DB::table('curriculums')->where('courseId', $course->courseId)->count(),
             'exam result' => DB::table('examresults')->where('courseId', $course->courseId)->count(),
+            // The shift module names a course twice over, and both keys refuse a delete. It arrived after this
+            // guard was written, so the one program a student is moving between was the only course row an
+            // admin could not delete safely — the constraint answered the click with a generic conflict flash.
+            'shift request' => DB::table('shiftingrequests')
+                ->where(fn ($q) => $q->where('currentCourseId', $course->courseId)
+                    ->orWhere('targetCourseId', $course->courseId))
+                ->count(),
         ])) {
             return back()->with('error', $blocked);
         }
