@@ -43,6 +43,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   either parser, and note that its first run reported five missed defect classes because the `--dir=`
   override the harness passed was never read by the code: an ignored flag makes a mutant run look like a
   clean one.
+- **After any batch that touches the two third-party assessments** (`SEAIT-EMS-Round3-Current-State.md`,
+  `Documentation/Audit-Remediation-2026-08-29.md`), run
+  `php storage/app/scratch/lane42-assessment-claims.php` and prove it with
+  `php storage/app/scratch/mutate-lane42-assessment-claims.php`. They separate *history* from *present-tense
+  state*: the Round-3 file's counts (88 permissions / 54 tables / 22 controllers) and its "CSP still open"
+  row were both written as of 2026-09-05 and never re-checked — `d29653e` added the CSP header **in the same
+  commit that stored that report**, so the row was false as it was written and stayed unnoticed for six
+  weeks because no test pinned any header. Its "13 process roles + 3 cross-cutting" also never added up:
+  `RbacSeeder` declared 17 roles on that date. Both checkers resolve figures per *paragraph*, last mention
+  wins, and a claim whose text cannot be found is reported `UNBOUND` and refuses the run — an unread claim
+  must never look like a checked one.
+- **Split lines on `\n`, never `preg_split('/\R/')`, when a script reports line numbers.** `\R` also matches
+  the byte 0x85, which occurs as a UTF-8 continuation byte inside emoji: it read a 55-line report as 71
+  lines and printed line numbers no editor would show. Every `File.php:NN` citation this repository writes
+  comes from a line counter, so the counter has to agree with the reader's screen.
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
@@ -253,6 +268,18 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   uses them. Never add `'visibility' => 'public'` to a served disk (that switches the check off, measured) and
   never deploy with `APP_KEY=` blank (the empty secret signs a write that `storage/app/private` accepts — and
   `local` and `documents` share that root). `ems:preflight` fails both, `ServedUploadPathTest` pins the gate.
+- **HSTS is emitted only when this app sees HTTPS itself.** `SecurityHeaders` gates the header on
+  `$request->isSecure()`, and because `bootstrap/app.php` never calls `trustProxies()` and
+  `config('trustedproxy.proxies')` is unset, `Illuminate\Http\Middleware\TrustProxies` keeps `$proxies` null,
+  trusts no address, and discards `X-Forwarded-Proto` — measured 2026-10-17, pinned by
+  `tests/Feature/SecurityHeadersTest.php`. Behind a proxy that terminates TLS, an operator must trust it
+  explicitly or the header never appears. Do not "fix" this by trusting `*`: that lets any client forge its
+  own scheme and address, and `LoginRequest::throttleKey()` and `auditlogs.ipAddress` both read `$request->ip()`.
+  Ruled 2026-10-17 — code unchanged, `DEPLOYMENT.md` §2 carries the instruction.
+- **Probe through the HTTP stack, not around it, and beware state that sticks.** `Request::create()` + a
+  manual middleware call is not the kernel; and inside one test, an https request leaves `$_SERVER['HTTPS']='on'`
+  for every later request in that same test — so three HSTS cases written in one method pass the third on the
+  second case's leftover state and prove nothing. One method per case.
 
 ## Editing the authority docx
 

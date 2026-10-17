@@ -92,6 +92,17 @@ Force HTTPS in the entry point (reverse proxy `X-Forwarded-Proto`, or
 `URL::forceScheme('https')` in `AppServiceProvider::boot` when
 `app()->isProduction()`).
 
+**One caveat measured 2026-10-17, and pinned by `tests/Feature/SecurityHeadersTest.php`:** this build does
+not trust any proxy — `bootstrap/app.php` never calls `trustProxies()` and `config('trustedproxy.proxies')`
+is unset, so `Illuminate\Http\Middleware\TrustProxies` holds `$proxies = null` and Symfony discards
+`X-Forwarded-Proto`. A forwarded header therefore changes nothing on its own: `app('request')->isSecure()`
+stays false, and `SecurityHeaders` skips `Strict-Transport-Security` on every response even though browsers
+see HTTPS. If TLS terminates at a proxy, either terminate it in the app or name that proxy's address in
+`trustProxies(at: …)`. Do **not** answer this with `at: '*'` — that lets any client forge its own scheme and
+source address, and things keyed on the address follow it: the login throttle builds its key from
+`$this->ip()` (`app/Http/Requests/Auth/LoginRequest.php:97`) and every audit row stores `Request::ip()`
+(`app/Observers/AuditLogObserver.php:102`) into `auditlogs.ipAddress`.
+
 **Time zone: two processes write into these tables.** `config/app.php` resolves
 `'timezone' => env('APP_TIMEZONE', 'UTC')` and nothing in `.env` or `.env.example` sets that variable, so the
 application runs in UTC while the school keeps Manila time (UTC+8) — a record made before 08:00 local is

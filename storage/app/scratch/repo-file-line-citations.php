@@ -14,12 +14,21 @@
  * lines contain — that reading is the human half, and no regex here can do it honestly.
  *
  * usage: php storage/app/scratch/repo-file-line-citations.php [file ...]
- *        (defaults to AGENTS.md, DEPLOYMENT.md and Documentation/Per-Office-UAT-Walkthrough.md)
+ *        (defaults to the seven prose files that carry `File.php:NN` citations: AGENTS.md, DEPLOYMENT.md,
+ *        the walkthrough, both demo guides, and the two third-party assessments)
  */
 
 $root = dirname(__DIR__, 3);
 $args = array_values(array_filter(array_slice($argv ?? [], 1), fn ($a) => ! str_starts_with($a, '--')));
-$targets = $args !== [] ? $args : ['AGENTS.md', 'DEPLOYMENT.md', 'Documentation/Per-Office-UAT-Walkthrough.md'];
+$targets = $args !== [] ? $args : [
+    'AGENTS.md',
+    'DEPLOYMENT.md',
+    'Documentation/Per-Office-UAT-Walkthrough.md',
+    'Documentation/Demo-Day-Guide.md',
+    'Documentation/Offline-Presentation-Guide.md',
+    'SEAIT-EMS-Round3-Current-State.md',
+    'Documentation/Audit-Remediation-2026-08-29.md',
+];
 
 $index = null;
 /** Every file the repository's own prose can cite, indexed by basename. */
