@@ -250,7 +250,13 @@ intake end and **Juan** (fully processed) for everything after.
     section). Show 3–4 catalogs quickly — Courses, Fee Types, Blocks,
     Admission Requirements — and point out search/filters run server-side
     (type in the search box, results narrow, the URL carries the filter).
-    That's FDD 14.1–14.3 across the 12 catalogs.
+    That's FDD 14.1–14.3 across the 13 catalogs — the 13
+    `admin/reference-data/*` GET screens the router answers: admission
+    requirements, blocks, clearance requirements, courses, curriculums, fee
+    types, grade scale, majors, offices, rooms, scholarship types, subjects and
+    terms. The catalog landing page and the per-curriculum subject drill-in are
+    not counted; `php storage/app/scratch/lane41-doc-claims.php` re-reads the
+    number, and the peso figures below with it.
 16. **(15.0 Users, Roles & Security)** **Desks & Apps → User & Role
     Security.** The roles list shows all 17 roles; open one to see its
     permission matrix (FDD 15.2). Switch to the **Audit Logs** tab —
