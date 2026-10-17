@@ -42,9 +42,17 @@ $root = dirname(__DIR__, 3);
 // A document directory can be substituted, which is how this file is proved with mutants: the alternative is
 // copying planted defects into the repository's own docs and remembering to undo it.
 $docDir = $root.'/Documentation';
+// `--ci` runs only the claims that hold on ANY correctly seeded schema. That distinction is not cosmetic: the
+// guides name records by the number this developer's repaired box happens to carry (enrollment 87, fee type 5,
+// "21 staff accounts"), and on the CI-ordered schema those same claims miss — 8 of 22 measured on a copy built
+// the way CI builds it, including `Clearance Slip Replacement` sitting at feeTypeId 19. Running every claim in
+// CI would be a permanently red step that teaches people to ignore the step.
+$ci = false;
 foreach (array_slice($argv ?? [], 1) as $arg) {
     if (str_starts_with($arg, '--dir=')) {
         $docDir = rtrim(substr($arg, 6), '/');
+    } elseif ($arg === '--ci') {
+        $ci = true;
     }
 }
 if (! is_dir($docDir)) {
@@ -58,11 +66,18 @@ $docs = [
 ];
 
 $database = DB::connection()->getDatabaseName();
-printf("Documents: %s\nDocument dir: %s\nDatabase:  %s\n\n", implode(', ', $docs), $docDir, $database);
+printf(
+    "Documents: %s\nDocument dir: %s\nDatabase:  %s\nMode:      %s\n\n",
+    implode(', ', $docs),
+    $docDir,
+    $database,
+    $ci ? 'CI — schema-independent claims only' : 'all claims (this box)'
+);
 
 $problems = 0;
 $seen = 0;
 $resolved = 0;
+$skippedBox = 0;
 
 $report = function (string $kind, string $claim, bool $ok, string $detail) use (&$problems, &$resolved): void {
     printf("  %s %-46s %s\n", $ok ? 'ok  ' : 'MISS', $claim, $detail);
@@ -125,11 +140,15 @@ $pairs = array_sum(array_map(fn (array $amounts) => count($amounts), $byOr));
 // counting each mention as a claim would put `seen` ahead of `resolved` by construction, which makes the
 // closing guard fire on a document with nothing wrong in it.
 printf("  %d mention(s) of an OR number and an amount, collapsing to %d distinct claim(s)\n", count($orClaims), $pairs);
-$seen += $pairs;
+if ($ci) {
+    $skippedBox += $pairs;
+} else {
+    $seen += $pairs;
+}
 
 ksort($byOr);
 
-foreach ($byOr as $or => $amounts) {
+foreach (($ci ? [] : $byOr) as $or => $amounts) {
     $rows = DB::table('payments')->where('orNumber', $or)->get();
     if ($rows->isEmpty()) {
         foreach ($amounts as $want => $files) {
@@ -190,10 +209,19 @@ foreach ($docs_text as $file => $text) {
     }
 }
 
-$seen += count($balanceClaims);
-printf("  %d figure(s) read from the documents' record rows%s\n", count($balanceClaims), $unboundChunks === 0 ? '' : ', plus '.$unboundChunks.' UNBOUND chunk(s) reported above');
+if ($ci) {
+    $skippedBox += count($balanceClaims);
+} else {
+    $seen += count($balanceClaims);
+}
+printf(
+    "  %d figure(s) read from the documents' record rows%s%s\n",
+    count($balanceClaims),
+    $ci ? ' (skipped: keyed to this box’s record numbers)' : '',
+    $unboundChunks === 0 ? '' : ', plus '.$unboundChunks.' UNBOUND chunk(s) reported above'
+);
 
-foreach ($balanceClaims as $c) {
+foreach (($ci ? [] : $balanceClaims) as $c) {
     $assessment = DB::table('studentassessments')->where('enrollmentId', $c['id'])->first();
     if ($assessment === null) {
         $report('balance', "enrollment {$c['id']} {$c['field']}", false, 'no assessment row for this enrollment: '.substr($c['raw'], 0, 60));
@@ -267,29 +295,31 @@ if ($juanEnrollment === null) {
 echo "\n=== the fee type the clearance slip footer reads\n";
 
 $feeText = $docs_text['Demo-Day-Guide.md'].' '.$docs_text['Per-Office-UAT-Walkthrough.md'].' '.$docs_text['Offline-Presentation-Guide.md'];
-if (preg_match('/fee type (\d+), ₱([0-9][0-9,]*(?:\.[0-9]{2})?)/u', $feeText, $fx)) {
-    $seen++;
-    $row = DB::table('feetypes')->where('feeTypeId', (int) $fx[1])->first();
-    $report(
-        'fee type',
-        "fee type {$fx[1]} costs ₱{$fx[2]}",
-        $row !== null && $asDecimal($fx[2]) === round((float) $row->defaultAmount, 2),
-        $row === null ? 'no such feeTypeId' : $row->feeName.' defaultAmount '.number_format((float) $row->defaultAmount, 2)
-    );
-} else {
-    $note('the slip-fee claim', 'no `fee type N, ₱X` claim could be read from the documents');
-}
+$seen++;
 
-if (preg_match('/id (\d+) `Clearance Slip Replacement` ₱([0-9][0-9,]*(?:\.[0-9]{2})?)/u', $feeText, $fx2)) {
-    $seen++;
-    $row = DB::table('feetypes')->where('feeTypeId', (int) $fx2[1])->first();
-    $report(
-        'fee type',
-        "id {$fx2[1]} is Clearance Slip Replacement at ₱{$fx2[2]}",
-        $row !== null && $row->feeName === 'Clearance Slip Replacement' && $asDecimal($fx2[2]) === round((float) $row->defaultAmount, 2),
-        $row === null ? 'no such feeTypeId' : $row->feeName.' '.number_format((float) $row->defaultAmount, 2)
-    );
-}
+// Addressed by name, and that is a rule rather than a style choice: `StarterReferenceDataSeeder` creates fee
+// types with firstOrCreate on `feeName`, so the id is whatever the counter hands out — 5 on this box, 19 on a
+// schema the suite seeded first. A guide that says "fee type 5" teaches a desk to look for a number that a
+// fresh install does not carry.
+$named = (bool) preg_match('/`Clearance Slip Replacement` ₱([0-9][0-9,]*(?:\.[0-9]{2})?)/u', $feeText, $fx);
+$byname = DB::table('feetypes')->where('feeName', 'Clearance Slip Replacement')->first();
+$report(
+    'fee type',
+    'the slip fee is named, not numbered',
+    $named && $byname !== null,
+    $named
+        ? '`Clearance Slip Replacement` ₱'.$fx[1].' vs defaultAmount '.($byname === null ? 'no such fee type' : number_format((float) $byname->defaultAmount, 2)).' at feeTypeId '.$byname->feeTypeId
+        : 'no document names the fee type with an amount — the claim regressed to an id?'
+);
+
+$seen++;
+$idClaim = preg_match('/(?:fee type \d+\b|id \d+ `Clearance Slip Replacement`)/u', $feeText, $bad);
+$report(
+    'fee type',
+    'no guide addresses the slip fee by id',
+    $idClaim === 0,
+    $idClaim === 0 ? 'clean' : 'a guide says "'.trim($bad[0]).'" again'
+);
 
 echo "\n=== the aggregates\n";
 
@@ -309,14 +339,19 @@ $gets = collect(Route::getRoutes())
     ->count();
 
 $aggregates = [
-    'programs' => [$courses, '/(\d{1,3}) SEAIT programs|(\d{1,3}) programs, the same (\d{1,3}) courses/u'],
-    'roles' => [$roles, '/all (\d{1,3}) roles/u'],
-    'staff accounts on the box' => [$staff, '/holds (\d{1,3}) staff accounts/u'],
-    'clearance requirement lines' => [$reqLines, '/all (\d{1,3}) requirement lines/u'],
-    'reference catalogs (routes, landing page and drill-ins excluded)' => [$gets, '/across the (\d{1,3}) catalogs/u'],
+    'programs' => [$courses, '/(\d{1,3}) SEAIT programs|(\d{1,3}) programs, the same (\d{1,3}) courses/u', 'any'],
+    'roles' => [$roles, '/all (\d{1,3}) roles/u', 'any'],
+    'staff accounts on the box' => [$staff, '/holds (\d{1,3}) staff accounts/u', 'box'],
+    'clearance requirement lines' => [$reqLines, '/all (\d{1,3}) requirement lines/u', 'any'],
+    'reference catalogs (routes, landing page and drill-ins excluded)' => [$gets, '/across the (\d{1,3}) catalogs/u', 'any'],
 ];
 
-foreach ($aggregates as $label => [$actual, $re]) {
+foreach ($aggregates as $label => [$actual, $re, $scope]) {
+    if ($ci && $scope === 'box') {
+        $skippedBox++;
+
+        continue;
+    }
     $found = false;
     foreach ($docs_text as $file => $text) {
         if (! preg_match($re, $text, $m)) {
@@ -360,6 +395,9 @@ printf(
     $problems
 );
 echo "  Unread claims are reported as UNBOUND above, not skipped: a parser with a hole and a clean document look identical otherwise.\n";
+if ($skippedBox > 0) {
+    printf("  %d claim(s) about this box's record numbers were skipped in CI mode.\n", $skippedBox);
+}
 
 if ($seen !== $resolved) {
     printf("  FAIL %d claim(s) were counted but not resolved — the run is not clean.\n", $seen - $resolved);

@@ -166,8 +166,10 @@ run that produced this line found seven ids pointing at rows retired on 2026-10-
 year-level pass had since re-seated under new ids — those rows now name the live id and the retired
 one, so a desk following them finds the record.
 **Clearance window:** the seeded period sits term 11 and is `open`.
-**Fee types:** id 5 `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
-must both read that row.
+**Fee types:** `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
+must both read that row. Address it by name: its `feeTypeId` is **5 on this box** and **19 on a schema the
+test suite seeded first**, because `StarterReferenceDataSeeder` keys fee types by `feeName` and the counter
+carries the spend (the same trap that made the demo pipeline write charges against the wrong paper).
 **Shift docket:** `shiftingrequests` holds **0 rows**, and that is by design — **§8** (not §7) files the
 first one, so §8 starts from an empty table and fills it as it runs. Its preconditions were measured on live
 `ems` on 2026-10-14 rather than assumed: `dean_academic` exists and holds `shift.request.create` **and**
@@ -357,7 +359,7 @@ Path: **Clearance** (`/clearance`), windows at `/clearance/periods`, slips at
 |---|---|---|---|---|
 | 11.1 | Open `/clearance/periods` | One window sits the demo term (11) and reads `open`. There is no second accepting window — two open windows make the Registrar read a term that has no students | | ☐ |
 | 11.2 | Generate a slip for a student who has no enrollment in the window's term | The desk seats the student first (the tool does this) — a slip with no enrollment behind it is the defect that was closed; the check is that **no such slip exists today** | | ☐ |
-| 11.3 | Print the generated slip | The footer states the replacement fee **from Reference Data** (fee type 5, ₱100.00) and the document carries its own issue number | | ☐ |
+| 11.3 | Print the generated slip | The footer states the replacement fee **from Reference Data** (the `Clearance Slip Replacement` fee type, ₱100.00 — named, not numbered, for the reason given with the fee types above) and the document carries its own issue number | | ☐ |
 | 11.4 | Have each owning office sign **only its own** requirement line (there are 9 lines, one per office that participates) | A signature from an office that does not own the line is refused; every line carries a requirement name — no blank "Clearance" line | | ☐ |
 | 11.5 | Record the desk receipt on a fully approved slip | `overallStatus = approved` with `receivedBy` — the receipt is the act that makes the clearance approved | | ☐ |
 | 11.6 | **Close** the window while any clearance is still pending | **Refused with the count named** (ruling 16). Rico Navarro's slip 42 is the pending one that blocks this | | ☐ |

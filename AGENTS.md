@@ -30,6 +30,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - After any gate change, also run `php artisan ems:print-fidelity` and
   `php tools/seed_full_demo_pipeline.php` and **read their warnings** — a green suite does not
   prove a desk can demonstrate the rule.
+- **After any batch that edits the guides or the per-office walkthrough**, run
+  `php storage/app/scratch/lane40-walkthrough-claims.php` and
+  `php storage/app/scratch/lane41-doc-claims.php` against live `ems` and read their verdicts. The first
+  resolves every record-id-plus-status claim the desk script makes, against the table and the student it
+  names (it found seven citations to rows retired on 2026-10-15, five of them since re-seated under new ids);
+  the second resolves every peso figure and aggregate (it found "the 12 catalogs" where the router answers
+  13, and that "fee type 5" is a counter value — 19 on a schema the suite seeded first, which is why the
+  slip fee is now addressed by name). CI runs only lane 41's `--ci` subset, because the rest of those
+  claims are keyed to this box's record numbers and could never be true on a freshly seeded schema.
+  `php storage/app/scratch/mutate-lane41-claims.php` proves that checker can fail — run it after touching
+  either parser, and note that its first run reported five missed defect classes because the `--dir=`
+  override the harness passed was never read by the code: an ignored flag makes a mutant run look like a
+  clean one.
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
