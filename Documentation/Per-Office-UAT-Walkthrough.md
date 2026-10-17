@@ -130,14 +130,14 @@ term chip and `activeTerms` resolve.
 | Student | School ID | Enrollment | Where it sits | What it is for |
 |---|---|---|---|---|
 | Juan Dela Cruz | DEMO-2026-001 | 53 | `enrolled`, clinic recorded, **ID box signed with no request on file** | the completed first-year path — and the one signed box with no request behind it **by ruling**, not by accident (the contradictory request row was deleted 2026-10-11 and the signature left standing; `ems:audit:record-states` notes it, never fails on it) |
-| Maria Reyes | DEMO-2026-002 | 596 `pending` + 595 `enrolled` (term 10) | clearance slip 27 approved and receipted, pass slip **confirmed** | the approvable returning record |
+| Maria Reyes | DEMO-2026-002 | 596 `pending` + 595 `dropped` (term 10, retired 2026-10-15) | clearance slip 27 approved and receipted, pass slip **confirmed** | the approvable returning record — and note the retirement: nothing re-seated her completed prior year, because her live record is year 1 and the year-level pass only looks at year 2 and above |
 | Pedro Santos | DEMO-2026-003 | — | admission 41 `pending` for **BSCrim**, 1 requirement submitted / 2 pending | the Admission desk's blocked approval — first the documents (5.2), then both examinations (5R.4) |
-| Liza Bautista | DEMO-2026-004 | 262 `enrolled` **irregular**, 55 (term 10) + 654 (term 2) `enrolled` | one failed subject on the prior load | standing derived from grades, not typed |
+| Liza Bautista | DEMO-2026-004 | 262 `enrolled` **irregular**, 55 (term 10) + 1063 `enrolled` (term 2, year 1 — the row the year-level pass re-seated after 654 was retired 2026-10-15) | one failed subject on the prior load | standing derived from grades, not typed |
 | Ana Gonzales | DEMO-2026-005 | — | admission 45 `approved` | approved application, enrollment issued |
 | Carlo Mendoza | DEMO-2026-006 | — | admission 44 `rejected`, transferee | the rejection path |
-| Rico Navarro | DEMO-2026-007 | 598 `pending` + 597 `enrolled` (term 10) | clearance slip 42 **pending, no receipt** | the Registrar's block, live |
+| Rico Navarro | DEMO-2026-007 | 598 `pending` + 597 `dropped` (term 10, retired 2026-10-15 — nothing re-seated his prior year, because the live record is year 1 and the year-level pass only looks at year 2 and above) | clearance slip 42 **pending, no receipt** | the Registrar's block, live |
 | Elena Ramos | DEMO-2026-008 | 84 `pending` | first-year, no history | the derived level must read 1 |
-| Rafael Cruz | DEMO-2026-009 | 85 `pending` year 2 **irregular**, 655 `enrolled` (term 2, year 1) | transferee | a placement the desk gave, not the record — and standing the type decides (C-2) |
+| Rafael Cruz | DEMO-2026-009 | 85 `pending` year 2 **irregular**, 1064 `enrolled` (term 2, year 1 — the row the year-level pass re-seated after 655 was retired 2026-10-15) | transferee | a placement the desk gave, not the record — and standing the type decides (C-2) |
 | Grace Tan | DEMO-2026-010 | 86 `paid` | cash + bank check | Registrar approval queue |
 | Christian Lim | DEMO-2026-012 | 87 `assessed`, owes ₱17,500 | nothing held | full payment |
 | Bea Alonzo | DEMO-2026-013 | 88 `assessed`, assessed ₱18,500 / owes ₱10,500 | **₱8,000 already held** | part payment and refund |
@@ -145,20 +145,26 @@ term chip and `activeTerms` resolve.
 | Gabriel Ramos | DEMO-2026-015 | 90 `enrolled`, no block seat | | Blocking's queue |
 | Danica Sotto | DEMO-2026-016 | 91 `enrolled`, clinic recorded, **request pending at an open ID box** | | §15.2 — a request to attach a photo to and validate |
 | Kevin Santos | DEMO-2026-017 | 92 `enrolled`, **every box signed**, request `validated` with its face photo, clinic assessment on file | | the ID desk's finished example — the record that shows what 15.2 ends in |
-| Marco Villanueva | DEMO-2026-018 | 264 `paid` **confirmed**, 263 (term 10) + 656 (term 2) `enrolled` | slip 119 approved | the returning record awaiting approval |
+| Marco Villanueva | DEMO-2026-018 | 264 `paid` **confirmed**, 263 (term 10) + 1065 `enrolled` (term 2, year 1 — re-seated after 656 was retired 2026-10-15) | slip 119 approved | the returning record awaiting approval |
 | Isagani Torres | DEMO-2026-021 | 287 **`returnedToEvaluation`** | a Registrar return with a reason | the return path |
 | Angelica Reyes | DEMO-2026-019 | 285 `evaluated`, no sheet | | Assessment compute |
 | Camille Custodio | DEMO-2026-022 | 318 `evaluated` **with a sheet already** | owed ₱17,500 | the sheet-outrunning-the-load state |
 | Marisol Domingo | DEMO-2026-020 | 286 `assessed`, **owes ₱0** (grant 1, Full Scholarship 100%) | nothing held | settled without a receipt |
-| Iñigo Barrameda | DEMO-2026-024 | 475 `pending` year 2, 657 `enrolled` | BSCrim continuing | retention examination |
-| Relinda Sabla | DEMO-2026-025 | 476 `pending` year 2, 658 `enrolled` | BSCrim continuing | retention examination, **not yet examined** |
+| Iñigo Barrameda | DEMO-2026-024 | 475 `pending` year 2, 1066 `enrolled` (term 2, year 1 — re-seated after 657 was retired 2026-10-15) | BSCrim continuing | retention examination |
+| Relinda Sabla | DEMO-2026-025 | 476 `pending` year 2, 1067 `enrolled` (term 2, year 1 — re-seated after 658 was retired 2026-10-15) | BSCrim continuing | retention examination, **not yet examined** |
 | Nena Alcantara | DEMO-2026-026 | 876 `enrolled`, **no block seat**, clinic recorded, request `pending` | | §15.1's seat — opened by a desk on 2026-10-12, so 15.2 onward runs on it (see §15.1) |
 
 **Sections already open:** block 53 `BSCrim 1-A` year 1 (**3 students** / 40 — Juan Dela Cruz 53,
 Danica Sotto 91, Kevin Santos 92 — 6 class meetings), block 75 `BSIT 1-A` year 1 (1/40 — Patricia
 Diaz 89 — 6), block 114 `BSBA 2-A` year 2 (0/40, 6). Measured on live `ems` 2026-10-12; this line
 read 2 students on block 53 until the pipeline seated Kevin, which is the kind of drift §1's rule
-about naming the record exists to catch.
+about naming the record exists to catch. Re-measured 2026-10-16 — and the whole inventory above is
+machine-checked now: `php storage/app/scratch/lane40-walkthrough-claims.php` reads every record id
+this document names, resolves each against the table it belongs to (and the student the row must
+belong to), and exits 1 on a disagreement. It reported **35 claims, 0 mismatches** on that date; the
+run that produced this line found seven ids pointing at rows retired on 2026-10-15, five of which the
+year-level pass had since re-seated under new ids — those rows now name the live id and the retired
+one, so a desk following them finds the record.
 **Clearance window:** the seeded period sits term 11 and is `open`.
 **Fee types:** id 5 `Clearance Slip Replacement` ₱100.00 — the slip footer and the charged fee
 must both read that row.

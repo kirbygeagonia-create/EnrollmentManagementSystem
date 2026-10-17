@@ -299,6 +299,16 @@ restore that file and refresh the browser (Ctrl+F5):
 C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe -u root ems < "C:\Users\ADMIN\ems-backups\ems-pre-demo-<date>.sql"
 ```
 
+Then run `php tools/seed_full_demo_pipeline.php` once. **Measured 2026-10-16** on a
+copy of a dump taken exactly this way: `migrate --force` says *"Nothing to migrate"*
+(the schema is current, unlike the September file), both seeders exit 0, and the
+pipeline creates
+no base rows, prints no `SCOPE —` banner and reports no findings — it relocates
+nothing, and among the lines it prints the one state it changes is **DEMO-OR-TODAY-01**,
+re-dated to the morning you are presenting, which is the line §1's sanity sweep reads.
+Afterwards the box walks the same **18 of 19** records this machine does and
+`ems:audit:record-states` reports the one ruled note, not a fault.
+
 ### If there is no fresh dump: `Documentation/ems-demo-backup.sql`
 
 One command is **not** enough with that file. It is a **2026-09-20** snapshot —
