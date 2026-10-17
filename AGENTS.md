@@ -54,6 +54,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `RbacSeeder` declared 17 roles on that date. Both checkers resolve figures per *paragraph*, last mention
   wins, and a claim whose text cannot be found is reported `UNBOUND` and refuses the run — an unread claim
   must never look like a checked one.
+- **After any migration that adds a UNIQUE index, or any edit to §23.6.1**, run
+  `php storage/app/scratch/lane44-unique-keys.php` and prove it with
+  `php storage/app/scratch/mutate-lane44-unique-keys.php`. §23.6.1 claims to list *every* unique index in the
+  domain tables, so it is a boundary, not a summary: nine keys across seven tables is what `ems` holds, and the
+  print-log issuance key (`documentprintlog` `enrollmentId, documentType, documentNumber`, added 2026-09-30)
+  was absent from it for six weeks — the section still said "eight keys" while §23.3's own Total row had moved.
+  The checker reads the regenerated `docx-flat.txt`, so re-dump before believing a green run; its harness
+  mutates a **copy** through `--dump=` and includes a case proving that flag is read rather than accepted.
 - **After any batch that adds a table with foreign keys, or touches a delete path**, run
   `php storage/app/scratch/lane43-delete-guards.php` and prove it with
   `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 100 foreign keys: only four
