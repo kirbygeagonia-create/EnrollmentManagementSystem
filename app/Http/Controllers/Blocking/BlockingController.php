@@ -46,23 +46,37 @@ class BlockingController extends Controller
     {
         $this->authorize('blocking.viewAny');
 
+        // A block's places are students, not subject rows: two students carrying
+        // three subjects each fill two seats, not six, and this is the number
+        // assignStudents() weighs against maxStudents. Dropped rows are excluded so
+        // a leave-out does not keep a seat reserved. One definition, used both for the
+        // rows the desk sees and for the tiles above them.
+        $seats = fn ($q) => $q->select(DB::raw('count(distinct enrollmentId)'))
+            ->where('status', '!=', EnrolledSubjectStatus::Dropped->value);
+
         $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
-            // A block's places are students, not subject rows: two students carrying
-            // three subjects each fill two seats, not six, and this is the number
-            // assignStudents() weighs against maxStudents. Dropped rows are excluded so
-            // a leave-out does not keep a seat reserved.
-            ->withCount(['enrolledSubjects as students_in_block_count' => fn ($q) => $q->select(DB::raw('count(distinct enrollmentId)'))
-                ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)])
+            ->withCount(['enrolledSubjects as students_in_block_count' => $seats])
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
             ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
             ->orderByDesc('blockId');
 
+        // The tiles describe the whole filtered set, not the 20 rows on the page — the desk decides how many
+        // places it has left from these numbers, and a page sum changes with the page it is read on. Cloned
+        // before paginate(), because paginate() puts the page's LIMIT/OFFSET on the builder it is called on.
+        $setRows = (clone $query)->reorder()->get();
+
         $blocks = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Blocking/Index', [
             'blocks' => $blocks,
+            'stats' => [
+                'blocks' => $setRows->count(),
+                'capacity' => (int) $setRows->sum('maxStudents'),
+                'enrolled' => (int) $setRows->sum('students_in_block_count'),
+                'available' => max(0, (int) $setRows->sum('maxStudents') - (int) $setRows->sum('students_in_block_count')),
+            ],
             'courses' => Courses::all(['courseId', 'courseName', 'courseCode']),
             'terms' => Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']),
             'filters' => $request->only(['search', 'courseId', 'termId', 'yearLevel']),

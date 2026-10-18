@@ -60,15 +60,20 @@ class AdmissionController extends Controller
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('admissionId');
 
-        $admissions = $query->paginate(20)->withQueryString();
-
         // Status counts across the whole filtered set — the summary tiles must
         // describe the full queue, not just the current page (audit 2026-09-25).
+        //
+        // Taken before paginate(), not after: paginate() calls forPage(), which sets limit and offset on the
+        // builder it is called on, so a clone made afterwards carries "LIMIT 20 OFFSET 20" and answers with
+        // nothing once the desk leaves page 1. AccountingController has always cloned first; these three did
+        // not, and page 1 is not evidence either way.
         $statusCounts = (clone $query)
             ->reorder()
             ->selectRaw('admissionStatus, count(*) as aggregate')
             ->groupBy('admissionStatus')
             ->pluck('aggregate', 'admissionStatus');
+
+        $admissions = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admission/Index', [
             'admissions' => $admissions,

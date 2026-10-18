@@ -74,6 +74,15 @@ class ExamController extends Controller
                 ->where('examResult', ExamResult::Pass->value);
         }
 
+        // Tiles over the whole filtered set, cloned before paginate() — paginate() puts the page's
+        // LIMIT/OFFSET on the builder it is called on, so a clone taken afterwards answers with nothing from
+        // page 2. Counting these client-side described 20 rows under a label that promised the queue.
+        $resultCounts = (clone $query)
+            ->reorder()
+            ->selectRaw('examResult, count(*) as aggregate')
+            ->groupBy('examResult')
+            ->pluck('aggregate', 'examResult');
+
         $exams = $query->paginate(20)->withQueryString();
 
         // An exam record is per (student, term) with no enrollmentId, so the
@@ -90,6 +99,11 @@ class ExamController extends Controller
 
         return Inertia::render('Exam/Index', [
             'exams' => $exams,
+            'stats' => [
+                'total' => $exams->total(),
+                'pass' => (int) ($resultCounts[ExamResult::Pass->value] ?? 0),
+                'fail' => (int) ($resultCounts[ExamResult::Fail->value] ?? 0),
+            ],
             'filters' => $request->only(['type', 'search']),
             'can' => [
                 'recordGeneral' => $canGeneral,
@@ -434,10 +448,31 @@ class ExamController extends Controller
                 ->where('examResult', ExamResult::Pass->value);
         }
 
+        // Result counts over the whole filtered set, taken before paginate() for the reason given in index().
+        // The pass rate's denominator is scored rows only: examResult is a nullable enum, so an unscored
+        // student is neither a passer nor a failure, and counting them made a screen of 20 unscored rows
+        // read "0%".
+        $resultCounts = (clone $query)
+            ->reorder()
+            ->selectRaw('examResult, count(*) as aggregate')
+            ->groupBy('examResult')
+            ->pluck('aggregate', 'examResult');
+
+        $passCount = (int) ($resultCounts[ExamResult::Pass->value] ?? 0);
+        $failCount = (int) ($resultCounts[ExamResult::Fail->value] ?? 0);
+        $scoredCount = $passCount + $failCount;
+
         $exams = $query->paginate(50)->withQueryString();
 
         return Inertia::render('Exam/Results', [
             'exams' => $exams,
+            'stats' => [
+                'total' => $exams->total(),
+                'pass' => $passCount,
+                'fail' => $failCount,
+                'scored' => $scoredCount,
+                'passRate' => $scoredCount > 0 ? (int) round($passCount / $scoredCount * 100) : null,
+            ],
             'filters' => $request->only(['result', 'search']),
             'can' => [
                 'recordGeneral' => $canGeneral,

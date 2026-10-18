@@ -92,12 +92,39 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   A checker pointed at the wrong construct is worse than one that reads nothing, because it prints a pass. Its
   scope is a flag (`EMS_LANE46_PAGES`), so the harness proves the flag changes what is scanned and that an empty
   scope *refuses* rather than reporting clean.
+- **After any batch that adds or edits a summary tile, a `stats` prop, or a filter pick-list**, run
+  `php storage/app/scratch/lane47-tile-scope.php` and prove it with `php storage/app/scratch/mutate-lane47-tile-scope.php`
+  (the checker) **and** `php storage/app/scratch/mutate-lane47-tests.php` (the tests, which revert one desk each
+  and require the named case to go red). It joins each screen's tiles to its handler and asks which set each
+  number describes: SILENT-ZERO (an aggregate cloned from `(clone $query)` after `paginate()` — see the fact
+  below), PAGE-TILE (a tile reducing over `props.data` under a label naming no page), MIXED-SET (one screen
+  where a tile reads the paginator total while its neighbour reads the page), IMPOSSIBLE (a client predicate
+  the handler's `whereIn` cannot return), DEAD-OPTION (a pick-list built from the page, so a value on a later
+  page cannot be chosen). **It judges a tile by its source, never by its name** — `totalCapacity` is evaluated
+  as the text it is defined from, `peso(x)` is unwrapped, `stats.pending` is resolved to the line the memo
+  returns for `pending`, and anything untraceable is UNBOUND and refuses the run. The first draft classified by
+  name and would have passed a page-derived capacity tile as a server number. Two live traps in its parsing:
+  `<StatCard … iconBg={a > 0 ? …}>` carries a `>` inside an attribute, so a regex tag match silently drops the
+  tile that most needs judging, and `{ stats: serverStats = null }` must yield the alias, not the key.
+- **After any batch that touches a summary tile, a stat prop, or a filter pick-list**, run
+  `php storage/app/scratch/lane47-tile-scope.php` and prove it with
+  `php storage/app/scratch/mutate-lane47-tile-scope.php` (the checker) *and*
+  `php storage/app/scratch/mutate-lane47-tests.php` (the tests). It asks which set each number describes:
+  SILENT-ZERO (an aggregate cloned from `(clone $query)` **after** `$query->paginate()` — see the fact below),
+  PAGE-TILE (a tile reducing over `props.data` under a label that names no page), MIXED-SET (one screen where a
+  tile reads the paginator total and an adjacent one reads the page), IMPOSSIBLE (a client predicate the
+  handler's `whereIn` cannot return), DEAD-OPTION (a pick-list assembled from the page, so a value on a later
+  page cannot be chosen). **Judged by source, never by name**: `totalBlocks` is evaluated as the text it is
+  defined from, `stats.pending` as the line the memo returns for `pending`, and a tile that cannot be traced is
+  UNBOUND and refuses the run — the first draft classified by identifier and would have called
+  `const totalCapacity = blocks.data.reduce(…)` a server number. Live `ems` cannot show the page-2 defect at
+  all (its largest desk queue is 7 rows), which is why the tests write 25 to 60 rows.
 - **When an edit moves lines in a file the document cites, verify the shift against both versions of that file,
   never against arithmetic.** `php storage/app/scratch/lane46-probe-exam-cites.php` compares
   `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
   *every* cited line is byte-identical — the 32 citations into `ExamController.php` all resolved at +2 and none
   needed re-reading, which is a stronger claim than "the file grew by two rows". It also surfaces the bare
-  continuations (`ExamController.php:165-231 , :225 , :237-248`) that every `File.php:NN` checker misses — and
+  continuations (`ExamController.php:179-245 , :239 , :251-262`) that every `File.php:NN` checker misses — and
   one of those bare numbers belonged to a *different* file's citation, so a global replace would have corrupted it.
 - **A register row added to the docx must move every place that counts the register.** §28.3's size was stated
   twice, in the §29.4 family table (28) and in the arithmetic sentence beside it (30, the truth), and pass 138
@@ -176,6 +203,24 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   is not currently evidence either way. A record whose course names no college is *not*
   the desk's, and the dropdown must be filtered by the same rule the policy asks, or the screen offers work
   the save refuses.
+- **`paginate()` mutates the builder it is called on**, so an aggregate taken from `(clone $query)` *after* it
+  inherits the page's `LIMIT`/`OFFSET` and answers with nothing from page 2 onward: `forPage()` sets limit and
+  offset on `$this` (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208`). Three desks
+  carried a comment promising "the full queue, not just the current page" while doing exactly that, and page 1 —
+  the only page a demo opens — proved it right. Clone **before** the paginate, the way
+  `AccountingController::index()` always has; the same ordering applies to any summary over a filtered set.
+- **`paginate()` mutates the builder it is called on** — `forPage()` sets limit and offset on `$this`
+  (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208`) — so a summary taken from
+  `(clone $query)` **after** it inherits the page's `LIMIT 20 OFFSET 20` and answers with nothing from page 2
+  on. Clone **before** the paginate (`AccountingController::index()` has always done it; Admission, Assessment and
+  Clearance did not until lane 47). Page 1 proves nothing about this, and no queue on live `ems` is long enough
+  to reach page 2 — a test has to write 25–60 rows to see it.
+- A desk tile describes the **whole filtered set**, on the server, cloned before that paginate; a number that
+  reduces over `props.data` is a page total and its label has to say "on this page" (the honest precedents:
+  "Students in Queue", "Total (this page)", "Validated, on the Issued tab"). Where the server sends no number at
+  all the tile paints `—`, never `0`: a plausible zero is the same lie in a smaller font. A rate's denominator
+  is the rows that have been scored — `examresults.examResult` is `enum('pass','fail')` **nullable**, so an
+  unmarked paper is neither a passer nor a failure.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,

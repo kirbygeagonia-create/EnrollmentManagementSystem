@@ -47,16 +47,20 @@ class AssessmentController extends Controller
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('assessmentId');
 
-        $assessments = $query->paginate(20)->withQueryString();
-
         // Fee summary across the whole filtered set — the summary tiles must
         // describe the full queue, not just the current page (audit 2026-09-25).
+        //
+        // Cloned before paginate(): paginate() sets limit/offset on the builder it is called on, so a clone
+        // taken afterwards carries the page's OFFSET into the aggregate and `first()` answers with nothing —
+        // the desk then reads ₱0 for money the queue holds.
         $summary = (clone $query)
             ->reorder()
             ->selectRaw('coalesce(sum(totalAssessedAmount), 0) as total, coalesce(sum(remainingBalance), 0) as balance,
                 sum(case when remainingBalance > 0 and remainingBalance < totalAssessedAmount then 1 else 0 end) as partialCount,
                 sum(case when remainingBalance <= 0 then 1 else 0 end) as settledCount')
             ->first();
+
+        $assessments = $query->paginate(20)->withQueryString();
 
         $pendingEvaluations = Enrollments::with(['student', 'course', 'term', 'enrolledSubjects.subject'])
             ->where('enrollmentStatus', EnrollmentStatus::Evaluated)

@@ -43,10 +43,22 @@ class ClinicController extends Controller
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
 
+        // The tiles describe the whole queue, not the 20 rows on the page: "how many of these students still
+        // need an assessment" is a question about the queue. Cloned before paginate(), because paginate() puts
+        // the page's LIMIT/OFFSET on the builder it is called on — reorder() keeps the aggregate clear of the
+        // list's ORDER BY, which ONLY_FULL_GROUP_BY would otherwise refuse.
+        $queueSize = (clone $query)->reorder()->count();
+        $assessed = (clone $query)->reorder()->has('clinicrecords')->count();
+
         $enrollments = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Clinic/Index', [
             'enrollments' => $enrollments,
+            'stats' => [
+                'queue' => $queueSize,
+                'completed' => $assessed,
+                'pending' => max(0, $queueSize - $assessed),
+            ],
             'filters' => $request->only(['search']),
         ]);
     }

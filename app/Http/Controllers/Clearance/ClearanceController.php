@@ -47,6 +47,22 @@ class ClearanceController extends Controller
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('studentClearanceId');
 
+        // Full-dataset status counts for the summary tiles (m2): counting
+        // client-side from clearances.data understates the dataset beyond
+        // page 1. Reuses the same filters so the tiles track the list.
+        // reorder() strips the list's orderByDesc — under MySQL 8's default
+        // ONLY_FULL_GROUP_BY, ORDER BY on a non-grouped column with GROUP BY
+        // is a 500 (SQLite is lenient, so tests alone won't catch it).
+        //
+        // Cloned before paginate(), not after: paginate() calls forPage(), which sets limit/offset on the
+        // builder it was called on, so a later clone carries "GROUP BY … LIMIT 20 OFFSET 20" and every tile
+        // reads 0 on page 2. Page 1 cannot show this, which is how it survived since the m2 fix.
+        $statusCounts = (clone $query)
+            ->reorder()
+            ->selectRaw('overallStatus, count(*) as aggregate')
+            ->groupBy('overallStatus')
+            ->pluck('aggregate', 'overallStatus');
+
         $clearances = $query->paginate(20)->withQueryString();
 
         // Standing is recorded on the enrollment, and a clearance row carries no
@@ -61,18 +77,6 @@ class ClearanceController extends Controller
             $c->setAttribute('studentType', $match?->studentType?->value);
             $c->setAttribute('academicStanding', $match?->academicStanding?->value);
         });
-
-        // Full-dataset status counts for the summary tiles (m2): counting
-        // client-side from clearances.data understates the dataset beyond
-        // page 1. Reuses the same filters so the tiles track the list.
-        // reorder() strips the list's orderByDesc — under MySQL 8's default
-        // ONLY_FULL_GROUP_BY, ORDER BY on a non-grouped column with GROUP BY
-        // is a 500 (SQLite is lenient, so tests alone won't catch it).
-        $statusCounts = (clone $query)
-            ->reorder()
-            ->selectRaw('overallStatus, count(*) as aggregate')
-            ->groupBy('overallStatus')
-            ->pluck('aggregate', 'overallStatus');
 
         return Inertia::render('Clearance/Index', [
             'clearances' => $clearances,

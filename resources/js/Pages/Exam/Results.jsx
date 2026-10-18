@@ -24,7 +24,7 @@ const typeLabels = {
     courseSpecific: 'Course-Specific',
 };
 
-export default function Results({ exams, filters = {}, can = {} }) {
+export default function Results({ exams, stats = {}, filters = {}, can = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [result, setResult] = useState(filters.result || '');
 
@@ -35,19 +35,9 @@ export default function Results({ exams, filters = {}, can = {} }) {
     const isGuidance = canGeneral && !canCourseSpecific;
     const isDepartment = canCourseSpecific && !canGeneral;
 
-    const rows = useMemo(() => exams?.data || [], [exams]);
-
-    // Summary tiles derived from the current page
-    const stats = useMemo(() => {
-        let pass = 0;
-        let fail = 0;
-        rows.forEach((r) => {
-            if (r.examResult === 'pass') pass += 1;
-            else if (r.examResult === 'fail') fail += 1;
-        });
-        const passRate = rows.length > 0 ? Math.round((pass / rows.length) * 100) : 0;
-        return { pass, fail, passRate, total: rows.length };
-    }, [rows]);
+    // The tiles and the rate are the server's counts over the whole filtered set. Counting `exams.data` here
+    // measured one page of 50, and put unscored rows — examResult is a nullable enum — into the rate's
+    // denominator, so a screen of unmarked papers read "0%" and the number moved as the desk paged.
 
     const columns = useMemo(() => [
         { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -121,7 +111,7 @@ export default function Results({ exams, filters = {}, can = {} }) {
                 <StatCard
                     compact
                     label="Passed"
-                    value={stats.pass}
+                    value={stats.pass ?? '—'}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +122,7 @@ export default function Results({ exams, filters = {}, can = {} }) {
                 <StatCard
                     compact
                     label="Failed"
-                    value={stats.fail}
+                    value={stats.fail ?? '—'}
                     iconBg="danger"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,8 +132,8 @@ export default function Results({ exams, filters = {}, can = {} }) {
                 />
                 <StatCard
                     compact
-                    label="Pass Rate"
-                    value={`${stats.passRate}%`}
+                    label={stats.scored ? `Pass Rate · ${stats.scored} scored` : 'Pass Rate · nothing scored yet'}
+                    value={stats.passRate === null || stats.passRate === undefined ? '—' : `${stats.passRate}%`}
                     iconBg="info"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

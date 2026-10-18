@@ -24,7 +24,7 @@ const BlockIcon = () => (
     </svg>
 );
 
-export default function Index({ blocks, courses, terms, filters = {} }) {
+export default function Index({ blocks, stats = {}, courses, terms, filters = {} }) {
     const [search, setSearch] = useState('');
     const [courseId, setCourseId] = useState(filters.courseId || '');
     const [termId, setTermId] = useState(filters.termId || '');
@@ -115,11 +115,13 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
         </div>
     );
 
-    // Summary stats
-    const totalBlocks = blocks?.total ?? blocks?.data?.length ?? 0;
-    const totalCapacity = (blocks?.data || []).reduce((sum, b) => sum + (b.maxStudents || 0), 0);
-    const totalEnrolled = (blocks?.data || []).reduce((sum, b) => sum + (b.students_in_block_count ?? 0), 0);
-    const totalAvailable = Math.max(0, totalCapacity - totalEnrolled);
+    // The queue's capacity, not this page's. Reducing over blocks.data added up the 20 rows on screen under
+    // labels that promised the queue, while "Total Blocks" read the paginator's own total — two sets on one
+    // screen, and the desk decided enrolment on the smaller one. A missing prop shows a dash, never a zero.
+    const totalBlocks = stats.blocks ?? blocks?.total ?? '—';
+    const totalCapacity = stats.capacity ?? '—';
+    const totalEnrolled = stats.enrolled ?? '—';
+    const totalAvailable = stats.available ?? '—';
 
     return (
         <AuthenticatedLayout
@@ -183,7 +185,7 @@ export default function Index({ blocks, courses, terms, filters = {} }) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         }
-                        iconBg={totalAvailable > 0 ? 'success' : 'danger'}
+                        iconBg={totalAvailable === 0 ? 'danger' : 'success'}
                     />
                 </div>
 

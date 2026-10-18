@@ -502,10 +502,31 @@ class UserManagementController extends Controller
             ->when($request->adminOverride === '1', fn ($q) => $q->where('adminOverride', true))
             ->orderByDesc('createdAt');
 
+        // Counts over the whole filtered set, taken before paginate() — paginate() puts the page's
+        // LIMIT/OFFSET on the builder it is called on. Client-side these tiles described up to 50 rows while
+        // their labels promised the log.
+        $actionCounts = (clone $query)
+            ->reorder()
+            ->selectRaw('action, count(*) as aggregate')
+            ->groupBy('action')
+            ->pluck('aggregate', 'action');
+
+        // Every entity table the log actually holds. The dropdown used to be assembled from the rows on the
+        // current page, which on this box offered 4 tables out of the 43 the log contains — 39 kinds of
+        // activity could not be filtered for at all.
+        $entityTables = Auditlogs::distinct()->orderBy('entityTable')->pluck('entityTable')->filter()->values();
+
         $logs = $query->paginate(50)->withQueryString();
 
         return Inertia::render('Admin/UserManagement/AuditLogs', [
             'logs' => $logs,
+            'entityTables' => $entityTables,
+            'stats' => [
+                'total' => $logs->total(),
+                'created' => (int) ($actionCounts['created'] ?? 0),
+                'updated' => (int) ($actionCounts['updated'] ?? 0),
+                'deleted' => (int) ($actionCounts['deleted'] ?? 0),
+            ],
             'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo', 'adminOverride']),
         ]);
     }

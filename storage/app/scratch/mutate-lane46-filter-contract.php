@@ -30,6 +30,40 @@ foreach ($targets as $k => $path) {
     $hash0[$k] = hash('sha256', $original[$k]);
 }
 
+// A harness that plants into the real tree can leave a defect behind when it dies between the write and the
+// restore — and a leftover is worse than a red run, because the next invocation snapshots the mutated file as
+// its "original", reports the planted defect as the clean baseline, and then cannot apply its own mutant.
+// That is exactly what happened on 2026-10-18: `students.index-typo` was found sitting in Students/Index.jsx
+// after a run, and every case after it went red for the wrong reason. So refuse to start on a tree that already
+// carries one of the tokens this file plants, and restore on every exit path.
+$plantedTokens = ['students.index-typo', 'lane46bogus', "label: 'Graduated'"];
+$leftovers = [];
+foreach ($targets as $k => $path) {
+    foreach ($plantedTokens as $v) {
+        if (str_contains($original[$k], $v)) {
+            $leftovers[] = $k.' carries '.preg_replace('/\s+/', ' ', $v);
+        }
+    }
+}
+if ($leftovers !== []) {
+    fwrite(STDERR, "REFUSED — the tree already holds a value this harness plants, so a previous run did not\n"
+        ."          restore it and this run's idea of \"original\" would be a defect:\n");
+    foreach ($leftovers as $l) {
+        fwrite(STDERR, '          '.$l."\n");
+    }
+    fwrite(STDERR, "          restore those files (git checkout -- <path>) and run this again.\n");
+    exit(1);
+}
+
+register_shutdown_function(function () use ($targets, $original, $hash0): void {
+    foreach ($targets as $k => $path) {
+        if (hash('sha256', (string) file_get_contents($path)) !== $hash0[$k]) {
+            file_put_contents($path, $original[$k]);
+            fwrite(STDERR, "shutdown restore wrote back {$k}\n");
+        }
+    }
+});
+
 $failures = 0;
 $run = function (array $env = []) use ($php, $root, $checker): array {
     $pairs = '';
@@ -60,12 +94,14 @@ $case = function (string $name, string $needle, array $plants, bool $expectFail 
         if ($src === null) {
             printf("  BAD  %-42s no such target %s\n", $name, $k);
             $failures++;
+            $restore();
 
             return;
         }
         if (! str_contains($src, $from)) {
             printf("  BAD  %-42s MUTANT DID NOT APPLY — the anchor is not in %s any more\n", $name, $k);
             $failures++;
+            $restore();
 
             return;
         }
@@ -73,6 +109,7 @@ $case = function (string $name, string $needle, array $plants, bool $expectFail 
         if ($mutated === $src) {
             printf("  BAD  %-42s MUTANT DID NOT APPLY — the replacement changed no bytes\n", $name);
             $failures++;
+            $restore();
 
             return;
         }
@@ -150,11 +187,18 @@ $emptyDir = $root.'/storage/app/scratch/lane46-empty';
 @mkdir($emptyDir, 0777, true);
 copy($targets['students-jsx'], $oneDir.'/Index.jsx');
 
+// The whole-tree count is measured here rather than remembered: a hard-coded 55 goes stale the moment a page
+// is added, and a stale constant makes the scope case fail for a reason that has nothing to do with the flag.
+[, $wholeOut] = $run();
+$baseline = preg_match('/(\d+) page\/route binding\(s\) judged/', $wholeOut, $wm) ? (int) $wm[1] : 0;
+printf("  %s %-42s bindings=%d\n", $baseline > 0 ? 'ok  ' : 'BAD ', 'the whole tree is counted before narrowing', $baseline);
+$failures += $baseline > 0 ? 0 : 1;
+
 // (i) scoped to one page: the run must say it scanned that directory and judge fewer bindings than the tree.
 [$code, $out] = $run(['EMS_LANE46_PAGES' => $oneDir]);
 $scoped = str_contains($out, $oneDir) && str_contains($out, 'binding(s) judged');
 $count = preg_match('/(\d+) page\/route binding\(s\) judged/', $out, $m) ? (int) $m[1] : -1;
-$ok = $code === 0 && $scoped && $count >= 1 && $count < 55;
+$ok = $code === 0 && $scoped && $count >= 1 && $count < $baseline;
 printf("  %s %-42s exit=%d  scanned=%s bindings=%d\n", $ok ? 'ok  ' : 'BAD ', 'the flag narrows what is scanned', $code,
     $scoped ? 'yes' : 'NO — the override was ignored', $count);
 $failures += $ok ? 0 : 1;

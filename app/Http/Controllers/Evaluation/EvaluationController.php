@@ -71,18 +71,55 @@ class EvaluationController extends Controller
     {
         $this->authorize('viewAny', Enrollments::class);
 
+        $desk = $request->user();
+
+        // One rule for the search box, shared by the list and every tile, so a number above the list can
+        // never describe a set the list does not.
+        $search = fn ($q, $term) => $q->whereHas('student', fn ($sq) => $sq
+            ->where('lastName', 'like', "%{$term}%")
+            ->orWhere('firstName', 'like', "%{$term}%")
+            ->orWhere('schoolIdNumber', $term));
+
         // Ruled 2026-10-13: a college's department receives the enrollments of its own college. A desk
         // belonging to no college (Registrar, Guidance, Accounting, the clinic) is bounded by nothing and
         // keeps the whole queue, which is what the ruling says about those desks.
         $query = CollegeScope::ofEnrollments(
             Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedByUser']),
-            $request->user()
+            $desk
         )
             // Item 8: enrollments returned by the Registrar land back on this
             // desk with a return reason, alongside fresh Pending records.
             ->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
+            ->when($request->search, $search)
             ->orderByDesc('enrollmentId');
+
+        // The tiles answer for the whole queue, not the 20 rows on the page, and are taken before paginate()
+        // — paginate() puts the page's LIMIT/OFFSET on the builder it is called on.
+        //
+        // "Evaluated" used to be counted in the page as `enrollmentStatus === 'evaluated'` over the rows this
+        // handler returns. The list is restricted to pending + returnedToEvaluation, so that comparison could
+        // never match: the tile read 0 forever while this desk's finished work had already moved on to the
+        // Registrar. It now counts the records that left this desk, inside the same college boundary.
+        $queue = (clone $query)
+            ->reorder()
+            ->selectRaw('count(*) as queue, sum(enrollmentStatus = ?) as pending, sum(enrollmentStatus = ?) as returned,
+                    sum(studentType in (?, ?)) as transferees', [
+                EnrollmentStatus::Pending->value,
+                EnrollmentStatus::ReturnedToEvaluation->value,
+                StudentType::Transferee->value,
+                StudentType::Shifter->value,
+            ])
+            ->first();
+
+        $handled = CollegeScope::ofEnrollments(Enrollments::query(), $desk)
+            ->whereIn('enrollmentStatus', [
+                EnrollmentStatus::Evaluated->value,
+                EnrollmentStatus::Assessed->value,
+                EnrollmentStatus::Paid->value,
+                EnrollmentStatus::Enrolled->value,
+            ])
+            ->when($request->search, $search)
+            ->count();
 
         $enrollments = $query->paginate(20)->withQueryString();
 
@@ -90,13 +127,20 @@ class EvaluationController extends Controller
         // screen is given the students who actually repeat a term. A student with no
         // earlier term is an applicant and belongs at Admission, which is why they are
         // not offered here.
-        $canIssue = $request->user()->hasPermissionTo('evaluation.create');
+        $canIssue = $desk->hasPermissionTo('evaluation.create');
 
         return Inertia::render('Evaluation/Index', [
             'enrollments' => $enrollments,
+            'stats' => [
+                'total' => (int) $queue->queue,
+                'pending' => (int) $queue->pending,
+                'returned' => (int) $queue->returned,
+                'evaluated' => $handled,
+                'transferees' => (int) $queue->transferees,
+            ],
             'filters' => $request->only(['search']),
             'canIssueEnrollment' => $canIssue,
-            'returningStudents' => $canIssue ? $this->returningStudents($request->user()) : [],
+            'returningStudents' => $canIssue ? $this->returningStudents($desk) : [],
             'terms' => $canIssue
                 ? Academicterms::with('academicYear:academicYearId,yearLabel')->orderByDesc('termId')
                     ->get(['termId', 'academicYearId', 'semester', 'startDate', 'endDate'])
@@ -104,7 +148,7 @@ class EvaluationController extends Controller
             // The same rule the save asks, so the dropdown never offers a program this desk cannot enrol
             // into (EvaluationPolicy::create).
             'courses' => $canIssue
-                ? CollegeScope::ofCourses(Courses::orderBy('courseName'), $request->user())
+                ? CollegeScope::ofCourses(Courses::orderBy('courseName'), $desk)
                     ->get(['courseId', 'courseCode', 'courseName'])
                 : [],
         ]);

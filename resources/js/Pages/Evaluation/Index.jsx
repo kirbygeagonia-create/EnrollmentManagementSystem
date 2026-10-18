@@ -3,7 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, filters = {}, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
+export default function Index({ enrollments, stats = {}, filters = {}, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
     const [search, setSearch] = useState(filters.search || '');
     const [issueOpen, setIssueOpen] = useState(false);
 
@@ -64,16 +64,10 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
         });
     };
 
-    // Derive quick stats from the full paginator payload (if available)
-    const stats = useMemo(() => {
-        const rows = enrollments?.data || [];
-        return {
-            total: enrollments?.total ?? rows.length,
-            pending: rows.filter((r) => r.enrollmentStatus === 'pending').length,
-            evaluated: rows.filter((r) => r.enrollmentStatus === 'evaluated').length,
-            transferees: rows.filter((r) => r.studentType === 'transferee' || r.studentType === 'shifter').length,
-        };
-    }, [enrollments]);
+    // Every tile is the handler's count over the desk's whole queue, inside the same CollegeScope as the
+    // list. Two of them used to be counted from the rows on this page, and "Evaluated" was worse than a page:
+    // it compared `enrollmentStatus` to 'evaluated' in a list the handler restricts to pending +
+    // returnedToEvaluation, so it could never leave 0 while this desk's finished work moved on to Registrar.
 
     const columns = useMemo(() => [
         { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -145,13 +139,13 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
         >
             <Head title="Evaluation Queue" />
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            {/* Quick Stats — every number is the handler's count over the desk's whole queue, not this page */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-5">
                 <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                     <StatCard
                         compact
                         label="In Queue"
-                        value={stats.total}
+                        value={stats.total ?? '—'}
                         iconBg="seait"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +158,7 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
                     <StatCard
                         compact
                         label="Pending Evaluation"
-                        value={stats.pending}
+                        value={stats.pending ?? '—'}
                         iconBg="warning"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,8 +170,8 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
                 <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
                     <StatCard
                         compact
-                        label="Evaluated"
-                        value={stats.evaluated}
+                        label="Evaluated by This Desk"
+                        value={stats.evaluated ?? '—'}
                         iconBg="success"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,11 +184,24 @@ export default function Index({ enrollments, filters = {}, canIssueEnrollment = 
                     <StatCard
                         compact
                         label="Transferees / Shifters"
-                        value={stats.transferees}
+                        value={stats.transferees ?? '—'}
                         iconBg="info"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '240ms' }}>
+                    <StatCard
+                        compact
+                        label="Returned by Registrar"
+                        value={stats.returned ?? '—'}
+                        iconBg="danger"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h11m0 0l-4-4m4 4l-4 4m2-13h6a2 2 0 012 2v14a2 2 0 01-2 2h-6a2 2 0 01-2-2V3a2 2 0 012-2z" />
                             </svg>
                         }
                     />

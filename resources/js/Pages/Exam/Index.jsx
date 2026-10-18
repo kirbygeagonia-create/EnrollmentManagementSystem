@@ -18,7 +18,7 @@ const typeLabels = {
     courseSpecific: 'Course-Specific',
 };
 
-export default function Index({ exams, filters = {}, can = {} }) {
+export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [type, setType] = useState(filters.type || '');
 
@@ -31,8 +31,6 @@ export default function Index({ exams, filters = {}, can = {} }) {
     const isGuidance = canGeneral && !canCourseSpecific;
     const isDepartment = canCourseSpecific && !canGeneral;
 
-    const rows = useMemo(() => exams?.data || [], [exams]);
-
     // The Exam module is entrance-only now (retention moved to Academic
     // Evaluation), so the stage filter is gone. The type filter offers only
     // the exams this desk owns.
@@ -43,17 +41,8 @@ export default function Index({ exams, filters = {}, can = {} }) {
         return options;
     }, [canGeneral, canCourseSpecific, isGuidance, isDepartment]);
 
-    // Summary tiles derived from the current page
-    const stats = useMemo(() => {
-        let pass = 0;
-        let fail = 0;
-        rows.forEach((r) => {
-            if (r.examResult === 'pass') pass += 1;
-            else if (r.examResult === 'fail') fail += 1;
-        });
-        return { pass, fail, total: rows.length };
-    }, [rows]);
-
+    // The tiles are the server's counts over the whole filtered set. Counting `exams.data` here described the
+    // 20 rows on this page under labels that promised the queue, and the number moved when the desk paged.
     const columns = useMemo(() => [
         { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
         { key: 'studentName', label: 'Student Name', render: (row) => (
@@ -172,8 +161,8 @@ export default function Index({ exams, filters = {}, can = {} }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                 <StatCard
                     compact
-                    label="Exams on Page"
-                    value={stats.total}
+                    label="Exams in This View"
+                    value={stats.total ?? '—'}
                     iconBg="brand"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +173,7 @@ export default function Index({ exams, filters = {}, can = {} }) {
                 <StatCard
                     compact
                     label="Passed"
-                    value={stats.pass}
+                    value={stats.pass ?? '—'}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,7 +184,7 @@ export default function Index({ exams, filters = {}, can = {} }) {
                 <StatCard
                     compact
                     label="Failed"
-                    value={stats.fail}
+                    value={stats.fail ?? '—'}
                     iconBg="danger"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

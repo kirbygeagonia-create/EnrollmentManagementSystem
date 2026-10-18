@@ -3,16 +3,9 @@ import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, filters = {} }) {
+export default function Index({ enrollments, stats = {}, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
 
-    // Summary tiles derived from the current page of enrollments
-    const rows = useMemo(() => enrollments?.data || [], [enrollments]);
-    const completedCount = useMemo(
-        () => rows.filter((r) => r.clinicrecords && r.clinicrecords.length > 0).length,
-        [rows],
-    );
-    const pendingCount = rows.length - completedCount;
 
     const columns = useMemo(() => [
         { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
@@ -84,8 +77,8 @@ export default function Index({ enrollments, filters = {} }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
                 <StatCard
                     compact
-                    label="Students on Page"
-                    value={rows.length}
+                    label="Students in Queue"
+                    value={stats.queue ?? '—'}
                     iconBg="brand"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +89,7 @@ export default function Index({ enrollments, filters = {} }) {
                 <StatCard
                     compact
                     label="Assessments Completed"
-                    value={completedCount}
+                    value={stats.completed ?? '—'}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +100,7 @@ export default function Index({ enrollments, filters = {} }) {
                 <StatCard
                     compact
                     label="Pending Assessment"
-                    value={pendingCount}
+                    value={stats.pending ?? '—'}
                     iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
