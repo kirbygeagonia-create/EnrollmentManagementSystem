@@ -88,10 +88,10 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
             <Head title="Shift Requests" />
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                <StatCard compact label="Waiting on the department" value={stats.pending ?? 0} iconBg="warning" />
-                <StatCard compact label="Waiting on Guidance" value={stats.endorsed ?? 0} iconBg="info" />
-                <StatCard compact label="Granted" value={stats.granted ?? 0} iconBg="success" />
-                <StatCard compact label="Refused" value={stats.rejected ?? 0} iconBg="danger" />
+                <StatCard compact label="Waiting on the department" value={stats.pending} iconBg="warning" />
+                <StatCard compact label="Waiting on Guidance" value={stats.endorsed} iconBg="info" />
+                <StatCard compact label="Granted" value={stats.granted} iconBg="success" />
+                <StatCard compact label="Refused" value={stats.rejected} iconBg="danger" />
             </div>
 
             <FilterBar

@@ -86,35 +86,35 @@ export default function Index({ stats = {}, manageable = [] }) {
                 <StatCard
                     compact
                     label="Courses"
-                    value={stats.courses || 0}
+                    value={stats.courses}
                     icon={<CourseIcon className="h-5 w-5" />}
                     iconBg="brand"
                 />
                 <StatCard
                     compact
                     label="Majors"
-                    value={stats.majors || 0}
+                    value={stats.majors}
                     icon={<MajorIcon className="h-5 w-5" />}
                     iconBg="success"
                 />
                 <StatCard
                     compact
                     label="Curriculums"
-                    value={stats.curriculums || 0}
+                    value={stats.curriculums}
                     icon={<CurriculumIcon className="h-5 w-5" />}
                     iconBg="info"
                 />
                 <StatCard
                     compact
                     label="Subjects"
-                    value={stats.subjects || 0}
+                    value={stats.subjects}
                     icon={<SubjectIcon className="h-5 w-5" />}
                     iconBg="warning"
                 />
                 <StatCard
                     compact
                     label="Terms"
-                    value={stats.terms || 0}
+                    value={stats.terms}
                     icon={<TermIcon className="h-5 w-5" />}
                     iconBg="accent"
                 />
@@ -124,35 +124,35 @@ export default function Index({ stats = {}, manageable = [] }) {
                 <StatCard
                     compact
                     label="Fee Types"
-                    value={stats.feeTypes || 0}
+                    value={stats.feeTypes}
                     icon={<FeeIcon className="h-5 w-5" />}
                     iconBg="danger"
                 />
                 <StatCard
                     compact
                     label="Scholarships"
-                    value={stats.scholarshipTypes || 0}
+                    value={stats.scholarshipTypes}
                     icon={<ScholarshipIcon className="h-5 w-5" />}
                     iconBg="info"
                 />
                 <StatCard
                     compact
                     label="Offices"
-                    value={stats.offices || 0}
+                    value={stats.offices}
                     icon={<OfficeIcon className="h-5 w-5" />}
                     iconBg="brand"
                 />
                 <StatCard
                     compact
                     label="Rooms"
-                    value={stats.rooms || 0}
+                    value={stats.rooms}
                     icon={<RoomIcon className="h-5 w-5" />}
                     iconBg="success"
                 />
                 <StatCard
                     compact
                     label="Blocks"
-                    value={stats.blocks || 0}
+                    value={stats.blocks}
                     icon={<BlockIcon className="h-5 w-5" />}
                     iconBg="warning"
                 />

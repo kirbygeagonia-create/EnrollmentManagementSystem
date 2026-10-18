@@ -118,7 +118,7 @@ export default function Index({ blocks, stats = {}, courses, terms, filters = {}
     // The queue's capacity, not this page's. Reducing over blocks.data added up the 20 rows on screen under
     // labels that promised the queue, while "Total Blocks" read the paginator's own total — two sets on one
     // screen, and the desk decided enrolment on the smaller one. A missing prop shows a dash, never a zero.
-    const totalBlocks = stats.blocks ?? blocks?.total ?? '—';
+    const totalBlocks = stats.blocks ?? '—';
     const totalCapacity = stats.capacity ?? '—';
     const totalEnrolled = stats.enrolled ?? '—';
     const totalAvailable = stats.available ?? '—';

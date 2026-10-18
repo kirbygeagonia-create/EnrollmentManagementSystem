@@ -3,7 +3,11 @@ import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 // Balance status derived from remaining vs total — uses the real badge tones.
 const balanceToneFor = (balance, total) => {
@@ -114,7 +118,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 <StatCard
                     compact
                     label="Total Assessed"
-                    value={peso(summary.total ?? 0)}
+                    value={peso(summary.total)}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +129,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 <StatCard
                     compact
                     label="Outstanding Balance"
-                    value={peso(summary.balance ?? 0)}
+                    value={peso(summary.balance)}
                     iconBg="danger"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +140,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 <StatCard
                     compact
                     label="Partially Paid"
-                    value={summary.partialCount ?? 0}
+                    value={summary.partialCount}
                     iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +151,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 <StatCard
                     compact
                     label="Fully Settled"
-                    value={summary.settledCount ?? 0}
+                    value={summary.settledCount}
                     iconBg="success"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

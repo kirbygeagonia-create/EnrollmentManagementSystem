@@ -103,7 +103,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                     <StatCard
                         compact
                         label="Total Applications"
-                        value={stats.total ?? 0}
+                        value={stats.total}
                         iconBg="seait"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                     <StatCard
                         compact
                         label="Pending Review"
-                        value={stats.pending ?? 0}
+                        value={stats.pending}
                         iconBg="warning"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +129,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                     <StatCard
                         compact
                         label="Approved"
-                        value={stats.approved ?? 0}
+                        value={stats.approved}
                         iconBg="success"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +142,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                     <StatCard
                         compact
                         label="Rejected"
-                        value={stats.rejected ?? 0}
+                        value={stats.rejected}
                         iconBg="danger"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -9,9 +9,13 @@ import { useState, useMemo } from 'react';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
-export default function Index({ clearances, periods, students = [], filters = {}, stats: serverStats = null, replacementFee = null, replacementFeeName = '' }) {
+export default function Index({ clearances, periods, students = [], filters = {}, stats = {}, replacementFee = null, replacementFeeName = '' }) {
     const [search, setSearch] = useState(filters.search || '');
     const [periodId, setPeriodId] = useState(filters.periodId || '');
     const [status, setStatus] = useState(filters.status || '');
@@ -51,26 +55,8 @@ export default function Index({ clearances, periods, students = [], filters = {}
         [rows, selectedId],
     );
 
-    // Local page-level counts — only sees the current page of a paginated
-    // table; the backend's full-dataset `stats` prop takes precedence (m2).
-    const computedStats = useMemo(() => {
-        let pending = 0;
-        let approved = 0;
-        let rejected = 0;
-        let waived = 0;
-        let incomplete = 0;
-        rows.forEach((r) => {
-            if (r.overallStatus === 'pending') pending += 1;
-            else if (r.overallStatus === 'approved') approved += 1;
-            else if (r.overallStatus === 'rejected') rejected += 1;
-            else if (r.overallStatus === 'waived') waived += 1;
-            else if (r.overallStatus === 'incomplete') incomplete += 1;
-        });
-        return { pending, approved, rejected, waived, incomplete };
-    }, [rows]);
-
-    const stats = serverStats || computedStats;
-
+    // Local page-level counts were the fallback here, and a fallback to a count of the 20 rows on screen is
+    // not a conservative guess — it is a different queue. These tiles answer from the handler's `stats` only.
     const periodOptions = useMemo(() => [
         { value: '', label: 'All Periods' },
         ...periods.map((p) => ({

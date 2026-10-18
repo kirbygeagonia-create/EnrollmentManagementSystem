@@ -3,7 +3,11 @@ import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 // Balance tone — uses real badge tones (paid/partial/danger for unpaid).
 const balanceToneFor = (balance, total) => {
@@ -135,7 +139,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Total Assessed"
-                        value={peso(summary.totalAssessed ?? 0)}
+                        value={peso(summary.totalAssessed)}
                         iconBg="seait"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +150,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Covered By Grants / Waivers"
-                        value={peso(summary.totalCovered ?? 0)}
+                        value={peso(summary.totalCovered)}
                         iconBg="info"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +161,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Awaiting Cashier Sign-Off"
-                        value={queueCounts.no_balance ?? 0}
+                        value={queueCounts.no_balance}
                         iconBg="warning"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +173,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Total Assessed"
-                        value={peso(summary.totalAssessed ?? 0)}
+                        value={peso(summary.totalAssessed)}
                         iconBg="seait"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +184,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Outstanding Balance"
-                        value={peso(summary.totalBalance ?? 0)}
+                        value={peso(summary.totalBalance)}
                         iconBg="danger"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +195,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Partially Paid"
-                        value={summary.partialCount ?? 0}
+                        value={summary.partialCount}
                         iconBg="warning"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +206,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     <StatCard
                         compact
                         label="Nothing Paid Yet"
-                        value={summary.unpaidCount ?? 0}
+                        value={summary.unpaidCount}
                         iconBg="success"
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

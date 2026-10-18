@@ -4,7 +4,11 @@ import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, 
 import { useState, useMemo } from 'react';
 import { router, useForm } from '@inertiajs/react';
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 const coverageTypeToneMap = {
     // Ruled 2026-10-10: full coverage is the good state, so it reads green here as it does on
@@ -52,9 +56,11 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
     const payments = assessment.payments || [];
 
     const totalPaid = payments.reduce((sum, p) => (HELD_STATUSES.includes(p.paymentStatus) ? sum + Number(p.amount || 0) : sum), 0);
-    const totalAssessed = Number(assessment.totalAssessedAmount || 0);
-    const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
-    const remainingBalance = Number(assessment.remainingBalance || 0);
+    // The record's own NOT NULL columns, read as sent: a `|| 0` here would answer ₱0.00 for a fee total the
+    // payload never carried, and the desk cannot tell that from an account that owes nothing.
+    const totalAssessed = Number(assessment.totalAssessedAmount);
+    const totalScholarship = Number(assessment.totalScholarshipCoverage);
+    const remainingBalance = Number(assessment.remainingBalance);
     // Authoritative outstanding — the backend's remainingBalance already subtracts payments.
     const outstanding = remainingBalance;
 

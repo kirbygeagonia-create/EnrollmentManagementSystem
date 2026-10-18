@@ -79,9 +79,10 @@ export default function Index({ enrollments, readiness = {}, filters = {} }) {
         </div>
     );
 
-    // Summary stats from the paginator
-    const totalCount = enrollments?.total ?? enrollments?.data?.length ?? 0;
-    const currentCount = enrollments?.data?.length ?? 0;
+    // "Pending Approval" is the whole queue the handler counted; "On This Page" is the rows in front of the
+    // desk. Neither may fall back to the other: a page of 20 would otherwise answer for a queue of 214.
+    const totalCount = enrollments?.total;
+    const currentCount = enrollments?.data?.length;
 
     return (
         <AuthenticatedLayout

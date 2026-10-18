@@ -109,7 +109,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
                 <StatCard
                     compact
                     label="Pending Validation"
-                    value={stats.pending ?? 0}
+                    value={stats.pending}
                     iconBg="warning"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
                 <StatCard
                     compact
                     label="Validated, on the Issued tab"
-                    value={stats.validated ?? 0}
+                    value={stats.validated}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

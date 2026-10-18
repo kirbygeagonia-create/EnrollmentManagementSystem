@@ -3,7 +3,11 @@ import { Head } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, StatCard, Badge, formatStatusLabel } from '@/Components/ui';
 import { useMemo } from 'react';
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 const paymentModeToneMap = {
     cash: 'info',
@@ -54,12 +58,14 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
     ], []);
 
     const byModeEntries = summary.byMode ? Object.entries(summary.byMode) : [];
-    const totalAmount = Number(summary.totalAmount || 0);
-    const totalCount = Number(summary.totalCount || 0);
-    const refundedAmount = Number(summary.refundedAmount || 0);
-    const refundedCount = Number(summary.refundedCount || 0);
+    // The report's figures are the handler's, so they are read as sent. Coercing a missing one to 0 would put a
+    // collected amount on the sheet that no row supports, and a cashier signing this drawer would sign it.
+    const totalAmount = summary?.totalAmount ?? null;
+    const totalCount = summary?.totalCount ?? null;
+    const refundedAmount = summary?.refundedAmount ?? null;
+    const refundedCount = summary?.refundedCount ?? null;
     // What the drawer should actually hold at close: cash in, minus cash handed back.
-    const netAmount = totalAmount - refundedAmount;
+    const netAmount = totalAmount === null || refundedAmount === null ? null : Number(totalAmount) - Number(refundedAmount);
 
     return (
         <AuthenticatedLayout
@@ -175,7 +181,7 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
                             <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Total Cash Collected</p>
                             <div className="flex items-baseline gap-4">
                                 <p className="text-sm text-brand-500">
-                                    {totalCount} transaction{totalCount === 1 ? '' : 's'}
+                                    {totalCount ?? '—'} transaction{totalCount === 1 ? '' : 's'}
                                 </p>
                                 <p className="text-2xl font-bold text-success-700">{peso(totalAmount)}</p>
                             </div>
@@ -213,7 +219,7 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-medium text-brand-600 uppercase tracking-wider">Total Paid Back</p>
                             <p className="text-sm text-rose-700">
-                                -{peso(refundedAmount)} ({refundedCount} refund{refundedCount === 1 ? '' : 's'})
+                                -{peso(refundedAmount)} ({refundedCount ?? '—'} refund{refundedCount === 1 ? '' : 's'})
                             </p>
                         </div>
                         <div className="flex items-center justify-between gap-2">

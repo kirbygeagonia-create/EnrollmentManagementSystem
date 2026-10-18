@@ -4,7 +4,11 @@ import { PageHeader, Card, DataTable, Badge, CauseEffectModal, Modal, FormSectio
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
 
-const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
+// server did not send. A real 0 still renders as ₱0.00.
+const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFinite(Number(n))
+    ? '—'
+    : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 const paymentStatusToneMap = {
     completed: 'paid',
@@ -61,7 +65,7 @@ function FlashMessages({ flash }) {
     );
 }
 
-export default function Show({ assessment, paymentModes = [], can = {}, outstandingBalance = 0, settlementWithoutReceipt = null }) {
+export default function Show({ assessment, paymentModes = [], can = {}, outstandingBalance, settlementWithoutReceipt = null }) {
     const { flash } = usePage().props;
     const [showVoidConfirm, setShowVoidConfirm] = useState(false);
     const [paymentToVoid, setPaymentToVoid] = useState(null);
@@ -75,13 +79,16 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
     const payments = assessment.payments || [];
 
     const totalPaid = payments.reduce((sum, p) => HELD_STATUSES.includes(p.paymentStatus) ? sum + Number(p.amount || 0) : sum, 0);
-    const totalAssessed = Number(assessment.totalAssessedAmount || 0);
-    const totalScholarship = Number(assessment.totalScholarshipCoverage || 0);
-    const totalWaived = Number(assessment.totalWaived || 0);
+    // These four are the record's own columns and the schema holds them NOT NULL, so no `|| 0` is needed to
+    // make them numbers — and a `|| 0` here would silently answer ₱0.00 if the payload ever stopped carrying
+    // the field. Read them as sent; the tile dashes if they are ever absent.
+    const totalAssessed = Number(assessment.totalAssessedAmount);
+    const totalScholarship = Number(assessment.totalScholarshipCoverage);
+    const totalWaived = Number(assessment.totalWaived);
     // Authoritative outstanding balance — the backend maintains remainingBalance
     // (net assessed minus payments) on every record/void, so use it directly
     // instead of recomputing from the payment list.
-    const outstanding = Math.max(0, Number(assessment.remainingBalance || 0));
+    const outstanding = Math.max(0, Number(assessment.remainingBalance));
 
     const studentName = student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : '—';
 
@@ -158,7 +165,10 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
 
     // `outstandingBalance` is recomputed from the receipts on file by the server and
     // is the figure the settle policy checks; the stored column can lag behind it.
-    const awaitingSignOff = Number(outstandingBalance || 0) <= 0 && enrollment?.enrollmentStatus === 'assessed';
+    // Without that figure the card is not offered: `0 <= 0` would call an unknown balance "awaiting sign-off".
+    const awaitingSignOff = outstandingBalance != null
+        && Number(outstandingBalance) <= 0
+        && enrollment?.enrollmentStatus === 'assessed';
 
     const chargeColumns = useMemo(() => [
         { key: 'feeType.feeName', label: 'Fee Item', render: (row) => <span className="font-semibold text-slate-800">{row.feeType?.feeName || '—'}</span> },
