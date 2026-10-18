@@ -41,8 +41,10 @@ class ExamController extends Controller
         // the owning academic department (item 4).
         $isDepartment = $canCourseSpecific || $user->hasPermissionTo('exam.record.retention');
 
+        // No `stage` branch: the desk's stage filter was removed when a department's list became its own
+        // course's results (see Exam/Index.jsx), and nothing else links here with that key. The candidate
+        // list at exam.students still takes stage, and keeps it.
         $query = Examresults::with(['student', 'course', 'term'])
-            ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
@@ -88,7 +90,7 @@ class ExamController extends Controller
 
         return Inertia::render('Exam/Index', [
             'exams' => $exams,
-            'filters' => $request->only(['stage', 'type', 'search']),
+            'filters' => $request->only(['type', 'search']),
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $canCourseSpecific,
@@ -402,9 +404,12 @@ class ExamController extends Controller
         $isDepartment = $user->hasPermissionTo('exam.record.courseSpecific')
             || $user->hasPermissionTo('exam.record.retention');
 
+        // The desk's row action links here with the student's School ID, so `search` is honoured the same
+        // way index() honours it — the same three matches, the same exact-number alternative. Before this,
+        // the link advertised a narrowing this handler never applied and the page opened on every result.
         $query = Examresults::with(['student', 'course', 'term'])
-            ->when($request->stage, fn ($q, $stage) => $q->where('examStage', $stage))
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
 
         // Same ownership split as index(): Guidance holds every School Entrance
@@ -433,7 +438,7 @@ class ExamController extends Controller
 
         return Inertia::render('Exam/Results', [
             'exams' => $exams,
-            'filters' => $request->only(['result']),
+            'filters' => $request->only(['result', 'search']),
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $user->hasPermissionTo('exam.record.courseSpecific'),

@@ -3,19 +3,18 @@ import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
+// students.status is enum('active','inactive') — the two options this dropdown may offer. It used to list
+// graduated and dropped as well, and the desk found that picking them changed nothing: the column cannot
+// hold those values, and the handler was not reading the key at all.
 const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
-    { value: 'graduated', label: 'Graduated' },
-    { value: 'dropped', label: 'Dropped' },
 ];
 
 const statusToneMap = {
     active: 'success',
     inactive: 'neutral',
-    graduated: 'info',
-    dropped: 'dropped',
 };
 
 function formatName(row) {

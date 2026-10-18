@@ -25,6 +25,7 @@ const typeLabels = {
 };
 
 export default function Results({ exams, filters = {}, can = {} }) {
+    const [search, setSearch] = useState(filters.search || '');
     const [result, setResult] = useState(filters.result || '');
 
     // Item 4: the page frames itself by the viewer's desk, matching the
@@ -70,6 +71,7 @@ export default function Results({ exams, filters = {}, can = {} }) {
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('exam.results'), {
+            search: search || undefined,
             result: result || undefined,
         }, {
             preserveState: true,
@@ -85,7 +87,7 @@ export default function Results({ exams, filters = {}, can = {} }) {
                 ? 'Pass/fail lists across the School Entrance and course-specific entrance examinations'
                 : 'Transferred School Entrance Examination passers — names and results only';
 
-    const hasFilters = Boolean(result);
+    const hasFilters = Boolean(search || result);
 
     return (
         <AuthenticatedLayout
@@ -153,6 +155,15 @@ export default function Results({ exams, filters = {}, can = {} }) {
 
             {/* Filter Bar */}
             <FilterBar onSubmit={handleFilter}>
+                <FilterBarField label="Search">
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Name or School ID..."
+                        className="form-input"
+                    />
+                </FilterBarField>
                 <FilterBarField label="Result">
                     <Select
                         value={result}

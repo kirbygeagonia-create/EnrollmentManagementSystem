@@ -80,6 +80,29 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   matched nothing because PSR-12 puts the opening brace on its own line, and an empty verdict looked like a
   clean one); its mutants must delete the **table reference**, not a label — renaming a key leaves the guard
   intact and the mutant asleep.
+- **After any batch that adds or edits a desk filter, a page's `router.get`, or a controller's `filters` echo**,
+  run `php storage/app/scratch/lane46-filter-contract.php` and prove it with
+  `php storage/app/scratch/mutate-lane46-filter-contract.php`. It joins page → route → handler and reports
+  DEAD-SEND (a key the page sends that the handler never consults), NO-RETURN (consulted but not echoed, so the
+  control resets while the list stays narrowed), FICTION (a dropdown value the column's MySQL enum cannot hold —
+  that is how `graduated`/`dropped` were found on `students.status`, which is `enum('active','inactive')`), and
+  NO-ROUTE for any claim it cannot bind. **Its first version judged 27 bindings and cleared the tree because it
+  read only `route('x', {…})` link objects and never `router.get(route('x'), {…})`** — the shape where a desk's
+  own filters actually live, so every filter submit in the repository was invisible; the corrected run judges 55.
+  A checker pointed at the wrong construct is worse than one that reads nothing, because it prints a pass. Its
+  scope is a flag (`EMS_LANE46_PAGES`), so the harness proves the flag changes what is scanned and that an empty
+  scope *refuses* rather than reporting clean.
+- **When an edit moves lines in a file the document cites, verify the shift against both versions of that file,
+  never against arithmetic.** `php storage/app/scratch/lane46-probe-exam-cites.php` compares
+  `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
+  *every* cited line is byte-identical — the 32 citations into `ExamController.php` all resolved at +2 and none
+  needed re-reading, which is a stronger claim than "the file grew by two rows". It also surfaces the bare
+  continuations (`ExamController.php:165-231 , :225 , :237-248`) that every `File.php:NN` checker misses — and
+  one of those bare numbers belonged to a *different* file's citation, so a global replace would have corrupted it.
+- **A register row added to the docx must move every place that counts the register.** §28.3's size was stated
+  twice, in the §29.4 family table (28) and in the arithmetic sentence beside it (30, the truth), and pass 138
+  rewrote only the sentence: the document contradicted itself for three passes until pass 142 recounted the table
+  from its own bytes and rewrote both.
 - **Split lines on `\n`, never `preg_split('/\R/')`, when a script reports line numbers.** `\R` also matches
   the byte 0x85, which occurs as a UTF-8 continuation byte inside emoji: it read a 55-line report as 71
   lines and printed line numbers no editor would show. Every `File.php:NN` citation this repository writes
@@ -203,7 +226,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (557 citations over 113 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (559 citations over 115 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -234,9 +257,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 848 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 94 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 241 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 851 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 96 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 243 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

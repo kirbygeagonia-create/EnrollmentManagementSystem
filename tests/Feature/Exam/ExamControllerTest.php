@@ -262,6 +262,57 @@ class ExamControllerTest extends TestCase
     }
 
     #[Test]
+    public function the_results_desk_honours_the_search_the_exam_desk_links_with(): void
+    {
+        // Lane 46: every row on Exam/Index.jsx links to exam.results with ?search=<School ID>, but results()
+        // branched only on stage and result — the click opened the whole list while the URL advertised one
+        // student. The narrowing the link promises is the narrowing the handler must perform.
+        $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $one = $this->createStudent();
+        $two = $this->createStudent();
+        $this->assertNotSame($one->schoolIdNumber, $two->schoolIdNumber, 'fixture guard: two distinct School IDs');
+
+        $this->actingAs($guidance);
+        $this->recordGeneral($guidance, $one, $this->entranceCourseId, 'pass');
+        $this->recordGeneral($guidance, $two, $this->entranceCourseId, 'fail');
+
+        $all = $this->get(route('exam.results'))->viewData('page')['props'];
+        $this->assertCount(2, $all['exams']['data'], 'both results are Guidance’s to see');
+
+        $narrow = $this->get(route('exam.results', ['search' => $one->schoolIdNumber]))->viewData('page')['props'];
+        $this->assertCount(1, $narrow['exams']['data'], 'the School ID the link carries must narrow the list');
+        $this->assertSame($one->studentId, $narrow['exams']['data'][0]['student']['studentId']);
+        $this->assertSame($one->schoolIdNumber, $narrow['filters']['search'], 'and the screen must say it was applied');
+    }
+
+    #[Test]
+    public function the_results_desk_applies_both_filters_it_echoes_at_once(): void
+    {
+        $guidance = $this->staffWithRole('GuidanceStaff', 7);
+        $passer = $this->createStudent();
+        $failed = $this->createStudent();
+        $this->assertNotSame($passer->schoolIdNumber, $failed->schoolIdNumber, 'fixture guard: two distinct School IDs');
+
+        $this->actingAs($guidance);
+        $this->recordGeneral($guidance, $passer, $this->entranceCourseId, 'pass');
+        $this->recordGeneral($guidance, $failed, $this->entranceCourseId, 'fail');
+
+        // Every createStudent() is surnamed Examinee, so a name search alone cannot tell the two rows apart:
+        // these cases ask for one student's School ID *and* one result, and each branch has to hold the line.
+        $both = $this->get(route('exam.results', ['search' => $passer->schoolIdNumber, 'result' => 'pass']))
+            ->viewData('page')['props'];
+        $this->assertCount(1, $both['exams']['data']);
+
+        // The failed sitter's ID with a passer's result is nobody. Dropping either branch turns this into a
+        // one-row list, which is how a screen lies: it reports both filters and applies one.
+        $neither = $this->get(route('exam.results', ['search' => $failed->schoolIdNumber, 'result' => 'pass']))
+            ->viewData('page')['props'];
+        $this->assertCount(0, $neither['exams']['data'], 'the search must narrow within the result filter, not beside it');
+        $this->assertSame($failed->schoolIdNumber, $neither['filters']['search']);
+        $this->assertSame('pass', $neither['filters']['result']);
+    }
+
+    #[Test]
     public function exam_index_is_viewable_by_every_desk_shape(): void
     {
         // Item 4: the index is a view over the desk-owned rows — Guidance,

@@ -4,11 +4,11 @@ import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSec
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 
+// Only the two values students.status can hold. The map once carried graduated and dropped tones for a
+// column that is enum('active','inactive'), so those two lines could never be reached.
 const studentStatusToneMap = {
     active: 'success',
     inactive: 'neutral',
-    graduated: 'info',
-    dropped: 'dropped',
 };
 
 

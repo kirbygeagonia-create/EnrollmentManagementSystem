@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\CivilStatus;
 use App\Enums\Gender;
-use App\Enums\StaffStatus;
+use App\Enums\StudentStatus;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +54,7 @@ class ImportStudents extends Command
         'password' => ['field' => 'passwordHash', 'what' => 'Initial password, min 8 characters', 'min' => 8],
         'civil_status' => ['field' => 'civilStatus', 'what' => 'Single / married / widowed / separated', 'enum' => CivilStatus::class],
         'religion' => ['field' => 'religionId', 'what' => 'Religion, named as Reference Data holds it', 'lookup' => 'religion'],
-        'status' => ['field' => 'status', 'what' => 'active or inactive (default active)', 'enum' => StaffStatus::class],
+        'status' => ['field' => 'status', 'what' => 'active or inactive (default active)', 'enum' => StudentStatus::class],
     ];
 
     public function handle(): int

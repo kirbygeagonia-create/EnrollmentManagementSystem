@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\CivilStatus;
 use App\Enums\Gender;
-use App\Enums\StaffStatus;
+use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,7 +26,7 @@ class Students extends Model
             'gender' => Gender::class,
             'birthdate' => 'date',
             'civilStatus' => CivilStatus::class,
-            'status' => StaffStatus::class,
+            'status' => StudentStatus::class,
         ];
     }
 
