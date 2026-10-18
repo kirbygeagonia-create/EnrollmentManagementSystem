@@ -3,6 +3,7 @@ import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Badge, CauseEffectModal, Modal, FormSection, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -184,7 +185,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
     ], []);
 
     const paymentColumns = useMemo(() => [
-        { key: 'paymentDate', label: 'Date', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'paymentDate', label: 'Paid on', render: (row) => formatCalendarDay(row.paymentDate) },
         { key: 'orNumber', label: 'Official Receipt (OR)', render: (row) => (
             <span className="font-mono text-xs font-bold text-seait-700 bg-seait-50 px-2 py-0.5 rounded border border-seait-200">
                 {row.orNumber || '—'}

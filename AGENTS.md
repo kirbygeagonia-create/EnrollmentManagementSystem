@@ -138,6 +138,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
+- **After any batch that adds or edits a cell showing a date**, run `php storage/app/scratch/lane50-date-day-shift.php`
+  and prove it with `php storage/app/scratch/mutate-lane50-checker.php`. A calendar day reaches the browser as
+  `2026-05-12` (uncast) or `2026-05-12T00:00:00.000000Z` (a `date` cast), and JavaScript parses **both** as an
+  instant at UTC midnight — so `new Date(v).toLocaleDateString()` re-projects the day into the *viewer's* zone and
+  paints the day before the record anywhere west of UTC. Measured at this box's zone (`Etc/GMT+11`): all 21 DATE
+  columns shifted, `/students/92` read `5/11/2004` for a stored `2004-05-12`, and the Registrar's certificate page
+  had the same bug bound for paper. In the Philippines this all reads correctly, which is why it survived. The rule
+  is that a day is read from its own text by `resources/js/Components/ui/calendarDay.js`, and an instant keeps
+  viewer-zone rendering. The checker binds each call to a column type read from the migrations and a cast read from
+  the models, so it runs on CI with no database. **Its first version judged only `new Date(x)` written on the line,
+  and passed every `fmtDate(row.startDate)` call — a whole class invisible while the summary printed zero
+  problems**; a fixed cell no longer contains `new Date(` at all, so the run must also count what the fix produced
+  (`DAY-FORMATTER`, currently 26) and the harness plants exactly that helper-call shape. Anything unbound is UNBOUND
+  and refuses; the 9 blind spots are printed, not counted clean. Adjacent trap: `shell_exec` cannot reach `git` from
+  PHP on this box, so a probe that wants HEAD content must read exported copies and **refuse when one is missing** —
+  twice in this lane a probe globbed zero files or got an empty string and printed the same clean verdict a real
+  measurement would have.
 - **When an edit moves lines in a file the document cites, verify the shift against both versions of that file,
   never against arithmetic.** `php storage/app/scratch/lane46-probe-exam-cites.php` compares
   `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
@@ -246,6 +263,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the test belongs on the record or list the figure came from (`totalAssessment == null`, `assessed.length > 0`)
   and never on the amount — `min(studentassessments.remainingBalance)` is 0.00 on live `ems`, so this is not a
   hypothetical, and the student panel's three money cells now all ask the same question.
+- **A calendar day is painted from its own text, never from the viewer's zone** (lane 50). A `date` column arrives
+  as `2026-05-12T00:00:00.000000Z` and an uncast one as `2026-05-12`; both are parsed as UTC midnight, so
+  `new Date(value).toLocaleDateString()` shows the previous day to any client west of UTC — which includes this
+  machine (`Etc/GMT+11`) but no Philippine office, and that is why every earlier pass saw correct dates. Day cells
+  use `formatCalendarDay()` / `calendarYear()` from `resources/js/Components/ui/calendarDay.js`, which read Y-M-D
+  out of the string and format with `timeZone: 'UTC'`. Instants keep local rendering on purpose: `receivedDate`,
+  `validatedDate`, `printedDate`, `refundedAt`, `signedDate`, `created_at` — there the viewer's zone is the right
+  answer, and what is wrong about them here is the clock, not the code. Two exceptions the sweep found and
+  recorded rather than "fixed": `payments.paymentDate` is a `datetime` whose every row is exactly midnight (a
+  date-only input writes it), so it is displayed as a day and the schema mismatch is §28.3 G-19; and
+  `curriculums.effectiveYear` is a DATE used as a year, so `getFullYear()` on it read 2023 for a 2024 row.
+  `tests/Feature/CalendarDayPayloadTest.php` pins the payload spelling the module depends on — it goes red if
+  `APP_TIMEZONE` stops being UTC, proved by planting that default as `Asia/Manila`.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,

@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageHeader, Badge, Card, FormSection, Modal, CauseEffectModal, StatCard, WorkflowStepper, Select, formatStatusLabel, idRequestReasonLabel, idRequestStatusTone } from '@/Components/ui';
 import { useState, useRef, useEffect } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 const bloodTypeOptions = [
     { value: 'A+', label: 'A+' },
@@ -213,7 +214,7 @@ export default function Show({ enrollment, idRequest, requestReasons, backTab = 
                 <StatCard
                     compact
                     label="Requested Date"
-                    value={formatDate(idRequest?.requestDate)}
+                    value={formatCalendarDay(idRequest?.requestDate)}
                     iconBg="seait"
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,7 +365,7 @@ export default function Show({ enrollment, idRequest, requestReasons, backTab = 
                                 </div>
                                 <div>
                                     <span className="text-slate-400 font-semibold block">Requested Date</span>
-                                    <span className="font-bold text-slate-800">{formatDate(idRequest.requestDate)}</span>
+                                    <span className="font-bold text-slate-800">{formatCalendarDay(idRequest.requestDate)}</span>
                                 </div>
                                 <div>
                                     <span className="text-slate-400 font-semibold block">Emergency Contact</span>

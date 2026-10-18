@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 const checklistSteps = Object.entries(registrarGateLabels).map(([key, label]) => ({ key, label }));
 
@@ -339,7 +340,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                             ) : (
                                 <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold text-xs flex items-center justify-center gap-2">
                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                                    Officially Enrolled by Registrar on {enrollment.enrolledDate ? new Date(enrollment.enrolledDate).toLocaleDateString('en-PH') : 'Recent'}
+                                    Officially Enrolled by Registrar on {enrollment.enrolledDate ? formatCalendarDay(enrollment.enrolledDate) : 'Recent'}
                                     {droppable && (
                                         <button
                                             type="button"

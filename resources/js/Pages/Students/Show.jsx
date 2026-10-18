@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // Only the two values students.status can hold. The map once carried graduated and dropped tones for a
 // column that is enum('active','inactive'), so those two lines could never be reached.
@@ -197,7 +198,7 @@ export default function Show({ student }) {
                                 <p className="font-medium text-brand-900 capitalize">{student.gender || '—'}</p>
                             </FormSection>
                             <FormSection label="Birthdate">
-                                <p className="font-medium text-brand-900">{student.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</p>
+                                <p className="font-medium text-brand-900">{student.birthdate ? formatCalendarDay(student.birthdate) : '—'}</p>
                             </FormSection>
                             <FormSection label="Contact">
                                 <p className="font-medium text-brand-900">{student.contactNumber || '—'}</p>
@@ -384,7 +385,7 @@ export default function Show({ student }) {
                                             <div>
                                                 <p className="font-medium text-brand-900">{ad.course?.courseName || '—'}</p>
                                                 <p className="text-brand-500 mt-0.5">
-                                                    {ad.applicantType || '—'} · {ad.submittedDate ? new Date(ad.submittedDate).toLocaleDateString('en-PH') : ''}
+                                                    {ad.applicantType || '—'} · {ad.submittedDate ? formatCalendarDay(ad.submittedDate) : ''}
                                                 </p>
                                             </div>
                                             <Badge tone={ad.admissionStatus || 'neutral'}>
@@ -408,7 +409,7 @@ export default function Show({ student }) {
                                                 <p className="font-medium text-brand-900">
                                                     {er.examStage} · {er.examType}
                                                 </p>
-                                                <p className="text-brand-500 mt-0.5">{er.examDate ? new Date(er.examDate).toLocaleDateString('en-PH') : ''}</p>
+                                                <p className="text-brand-500 mt-0.5">{er.examDate ? formatCalendarDay(er.examDate) : ''}</p>
                                             </div>
                                             <Badge tone={er.examResult === 'pass' ? 'success' : er.examResult === 'fail' ? 'danger' : 'neutral'}>
                                                 {er.examResult?.toUpperCase() || '—'}
@@ -480,7 +481,7 @@ export default function Show({ student }) {
                                     <div key={id.idRequestId} className="flex items-center justify-between text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
                                         <p className="font-medium text-brand-900">
                                             {idRequestReasonLabel[id.requestReason] || formatStatusLabel(id.requestReason)}
-                                            <span className="text-slate-500 font-normal"> · Requested {id.requestDate ? new Date(id.requestDate).toLocaleDateString('en-PH') : '—'}</span>
+                                            <span className="text-slate-500 font-normal"> · Requested {id.requestDate ? formatCalendarDay(id.requestDate) : '—'}</span>
                                         </p>
                                         <Badge tone={idRequestStatusTone[id.status] || 'neutral'}>
                                             {formatStatusLabel(id.status)}
@@ -503,7 +504,7 @@ export default function Show({ student }) {
                                     <div key={cr.clinicRecordId} className="flex items-start justify-between gap-4 text-sm border-b border-brand-100 pb-3 last:border-0 last:pb-0">
                                         <div>
                                             <p className="font-medium text-brand-900">
-                                                Examined {cr.assessmentDate ? new Date(cr.assessmentDate).toLocaleDateString('en-PH') : '—'}
+                                                Examined {cr.assessmentDate ? formatCalendarDay(cr.assessmentDate) : '—'}
                                             </p>
                                             <p className="text-brand-500 mt-0.5">
                                                 {cr.heightCm ? `${cr.heightCm} cm` : '—'} · {cr.weightKg ? `${cr.weightKg} kg` : '—'} · BP {cr.bloodPressure || '—'} · PhilHealth {cr.philhealthRegistered ? 'Registered' : 'Not Registered'}

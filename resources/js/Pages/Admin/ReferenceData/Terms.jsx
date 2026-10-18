@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 const semesterOptions = [
     { value: '', label: 'All Semesters' },
@@ -37,8 +38,8 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
         { key: 'semester', label: 'Semester', render: (row) => (
             <Badge tone="info">{row.semester}</Badge>
         ), className: 'text-center' },
-        { key: 'startDate', label: 'Start Date', render: (row) => row.startDate ? new Date(row.startDate).toLocaleDateString('en-PH') : '—', className: 'text-center' },
-        { key: 'endDate', label: 'End Date', render: (row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-PH') : '—', className: 'text-center' },
+        { key: 'startDate', label: 'Start Date', render: (row) => formatCalendarDay(row.startDate), className: 'text-center' },
+        { key: 'endDate', label: 'End Date', render: (row) => formatCalendarDay(row.endDate), className: 'text-center' },
         { key: 'status', label: 'Status', render: (row) => {
             const now = new Date();
             const start = row.startDate ? new Date(row.startDate) : null;

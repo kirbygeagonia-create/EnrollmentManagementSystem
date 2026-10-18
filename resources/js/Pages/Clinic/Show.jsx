@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageHeader, Badge, Card, FormSection, Modal, CauseEffectModal, StatCard, WorkflowStepper } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 export default function Show({ enrollment, clinicRecord }) {
     const [showRecordModal, setShowRecordModal] = useState(false);
@@ -74,7 +75,7 @@ export default function Show({ enrollment, clinicRecord }) {
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('en-PH');
+        return formatCalendarDay(dateStr);
     };
 
     const getStudentName = () => {

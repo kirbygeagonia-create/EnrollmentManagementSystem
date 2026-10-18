@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLabel, statusToneFor, studentTypeTone } from '@/Components/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 
 
@@ -285,7 +286,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                     <dd className="text-brand-900 capitalize">{student?.gender || '—'}</dd>
                                 </FormSection>
                                 <FormSection label="Birthdate">
-                                    <dd className="text-brand-900">{student?.birthdate ? new Date(student.birthdate).toLocaleDateString('en-PH') : '—'}</dd>
+                                    <dd className="text-brand-900">{formatCalendarDay(student?.birthdate)}</dd>
                                 </FormSection>
                                 <FormSection label="Birthplace">
                                     <dd className="text-brand-900">{student?.birthplace || '—'}</dd>

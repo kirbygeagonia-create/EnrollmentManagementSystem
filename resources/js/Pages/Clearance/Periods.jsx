@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { PageHeader, Card, Badge, Modal, ConfirmDialog, EmptyState, FormSection, Select, StatCard, RadioCards, formatStatusLabel as titleCase } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { useForm } from '@inertiajs/react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // Period status → badge tone.
 const periodStatusToneMap = {
@@ -11,7 +12,7 @@ const periodStatusToneMap = {
     extended: 'info',
 };
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
+const fmtDate = (d) => formatCalendarDay(d, { year: 'numeric', month: 'short', day: '2-digit' });
 
 // Distinct terms available for selection (deduped by termId).
 const useTermOptions = (periods) => useMemo(() => periods

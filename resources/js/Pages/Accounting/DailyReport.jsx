@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, StatCard, Badge, formatStatusLabel } from '@/Components/ui';
 import { useMemo } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -16,7 +17,7 @@ const paymentModeToneMap = {
 };
 
 export default function DailyReport({ payments, refunds = [], summary, date }) {
-    const formattedDate = date ? new Date(date).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+    const formattedDate = formatCalendarDay(date, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const refundColumns = useMemo(() => [
         { key: 'refundedAt', label: 'Paid back at', render: (row) => (row.refundedAt ? new Date(row.refundedAt).toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—') },
@@ -37,7 +38,7 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
     ], []);
 
     const paymentColumns = useMemo(() => [
-        { key: 'paymentDate', label: 'Time', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : '—' },
+        { key: 'paymentDate', label: 'Paid on', render: (row) => formatCalendarDay(row.paymentDate) },
         { key: 'orNumber', label: 'OR Number', render: (row) => (
             <span className="font-mono text-sm">{row.orNumber || '—'}</span>
         )},

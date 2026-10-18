@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
 import { Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 export default function PrintCertificate({ enrollment, documentNumber, issuedDate }) {
     const studentName = enrollment.student
@@ -12,7 +13,7 @@ export default function PrintCertificate({ enrollment, documentNumber, issuedDat
         : '—';
 
     const enrolledDate = enrollment.enrolledDate
-        ? new Date(enrollment.enrolledDate).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+        ? formatCalendarDay(enrollment.enrolledDate, { year: 'numeric', month: 'long', day: 'numeric' })
         : '—';
 
     const processedBy = enrollment.registrarProcessedByUser

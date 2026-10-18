@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 const typeToneMap = {
     general: 'neutral',
@@ -69,7 +70,7 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                 {formatStatusLabel(row.examResult)}
             </Badge>
         )},
-        { key: 'examDate', label: 'Date', render: (row) => row.examDate ? new Date(row.examDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'examDate', label: 'Date', render: (row) => formatCalendarDay(row.examDate) },
     ], []);
 
     const handleFilter = (e) => {

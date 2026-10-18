@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 const resultOptions = [
     { value: '', label: 'All Results' },
@@ -55,7 +56,7 @@ export default function Results({ exams, stats = {}, filters = {}, can = {} }) {
                 {formatStatusLabel(row.examResult)}
             </Badge>
         )},
-        { key: 'examDate', label: 'Date', render: (row) => row.examDate ? new Date(row.examDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'examDate', label: 'Date', render: (row) => formatCalendarDay(row.examDate) },
     ], []);
 
     const handleFilter = (e) => {

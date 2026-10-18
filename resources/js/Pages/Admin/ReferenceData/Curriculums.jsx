@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { calendarYear } from '@/Components/ui/calendarDay';
 
 export default function Curriculums({ curriculums, courses, majors, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -21,7 +22,7 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
         { key: 'curriculumName', label: 'Title' },
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'major', label: 'Major', render: (row) => row.major?.majorName || '—' },
-        { key: 'effectiveYear', label: 'Effective Year', render: (row) => row.effectiveYear ? new Date(row.effectiveYear).getFullYear() : '—' },
+        { key: 'effectiveYear', label: 'Effective Year', render: (row) => calendarYear(row.effectiveYear) ?? '—' },
     ], []);
 
     const handleFilter = (e) => {

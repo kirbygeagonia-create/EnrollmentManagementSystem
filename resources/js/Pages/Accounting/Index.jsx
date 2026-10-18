@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -64,7 +65,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     </Badge>
                 );
             }},
-        { key: 'createdAt', label: 'Assessed Date', render: (row) => row.assessmentDate ? new Date(row.assessmentDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'createdAt', label: 'Assessed Date', render: (row) => formatCalendarDay(row.assessmentDate) },
     ], [queue]);
 
     const handleFilter = (e) => {

@@ -4,6 +4,7 @@ import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatu
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
+import { formatCalendarDay, calendarYear } from '@/Components/ui/calendarDay';
 
 
 export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
@@ -579,7 +580,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                     {formatStatusLabel(retentionExam.examResult)}
                                 </Badge>
                                 <span className="text-xs font-mono text-slate-500">
-                                    {retentionExam.examDate ? new Date(retentionExam.examDate).toLocaleDateString('en-PH') : '—'}
+                                    {formatCalendarDay(retentionExam.examDate)}
                                 </span>
                             </div>
                         ) : (
@@ -758,7 +759,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                         title="This enrollment stays pinned to the curriculum version the student was admitted under"
                                     >
                                         {curriculum.curriculumName || `Curriculum #${curriculum.curriculumId}`}
-                                        {curriculum.effectiveYear ? ` · AY ${new Date(curriculum.effectiveYear).getFullYear()}` : ''}
+                                        {curriculum.effectiveYear ? ` · AY ${calendarYear(curriculum.effectiveYear)}` : ''}
                                     </span>
                                 )}
                                 <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">

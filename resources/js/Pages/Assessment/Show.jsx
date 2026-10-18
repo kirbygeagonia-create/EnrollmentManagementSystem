@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Badge, ConfirmDialog, FormSection, Modal, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { router, useForm } from '@inertiajs/react';
+import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -106,7 +107,7 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
     ], []);
 
     const paymentColumns = useMemo(() => [
-        { key: 'paymentDate', label: 'Date', render: (row) => row.paymentDate ? new Date(row.paymentDate).toLocaleDateString('en-PH') : '—' },
+        { key: 'paymentDate', label: 'Paid on', render: (row) => formatCalendarDay(row.paymentDate) },
         { key: 'amount', label: 'Amount', render: (row) => peso(row.amount) },
         { key: 'paymentMode', label: 'Method', render: (row) => row.paymentMode || '—' },
         { key: 'orNumber', label: 'Reference', render: (row) => row.orNumber || '—' },
