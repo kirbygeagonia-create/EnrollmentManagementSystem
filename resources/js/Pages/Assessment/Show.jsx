@@ -97,7 +97,7 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
                 {row.scholarshipType?.coverageType ? formatStatusLabel(row.scholarshipType.coverageType) : '—'}
             </Badge>
         )},
-        { key: 'coveragePercent', label: 'Percent', render: (row) => row.scholarshipType?.coveragePercent ? `${row.scholarshipType.coveragePercent}%` : '—' },
+        { key: 'coveragePercent', label: 'Percent', render: (row) => row.scholarshipType?.coveragePercent == null ? '—' : `${row.scholarshipType.coveragePercent}%` },
         { key: 'status', label: 'Status', render: (row) => (
             <Badge tone={grantStatusToneMap[row.status] || 'neutral'}>
                 {row.status ? formatStatusLabel(row.status) : '—'}

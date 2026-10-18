@@ -34,6 +34,9 @@ function EnrollmentCard({ enrollment }) {
     const totalAssessment = enrollment.studentassessments?.totalAssessedAmount
         ? Number(enrollment.studentassessments.totalAssessedAmount)
         : null;
+    // The three money cells answer one question — is there a fee sheet at all? — so they all test the same
+    // thing. `Paid` used to test the sum (`totalPaid > 0`), which painted a dash for the true ₱0 of an account
+    // with no receipts: indistinguishable, on this panel, from a student whose fees were never computed.
     const totalPaid = enrollment.payments?.length
         ? enrollment.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
         : 0;
@@ -76,7 +79,7 @@ function EnrollmentCard({ enrollment }) {
                     <div>
                         <p className="text-brand-500 text-xs uppercase tracking-wider">Paid</p>
                         <p className="font-semibold text-brand-900 mt-0.5">
-                            {totalPaid > 0 ? `₱${totalPaid.toLocaleString('en-PH')}` : '—'}
+                            {totalAssessment == null ? '—' : `₱${totalPaid.toLocaleString('en-PH')}`}
                         </p>
                     </div>
                     <div>
@@ -130,7 +133,11 @@ export default function Show({ student }) {
     const latestScholarship = student.studentscholarships?.[0];
     const scholarshipStatus = latestScholarship?.status || '—';
 
-    const totalAssessed = enrollments.reduce((sum, e) => sum + (e.studentassessments?.totalAssessedAmount ? Number(e.studentassessments.totalAssessedAmount) : 0), 0);
+    // The tile above the list is asked "what has this student been assessed?", and a student assessed ₱0 has
+    // an answer. Summing only the records that actually carry a fee sheet keeps the dash for the other case —
+    // nothing assessed at all — which is what `totalAssessed > 0` used to say by accident.
+    const assessed = enrollments.filter((e) => e.studentassessments);
+    const totalAssessed = assessed.reduce((sum, e) => sum + Number(e.studentassessments.totalAssessedAmount), 0);
 
     return (
         <AuthenticatedLayout
@@ -244,7 +251,7 @@ export default function Show({ student }) {
                     <StatCard
                         compact
                         label="Total Assessed"
-                        value={totalAssessed > 0 ? `₱${totalAssessed.toLocaleString('en-PH')}` : '—'}
+                        value={assessed.length > 0 ? `₱${totalAssessed.toLocaleString('en-PH')}` : '—'}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

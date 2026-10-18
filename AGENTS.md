@@ -127,6 +127,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   lines escapes a local scanner that stops at the newline. Its harness restores every touched file
   **unconditionally**: a guard that made the restore a no-op after the first call left each later mutant in the
   tree, and the next case measured a tree already carrying the previous defect.
+- **After any batch that changes a guard around a money or percent figure**, run
+  `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
+  `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
+  `coveragePercent ? `${n}%` : '—'` made a **real 0** print the same dash as a missing figure, on a box where
+  `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
+  the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
+  only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
+  `%` — and **prints its own blind spots** (18 guards whose dash sits on a line it cannot join, 355 lines where
+  the operand is a name, code, date or error string); its harness compares against a baseline it measures in
+  the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
+  moment the checker learned a new shape.
 - **When an edit moves lines in a file the document cites, verify the shift against both versions of that file,
   never against arithmetic.** `php storage/app/scratch/lane46-probe-exam-cites.php` compares
   `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
@@ -230,7 +241,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   server's. Where a figure genuinely cannot be known, the handler answers null and the tile dashes: an exam pass
   rate over nothing marked is unknown, not 0%. A rate's denominator is the rows that have been scored —
   `examresults.examResult` is `enum('pass','fail')` **nullable**, so an unmarked paper is neither a passer nor a
-  failure.
+  failure. **And the dash must not steal a real zero** (lane 49): a guard written on the amount itself
+  (`totalPaid > 0 ? ₱… : '—'`, `coveragePercent ? `${n}%` : '—'`) makes a 0 indistinguishable from silence, so
+  the test belongs on the record or list the figure came from (`totalAssessment == null`, `assessed.length > 0`)
+  and never on the amount — `min(studentassessments.remainingBalance)` is 0.00 on live `ems`, so this is not a
+  hypothetical, and the student panel's three money cells now all ask the same question.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
