@@ -32,6 +32,7 @@ use App\Models\Clearancerequirements;
 use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
+use App\Models\Payments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
@@ -386,7 +387,7 @@ $juan = createDemoStudent('DEMO-2026-001', 'Juan', 'Dela Cruz', 'demo_juan', 'de
 if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId)->exists()) {
     $seededBaseRows[] = 'DEMO-2026-001';
 
-    Enrollments::create([
+    $juanEnrollment = Enrollments::create([
         'studentId' => $juan->studentId,
         'courseId' => 3, // BSCrim — the program both demo-day guides put him in
         'termId' => $termId,
@@ -397,8 +398,12 @@ if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId
         'evaluatedBy' => department_evaluator_for_course(3),
         'enrolledDate' => now()->subMonths(9),
         'formSignedDate' => now()->subMonths(9),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        // Seated at `evaluated`: this is the record the guides show as paid and approved, so the receipt and
+        // the two desk steps that turn money into `paid` are written here by settle_enrolled_record() rather
+        // than left for section 10j's ledger pass to discover.
+        'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
+    settle_enrolled_record($juanEnrollment, 'DEMO-OR-0001');
     echo "✔ Base row created: Juan Dela Cruz (DEMO-2026-001) — BSCrim year 1 on term {$termId}, the record today's receipt is filed against\n";
 }
 
@@ -1172,7 +1177,7 @@ if (! $enrGab) {
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
         'formSignedDate' => now(),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     $seedLoad($enrGab, 3, 'confirmed');
     $wfGab = Enrollmentworkflow::create([
@@ -1191,6 +1196,9 @@ if (! $enrGab) {
             'signedDate' => $done ? now() : null,
         ]);
     }
+    // His seat is "enrolled and waiting for a block", and being enrolled means his fees were computed,
+    // collected and approved — so the record walks those three steps here instead of having them back-filled.
+    $enrGab = settle_enrolled_record($enrGab, 'DEMO-OR-0015');
     echo "✔ Blocking & Clinic: Seeded Gabriel Ramos (DEMO-2026-015) - ENROLLED, awaiting block & clinic\n";
 }
 
@@ -1211,7 +1219,7 @@ if (! $enrDan) {
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     DB::table('idrequests')->insert([
         'enrollmentId' => $enrDan->enrollmentId,
@@ -1224,6 +1232,7 @@ if (! $enrDan) {
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+    $enrDan = settle_enrolled_record($enrDan, 'DEMO-OR-0016');
     echo "✔ ID Desk: Seeded Danica Sotto (DEMO-2026-016) - ID REQUESTED (awaiting ID Office validation)\n";
 }
 
@@ -1241,7 +1250,7 @@ if (! $enrKev) {
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     DB::table('idrequests')->insert([
         'enrollmentId' => $enrKev->enrollmentId,
@@ -1257,6 +1266,7 @@ if (! $enrKev) {
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+    $enrKev = settle_enrolled_record($enrKev, 'DEMO-OR-0017');
     echo "✔ ID Desk: Seeded Kevin Santos (DEMO-2026-017) - ID VALIDATED (validation is this desk's final action)\n";
 }
 
@@ -1374,9 +1384,55 @@ function charge_demo_fees(int $assessmentId, ?array $amounts = null): void
     }
 }
 
+/**
+ * Money the school is holding against an enrollment, asked of the application's own predicate.
+ *
+ * Five places in this file used to write `where('paymentStatus', 'paid')` by hand. `Payments::held()` is
+ * `paid` *or* `partial`, and `partial` is a state a desk produces: AccountingController::record() takes an
+ * installment, reads `Studentassessments::outstandingBalance()` — which sums `held()` — and marks the receipt
+ * `partial` when a balance is left. So a paid-only sum reads an installment as nothing collected, and the
+ * ledger pass below would then recompute the stored balance back up to the full due and, on the shortfall
+ * loop, mint a second receipt for money nobody handed over. Measured on live `ems` today with zero `partial`
+ * rows, which is why it has never shown: the defect needs one demo installment, and ruling 15 made that a
+ * button. Restating the status list here is what let it drift from the model in the first place.
+ */
+function demo_held(int $enrollmentId): float
+{
+    return (float) Payments::held()->where('enrollmentId', $enrollmentId)->sum('amount');
+}
+
+/**
+ * Whether an enrollment's load is still only a proposal, which is the permission a level raise needs.
+ *
+ * The year level is not decoration — the subjects proposed, the curriculum slice and the fee sheet are all
+ * read against it — so raising it means re-slicing the load, and re-slicing is only honest while no desk has
+ * taken any of it up. A confirmed row, a block or a schedule means a person acted, and the value the record
+ * carries stays with a report rather than being rewritten by the tool that seeded it.
+ */
+function load_is_still_proposed(int $enrollmentId): bool
+{
+    $taken = DB::table('enrolledsubjects')
+        ->where('enrollmentId', $enrollmentId)
+        ->where(fn ($q) => $q
+            ->where('status', '!=', 'proposed')
+            ->orWhereNotNull('blockId')
+            ->orWhereNotNull('scheduleId'))
+        ->exists();
+
+    return ! $taken;
+}
+
 // An Official Receipt is a controlled document, so the number is the key: re-running
 // the tool re-dates the slip rather than minting a second one for the same number.
-$recordDemoPayment = function (Enrollments $enrollment, string $orNumber, float $amount, string $mode) use ($deskSigners): void {
+//
+// A plain function, for the reason `charge_demo_fees()` has: the sections that create a demo record already
+// past Accounting sit far above this file's closures, and a closure is undefined until its own line runs —
+// which is how a record could be minted `enrolled` with its money left to section 10j. Read the two together
+// with `settle_enrolled_record()` below, which is what those create sites now call.
+function record_demo_payment(Enrollments $enrollment, string $orNumber, float $amount, string $mode): void
+{
+    global $deskSigners;
+
     $cashier = $deskSigners[OfficeId::Accounting->value];
     DB::table('payments')->updateOrInsert(
         ['orNumber' => $orNumber],
@@ -1391,9 +1447,10 @@ $recordDemoPayment = function (Enrollments $enrollment, string $orNumber, float 
             'created_at' => now(),
         ]
     );
-};
+}
 
-$assessmentFor = function (Enrollments $enrollment, float $assessed, float $covered = 0, float $waived = 0): int {
+function assessment_for(Enrollments $enrollment, float $assessed, float $covered = 0, float $waived = 0): int
+{
     $existing = DB::table('studentassessments')->where('enrollmentId', $enrollment->enrollmentId)->first();
     $data = [
         'totalAssessedAmount' => $assessed,
@@ -1414,7 +1471,49 @@ $assessmentFor = function (Enrollments $enrollment, float $assessed, float $cove
         'remainingBalance' => max(0, $assessed - $covered - $waived),
         'created_at' => now(),
     ]);
-};
+}
+
+/**
+ * Bring a demo record to the desk state it claims, through the steps a desk would have taken.
+ *
+ * Sections 2, 8 and 9 mint five records that read `enrolled`, and until now they wrote the status column and
+ * left the money to section 10j's ledger pass — which is how a freshly seeded install reproduced both of lane
+ * 53's impossible states: a fee sheet that only existed once the tail opened it, and a settled account with no
+ * `assessed -> paid` step anywhere in its history (`EnrollmentStateMachine::transition()` is the only writer of
+ * that table, so a row minted past the box never had one). This walks what the money implies and returns the
+ * enrollment in the state the demo needs, so the tail loops go back to being repair paths rather than the
+ * primary writer. Idempotent in the same way the rest of the tool is: a sheet is updated by key, the receipt by
+ * its OR number, and a step already in the history is not written twice.
+ */
+function settle_enrolled_record(Enrollments $enrollment, string $orNumber, float $assessed = 17500.00): Enrollments
+{
+    global $deskSigners, $stateMachine;
+
+    $assessmentOfficer = Staffusers::find($deskSigners[OfficeId::Scholarship->value]);
+    $cashier = Staffusers::find($deskSigners[OfficeId::Accounting->value]);
+    $registrar = Staffusers::find($deskSigners[OfficeId::Registrar->value]);
+
+    $sheet = assessment_for($enrollment, $assessed);
+    charge_demo_fees($sheet);
+
+    if ($enrollment->enrollmentStatus !== EnrollmentStatus::Assessed) {
+        $enrollment = $stateMachine->transition($enrollment, EnrollmentStatus::Assessed, $assessmentOfficer, 'Fees computed by Assessment');
+    }
+
+    record_demo_payment($enrollment, $orNumber, $assessed, 'cash');
+    DB::table('studentassessments')->where('assessmentId', $sheet)->update(['remainingBalance' => 0, 'updated_at' => now()]);
+
+    if ($enrollment->enrollmentStatus !== EnrollmentStatus::Paid) {
+        $enrollment = $stateMachine->transition(
+            $enrollment,
+            EnrollmentStatus::Paid,
+            $cashier,
+            'Full payment received — cash OR '.$orNumber
+        );
+    }
+
+    return $stateMachine->transition($enrollment, EnrollmentStatus::Enrolled, $registrar, 'Approved and enrolled by the Registrar');
+}
 
 // Item 7: every enrollment carries the curriculum version it is priced against, and the
 // desks read that pin before falling back to "the newest catalog". This tool creates rows
@@ -1457,8 +1556,6 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     $stateMachine,
     $deskSigners,
     $seedLoad,
-    $assessmentFor,
-    $recordDemoPayment,
     $seatWorkflow
 ): ?array {
     $student = Students::where('schoolIdNumber', $schoolId)->first();
@@ -1493,17 +1590,17 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     }
     $enrollment->update(['evaluatedBy' => $evaluator->userId]);
 
-    $assessmentId = $assessmentFor($enrollment, 17500.00);
+    $assessmentId = assessment_for($enrollment, 17500.00);
     charge_demo_fees($assessmentId);
 
     if ($enrollment->enrollmentStatus === EnrollmentStatus::Evaluated) {
         $enrollment = $stateMachine->transition($enrollment, EnrollmentStatus::Assessed, $assessmentOfficer, 'Fees computed by Assessment');
     }
 
-    $recordDemoPayment($enrollment, $receipts['cash'], 12000.00, 'cash');
-    $recordDemoPayment($enrollment, $receipts['check'], 5500.00, 'check');
+    record_demo_payment($enrollment, $receipts['cash'], 12000.00, 'cash');
+    record_demo_payment($enrollment, $receipts['check'], 5500.00, 'check');
 
-    $paid = (float) DB::table('payments')->where('enrollmentId', $enrollment->enrollmentId)->where('paymentStatus', 'paid')->sum('amount');
+    $paid = demo_held((int) $enrollment->enrollmentId);
     DB::table('studentassessments')->where('assessmentId', $assessmentId)->update(['remainingBalance' => max(0, 17500.00 - $paid)]);
 
     if ($enrollment->enrollmentStatus === EnrollmentStatus::Assessed) {
@@ -1717,9 +1814,33 @@ foreach ([
 //      year's curriculum load seeded, graded as passed and its workflow signed. Idempotent:
 //      a student who already has such a year is left alone, and a student who already holds
 //      a row in that term is reported rather than double-seated (ruling 3).
+//
+//      G-11 was the half of this the floor missed. Two students the acceptance script and both
+//      demo-day guides walk as returning — Maria Reyes (DEMO-2026-002) and Rico Navarro
+//      (DEMO-2026-007) — sat at YEAR 1 on the demo term with `enrollmentType` reading `old`, so
+//      they never reached a `yearLevel >= 2` test, and their completed prior years were retired on
+//      2026-10-15: a record claiming it came back while holding nothing behind it, and a derived
+//      level that read 1. The population therefore widened to "claims to be returning", and for a
+//      claim at the floor the entered level is raised to 2 as the year is seated — completing a
+//      year means the next one is above it. The raise touches a load only while every row on it is
+//      still `proposed` with no block and no schedule; a load a desk has taken up is left alone and
+//      reported, because quietly re-slicing signed work is the same substitution lane 53 spent this
+//      register refusing.
 $levelEvidence = 0;
 
-foreach (Enrollments::where('yearLevel', '>=', 2)
+foreach (Enrollments::where(fn ($q) => $q
+        ->where(fn ($claim2) => $claim2
+            ->where('yearLevel', '>=', 2)
+            ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value]))
+        // The returning-at-the-floor half is scoped to the demo term on purpose. A year-1 `old` record on an
+        // earlier term is usually the evidence row this loop itself seated for a later record — four of them
+        // stand on live `ems` — and asking for a year beneath those would stack a third record under the
+        // dataset to satisfy a row no desk opens.
+        ->orWhere(fn ($returning) => $returning
+            ->where('termId', $termId)
+            ->where('yearLevel', 1)
+            ->where('enrollmentType', EnrollmentType::Old->value)
+            ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])))
     ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
     ->with(['term.academicYear', 'student'])
     ->get() as $claim) {
@@ -1768,11 +1889,24 @@ foreach (Enrollments::where('yearLevel', '>=', 2)
         continue;
     }
 
+    // A claim at the floor cannot be evidenced by a year below it, so completing the year lifts the record
+    // being entered to the next one — `max(1, 1 - 1)` would otherwise seat a second year 1 beneath a student
+    // who is about to enter year 2, and the level the desk reads would still contradict the record.
+    $priorLevel = max(1, (int) $claim->yearLevel - 1);
+    $enteredLevel = $priorLevel === (int) $claim->yearLevel ? $priorLevel + 1 : (int) $claim->yearLevel;
+
+    if ($enteredLevel !== (int) $claim->yearLevel && ! load_is_still_proposed((int) $claim->enrollmentId)) {
+        echo "  ! {$claim->student?->schoolIdNumber} holds a load the desks have taken up on enrollment {$claim->enrollmentId}"
+            ." — year {$claim->yearLevel} stays as it is rather than re-slice signed work\n";
+
+        continue;
+    }
+
     $earned = Enrollments::create([
         'studentId' => $claim->studentId,
         'courseId' => $claim->courseId,
         'termId' => $priorTerm->termId,
-        'yearLevel' => max(1, (int) $claim->yearLevel - 1),
+        'yearLevel' => $priorLevel,
         'studentType' => StudentType::Continuing,
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => 'regular',
@@ -1793,12 +1927,25 @@ foreach (Enrollments::where('yearLevel', '>=', 2)
     );
     $levelEvidence++;
 
+    if ($enteredLevel !== (int) $claim->yearLevel) {
+        // The claim said this student came back; only now does the record support it. Their load is re-sliced
+        // at the level just entered, because the subjects a year-2 record proposes are not a year-1's — and
+        // `load_is_still_proposed()` above is what guarantees nothing signed is being rewritten here.
+        $claim->update(['yearLevel' => $enteredLevel]);
+        $take = max(1, (int) DB::table('enrolledsubjects')->where('enrollmentId', $claim->enrollmentId)->count());
+        DB::table('enrolledsubjects')->where('enrollmentId', $claim->enrollmentId)->delete();
+        $seedLoad($claim, $take, 'proposed');
+
+        echo "✔ G-11: {$claim->student?->schoolIdNumber} now enters year {$enteredLevel} on enrollment {$claim->enrollmentId}"
+            ." — its load re-sliced at that level from the {$take} subject rows the desk had not taken up\n";
+    }
+
     echo "✔ G-2: {$claim->student?->schoolIdNumber} earned the year behind enrollment {$claim->enrollmentId}"
         ." — record {$earned->enrollmentId} completed in term {$priorTerm->termId} ({$previousYear->yearLabel})\n";
 }
 
 if ($levelEvidence === 0) {
-    echo "  • G-2: every record at year 2 or above already has a completed year behind it\n";
+    echo "  • G-2: every record claiming a year it has not completed already holds the year behind it\n";
 }
 
 // 10h2. PRIOR-TERM RECORDS — every box this tool signed on a completed year keeps its record.
@@ -2077,7 +2224,7 @@ DB::table('studentscholarships')->updateOrInsert(
     ]
 );
 
-$marisolAssessment = $assessmentFor($enrMarisol, 17500.00, 17500.00);
+$marisolAssessment = assessment_for($enrMarisol, 17500.00, 17500.00);
 charge_demo_fees($marisolAssessment);
 DB::table('studentassessments')->where('assessmentId', $marisolAssessment)->update(['remainingBalance' => 0]);
 $seatWorkflow($enrMarisol, OfficeId::Accounting->value);
@@ -2103,10 +2250,10 @@ if (! $enrIsagani) {
 
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Evaluated,
         Staffusers::find(department_evaluator_for_course(1)), 'Subject load proposed by Department Evaluation');
-    $isaganiAssessment = $assessmentFor($enrIsagani, 17500.00);
+    $isaganiAssessment = assessment_for($enrIsagani, 17500.00);
     charge_demo_fees($isaganiAssessment);
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Assessed, Staffusers::find($deskSigners[OfficeId::Scholarship->value]), 'Fees computed by Assessment');
-    $recordDemoPayment($enrIsagani, 'DEMO-OR-0004', 17500.00, 'cash');
+    record_demo_payment($enrIsagani, 'DEMO-OR-0004', 17500.00, 'cash');
     DB::table('studentassessments')->where('assessmentId', $isaganiAssessment)->update(['remainingBalance' => 0]);
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Paid, Staffusers::find($deskSigners[OfficeId::Accounting->value]), 'Full payment received');
 
@@ -2146,7 +2293,7 @@ foreach (['DEMO-2026-012' => 17500.00, 'DEMO-2026-013' => 18500.00] as $schoolId
         charge_demo_fees((int) $assessmentId, $schoolId === 'DEMO-2026-013'
             ? demo_fee_lines(12250.0)   // her account is priced one unit higher, same four lines
             : demo_fee_lines());
-        $paid = (float) DB::table('payments')->where('enrollmentId', $enrollment->enrollmentId)->where('paymentStatus', 'paid')->sum('amount');
+        $paid = demo_held((int) $enrollment->enrollmentId);
         DB::table('studentassessments')->where('assessmentId', $assessmentId)->update(['remainingBalance' => max(0, $assessed - $paid)]);
     }
 
@@ -2574,8 +2721,9 @@ if (! $enrNena) {
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
         'enrolledDate' => now(),
-        'enrollmentStatus' => EnrollmentStatus::Enrolled,
+        'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
+    $enrNena = settle_enrolled_record($enrNena, 'DEMO-OR-0026');
 
     echo "✔ ID Desk: seeded DEMO-2026-026 Nena Alcantara (enrollment {$enrNena->enrollmentId}) — ENROLLED\n";
 }
@@ -2678,7 +2826,7 @@ if (! $enrCamille) {
     ]);
 }
 $seedLoad($enrCamille);
-$camilleSheet = $assessmentFor($enrCamille, 17500.00);
+$camilleSheet = assessment_for($enrCamille, 17500.00);
 charge_demo_fees($camilleSheet);
 $enrCamille->unsetRelation('enrollmentworkflow');
 $seatWorkflow($enrCamille, OfficeId::Scholarship->value);
@@ -2696,6 +2844,7 @@ echo "\n";
 // reproduces them on paper. Sections 1-9 only write what is missing, so these
 // drift as soon as a screen is used; reconcile the term on every run.
 $ledgerWarnings = [];
+$overpaidSheets = 0;
 
 // An Official Receipt is a controlled document owned by exactly one student. If a
 // number ended up on someone else's enrollment, hand it back to its rightful owner.
@@ -2723,9 +2872,9 @@ foreach (Enrollments::with('student')->where('termId', $termId)
     ->whereIn('enrollmentStatus', ['paid', 'enrolled'])
     ->whereDoesntHave('studentassessments')
     ->get() as $unledgered) {
-    $assessmentId = $assessmentFor($unledgered, 17500.00);
+    $assessmentId = assessment_for($unledgered, 17500.00);
     charge_demo_fees($assessmentId);
-    $recordDemoPayment($unledgered, "DEMO-OR-TERM-{$unledgered->enrollmentId}", 17500.00, 'cash');
+    record_demo_payment($unledgered, "DEMO-OR-TERM-{$unledgered->enrollmentId}", 17500.00, 'cash');
     echo "✔ Ledger: opened and settled a fee sheet for {$unledgered->student->schoolIdNumber}"
         ." (enrollment {$unledgered->enrollmentId})\n";
 }
@@ -2741,13 +2890,10 @@ foreach (Enrollments::where('termId', $termId)
     }
 
     $due = (float) $sheet->totalAssessedAmount - (float) $sheet->totalScholarshipCoverage - (float) $sheet->totalWaived;
-    $paid = (float) DB::table('payments')
-        ->where('enrollmentId', $settled->enrollmentId)
-        ->where('paymentStatus', 'paid')
-        ->sum('amount');
+    $paid = demo_held((int) $settled->enrollmentId);
 
     if ($paid + 0.009 < $due) {
-        $recordDemoPayment($settled, "DEMO-OR-SETTLE-{$settled->enrollmentId}", $due - $paid, 'cash');
+        record_demo_payment($settled, "DEMO-OR-SETTLE-{$settled->enrollmentId}", $due - $paid, 'cash');
         echo '✔ Ledger: settled the shortfall on enrollment '.$settled->enrollmentId
             .' (₱'.number_format($due - $paid, 2)." outstanding, mode cash)\n";
     }
@@ -2769,10 +2915,9 @@ if ($todaySlip) {
     if ($sheet) {
         $due = (float) $sheet->totalAssessedAmount - (float) $sheet->totalScholarshipCoverage - (float) $sheet->totalWaived;
         $tail = min(5500.00, $due);
-        $others = DB::table('payments')
+        $others = Payments::held()
             ->where('enrollmentId', $todaySlip->enrollmentId)
             ->where('paymentId', '!=', $todaySlip->paymentId)
-            ->where('paymentStatus', 'paid')
             ->orderByDesc('amount')
             ->get();
 
@@ -2798,10 +2943,7 @@ foreach (DB::table('studentassessments as a')
         'a.totalScholarshipCoverage', 'a.totalWaived', 's.schoolIdNumber')
     ->join('students as s', 's.studentId', '=', 'e.studentId')
     ->get() as $sheet) {
-    $paid = (float) DB::table('payments')
-        ->where('enrollmentId', $sheet->enrollmentId)
-        ->where('paymentStatus', 'paid')
-        ->sum('amount');
+    $paid = demo_held((int) $sheet->enrollmentId);
     $due = max(0, (float) $sheet->totalAssessedAmount - (float) $sheet->totalScholarshipCoverage - (float) $sheet->totalWaived);
     $balance = max(0.0, $due - $paid);
 
@@ -2811,6 +2953,7 @@ foreach (DB::table('studentassessments as a')
     }
 
     if ($paid > $due + 0.009) {
+        $overpaidSheets++;
         $ledgerWarnings[] = "{$sheet->schoolIdNumber} (enrollment {$sheet->enrollmentId}) is paid "
             .'₱'.number_format($paid, 2).' against a ₱'.number_format($due, 2).' assessment';
     }
@@ -2822,6 +2965,7 @@ foreach (DB::table('studentassessments as a')
 // that has none. Only a sheet the demo's own four lines add up to: a total this tool cannot derive is the
 // record's, not the demo's, so it is reported rather than filled in with numbers somebody else chose.
 $pricedSheets = 0;
+$bareSheetsLeft = 0;
 
 $demoLineSum = array_sum(demo_fee_lines());
 
@@ -2834,6 +2978,7 @@ foreach (DB::table('studentassessments as a')
     ->select('a.assessmentId', 'a.totalAssessedAmount')
     ->get() as $bareSheet) {
     if (abs($demoLineSum - (float) $bareSheet->totalAssessedAmount) > 0.005) {
+        $bareSheetsLeft++;
         $ledgerWarnings[] = "assessment {$bareSheet->assessmentId} totals ₱"
             .number_format((float) $bareSheet->totalAssessedAmount, 2).' with no fee lines, and no set of demo lines'
             .' adds up to it — the sheet was left unpriced rather than invented';
@@ -2906,6 +3051,12 @@ foreach (Enrollments::with('student')
 
 if ($restoredSteps > 0) {
     echo "✔ Ledger: wrote the Accounting step that was missing on {$restoredSteps} settled account(s)\n";
+
+    // Reported as a finding on purpose. The loop exists to repair rows that predate the walk, so a run that
+    // had to use it means some create site is still minting a record past Accounting without walking it —
+    // which is exactly what a fresh install did until lane 54 seated all five of them at their own sites.
+    $ledgerWarnings[] = "Ledger: {$restoredSteps} settled account(s) held receipts with no `assessed -> paid` step until this run wrote one"
+        .' — a demo record is being created past Accounting without its lifecycle';
 }
 
 echo "\n";
@@ -3029,6 +3180,25 @@ foreach ($noOfferings as $gap) {
         .'so the desk could not have proposed their load and the load-based validations pass by absence';
 }
 
+// A record claiming `old` says the student came back, and the level a desk reads is derived from the years
+// behind it — so an unevidenced returning record never shows up as a level the record fails to support (both
+// sides said 1 for Maria Reyes and Rico Navarro, which is G-11). Asking the two columns the same question is
+// the only way to see it. The loop in 10b-1c answers it by seating the year and raising the claim; when that
+// loop refuses, it is because a desk has taken the load up, and the refusal is reported rather than repaired.
+// Scoped to the demo term, because a year-1 `old` record on an earlier term is usually the evidence row that
+// same loop seated for a later record.
+$returningUnevidenced = Enrollments::query()
+    ->where('termId', $termId)
+    ->where('enrollmentType', EnrollmentType::Old->value)
+    ->whereNotIn('enrollmentStatus', [EnrollmentStatus::Dropped->value])
+    ->get(['enrollmentId', 'studentId', 'termId'])
+    ->reject(fn (Enrollments $e) => Enrollments::derivedYearLevel((int) $e->studentId, (int) $e->termId) >= 2);
+
+foreach ($returningUnevidenced as $unevidenced) {
+    $deskIntegrity[] = "Ledger: enrollment {$unevidenced->enrollmentId} claims a returning student and holds no completed year — "
+        .'the desk reads year 1 for a record whose own type says they came back, so the guides walk a return the data does not support';
+}
+
 $queuedFor = [
     'Admission — applications' => DB::table('admissions')->where('admissionStatus', 'pending')->count(),
     'Evaluation — loads to decide' => DB::table('enrollments')->where('termId', $termId)->whereIn('enrollmentStatus', ['pending', 'returnedToEvaluation'])->count(),
@@ -3108,7 +3278,16 @@ $queuedFor = [
         ->whereIn('e.enrollmentStatus', ['paid', 'enrolled'])
         ->where('a.remainingBalance', '>', 0)
         ->count(),
-    'Ledger — receipts exceeding the assessment' => count($ledgerWarnings),
+    'Ledger — returning claim with no year behind it' => $returningUnevidenced->count(),
+    // Counted on its own, not as `count($ledgerWarnings)`: the list now also carries the unpriced-sheet and
+    // reconstructed-step findings, and a number labelled "receipts exceeding" must mean exactly that.
+    'Ledger — receipts exceeding the assessment' => $overpaidSheets,
+    // The two states `ems:audit:record-states` counts since lane 53, counted here too. This file is what
+    // writes them, and its own report could not see either: the line above asks whether a sheet *exists*,
+    // never whether anything is priced under its total, and a record minted already `enrolled` simply had
+    // its step back-filled two sections later by a loop that reported success either way.
+    'Ledger — fee sheet with a total and no lines' => $bareSheetsLeft,
+    'Ledger — paid step this run had to reconstruct' => $restoredSteps,
 ];
 
 // A box signed by an officer from another office is not a cosmetic mismatch: it is a signature the

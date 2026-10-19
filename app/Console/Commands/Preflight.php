@@ -3,7 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Services\ChromiumLocator;
+use App\Support\SchoolTime;
 use Carbon\Carbon;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -87,6 +90,7 @@ class Preflight extends Command
             $this->environmentPair(),
             $this->databaseReachable(),
             $this->clocksAgree(),
+            $this->hostZoneMatchesTheSchools(),
             $this->migrationsApplied(),
             $this->seededEnough(),
             $this->uploadDiskIsPrivate(),
@@ -265,6 +269,156 @@ class Preflight extends Command
                 (string) config('app.timezone')
             ),
         ];
+    }
+
+    /**
+     * Whether the machine's wall clock is the clock the school reads.
+     *
+     * Inside a Laravel process the operating system's zone is hidden on purpose: the framework calls
+     * `date_default_timezone_set()` with `app.timezone`, so `date_default_timezone_get()` answers UTC on every
+     * server and a check built on it passes everywhere — a check that cannot fail. Two sources were measured
+     * before this one was kept. `php_uname('a')` on this box is `Windows NT DESKTOP-IIUKRIB 10.0 build 19045
+     * (Windows 10) AMD64` and on a runner the same shape: no zone in it at all. php.ini's `date.timezone`
+     * answers `UTC` here even outside the framework — that is what *PHP* was told, not what the machine keeps
+     * (`localtime()` carries neither `tm_zone` nor `tm_gmtoff` on Windows). MySQL is the binary that still
+     * quotes the operating system: `@@system_time_zone` is `UTC-11` on this box, which is the Windows zone
+     * name, and `UTC` in a container.
+     *
+     * Nothing stored depends on the answer — instants are UTC, every MySQL session is forced to `+00:00`
+     * since lane 31, and the civil day a desk stands in comes from `config/school.php` through
+     * `App\Support\SchoolTime` alone since lane 51. What the host's hour still decides is everything outside
+     * the application: the stamp on a `mysqldump` filename, the hour cron wakes the worker, and what a script
+     * that never boots the framework prints. That gap is why every lane since 50 has had to prove a calendar
+     * day from both ends rather than trust one reading of "today".
+     *
+     * The verdict is a WARN, never a FAIL: a preflight cannot move a server's clock, and a machine keeping UTC
+     * is a defensible choice when its stored time is UTC. When the source answers no offset at all — SQLite
+     * has no `@@system_time_zone`, and a Windows server set to "Singapore Standard Time" answers a name rather
+     * than an hour — the row says it could not look, rather than guessing that the clocks agree.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function hostZoneMatchesTheSchools(): array
+    {
+        return self::hostZoneRow(self::hostUtcOffset(), SchoolTime::zone());
+    }
+
+    /**
+     * The comparison, kept apart from the read so a zone this machine does not have can still be tested.
+     *
+     * @param  array{0: string, 1: string}|null  $host  the machine's UTC offset and the source it was read from
+     * @return array{0: string, 1: string, 2: string}
+     */
+    public static function hostZoneRow(?array $host, string $school): array
+    {
+        $schoolOffset = self::offsetOf($school);
+
+        if ($host === null || $schoolOffset === null) {
+            return ['Host time zone', 'WARN', $schoolOffset === null
+                ? $school.' is not a zone PHP can resolve, so nothing here can be compared — check the clock by hand'
+                : 'this machine\'s zone could not be read — compare its clock with '.$school.' by hand (DEPLOYMENT.md §2)'];
+        }
+
+        [$hostOffset, $from] = $host;
+
+        if ($hostOffset === $schoolOffset) {
+            return ['Host time zone', 'OK', 'the machine is at '.$hostOffset.' ('.$from.'), which is '.$school.'\'s offset; stored instants stay UTC either way'];
+        }
+
+        return [
+            'Host time zone',
+            'WARN',
+            sprintf(
+                'this machine is at %s (%s) while the school keeps %s at %s — %s h apart on the wall clock. Nothing stored moves, because the application forces its session to %s and reads every civil day through SchoolTime, but mysqldump, cron and any script that never boots the framework name the other hour (set the OS zone to the school\'s per DEPLOYMENT.md §2, or keep reading days through App\Support\SchoolTime)',
+                $hostOffset,
+                $from,
+                $school,
+                $schoolOffset,
+                self::offsetGapHours($hostOffset, $schoolOffset),
+                (string) config('app.timezone')
+            ),
+        ];
+    }
+
+    /**
+     * The machine's UTC offset, read from the one binary that quotes the operating system, or null.
+     *
+     * Public and static so a test can ask the read itself, not only the sentence it produces: the whole point
+     * of this row is that the number comes from outside the framework, and the suite runs on two drivers —
+     * one of which cannot answer at all.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function hostUtcOffset(): ?array
+    {
+        try {
+            $row = (array) DB::selectOne('SELECT @@system_time_zone AS zone');
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $offset = self::normaliseOffset((string) ($row['zone'] ?? ''));
+
+        return $offset === null ? null : [$offset, 'the database\'s @@system_time_zone'];
+    }
+
+    /**
+     * How far apart two `±HH:MM` offsets are, said in hours with the decimals a half-hour zone needs.
+     *
+     * Computed rather than written into the sentence, because `SCHOOL_TIMEZONE` is a declaration an office can
+     * change and a hard-coded "19 hours" would outlive it and be quoted as a measurement.
+     */
+    private static function offsetGapHours(string $a, string $b): string
+    {
+        $toSeconds = fn (string $o): int => (((int) substr($o, 1, 2)) * 3600 + ((int) substr($o, 4, 2)) * 60) * (substr($o, 0, 1) === '-' ? -1 : 1);
+        $hours = abs($toSeconds($a) - $toSeconds($b)) / 3600;
+
+        return rtrim(rtrim(number_format($hours, 1, '.', ''), '0'), '.');
+    }
+
+    /**
+     * `UTC-11` and `-1100` and `+00:00` all mean the same hour, and each spelling has been seen from a real
+     * server. Anything that is not an offset answers null rather than a guess — `CST` on a Linux host and
+     * `Singapore Standard Time` on a Windows one are both names, not hours, and a wrong "the clocks agree" is
+     * worse than a row that says it could not look.
+     */
+    private static function normaliseOffset(string $raw): ?string
+    {
+        $value = strtoupper(trim($raw));
+
+        if ($value === '' || $value === 'SYSTEM' || $value === 'UNKNOWN') {
+            return null;
+        }
+
+        if (str_starts_with($value, 'UTC')) {
+            $value = substr($value, 3);
+
+            if ($value === '') {
+                return '+00:00';
+            }
+        }
+
+        if (preg_match('/^([+-])(\d{1,2})(?::?(\d{2}))?$/', $value, $m) === 1) {
+            return sprintf('%s%02d:%02d', $m[1], (int) $m[2], (int) ($m[3] ?? 0));
+        }
+
+        return null;
+    }
+
+    /**
+     * The UTC offset a named zone is holding right now, in the `+08:00` spelling the comparisons above use.
+     */
+    private static function offsetOf(string $zone): ?string
+    {
+        try {
+            $seconds = (new DateTimeZone($zone))->getOffset(new DateTimeImmutable('now'));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $abs = abs($seconds);
+
+        return sprintf('%s%02d:%02d', $seconds < 0 ? '-' : '+', intdiv($abs, 3600), intdiv($abs % 3600, 60));
     }
 
     /**

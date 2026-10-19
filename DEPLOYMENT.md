@@ -171,6 +171,28 @@ assumed: with `DB_SESSION_TIME_ZONE='+07:00'` the app's own session moved to `+0
   `tests/Feature/Console/PreflightTest.php`, and the empty-value case was proved by removing the guard and
   watching that test go red.
 
+**The machine's own hour is reported, never blamed.** Since lane 54 the report carries a 13th row,
+`Host time zone`, which compares the operating system's offset with the school's declaration
+(`SCHOOL_TIMEZONE` in `config/school.php`, read through `App\Support\SchoolTime`). On this box it prints
+`WARN … this machine is at -11:00 (the database's @@system_time_zone) while the school keeps Asia/Manila at
++08:00 — 19 h apart on the wall clock`. That is not a fault and cannot become one: every instant is stored in
+UTC, every session is forced as above, and every civil day a desk is shown comes from `SchoolTime`, so nothing
+in the database moves. What the host's hour still decides is outside the application — the stamp on a
+`mysqldump` filename, the hour cron wakes a worker, and what a script that never boots Laravel prints — which
+is why the row names those three clients and points here.
+
+MySQL is the source because it is the only binary the process can ask that still quotes the operating system.
+The three readings that look suitable were measured and are not: `date_default_timezone_get()` is pinned to
+`app.timezone` by the framework, so a check built on it prints agreement on every server and can never fail;
+`php_uname('a')` on this box is `Windows NT DESKTOP-IIUKRIB 10.0 build 19045 (Windows 10) AMD64`, which holds
+no zone; and php.ini's `date.timezone` reads `UTC` here even outside the framework — what PHP was told, not
+what the machine keeps (`localtime()` answers no `tm_zone` and no `tm_gmtoff` on Windows). When the source
+answers nothing usable — a database that has no `@@system_time_zone` at all, which is what the SQLite suite
+does, or a zone written as a name rather than an hour — the row says it could not read the machine's zone
+rather than guessing that the clocks agree. `storage/app/scratch/mutate-lane54-host-zone.php` plants five ways
+that guess could be made (flip the comparison, call a refusal an OK, answer when the source is silent, resolve
+an unknown zone, hard-code the gap) and requires the test that names each to go red: 5 of 5 caught.
+
 If `APP_TIMEZONE` is ever set, `DB_SESSION_TIME_ZONE` has to move with it, and `preflight` is what catches
 anyone who sets one and not the other.
 
@@ -201,7 +223,8 @@ php artisan ems:preflight
 `ems:preflight` turns this document into a command: it checks the environment pair, the
 database connection, unapplied migrations, an unseeded RBAC, the privacy of the `documents`
 disk, whether that served folder keeps its signature, the application key, the folders Laravel
-must write into, a browser for PDFs, and the queue connection — and
+must write into, a browser for PDFs, the queue connection, and the machine's own hour against the
+school's declaration — and
 for each failure it names the fix rather than the symptom. It writes nothing and changes
 nothing, so it is safe to run before §4 and again after any change below. A non-zero exit code
 means at least one desk would break on this server.
@@ -366,9 +389,21 @@ path uses, so SysAdmin's legitimate cross-office signature is not reported as a 
 an office head's cross-office signature exits 1, staff8's does not). The rehearsal that finds this class of
 thing is CI's own order against a MySQL schema — `migrate`, the seeders, the pipeline, then
 `vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped` — measured green locally that way before the push.
-`tools/` itself is still outside every static gate — PHPStan analyses `app`, and `pint.json` excludes `tools`. `tools/` itself is still outside every gate —
-PHPStan analyses `app`, and `pint.json` excludes `tools` — so the file is proven by running it and reading what
+`tools/` itself is outside every static gate — PHPStan analyses `app`, and `pint.json` excludes `tools` — so the file is proven by running it and reading what
 it prints, which is now also what CI does.
+
+**Its desk report now carries the states the audit refuses.** Since lane 54 the report prints four `Ledger —`
+lines — a fee sheet with a total and no lines, a paid step this run had to reconstruct, a returning claim with no
+year behind it, and receipts exceeding their sheet — and any one of them non-zero makes the run exit 1. Before
+this the tool repaired lane 53's two impossible records in a loop that reported success either way, so a green
+pipeline said nothing about whether its own output needed the repair. Each line was handed exactly the defect it
+names, one case to a freshly built schema, with a clean control that reads 0 on all four
+(`storage/app/scratch/mutate-lane54-report.php`, driven against `ems_l54_a`/`ems_l54_b` and refusing to touch any
+other database); the read-only version of the same questions against live `ems` is
+`storage/app/scratch/lane54-live-ledger-baseline.php`. The paid step is now written by the code that creates the
+account — `assessed → paid → enrolled` through the state machine — so a fresh install reconstructs none, and the
+year-floor pass was widened to records claiming to be returning, which closed §28.3 G-11 on live `ems` and on a
+schema built from empty in CI's order.
 
 **What CI still does not prove.** `ems:print-fidelity` is not a CI step, so no PDF is rendered and no page
 layout verified there — compare printed papers against the physical forms on the machine that will produce
@@ -394,7 +429,11 @@ the §2 ruling is actually in force on this machine: it prints the string PHP wr
 database writes for the same instant. Read the *note*, not only the colour — since 2026-10-14 the
 application forces its own session zone, so a server nobody configured still comes up OK, and the line
 then says `this connection's session is X while the server defaults to Y`. That sentence is the one to
-act on: it means `mysqldump`, cron and phpMyAdmin are stamping Y. A plain FAIL means `APP_TIMEZONE` and
+act on: it means `mysqldump`, cron and phpMyAdmin are stamping Y. A `WARN Host time zone` line on the same
+report says the equivalent about the operating system rather than the database — this box prints `-11:00`
+against the school's `+08:00` — and it is a note about whose calendar a bare script follows, never a fault to
+clear: the row cannot go red, because the application's own answers are already in UTC and read through
+`SchoolTime`. A plain FAIL means `APP_TIMEZONE` and
 `DB_SESSION_TIME_ZONE` were set apart from each other.
 2. `/up` returns 200 (health route).
 3. `/register` returns 404 (self-registration disabled).

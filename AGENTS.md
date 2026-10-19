@@ -127,6 +127,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   lines escapes a local scanner that stops at the newline. Its harness restores every touched file
   **unconditionally**: a guard that made the restore a no-op after the first call left each later mutant in the
   tree, and the next case measured a tree already carrying the previous defect.
+- **After any batch that edits the demo generator's ledger passes, its year-floor pass, or its desk report**, run
+  `DB_DATABASE=ems_l54_a php storage/app/scratch/mutate-lane54-report.php` and read every case. The report's four
+  `Ledger —` lines (a fee sheet with a total and no lines, a paid step this run had to reconstruct, a returning
+  claim with no year behind it, receipts exceeding the assessment) are the only view the tool has of its own
+  output, and before lane 54 it repaired lane 53's two impossible states in silence. Each line is handed exactly
+  the defect it names — one case per freshly built schema, with a clean control that must read 0 on all four —
+  because a report line that can only print 0 is decoration. The harness refuses unless `DB_DATABASE` names
+  `ems_l54_a` or `ems_l54_b`, and a case whose anchor matches nothing, or whose run reaches no verdict, prints BAD
+  rather than passing: the first run threw on a `dirname()` one level short and still left the shell reporting
+  success. `storage/app/scratch/lane54-live-ledger-baseline.php` is its read-only counterpart, asking the same
+  questions of live `ems` *before* the changed tool is run over the live rows.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -242,9 +253,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Staff relations are named `*User` (`evaluatedByUser`, `registrarProcessedByUser`, `approvedByUser`,
   `receivedByUser`); the bare FK columns return ints. `Schedulemeetings.startTime/endTime` are plain
   strings — casting them breaks Blocking's conflict detection.
-- Money in the drawer is `Payments::held()` (`paid` or `partial`). "Is clearance season?" is
-  answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is derived
-  from the student's own record, never asserted as a constant.
+- Money in the drawer is `Payments::held()` (`paid` or `partial`) — **and that includes the demo generator**. Five
+  sites in `tools/seed_full_demo_pipeline.php` summed `paymentStatus = 'paid'` by hand to decide what an account
+  had been given, while `Studentassessments::outstandingBalance()` sums `held()`; on any account holding an
+  installment the generator's ledger pass would therefore rewrite `remainingBalance` back over what the cashier
+  already collected, and the shortfall loop beside it would take a second receipt for money nobody handed over.
+  All five now call `demo_held()` (`tools/seed_full_demo_pipeline.php:1399-1402`), which asks the model's own
+  scope rather than restating the status list. Measured: an ₱2,000 installment leaves ₱15,500 stored, and the
+  paid-only version of the helper put it back to ₱17,500 — proved both ways by
+  `storage/app/scratch/lane54e-installment-survives.php`, which plants the defect in a copy of the tool and
+  requires the erasure to reappear. Neither side was visible to any test, because the generator never writes a
+  `partial` row itself (§28.3 G-24) and live `ems` held none: a rehearsal that only *reads* the dataset the tool
+  builds cannot find a state the tool refuses to create.
+  "Is clearance season?" is answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is
+  derived from the student's own record, never asserted as a constant.
 - Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
   SQLite suite depends on that escape hatch.
 - Record timestamps exist only on students, admissions, enrollments, payments, studentassessments,
@@ -314,6 +336,25 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   In the JSX, day cells use `formatCalendarDay`; a date-only or date-and-time view of an instant uses
   `formatSchoolDay` / `formatSchoolMoment`, never `toLocaleDateString()` unqualified, and `Dashboard`'s
   greeting / `max=` "today" values may keep the browser's own clock because they are chrome, not a record. The **demo data follows the desk, not the daemon**: `tools/seed_full_demo_pipeline.php` and its end-to-end test date every `today` row with `SchoolTime::today()`, because between 16:00Z and midnight `now()->toDateString()` writes a receipt onto a day the Accounting drawer will never ask for — the seed then reports success while the screen it exists to demonstrate sits empty. Adding that import moved one line in each file, and with it four document citations, two of them bare continuations inside a single sentence.
+- **The machine's hour is read from MySQL, never from PHP** (lane 54c). Inside a booted application
+  `date_default_timezone_get()` answers `app.timezone`, because the framework pins it, so a preflight row built
+  on that prints agreement on every server and can never fail. The other candidates are also not the operating
+  system: `php_uname('a')` carries no zone at all (`Windows NT DESKTOP-IIUKRIB 10.0 build 19045 (Windows 10)
+  AMD64` on this box), php.ini's `date.timezone` names what *PHP* was told (`UTC` here, even in a bare `php -r`),
+  and `localtime()` answers no `tm_zone` and no `tm_gmtoff` on Windows. The one binary that quotes the machine is
+  the database: `SELECT @@system_time_zone` is `UTC-11` on this box, which is the Windows zone name.
+  `ems:preflight`'s `Host time zone` row compares that offset with `SchoolTime::zone()`'s and is **WARN, never
+  FAIL** — nothing stored moves, because the session is forced and every civil day comes from `SchoolTime` — and
+  when the source answers nothing usable (a zone written as a name rather than an hour, or SQLite, which has no
+  `@@system_time_zone`) the row says it could not read the machine's zone instead of guessing that the clocks
+  agree. `PreflightTest` pins the two shapes *driver-conditionally*: it calls `Preflight::hostUtcOffset()` in the
+  test and requires null on SQLite and a `±HH:MM` string attributed to the database on MySQL, because the first
+  version of that assertion assumed the suite always runs on SQLite and went red the moment the class ran against
+  MySQL (measured locally; CI's MySQL job runs the same class, so the local run is not a special case). The gap
+  in hours is computed from the two offsets, never written into the sentence, so a changed `SCHOOL_TIMEZONE` and
+  a half-hour zone both read true. `storage/app/scratch/mutate-lane54-host-zone.php` plants six ways the row
+  could stop measuring — flip the comparison, call a refusal an agreement, answer when the source is silent,
+  hard-code the gap, rename the refusal, resolve an unknown zone — and each is killed by the test that names it.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,

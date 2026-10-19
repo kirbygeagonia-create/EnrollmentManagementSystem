@@ -332,6 +332,101 @@ class PreflightTest extends TestCase
     }
 
     #[Test]
+    public function a_host_that_keeps_the_schools_hour_is_an_ok_and_an_unreadable_host_is_a_warning_never_a_fault(): void
+    {
+        // The two verdicts a machine can be told about, from readings this process cannot have. Both arms
+        // matter: a row that only ever says WARN teaches the operator to skim it, and a row that FAILs a
+        // healthy server is a fault the preflight cannot fix — preflight cannot move a clock, and stored
+        // instants are UTC whatever the wall says.
+        $match = Preflight::hostZoneRow(['+08:00', 'the database\'s @@system_time_zone'], 'Asia/Manila');
+        $blind = Preflight::hostZoneRow(null, 'Asia/Manila');
+
+        $this->assertSame(['Host time zone', 'OK', 'the machine is at +08:00 (the database\'s @@system_time_zone), which is Asia/Manila\'s offset; stored instants stay UTC either way'], $match);
+        $this->assertSame('WARN', $blind[1], 'a zone that cannot be read must not be reported as agreement');
+        $this->assertStringContainsString('could not be read', $blind[2]);
+    }
+
+    #[Test]
+    public function a_host_at_another_hour_is_a_warning_that_names_both_offsets_and_the_fix(): void
+    {
+        // This box: MySQL's @@system_time_zone answers the Windows name `UTC-11` while the school declares
+        // Asia/Manila. Nothing stored is wrong — the session is forced and every civil day goes through
+        // SchoolTime — so the row's job is to name the two hours, say how far apart they are, and point at
+        // the one place an operator could still be burned: mysqldump's filename, cron, a bare script.
+        [$label, $verdict, $detail] = Preflight::hostZoneRow(['-11:00', 'the database\'s @@system_time_zone'], 'Asia/Manila');
+
+        $this->assertSame('Host time zone', $label);
+        $this->assertSame('WARN', $verdict);
+        $this->assertStringContainsString('this machine is at -11:00', $detail);
+        $this->assertStringContainsString('Asia/Manila at +08:00', $detail);
+        $this->assertStringContainsString('19 h apart on the wall clock', $detail);
+        $this->assertStringContainsString('mysqldump', $detail);
+        $this->assertStringContainsString('DEPLOYMENT.md §2', $detail);
+    }
+
+    #[Test]
+    public function the_gap_is_measured_from_the_two_offsets_so_a_half_hour_zone_and_a_changed_declaration_both_read_true(): void
+    {
+        // The distance between the two clocks has to come out of the pair it is describing: a figure written
+        // into the sentence would be true only of this box, and only while SCHOOL_TIMEZONE names Manila. A
+        // half-hour zone is something real schools keep, and a declaration is something an office can change.
+        $this->assertStringContainsString('2.5 h apart', Preflight::hostZoneRow(['+05:30', 'x'], 'Asia/Manila')[2]);
+        $this->assertStringContainsString('1 h apart', Preflight::hostZoneRow(['+09:00', 'x'], 'Asia/Manila')[2]);
+
+        // A zone PHP cannot resolve is not a zone the check may guess at.
+        $unresolved = Preflight::hostZoneRow(['+08:00', 'x'], 'Not/AZone');
+        $this->assertSame('WARN', $unresolved[1]);
+        $this->assertStringContainsString('not a zone PHP can resolve', $unresolved[2]);
+    }
+
+    #[Test]
+    public function the_offset_is_read_from_the_database_so_a_suite_on_sqlite_cannot_answer_it(): void
+    {
+        // The read itself, asked on the driver this run actually has. The default job is SQLite, which has no
+        // @@system_time_zone at all: an array there would be a zone the database never quoted, which is how
+        // the first draft of this check passed everywhere (it read date_default_timezone_get(), and Laravel
+        // pins that to app.timezone, so the answer was always UTC and always agreed). The MySQL job is the
+        // mirror: refusing there would hide a gap the operator can be told about.
+        $read = Preflight::hostUtcOffset();
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->assertNull($read, 'SQLite has no @@system_time_zone, so the honest read is nothing');
+
+            return;
+        }
+
+        $this->assertIsArray($read, 'MySQL does report its system zone, so this driver must answer');
+        $this->assertMatchesRegularExpression('/^[-+]\d{2}:\d{2}$/', $read[0]);
+        $this->assertSame("the database's @@system_time_zone", $read[1]);
+    }
+
+    #[Test]
+    public function the_host_zone_row_names_the_source_it_read_or_says_it_could_not_read_and_never_faults(): void
+    {
+        // End to end, because the pure calls above prove nothing about the wiring. What is asserted is the
+        // consistency between the read and the sentence, measured in the same run rather than assumed of the
+        // driver or the machine's zone: a row that cannot look has to say so, and a row that looked has to
+        // name the hour and where it came from. Neither shape may be a FAIL — preflight cannot move a clock.
+        $this->assertSame(0, $this->callPreflight());
+
+        $line = collect(explode("\n", $this->commandOutput()))
+            ->first(fn (string $l): bool => str_contains($l, 'Host time zone')) ?? '';
+
+        $this->assertNotSame('', $line, 'the report printed no Host time zone row');
+        $this->assertStringNotContainsString('FAIL', $line);
+
+        if (Preflight::hostUtcOffset() === null) {
+            $this->assertStringContainsString('WARN  Host time zone', $line);
+            $this->assertStringContainsString('could not be read', $line);
+
+            return;
+        }
+
+        $this->assertMatchesRegularExpression('/(WARN|OK)\s+Host time zone/', $line);
+        $this->assertMatchesRegularExpression('/is at [-+]\d{2}:\d{2} \(the database\'s @@system_time_zone\)/', $line);
+    }
+
+    #[Test]
     public function the_application_zone_is_still_utc_so_wiring_the_env_var_changed_nothing(): void
     {
         // DEPLOYMENT.md names APP_TIMEZONE as the knob; until now config/app.php ignored it. Reading the
