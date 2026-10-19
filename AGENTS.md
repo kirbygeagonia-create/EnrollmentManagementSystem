@@ -473,7 +473,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 `word/document.xml` is ~5.7M characters and its sentences are split across `<w:t>` runs, so:
 edit through `storage/app/scratch/docx-edit-engine.php` with absolute offsets verified before each
 write; never reflow existing tables from memory; **one offset cannot carry two edits** (an insert
-and a rewrite at the same byte corrupt the document); re-measure every `File.php:NN` citation an
+and a rewrite at the same byte corrupt the document); **a `text` edit through `docx-edit-engine.php` takes plain characters, never entities** — the engine escapes `&` on the way in and refuses a replacement carrying a raw `<` or `>`, so `&amp;` in a replacement becomes `&amp;amp;` and Word prints the literal `&amp;` (measured against the pre-edit backup: pass 153 did exactly this to two runs and pass 154 undid it), and a code span containing an arrow cannot travel through a text edit at all — write those with their own guards, as `refresh-docx-pass154.php` does; read the result back through `html_entity_decode()`, not through the dump, which shows raw entities; re-measure every `File.php:NN` citation an
 edit invalidates and verify it by *meaning* (which method the line sits in), not arithmetic;
 before believing a clean verdict from any checker, feed it a mutant and watch it fail; re-run
 `dump-docx-flat.php` before trusting `probe-docx-cite-method.php`, which reads that generated dump;
