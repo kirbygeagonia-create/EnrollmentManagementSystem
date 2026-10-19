@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -38,7 +39,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                 {formatStatusLabel(row.admissionStatus)}
             </Badge>
         )},
-        { key: 'created_at', label: 'Submitted', render: (row) => row.created_at ? new Date(row.created_at).toLocaleDateString('en-PH') : '—' },
+        { key: 'created_at', label: 'Submitted', render: (row) => row.created_at ? formatSchoolDay(row.created_at) : '—' },
     ], []);
 
     const handleFilter = (e) => {

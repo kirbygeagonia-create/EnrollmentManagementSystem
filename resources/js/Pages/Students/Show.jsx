@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
-import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import { formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 // Only the two values students.status can hold. The map once carried graduated and dropped tones for a
 // column that is enum('active','inactive'), so those two lines could never be reached.
@@ -436,7 +436,7 @@ export default function Show({ student }) {
                                                     {sc.clearancePeriod?.periodName || `Period #${sc.clearancePeriodId || ''}`}
                                                 </p>
                                                 <p className="text-brand-500 mt-0.5">
-                                                    {sc.receivedDate ? `Received ${new Date(sc.receivedDate).toLocaleDateString('en-PH')}` : 'Not yet received'}
+                                                    {sc.receivedDate ? `Received ${formatSchoolDay(sc.receivedDate)}` : 'Not yet received'}
                                                 </p>
                                             </div>
                                             <Badge tone={statusToneFor(sc.overallStatus) || sc.overallStatus || 'neutral'}>

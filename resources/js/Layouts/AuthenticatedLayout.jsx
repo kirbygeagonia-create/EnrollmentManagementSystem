@@ -7,6 +7,7 @@ import { Toast, CauseEffectModal } from '@/Components/ui';
 import { officeLogoFor } from '@/officeBranding';
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 
 const deskInfoMap = {
     admission: { name: 'Admissions Desk', phase: 'Phase 0', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
@@ -284,7 +285,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 notifications.map((n) => (
                                                     <div key={n.id} className={`px-4 py-3 transition-colors ${n.read_at ? '' : 'bg-seait-50/50'}`}>
                                                         <p className="text-xs text-slate-800 font-medium leading-snug">{n.data?.message || 'Notification'}</p>
-                                                        <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? new Date(n.created_at).toLocaleString('en-PH') : ''}</p>
+                                                        <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? formatSchoolMoment(n.created_at) : ''}</p>
                                                     </div>
                                                 ))
                                             )}

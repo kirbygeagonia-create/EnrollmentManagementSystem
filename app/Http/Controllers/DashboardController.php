@@ -20,6 +20,7 @@ use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Services\WorkflowService;
+use App\Support\SchoolTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -79,13 +80,17 @@ class DashboardController extends Controller
                 'pendingEvaluations' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Pending->value)->count(),
                 'enrolledStudents' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)->count(),
                 'monthlyRevenue' => Payments::held()
-                    ->whereMonth('paymentDate', now()->month)
-                    ->whereYear('paymentDate', now()->year)
+                    // The month the *school* is in. `now()->month` answered in UTC, so the first eight hours of
+                    // every Manila day — a morning of receipts — were counted onto the previous month's tile.
+                    ->whereMonth('paymentDate', (int) substr(SchoolTime::today(), 5, 2))
+                    ->whereYear('paymentDate', (int) substr(SchoolTime::today(), 0, 4))
                     ->sum('amount'),
                 'totalStaff' => Staffusers::count(),
                 // Count terms active TODAY by date range — not by the
-                // currentTermId setting, which may be unset (audit 2026-09-25).
-                'activeTerms' => Academicterms::whereDate('startDate', '<=', now())->whereDate('endDate', '>=', now())->count(),
+                // currentTermId setting, which may be unset (audit 2026-09-25). "Today" is the school's date:
+                // `now()` is a UTC instant, and comparing a DATE column to it made a term that opens on the 1st
+                // look inactive until 08:00 Manila.
+                'activeTerms' => Academicterms::whereDate('startDate', '<=', SchoolTime::today())->whereDate('endDate', '>=', SchoolTime::today())->count(),
                 'totalCourses' => Courses::count(),
             ],
             'progressTracking' => $progressTracking,

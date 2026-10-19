@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, StatCard, Badge, formatStatusLabel } from '@/Components/ui';
 import { useMemo } from 'react';
-import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import { formatCalendarDay, formatSchoolMoment } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -20,7 +20,7 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
     const formattedDate = formatCalendarDay(date, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const refundColumns = useMemo(() => [
-        { key: 'refundedAt', label: 'Paid back at', render: (row) => (row.refundedAt ? new Date(row.refundedAt).toLocaleString('en-PH', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—') },
+        { key: 'refundedAt', label: 'Paid back at', render: (row) => (row.refundedAt ? formatSchoolMoment(row.refundedAt, { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—') },
         { key: 'orNumber', label: 'Original OR', render: (row) => <span className="font-mono text-sm">{row.orNumber || '—'}</span> },
         { key: 'enrollment.student.schoolIdNumber', label: 'Student', render: (row) => {
             const s = row.enrollment?.student;

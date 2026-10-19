@@ -164,9 +164,13 @@ $zoneRe = '/'.$zoneReading.'/';
 // The shared day formatter this lane introduces: presence of it is the fix.
 $dayFormatter = '(formatCalendarDay|calendarYear|dayInputValue)';
 
+// Lane 51's school-zone formatters. A day must not be run through them either: they re-project the value, which
+// is exactly what a calendar day cannot survive.
+$schoolFormatter = '(formatSchoolDay|formatSchoolMoment)';
+
 $problems = 0;
 $blind = [];
-$counts = array_fill_keys(['DAY-VIA-ZONE', 'YEAR-VIA-ZONE', 'DAY-BY-UTC-SLICE', 'DAY-FORMATTER', 'INSTANT-LOCAL', 'ARITHMETIC', 'NOW', 'HELDER-PARAM', 'UNBOUND'], 0);
+$counts = array_fill_keys(['DAY-VIA-ZONE', 'YEAR-VIA-ZONE', 'DAY-BY-UTC-SLICE', 'DAY-FORMATTER', 'INSTANT-LOCAL', 'VIEWER-ZONE', 'SCHOOL-FORMATTER', 'ARITHMETIC', 'NOW', 'HELDER-PARAM', 'UNBOUND'], 0);
 
 // First pass over a file: which local names wrap a Date? `const fmt = (d) => (d ? new Date(d).toLocale… : '—')`
 foreach ($files as $file) {
@@ -174,7 +178,7 @@ foreach ($files as $file) {
     $text = str_replace("\r\n", "\n", file_get_contents($file));
     $lines = explode("\n", $text);
 
-    $zoneHelpers = $dayHelpers = [];
+    $zoneHelpers = $dayHelpers = $schoolHelpers = [];
 
     if (preg_match_all('/(?:const|function)\s+(\w+)\s*(?:=\s*(?:\([^)]*\)|\w+)\s*=>|\([^)]*\)\s*\{)(.{0,300}?)(?:;\n|\n\n|$)/s', $text, $defs, PREG_SET_ORDER)) {
         foreach ($defs as $def) {
@@ -186,11 +190,13 @@ foreach ($files as $file) {
 
             $body = $def[2];
 
-            if (! str_contains($body, 'new Date(') && ! preg_match('/'.$dayFormatter.'\(/', $body)) {
+            if (! str_contains($body, 'new Date(') && ! preg_match('/'.$dayFormatter.'\(/', $body) && ! preg_match('/'.$schoolFormatter.'\(/', $body)) {
                 continue;
             }
 
-            if (preg_match('/'.$dayFormatter.'\(/', $body)) {
+            if (preg_match('/'.$schoolFormatter.'\(/', $body)) {
+                $schoolHelpers[$def[1]] = true;
+            } elseif (preg_match('/'.$dayFormatter.'\(/', $body)) {
                 $dayHelpers[$def[1]] = true;
             } elseif (preg_match($zoneRe, $body)) {
                 $zoneHelpers[$def[1]] = true;
@@ -198,7 +204,7 @@ foreach ($files as $file) {
         }
     }
 
-    $helperNames = array_keys($zoneHelpers + $dayHelpers);
+    $helperNames = array_keys($zoneHelpers + $dayHelpers + $schoolHelpers);
 
     // A local handed a column — `const passSlipConfirmedAt = enrollment.clearanceConfirmedAt || null` — is that
     // column wearing another name. Without this the checker calls it UNBOUND, and the same read in two
@@ -229,7 +235,7 @@ foreach ($files as $file) {
 
         // The fixed shape must be counted too. A line that no longer holds `new Date(` would otherwise vanish
         // from the scan, and a checker whose coverage drops to zero still prints "0 problems".
-        if (preg_match_all('/\b(formatCalendarDay|calendarYear|dayInputValue)\(\s*([^,)]{1,120})/', $line, $m)) {
+        if (preg_match_all('/\b(formatCalendarDay|calendarYear|dayInputValue|formatSchoolDay|formatSchoolMoment)\(\s*([^,)]{1,120})/', $line, $m)) {
             foreach ($m[2] as $k => $arg) {
                 $targets[] = ['arg' => $arg, 'zone' => false, 'src' => $m[1][$k]];
             }
@@ -253,6 +259,16 @@ foreach ($files as $file) {
 
             if ($arg === '') {
                 $counts['NOW']++;
+
+                continue;
+            }
+
+            // The browser's own clock is not a column, so it can never be bound to one: a print sheet stamps the
+            // instant it was made. Rendered through the school formatter that is the school's day, which is the
+            // rule — so it counts as NOW and is printed, and is never called UNBOUND.
+            if (preg_match('#^(?:new\s+Date\(\)?|Date\.now\(\)?)$#i', $arg)) {
+                $counts['NOW']++;
+                $blind[] = sprintf('%s:%d  the client clock (%s), rendered by %s — no column to bind it to', $rel, $i + 1, $arg, $t['src']);
 
                 continue;
             }
@@ -292,7 +308,26 @@ foreach ($files as $file) {
             $usesFormatter = (bool) preg_match('/'.$dayFormatter.'\(/', $line)
                 || ($t['src'] !== 'new Date' && isset($dayHelpers[$t['src']]));
 
+            $usesSchoolFormatter = in_array($t['src'], ['formatSchoolDay', 'formatSchoolMoment'], true)
+                || ($t['src'] !== 'new Date' && isset($schoolHelpers[$t['src']]));
+
             $differs = (bool) preg_match('/-\s*new Date\(/', $line) || (bool) preg_match('/new Date\([^)]*\)\s*-/', $line);
+
+            // A day handed to the school-zone formatter is still handed to a zone: the value is re-projected,
+            // which is the one thing a calendar day cannot survive.
+            if ($day && $usesSchoolFormatter) {
+                $counts['DAY-VIA-ZONE']++;
+                $problems++;
+                printf("  %-13s %s:%d  %s is a calendar day given to the school-zone formatter: %s\n", 'DAY-VIA-ZONE', $rel, $i + 1, $name, mb_substr(trim($line), 0, 100));
+
+                continue;
+            }
+
+            if (! $day && $usesSchoolFormatter) {
+                $counts['SCHOOL-FORMATTER']++;
+
+                continue;
+            }
 
             // A difference of two days shifts both ends the same way, so it stays right in every zone.
             if ($differs && ! $lineZone) {
@@ -314,6 +349,20 @@ foreach ($files as $file) {
                 continue;
             }
 
+            // Lane 51: an institutional instant is read at the school, so it goes through the school-zone
+            // formatter. Rendering it in the browser's own zone makes the same signature say one thing in Manila
+            // and another here — 18:00Z is tomorrow at the school.
+            $usesSchoolFormatter = (bool) preg_match('/(formatSchoolDay|formatSchoolMoment)\(/', $line)
+                || ($t['src'] !== 'new Date' && isset($schoolHelpers[$t['src']]));
+
+            if (! $day && $paints && ! $usesSchoolFormatter) {
+                $counts['VIEWER-ZONE']++;
+                $problems++;
+                printf("  %-13s %s:%d  %s is an instant rendered in the viewer's zone: %s\n", 'VIEWER-ZONE', $rel, $i + 1, $name, mb_substr(trim($line), 0, 100));
+
+                continue;
+            }
+
             if ($day && $paints) {
                 $kind = $name === 'effectiveYear' ? 'YEAR-VIA-ZONE' : 'DAY-VIA-ZONE';
                 $counts[$kind]++;
@@ -330,8 +379,9 @@ foreach ($files as $file) {
 
 printf("Files read: %d.  Column types from %d migrations, casts from %d models, %d date-shaped names known.\n",
     count($files), count($migrationFiles), count($modelFiles), count($knownNames));
-printf("DAY-VIA-ZONE: %d   YEAR-VIA-ZONE: %d   DAY-FORMATTER: %d   DAY-BY-UTC-SLICE: %d   INSTANT-LOCAL: %d   ARITHMETIC: %d   NOW: %d   helper-parameter: %d   UNBOUND: %d\n",
+printf("DAY-VIA-ZONE: %d   YEAR-VIA-ZONE: %d   DAY-FORMATTER: %d   DAY-BY-UTC-SLICE: %d   SCHOOL-FORMATTER: %d   VIEWER-ZONE: %d   INSTANT-LOCAL: %d   ARITHMETIC: %d   NOW: %d   helper-parameter: %d   UNBOUND: %d\n",
     $counts['DAY-VIA-ZONE'], $counts['YEAR-VIA-ZONE'], $counts['DAY-FORMATTER'], $counts['DAY-BY-UTC-SLICE'],
+    $counts['SCHOOL-FORMATTER'], $counts['VIEWER-ZONE'],
     $counts['INSTANT-LOCAL'], $counts['ARITHMETIC'], $counts['NOW'], $counts['HELDER-PARAM'], $counts['UNBOUND']);
 
 if ($blind !== []) {

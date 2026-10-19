@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageHeader, Badge, Card, FormSection, Modal, CauseEffectModal, StatCard, WorkflowStepper, Select, formatStatusLabel, idRequestReasonLabel, idRequestStatusTone } from '@/Components/ui';
 import { useState, useRef, useEffect } from 'react';
-import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import { formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 const bloodTypeOptions = [
     { value: 'A+', label: 'A+' },
@@ -141,11 +141,6 @@ export default function Show({ enrollment, idRequest, requestReasons, backTab = 
             : !photoAttached
                 ? 'Capture or attach the face photo before validating.'
                 : '';
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('en-PH');
-    };
 
     const getStudentName = () => {
         if (!student) return '—';
@@ -379,7 +374,7 @@ export default function Show({ enrollment, idRequest, requestReasons, backTab = 
                                     <div className="col-span-2">
                                         <span className="text-slate-400 font-semibold block">Validated</span>
                                         <span className="font-bold text-slate-800">
-                                            {formatDate(idRequest.validatedDate)}
+                                            {formatSchoolDay(idRequest.validatedDate)}
                                             {idRequest.validatedBy?.name ? ` · by ${idRequest.validatedBy.name}` : ''}
                                         </span>
                                     </div>

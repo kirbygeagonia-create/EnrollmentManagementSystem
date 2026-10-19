@@ -1,3 +1,5 @@
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
+
 export default function PrintLayout({ title, subtitle, date, children, className = '', headerContent, footerContent, downloadUrl }) {
     return (
         <div className={`print-layout ${className}`}>
@@ -50,7 +52,9 @@ export default function PrintLayout({ title, subtitle, date, children, className
             <footer className="print-footer">
                 {footerContent || (
                     <>
-                        <p>This document was generated on {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        {/* The sheet says when the school generated it, so the stamp is the school's day: a form
+                            printed at 01:00 Manila belongs to that date, whatever zone the browser sits in. */}
+                        <p>This document was generated on {formatSchoolDay(new Date(), { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         <p className="mt-1">SEAIT Enrollment Management System — Official Document</p>
                     </>
                 )}

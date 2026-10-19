@@ -4,7 +4,7 @@ import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatu
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
-import { formatCalendarDay, calendarYear } from '@/Components/ui/calendarDay';
+import { calendarYear, formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 
 export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
@@ -689,8 +689,8 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 <Badge tone="success">Confirmed</Badge>
                                 <span className="text-xs font-mono text-slate-500">
                                     {passSlipConfirmedBy
-                                        ? `${passSlipConfirmedBy.firstName} ${passSlipConfirmedBy.lastName} · ${new Date(passSlipConfirmedAt).toLocaleDateString('en-PH')}`
-                                        : new Date(passSlipConfirmedAt).toLocaleDateString('en-PH')}
+                                        ? `${passSlipConfirmedBy.firstName} ${passSlipConfirmedBy.lastName} · ${formatSchoolDay(passSlipConfirmedAt)}`
+                                        : formatSchoolDay(passSlipConfirmedAt)}
                                 </span>
                             </div>
                         ) : (

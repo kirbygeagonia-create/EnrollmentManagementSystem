@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, StatCard } from '@/Components/ui';
+import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 
 const actionOptions = [
     { value: '', label: 'All Actions' },
@@ -45,7 +46,7 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
     const columns = useMemo(() => [
         { key: 'timestamp', label: 'Timestamp', render: (row) => row.createdAt ? (
             <span className="font-mono text-xs text-brand-600">
-                {new Date(row.createdAt).toLocaleString('en-PH', { dateStyle: 'short', timeStyle: 'medium' })}
+                {formatSchoolMoment(row.createdAt, { dateStyle: 'short', timeStyle: 'medium' })}
             </span>
         ) : '—' },
         { key: 'user', label: 'User', render: (row) => row.user ? (
@@ -280,7 +281,7 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-brand-400 mb-1">Timestamp</p>
-                                <p className="font-mono text-brand-700">{viewingLog.createdAt ? new Date(viewingLog.createdAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'medium' }) : '—'}</p>
+                                <p className="font-mono text-brand-700">{viewingLog.createdAt ? formatSchoolMoment(viewingLog.createdAt, { dateStyle: 'medium', timeStyle: 'medium' }) : '—'}</p>
                             </div>
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-brand-400 mb-1">User</p>

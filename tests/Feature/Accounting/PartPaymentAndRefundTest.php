@@ -24,6 +24,7 @@ use App\Models\Students;
 use App\Services\WorkflowService;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
@@ -57,6 +58,11 @@ class PartPaymentAndRefundTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Lane 51: the daily report's default date is the school's today, so a fixture that writes
+        // `now()->toDateString()` must not race the clock. 06:00Z is 14:00 in Manila — both calendars say
+        // the 18th, and the test stops depending on when CI happened to run.
+        Carbon::setTestNow('2026-10-18 06:00:00');
 
         $this->seed(RbacSeeder::class);
 
@@ -93,6 +99,13 @@ class PartPaymentAndRefundTest extends TestCase
         ]);
 
         $this->cashier = $this->staffInOffice(OfficeId::Accounting->value, 'AccountingStaff');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     private function staffInOffice(int $officeId, string $spatieRole): Staffusers

@@ -37,6 +37,7 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Workflowsteps;
 use App\Services\AcademicStandingService;
+use App\Support\SchoolTime;
 use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
@@ -478,7 +479,7 @@ function attest_completed_desks(int $enrollmentId, string $facePhoto): void
         exit(1);
     }
 
-    $day = (string) ($seat->termOpens ?? now()->toDateString());
+    $day = (string) ($seat->termOpens ?? SchoolTime::today());
 
     if (DB::table('clinicrecords')->where('enrollmentId', $enrollmentId)->exists()) {
         echo "  • Clinic: enrollment {$enrollmentId} already holds an assessment — left as the desk wrote it\n";
@@ -579,7 +580,7 @@ if ($juanStudent) {
     if ($juanEnrollment) {
         $todayPayment = DB::table('payments')
             ->where('enrollmentId', $juanEnrollment->enrollmentId)
-            ->whereDate('paymentDate', now()->toDateString())
+            ->whereDate('paymentDate', SchoolTime::today())
             ->first();
         if (! $todayPayment) {
             // The OR number is unique and controlled, so re-running this on a
@@ -589,14 +590,14 @@ if ($juanStudent) {
             if ($earlierPayment) {
                 DB::table('payments')
                     ->where('paymentId', $earlierPayment->paymentId)
-                    ->update(['paymentDate' => now()->toDateString(), 'updated_at' => now()]);
+                    ->update(['paymentDate' => SchoolTime::today(), 'updated_at' => now()]);
                 echo "✔ Re-dated Juan Dela Cruz's demo payment to today (Daily Collections Report active)\n";
             } else {
                 DB::table('payments')->insert([
                     'enrollmentId' => $juanEnrollment->enrollmentId,
                     'orNumber' => 'DEMO-OR-TODAY-01',
                     'amount' => 17500.00,
-                    'paymentDate' => now()->toDateString(),
+                    'paymentDate' => SchoolTime::today(),
                     'paymentMode' => 'cash',
                     'processedBy' => $deskSigners[OfficeId::Accounting->value],
                     'paymentStatus' => 'paid',
@@ -1068,7 +1069,7 @@ if (! $enrBea) {
         'enrollmentId' => $enrBea->enrollmentId,
         'orNumber' => 'DEMO-OR-0002',
         'amount' => 8000.00,
-        'paymentDate' => now()->toDateString(),
+        'paymentDate' => SchoolTime::today(),
         'paymentMode' => 'cash',
         'processedBy' => $deskSigners[OfficeId::Accounting->value],
         'paymentStatus' => 'paid',
@@ -1111,7 +1112,7 @@ if (! $enrPat) {
         'enrollmentId' => $enrPat->enrollmentId,
         'orNumber' => 'DEMO-OR-0003',
         'amount' => 17500.00,
-        'paymentDate' => now()->toDateString(),
+        'paymentDate' => SchoolTime::today(),
         'paymentMode' => 'cash',
         'processedBy' => $deskSigners[OfficeId::Accounting->value],
         'paymentStatus' => 'paid',
@@ -1361,7 +1362,7 @@ $recordDemoPayment = function (Enrollments $enrollment, string $orNumber, float 
         [
             'enrollmentId' => $enrollment->enrollmentId,
             'amount' => $amount,
-            'paymentDate' => now()->toDateString(),
+            'paymentDate' => SchoolTime::today(),
             'paymentMode' => $mode,
             'processedBy' => $cashier,
             'paymentStatus' => 'paid',
@@ -1377,7 +1378,7 @@ $assessmentFor = function (Enrollments $enrollment, float $assessed, float $cove
         'totalAssessedAmount' => $assessed,
         'totalScholarshipCoverage' => $covered,
         'totalWaived' => $waived,
-        'assessmentDate' => now()->toDateString(),
+        'assessmentDate' => SchoolTime::today(),
         'updated_at' => now(),
     ];
 
@@ -1539,7 +1540,7 @@ foreach (Studentclearances::with('approvals')->get() as $clearance) {
             'clearanceRequirementId' => $requirement->clearanceRequirementId,
             'status' => $cleared ? 'approved' : 'pending',
             'approvedBy' => $cleared ? desk_signer_for($requirement->officeId) : null,
-            'approvalDate' => $cleared ? now()->toDateString() : null,
+            'approvalDate' => $cleared ? SchoolTime::today() : null,
             'remarks' => $cleared ? 'Cleared' : '',
         ]);
         $outstanding++;
@@ -1614,7 +1615,7 @@ if ($openPeriod !== null) {
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
             'evaluatedBy' => department_evaluator_for_course($program->courseId),
             'enrolledDate' => now(),
-            'formIssuedDate' => now()->toDateString(),
+            'formIssuedDate' => SchoolTime::today(),
             'formSignedDate' => now(),
         ]);
         $seedLoad($prior, 3, 'confirmed');
@@ -1911,7 +1912,7 @@ foreach ($seatedForRegistrar as $seat) {
             [
                 'status' => 'approved',
                 'approvedBy' => desk_signer_for($requirement->officeId),
-                'approvalDate' => now()->toDateString(),
+                'approvalDate' => SchoolTime::today(),
                 'remarks' => 'No outstanding account',
             ]
         );
@@ -2468,7 +2469,7 @@ $attestClinic = function (int $enrollmentId, float $heightCm, float $weightKg, s
             'assessmentNotes' => 'Cleared for enrollment — no restricting findings.',
             'findings' => 'Normal',
             'clinicStaffId' => $deskSigners[OfficeId::Clinic->value],
-            'assessmentDate' => now()->toDateString(),
+            'assessmentDate' => SchoolTime::today(),
             'status' => 'completed',
             'created_at' => now(),
             'updated_at' => now(),
@@ -2501,7 +2502,7 @@ if ($idSeat) {
             'emergencyContactNumber' => '09171234599',
             'bloodType' => 'A+',
             'status' => 'pending',
-            'requestDate' => now()->toDateString(),
+            'requestDate' => SchoolTime::today(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -2854,7 +2855,7 @@ foreach ($retentionSeats as $seat) {
     ], [
         'examType' => ExamType::CourseSpecific->value,
         'examResult' => ExamResult::Pass->value,
-        'examDate' => now()->toDateString(),
+        'examDate' => SchoolTime::today(),
     ]);
     $retentionPassed++;
 }

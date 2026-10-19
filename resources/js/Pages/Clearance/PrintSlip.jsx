@@ -1,4 +1,5 @@
 import { PrintLayout, Card, Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 const approvalStatusToneMap = {
     pending: 'pending',
@@ -91,7 +92,7 @@ export default function PrintSlip({ clearance, termEnrollment, documentNumber })
                     <div>
                         <p className="text-lg font-medium text-brand-900">Status: <span className="capitalize">{clearance.overallStatus}</span></p>
                         {clearance.receivedDate && (
-                            <p className="text-sm text-brand-500 mt-1">Received on: {new Date(clearance.receivedDate).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p className="text-sm text-brand-500 mt-1">Received on: {formatSchoolDay(clearance.receivedDate, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         )}
                         {clearance.receivedByUser && (
                             <p className="text-sm text-brand-500">Received by: {clearance.receivedByUser.name}</p>

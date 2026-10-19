@@ -12,6 +12,7 @@ use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -285,7 +286,10 @@ class AccountingController extends Controller
     {
         $this->authorize('dailyReport', Payments::class);
 
-        $date = $request->date ?? now()->toDateString();
+        // The sheet is for a day of the school's calendar. `now()->toDateString()` answered in UTC, so between
+        // midnight and 08:00 Manila the cashier's "today" was yesterday, and a URL that sent anything but a plain
+        // date used to be compared as raw text.
+        $date = SchoolTime::dayOrNull($request->date) ?? SchoolTime::today();
 
         // Money still in the drawer: a settled receipt and an installment are both cash
         // taken; a void and a refund are not.
@@ -299,9 +303,13 @@ class AccountingController extends Controller
         // day it went out, which is why the row carries its own date rather than having
         // `paymentDate` rewritten. Money leaving the drawer with no line on the daily
         // count is cash that cannot be explained (ruling 14).
+        // `refundedAt` is a real instant, so the day is the school's: UTC midnight would hand back a refund
+        // processed in the school's morning onto the previous sheet. `paymentDate` above is left as `whereDate`
+        // on purpose — every one of its rows is midnight from a date-only input, so its stored date *is* the day.
         $refunds = Payments::with(['enrollment.student', 'refundedByUser'])
             ->where('paymentStatus', PaymentStatus::Refunded)
-            ->whereDate('refundedAt', $date)
+            ->where('refundedAt', '>=', SchoolTime::startOfSchoolDay($date))
+            ->where('refundedAt', '<', SchoolTime::startOfNextSchoolDay($date))
             ->orderByDesc('paymentId')
             ->get();
 

@@ -2,12 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 // Overall clearance status → badge tone
 
 // Per-requirement approval status → badge tone
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
+// Every row on this desk is a slip the school received — an instant, read at the school, not in the browser's zone.
+const fmtDate = (d) => formatSchoolDay(d, { year: 'numeric', month: 'short', day: '2-digit' });
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.

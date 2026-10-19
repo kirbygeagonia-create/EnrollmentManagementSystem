@@ -13,6 +13,7 @@ use App\Models\Roles;
 use App\Models\Settings;
 use App\Models\Shiftingrequests;
 use App\Models\Staffusers;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -497,8 +498,11 @@ class UserManagementController extends Controller
         $query = Auditlogs::with('user')
             ->when($request->action, fn ($q, $action) => $q->where('action', $action))
             ->when($request->entityTable, fn ($q, $table) => $q->where('entityTable', $table))
-            ->when($request->dateFrom, fn ($q, $date) => $q->whereDate('createdAt', '>=', $date))
-            ->when($request->dateTo, fn ($q, $date) => $q->whereDate('createdAt', '<=', $date))
+            // The desk picks calendar days in the school's own zone, so the bound is the school's midnight, not
+            // UTC's: `whereDate('createdAt', …)` cut the day eight hours early and dropped the first third of
+            // every day's audit rows out of the range the officer had just asked for.
+            ->when(SchoolTime::dayOrNull($request->dateFrom), fn ($q, $date) => $q->where('createdAt', '>=', SchoolTime::startOfSchoolDay($date)))
+            ->when(SchoolTime::dayOrNull($request->dateTo), fn ($q, $date) => $q->where('createdAt', '<', SchoolTime::startOfNextSchoolDay($date)))
             ->when($request->adminOverride === '1', fn ($q) => $q->where('adminOverride', true))
             ->orderByDesc('createdAt');
 

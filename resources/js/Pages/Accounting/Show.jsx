@@ -3,7 +3,7 @@ import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Badge, CauseEffectModal, Modal, FormSection, StatCard, WorkflowStepper, formatStatusLabel } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import useFormKeyboardNav from '@/Hooks/useFormKeyboardNav';
-import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import { formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
 // server did not send. A real 0 still renders as ₱0.00.
@@ -349,7 +349,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                                         )}
                                         {row.paymentStatus === 'refunded' && (
                                             <span className="text-3xs text-slate-500" title={row.refundedReason || 'Refunded'}>
-                                                returned {row.refundedAt ? new Date(row.refundedAt).toLocaleDateString('en-PH') : ''}
+                                                returned {row.refundedAt ? formatSchoolDay(row.refundedAt) : ''}
                                             </span>
                                         )}
                                     </div>

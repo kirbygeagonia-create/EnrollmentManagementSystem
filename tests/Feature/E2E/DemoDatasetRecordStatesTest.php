@@ -10,6 +10,7 @@ use App\Models\Payments;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Models\Workflowsteps;
+use App\Support\SchoolTime;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
@@ -182,7 +183,7 @@ class DemoDatasetRecordStatesTest extends TestCase
 
         $today = Payments::where('enrollmentId', $juanEnrollment->enrollmentId)
             ->where('orNumber', 'DEMO-OR-TODAY-01')
-            ->whereDate('paymentDate', now()->toDateString())
+            ->whereDate('paymentDate', SchoolTime::today())
             ->first();
         $this->assertNotNull(
             $today,

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import Badge from './Badge';
 import StepProgress from './StepProgress';
 import { formatStatusLabel } from './statusLabel';
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 // Workflow step status → badge tone
 const stepStatusTone = {
@@ -84,7 +85,7 @@ export default function WorkflowStepper({ workflow, enrollment }) {
                             {status === 'returned'
                                 ? enrollment?.returnReason || 'Awaiting correction'
                                 : meta?.signedBy
-                                    ? `${meta.signedBy.firstName} ${meta.signedBy.lastName} — ${meta.signedDate ? new Date(meta.signedDate).toLocaleDateString('en-PH') : ''}`
+                                    ? `${meta.signedBy.firstName} ${meta.signedBy.lastName} — ${meta.signedDate ? formatSchoolDay(meta.signedDate) : ''}`
                                     : meta
                                         ? 'Awaiting signature'
                                         : 'Not part of this student type'}

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Semester;
+use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -34,11 +35,14 @@ class Academicterms extends Model
      */
     public static function covering(?Carbon $on = null): ?self
     {
-        $on ??= Carbon::now();
+        // "Which term is it now" is asked on the school's civil calendar. Comparing a UTC instant to a DATE
+        // column left a term that opens on the 1st closed until 08:00 Manila — and the answer is what feeds the
+        // current term in every desk's chrome, so the gap was not local to one screen.
+        $day = $on === null ? SchoolTime::today() : SchoolTime::civilDateOf($on);
 
         return static::query()
-            ->whereDate('startDate', '<=', $on)
-            ->whereDate('endDate', '>=', $on)
+            ->whereDate('startDate', '<=', $day)
+            ->whereDate('endDate', '>=', $day)
             ->first();
     }
 

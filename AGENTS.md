@@ -155,6 +155,32 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   PHP on this box, so a probe that wants HEAD content must read exported copies and **refuse when one is missing** —
   twice in this lane a probe globbed zero files or got an empty string and printed the same clean verdict a real
   measurement would have.
+- **After any batch that draws a day/month boundary or renders an institutional moment**, run
+  `php storage/app/scratch/lane50-date-day-shift.php` (it owns both classes now) and prove the behaviour with
+  `php storage/app/scratch/mutate-lane51-tests.php`. The application's clock is UTC and `config/database.php`
+  forces `+00:00` on every session — keep it that way; **the school's civil time is a separate declaration**,
+  `config/school.php`, read only through `App\Support\SchoolTime` (`startOfSchoolDay`, `startOfNextSchoolDay`,
+  `civilDateOf`, `today`, `dayOrNull`). Comparing a UTC instant to a `DATE` column, or `whereDate` on a
+  `DATETIME`, cuts the school's day eight hours early — measured: 1,459 of 3,426 audit rows, 56 of 187 signed
+  boxes and 11 of 15 payments land on another date depending on the midnight used. Desk-facing fixes are
+  half-open intervals on two instants (no DB date function, so SQLite agrees), and the browser holds the same
+  line: `calendarDay.js` declares `SCHOOL_TIMEZONE` once and `SchoolTimeTest` pins it against the config, so a
+  signature reads the same in Manila, on this box and to a visitor. Two traps this lane paid for: a shape-only
+  date test lets `2026-13-45` through and **Carbon rolls it into a real date in another year** — consult
+  `checkdate` and ignore a bound you cannot read rather than answering it; and **a shift probe that keeps the
+  first byte-identical offset mis-moves its own findings** — lane 51's first probe scanned −14..+14 and stopped at
+  the first match, so a one-line citation that coincided with a `});` twelve rows earlier reported a confident
+  wrong move while the rest reported "unchanged". The pass built from it moved every PHP pointer and left eight
+  JSX pointers and eight bare continuations (`the signature at :273`, which names no file) behind, and nothing
+  downstream complained, because a pointer one row short still lands on a live line and the bounds sweep only
+  refuses a line past the end or a blank one. `lane51-reconcile-cites.php` replaces it: it joins the document as
+  it stood in HEAD with `git diff -U0 HEAD` and compares the **multiset** of cited ranges per file — a
+  per-citation test cannot see the 186→187 / 187→188 crossover, where both numbers are on the page and both are
+  correct — then pairs rows by their masked words to judge the bare continuations. Prove it with
+  `php storage/app/scratch/mutate-lane51-cites.php`. And a harness that shells out to `artisan` must `chdir` to
+  the project first: from a drifted cwd it executed nothing and reported all six mutants as surviving at
+  "0 passed" — a broken instrument, not a result, which is why the harness now refuses when the suite prints no
+  `Tests:` line.
 - **When an edit moves lines in a file the document cites, verify the shift against both versions of that file,
   never against arithmetic.** `php storage/app/scratch/lane46-probe-exam-cites.php` compares
   `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
@@ -276,6 +302,18 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `curriculums.effectiveYear` is a DATE used as a year, so `getFullYear()` on it read 2023 for a 2024 row.
   `tests/Feature/CalendarDayPayloadTest.php` pins the payload spelling the module depends on — it goes red if
   `APP_TIMEZONE` stops being UTC, proved by planting that default as `Asia/Manila`.
+- **The school's zone is not the application's zone** (lane 51). Instants are stored and compared in UTC —
+  `config/app.php`, and `+00:00` forced on every MySQL session since lane 31 — and that stays. What a person is
+  told is computed in `config/school.php` (`SCHOOL_TIMEZONE`, default `Asia/Manila`) and nowhere else:
+  `App\Support\SchoolTime::startOfSchoolDay()` / `startOfNextSchoolDay()` give the UTC instants bracketing a
+  school day, `civilDateOf()` says which day an instant is at the school, and `dayOrNull()` returns null for a
+  value that is not a real calendar date (it checks `checkdate`, because `2026-13-45` otherwise arrives at
+  2027-02-13). Never write `whereDate('createdAt'|'refundedAt'|…, $deskDate)` or compare `now()` against a DATE
+  column on a desk-facing screen: use the pair of instants, which both MySQL and the SQLite suite answer the same
+  way. `Academicterms::covering()` and the dashboard's `activeTerms` / monthly-revenue tiles already follow this.
+  In the JSX, day cells use `formatCalendarDay`; a date-only or date-and-time view of an instant uses
+  `formatSchoolDay` / `formatSchoolMoment`, never `toLocaleDateString()` unqualified, and `Dashboard`'s
+  greeting / `max=` "today" values may keep the browser's own clock because they are chrome, not a record. The **demo data follows the desk, not the daemon**: `tools/seed_full_demo_pipeline.php` and its end-to-end test date every `today` row with `SchoolTime::today()`, because between 16:00Z and midnight `now()->toDateString()` writes a receipt onto a day the Accounting drawer will never ask for — the seed then reports success while the screen it exists to demonstrate sits empty. Adding that import moved one line in each file, and with it four document citations, two of them bare continuations inside a single sentence.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
@@ -398,11 +436,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
   `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
   them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
-  `tools/seed_full_demo_pipeline.php:1685`): the guard asks only whether the student still holds a record on that
+  `tools/seed_full_demo_pipeline.php:1686`): the guard asks only whether the student still holds a record on that
   term, and a dropped one holds nothing, so the retirement looked like a missing year to be refilled, and
   `$completeWorkflow()` signed every box on the way. (Measured again 2026-10-16, after a batch that moved the first
-  140 lines of this file: the seat guard is `tools/seed_full_demo_pipeline.php:1744` and the record that guard
-  seats is created at `tools/seed_full_demo_pipeline.php:1750` — re-measure before repeating those numbers, and
+  140 lines of this file: the seat guard is `tools/seed_full_demo_pipeline.php:1745` and the record that guard
+  seats is created at `tools/seed_full_demo_pipeline.php:1751` — re-measure before repeating those numbers, and
   measure by *meaning*, which is the only reason both carry the file name: the checker reads a bare `:NN` as prose
   and passes it. The pair they replaced, `:1730` and `:1736`, land on a blank line and on a `->first();` belonging
   to the term lookup two steps earlier, and the older `:1607` sits in the clearance-slip seating block, which is

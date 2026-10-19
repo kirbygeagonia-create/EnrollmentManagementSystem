@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel } from '@/Components/ui';
 import { useState } from 'react';
+import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 const statusTone = {
     pending: 'warning',
@@ -10,7 +11,9 @@ const statusTone = {
     rejected: 'danger',
 };
 
-const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: '2-digit' }) : '—');
+// Every field this helper paints is a moment a person acted — the department's signature, the dean's decision —
+// so it reads at the school, not in the browser's zone.
+const fmt = (d) => formatSchoolDay(d, { year: 'numeric', month: 'short', day: '2-digit' });
 
 const name = (u) => (u ? `${u.firstName} ${u.lastName}` : '—');
 
