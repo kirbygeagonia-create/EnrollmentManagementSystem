@@ -88,7 +88,8 @@ C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqldump.exe -u root --single-trans
 Rebuilding from empty instead runs every desk and workflow queue and leaves **no**
 record in a state a desk could not have produced — measured 2026-10-16 on a scratch
 database: all four steps exit 0, the pipeline reports no findings, and
-`php artisan ems:audit:record-states` reads all 12 rules quiet:
+`php artisan ems:audit:record-states` prints no FAIL line (12 rules then; the register
+carries 14 since lane 53 added a bare fee sheet and an unrecorded payment step on 2026-10-18):
 
 ```powershell
 C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe artisan migrate:fresh --force

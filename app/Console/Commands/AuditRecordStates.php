@@ -11,6 +11,8 @@ use App\Models\Documentprintlog;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Idrequests;
+use App\Models\Payments;
+use App\Models\Studentassessments;
 use App\Models\Workflowsteps;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +109,16 @@ class AuditRecordStates extends Command
                 'count' => $this->idBoxWithoutValidatedRequest(),
                 'severity' => 'decision',
                 'why' => 'Validation is the ID box signing, so a signed box normally carries the request that signed it. Enrollment 53 is the exception by ruling, not by accident: its contradictory request row was deleted 2026-10-11 and the signature was deliberately left standing.',
+            ],
+            'A fee sheet whose total has no fee lines behind it' => [
+                'count' => $this->sheetWithoutLines(),
+                'severity' => 'impossible',
+                'why' => 'AssessmentController::compute() writes one `charges` row per priced line in the same transaction as the total, and the fee sheet prints the lines under a header that prints the total — so a sheet with a total and no lines is a paper no desk issued, and its ₱17,500 has no breakdown to defend it.',
+            ],
+            'A receipt on an account that never entered `paid`' => [
+                'count' => $this->receiptWithoutPaidStep(),
+                'severity' => 'impossible',
+                'why' => 'AccountingController::record() takes money only on an `assessed` enrollment and moves it to `paid` when the balance clears, and only EnrollmentStateMachine::transition() writes that step — so a settled account with receipts and no `paid` in its history was funded behind the desk, and the status-history panel the Registrar reads shows money that appeared by itself. A zero balance with no receipt is not this state: a grant can cover an account, and that account genuinely owes no cash.',
             ],
         ];
 
@@ -285,6 +297,38 @@ class AuditRecordStates extends Command
             ->where('stepStatus', WorkflowStepStatus::Completed->value))
             ->where('enrollmentStatus', '!=', EnrollmentStatus::Dropped->value)
             ->whereDoesntHave('idrequests', fn ($q) => $q->where('status', IdRequestStatus::Validated))
+            ->count();
+    }
+
+    /**
+     * A fee sheet that states a total while the table beneath it holds nothing to add up.
+     *
+     * Counted per sheet rather than per enrollment, because the desk opens one account and prints
+     * its lines: a retired sheet beside a live one is still a sheet that cannot be explained.
+     */
+    private function sheetWithoutLines(): int
+    {
+        return Studentassessments::where('totalAssessedAmount', '>', 0)
+            ->whereDoesntHave('charges')
+            ->count();
+    }
+
+    /**
+     * An account the school has been paid for, on an enrollment that never recorded being paid.
+     *
+     * The receipt is what makes this decidable: a zero balance with no receipt is a grant covering
+     * the account, and that account legitimately never reaches the drawer. The sub-query is built
+     * from `Payments::held()` rather than a restated status list, because a guard that re-lists what
+     * the drawer holds goes stale the day the drawer's list changes — see the money rule in AGENTS.md.
+     */
+    private function receiptWithoutPaidStep(): int
+    {
+        return Enrollments::whereIn('enrollmentId', Payments::held()->select('enrollmentId'))
+            ->whereHas('studentassessments', fn ($q) => $q
+                ->where('totalAssessedAmount', '>', 0)
+                ->where('remainingBalance', '<=', 0))
+            ->whereDoesntHave('enrollmentstatushistory', fn ($q) => $q
+                ->where('toStatus', EnrollmentStatus::Paid->value))
             ->count();
     }
 }

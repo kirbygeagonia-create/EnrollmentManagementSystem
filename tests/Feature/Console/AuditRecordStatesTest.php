@@ -238,6 +238,8 @@ class AuditRecordStatesTest extends TestCase
             'A printed paper attributable to no enrollment',
             'A Clinic box signed with no health assessment behind it',
             'An ID box signed with no validated request behind it',
+            'A fee sheet whose total has no fee lines behind it',
+            'A receipt on an account that never entered `paid`',
         ] as $label) {
             $this->assertFlagged('ok', $label);
         }
@@ -472,5 +474,137 @@ class AuditRecordStatesTest extends TestCase
         $this->assertFlagged('FAIL', 'A printed paper attributable to no enrollment');
         $this->assertStringContainsString('record(s) in a state no desk action can produce', $out);
         $this->assertStringNotContainsString('waiting on a decision this command cannot make', $out);
+    }
+
+    #[Test]
+    public function a_fee_sheet_that_quotes_a_total_with_no_lines_under_it_is_named(): void
+    {
+        // Lane 53 (2026-10-18), found by weighing every account's lines against its header: DEMO-2026-014's
+        // sheet carried ₱17,500 over an empty `charges` table, because the demo seeder wrote that one sheet
+        // with a raw insert and never priced it. The fee sheet prints the lines under the total, so the desk
+        // read a figure with nothing beneath it to add up to it.
+        $feeTypeId = DB::table('feetypes')->insertGetId([
+            'feeName' => 'Tuition Fee (per unit)',
+            'defaultAmount' => 11250,
+            'unitBasis' => 'perUnit',
+        ]);
+
+        $assessmentId = DB::table('studentassessments')->insertGetId([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'totalAssessedAmount' => 17500.00,
+            'totalScholarshipCoverage' => 0.00,
+            'totalWaived' => 0.00,
+            'remainingBalance' => 17500.00,
+            'assessmentDate' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'A fee sheet whose total has no fee lines behind it');
+
+        // Priced, the same sheet reads clean — the rule asks for lines, and a check that could not go quiet
+        // would only be a permanent red.
+        DB::table('charges')->insert([
+            'assessmentId' => $assessmentId,
+            'feeTypeId' => $feeTypeId,
+            'amount' => 17500.00,
+            'waivedAmount' => 0.00,
+        ]);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'A fee sheet whose total has no fee lines behind it');
+    }
+
+    #[Test]
+    public function money_on_an_account_that_never_recorded_being_paid_is_named(): void
+    {
+        // AccountingController::record() takes cash only on an `assessed` enrollment and moves it to `paid`
+        // when the balance clears, and EnrollmentStateMachine::transition() is the only writer of that step —
+        // so receipts on a settled account with no `-> paid` in its history mean the money arrived without the
+        // desk that produces it. Five demo enrollments sat in exactly this state.
+        $this->seedSettledAccount(17500.00);
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'A receipt on an account that never entered `paid`');
+
+        $this->recordPaidStep();
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'A receipt on an account that never entered `paid`');
+    }
+
+    #[Test]
+    public function an_account_the_school_owes_nothing_because_it_owes_nothing_is_not_reported(): void
+    {
+        // The other half of the rule, and the reason it asks for a receipt rather than only a zero balance: a
+        // grant can cover an account outright, and §17 shows on the sheet that such an account owed no paper.
+        // Reporting it would make every scholarship demo a permanent red.
+        $this->seedSettledAccount(0.00);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'A receipt on an account that never entered `paid`');
+    }
+
+    /**
+     * A fee sheet settled to zero and, unless told otherwise, the receipt that settled it.
+     */
+    private function seedSettledAccount(float $receipt): void
+    {
+        $feeTypeId = DB::table('feetypes')->insertGetId([
+            'feeName' => 'Tuition Fee (per unit)',
+            'defaultAmount' => 17500,
+            'unitBasis' => 'perUnit',
+        ]);
+
+        $assessmentId = DB::table('studentassessments')->insertGetId([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'totalAssessedAmount' => 17500.00,
+            'totalScholarshipCoverage' => $receipt > 0 ? 0.00 : 17500.00,
+            'totalWaived' => 0.00,
+            'remainingBalance' => 0.00,
+            'assessmentDate' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('charges')->insert([
+            'assessmentId' => $assessmentId,
+            'feeTypeId' => $feeTypeId,
+            'amount' => 17500.00,
+            'waivedAmount' => 0.00,
+        ]);
+
+        if ($receipt === 0.00) {
+            return;
+        }
+
+        DB::table('payments')->insert([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'orNumber' => 'TEST-OR-'.uniqid(),
+            'amount' => $receipt,
+            'paymentDate' => now(),
+            'paymentMode' => 'cash',
+            'processedBy' => $this->signer->userId,
+            'paymentStatus' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * The history row the drawer would have written. Inserted rather than produced by
+     * EnrollmentStateMachine, because this file measures the register, not the machine.
+     */
+    private function recordPaidStep(): void
+    {
+        DB::table('enrollmentstatushistory')->insert([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'fromStatus' => 'assessed',
+            'toStatus' => 'paid',
+            'changedBy' => $this->signer->userId,
+            'remarks' => 'Full payment received',
+            'changedAt' => now(),
+        ]);
     }
 }

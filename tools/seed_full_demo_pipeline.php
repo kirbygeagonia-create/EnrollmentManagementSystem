@@ -152,6 +152,12 @@ foreach ([OfficeId::Registrar, OfficeId::Accounting, OfficeId::Scholarship, Offi
     $deskSigners[$deskOffice->value] = $namedId('staffusers', 'userId', 'username', 'office'.$deskOffice->value.'_head');
 }
 
+// Resolved here rather than in section 10 because the sections that mint an account — 6, 7 and the ledger
+// pass below — now move the enrollment through the states that account implies instead of writing the
+// status column. The machine is the only thing that records a status change, and a receipt with no change
+// behind it is what `ems:audit:record-states` counts.
+$stateMachine = app(EnrollmentStateMachine::class);
+
 /**
  * The account that owns one office's box, looked up by username, refusing when it is not seated.
  *
@@ -1095,7 +1101,10 @@ if (! $enrPat) {
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
         'formSignedDate' => now(),
-        'enrollmentStatus' => EnrollmentStatus::Paid,
+        // Seated at `assessed`, not at the `paid` this section is named for: the receipt below is what
+        // moves a record into `paid`, and only the state machine writes that step. Minted already-paid,
+        // the account held ₱17,500 with no Accounting action in the status history the Registrar reads.
+        'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
     $seedLoad($enrPat);
     $assPat = DB::table('studentassessments')->insertGetId([
@@ -1108,6 +1117,7 @@ if (! $enrPat) {
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+    charge_demo_fees((int) $assPat);
     DB::table('payments')->insert([
         'enrollmentId' => $enrPat->enrollmentId,
         'orNumber' => 'DEMO-OR-0003',
@@ -1119,6 +1129,12 @@ if (! $enrPat) {
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+    $enrPat = $stateMachine->transition(
+        $enrPat,
+        EnrollmentStatus::Paid,
+        Staffusers::find($deskSigners[OfficeId::Accounting->value]),
+        'Full payment received — cash OR DEMO-OR-0003'
+    );
     $wfPat = Enrollmentworkflow::create([
         'enrollmentId' => $enrPat->enrollmentId,
         'currentStep' => 3,
@@ -1258,8 +1274,6 @@ if (! $enrKev) {
 // $deskSigners now resolves with the other reference lookups above, where each desk is named by office
 // rather than by the user id this machine happened to hand out.
 
-$stateMachine = app(EnrollmentStateMachine::class);
-
 /**
  * Complete every box ahead of $officeId and leave that box pending, which is
  * exactly the state the desk in front of this one leaves behind. Written through
@@ -1343,15 +1357,22 @@ function demo_fee_lines(float $tuition = 11250.0): array
     ];
 }
 
-// The fee sheet every demo student is charged, from the seeded fee types.
-$chargeDemoFees = function (int $assessmentId, ?array $amounts = null): void {
+/**
+ * The fee sheet every demo student is charged, from the seeded fee types.
+ *
+ * A plain function for the same reason as `desk_signer_for()`: the create-only blocks in sections 6 and 7 sit
+ * ABOVE where this used to be a closure, and a closure variable does not exist until its own line runs. That
+ * is how DEMO-2026-014 got a total and no lines — the one sheet whose author could not reach the helper.
+ */
+function charge_demo_fees(int $assessmentId, ?array $amounts = null): void
+{
     foreach ($amounts ?? demo_fee_lines() as $feeTypeId => $amount) {
         DB::table('charges')->updateOrInsert(
             ['assessmentId' => $assessmentId, 'feeTypeId' => $feeTypeId],
             ['amount' => $amount, 'waivedAmount' => 0]
         );
     }
-};
+}
 
 // An Official Receipt is a controlled document, so the number is the key: re-running
 // the tool re-dates the slip rather than minting a second one for the same number.
@@ -1437,7 +1458,6 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     $deskSigners,
     $seedLoad,
     $assessmentFor,
-    $chargeDemoFees,
     $recordDemoPayment,
     $seatWorkflow
 ): ?array {
@@ -1474,7 +1494,7 @@ $seatRegistrar = function (string $schoolId, array $receipts) use (
     $enrollment->update(['evaluatedBy' => $evaluator->userId]);
 
     $assessmentId = $assessmentFor($enrollment, 17500.00);
-    $chargeDemoFees($assessmentId);
+    charge_demo_fees($assessmentId);
 
     if ($enrollment->enrollmentStatus === EnrollmentStatus::Evaluated) {
         $enrollment = $stateMachine->transition($enrollment, EnrollmentStatus::Assessed, $assessmentOfficer, 'Fees computed by Assessment');
@@ -2058,7 +2078,7 @@ DB::table('studentscholarships')->updateOrInsert(
 );
 
 $marisolAssessment = $assessmentFor($enrMarisol, 17500.00, 17500.00);
-$chargeDemoFees($marisolAssessment);
+charge_demo_fees($marisolAssessment);
 DB::table('studentassessments')->where('assessmentId', $marisolAssessment)->update(['remainingBalance' => 0]);
 $seatWorkflow($enrMarisol, OfficeId::Accounting->value);
 
@@ -2084,7 +2104,7 @@ if (! $enrIsagani) {
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Evaluated,
         Staffusers::find(department_evaluator_for_course(1)), 'Subject load proposed by Department Evaluation');
     $isaganiAssessment = $assessmentFor($enrIsagani, 17500.00);
-    $chargeDemoFees($isaganiAssessment);
+    charge_demo_fees($isaganiAssessment);
     $enrIsagani = $stateMachine->transition($enrIsagani, EnrollmentStatus::Assessed, Staffusers::find($deskSigners[OfficeId::Scholarship->value]), 'Fees computed by Assessment');
     $recordDemoPayment($enrIsagani, 'DEMO-OR-0004', 17500.00, 'cash');
     DB::table('studentassessments')->where('assessmentId', $isaganiAssessment)->update(['remainingBalance' => 0]);
@@ -2123,7 +2143,7 @@ foreach (['DEMO-2026-012' => 17500.00, 'DEMO-2026-013' => 18500.00] as $schoolId
 
     $assessmentId = DB::table('studentassessments')->where('enrollmentId', $enrollment->enrollmentId)->value('assessmentId');
     if ($assessmentId) {
-        $chargeDemoFees((int) $assessmentId, $schoolId === 'DEMO-2026-013'
+        charge_demo_fees((int) $assessmentId, $schoolId === 'DEMO-2026-013'
             ? demo_fee_lines(12250.0)   // her account is priced one unit higher, same four lines
             : demo_fee_lines());
         $paid = (float) DB::table('payments')->where('enrollmentId', $enrollment->enrollmentId)->where('paymentStatus', 'paid')->sum('amount');
@@ -2659,7 +2679,7 @@ if (! $enrCamille) {
 }
 $seedLoad($enrCamille);
 $camilleSheet = $assessmentFor($enrCamille, 17500.00);
-$chargeDemoFees($camilleSheet);
+charge_demo_fees($camilleSheet);
 $enrCamille->unsetRelation('enrollmentworkflow');
 $seatWorkflow($enrCamille, OfficeId::Scholarship->value);
 DB::table('studentassessments')->where('assessmentId', $camilleSheet)->update(['remainingBalance' => 17500.00]);
@@ -2704,7 +2724,7 @@ foreach (Enrollments::with('student')->where('termId', $termId)
     ->whereDoesntHave('studentassessments')
     ->get() as $unledgered) {
     $assessmentId = $assessmentFor($unledgered, 17500.00);
-    $chargeDemoFees($assessmentId);
+    charge_demo_fees($assessmentId);
     $recordDemoPayment($unledgered, "DEMO-OR-TERM-{$unledgered->enrollmentId}", 17500.00, 'cash');
     echo "✔ Ledger: opened and settled a fee sheet for {$unledgered->student->schoolIdNumber}"
         ." (enrollment {$unledgered->enrollmentId})\n";
@@ -2794,6 +2814,98 @@ foreach (DB::table('studentassessments as a')
         $ledgerWarnings[] = "{$sheet->schoolIdNumber} (enrollment {$sheet->enrollmentId}) is paid "
             .'₱'.number_format($paid, 2).' against a ₱'.number_format($due, 2).' assessment';
     }
+}
+
+// A fee sheet *is* its lines: AssessmentController::compute() writes one `charges` row per priced item in
+// the same transaction as the total, and the printed sheet quotes both. DEMO-2026-014's sheet was created
+// before section 7 charged it and carries ₱17,500 over an empty table, so price any sheet in the demo term
+// that has none. Only a sheet the demo's own four lines add up to: a total this tool cannot derive is the
+// record's, not the demo's, so it is reported rather than filled in with numbers somebody else chose.
+$pricedSheets = 0;
+
+$demoLineSum = array_sum(demo_fee_lines());
+
+foreach (DB::table('studentassessments as a')
+    ->join('enrollments as e', 'e.enrollmentId', '=', 'a.enrollmentId')
+    ->where('e.termId', $termId)
+    ->where('a.totalAssessedAmount', '>', 0)
+    ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('charges as c')
+        ->whereColumn('c.assessmentId', 'a.assessmentId'))
+    ->select('a.assessmentId', 'a.totalAssessedAmount')
+    ->get() as $bareSheet) {
+    if (abs($demoLineSum - (float) $bareSheet->totalAssessedAmount) > 0.005) {
+        $ledgerWarnings[] = "assessment {$bareSheet->assessmentId} totals ₱"
+            .number_format((float) $bareSheet->totalAssessedAmount, 2).' with no fee lines, and no set of demo lines'
+            .' adds up to it — the sheet was left unpriced rather than invented';
+
+        continue;
+    }
+
+    charge_demo_fees((int) $bareSheet->assessmentId);
+    $pricedSheets++;
+}
+
+if ($pricedSheets > 0) {
+    echo "✔ Ledger: priced {$pricedSheets} fee sheet(s) that had a total and no lines\n";
+}
+
+// A receipt is money the school took, and exactly one desk can take it: AccountingController::record()
+// refuses any enrollment but `assessed` and moves it to `paid` when the balance clears, and the state
+// machine is the only writer of that step. Sections 6 to 9 mint records already past that box, so an
+// account could be settled while its own history said nothing happened — the panel the Registrar reads
+// showed ₱17,500 arriving with no Accounting action behind it (`ems:audit:record-states` counts those).
+// Walk the enrollment the desk would have walked, then carry it back to wherever the record stands.
+// Idempotent: with the step on file, this loop finds nothing.
+$restoredSteps = 0;
+
+foreach (Enrollments::with('student')
+    ->where('termId', $termId)
+    ->whereHas('payments', fn ($q) => $q->held())
+    ->whereHas('studentassessments', fn ($q) => $q
+        ->where('totalAssessedAmount', '>', 0)
+        ->where('remainingBalance', '<=', 0))
+    ->whereDoesntHave('enrollmentstatushistory', fn ($q) => $q
+        ->where('toStatus', EnrollmentStatus::Paid->value))
+    ->get() as $unsettledTrail) {
+    $was = $unsettledTrail->enrollmentStatus;
+
+    // Only these two can reach `assessed` again. Anything else holding a settled account is the state
+    // the audit names, and restating it here would bury the record that has to be looked at.
+    if (! in_array($was, [EnrollmentStatus::Paid, EnrollmentStatus::Enrolled], true)) {
+        $ledgerWarnings[] = "{$unsettledTrail->student->schoolIdNumber} (enrollment {$unsettledTrail->enrollmentId})"
+            ." holds receipts on a settled account while `{$was->value}` cannot move to `assessed` — no step written";
+
+        continue;
+    }
+
+    $cashier = Staffusers::find($deskSigners[OfficeId::Accounting->value]);
+    $record = $stateMachine->transition(
+        $unsettledTrail,
+        EnrollmentStatus::Assessed,
+        $cashier,
+        'Reopened to record the receipt already on the account'
+    );
+    $record = $stateMachine->transition(
+        $record,
+        EnrollmentStatus::Paid,
+        $cashier,
+        'Full payment received — ledger step seated by tools/seed_full_demo_pipeline.php'
+    );
+
+    if ($was === EnrollmentStatus::Enrolled) {
+        $stateMachine->transition(
+            $record,
+            EnrollmentStatus::Enrolled,
+            Staffusers::find($deskSigners[OfficeId::Registrar->value]),
+            'Approved and enrolled — ledger step seated by tools/seed_full_demo_pipeline.php'
+        );
+    }
+
+    $restoredSteps++;
+}
+
+if ($restoredSteps > 0) {
+    echo "✔ Ledger: wrote the Accounting step that was missing on {$restoredSteps} settled account(s)\n";
 }
 
 echo "\n";

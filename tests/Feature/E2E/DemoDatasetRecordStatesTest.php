@@ -29,7 +29,7 @@ use Tests\TestCase;
  * rows), so this file can ask the question in CI: seed a fresh schema with the CI recipe, run the pipeline,
  * and read the audit.
  *
- * It reads the register rather than only its exit code, because the exit code lumps the eleven impossible
+ * It reads the register rather than only its exit code, because the exit code lumps the twelve impossible
  * states together. A note that climbs from 0 to 3 here says which rule and how many; the same climb in a
  * `php artisan` step that only checks the status says nothing until somebody asks.
  *
@@ -121,9 +121,9 @@ class DemoDatasetRecordStatesTest extends TestCase
 
         $counts = $this->registerCounts($report);
 
-        // Twelve rules print, each with its own number: a run that silently reports fewer is a run that
+        // Fourteen rules print, each with its own number: a run that silently reports fewer is a run that
         // measured less than the operator was told.
-        $this->assertCount(12, $counts, $report);
+        $this->assertCount(14, $counts, $report);
 
         foreach ($counts as $label => $count) {
             if ($label === 'An ID box signed with no validated request behind it') {

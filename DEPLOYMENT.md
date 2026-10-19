@@ -409,14 +409,14 @@ act on: it means `mysqldump`, cron and phpMyAdmin are stamping Y. A plain FAIL m
    had from the start: every impossible record this project found by hand — a validated ID
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
-   not exist — is one of its twelve rules. A non-zero count means a write path regressed or a row
+   not exist — is one of its fourteen rules. A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Two of those twelve are different in kind and only ever `note`, because each counts
+   the status column. Two of those fourteen are different in kind and only ever `note`, because each counts
    a state an office has ruled on rather than a defect: a Clinic box signed with no health assessment
    behind it, and an ID box signed with no validated request behind it — the second one is enrollment 53,
    whose contradictory request row was deleted 2026-10-11 while its signature was deliberately left
    standing. A report tool must not decide those over the office's hand, so it counts them and stays
-   green. The other ten fail the run, and the third of the once-noted rules joined them on 2026-10-15:
+   green. The other twelve fail the run, and the third of the once-noted rules joined them on 2026-10-15:
    printed papers attributable to nobody (docx §25 P-14) had been kept as a note only because 21 legacy
    rows sat in that state and pruning or attributing them was somebody's call. That call is made — the
    rows are behind a manifest — and no paper this application prints can leave all three keys NULL, so a

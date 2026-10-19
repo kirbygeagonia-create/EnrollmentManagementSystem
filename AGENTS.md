@@ -317,7 +317,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
-  `exam.students`) are read with `->json()` as normal.
+  `exam.students`) are read with `->json()` as normal. Outside the test harness — a probe that drives the HTTP
+  kernel itself — `Illuminate\Http\Response` has no `viewData()`, and a request carrying only `X-Inertia: true`
+  is answered **409 with no props** because it lacks the server's `X-Inertia-Version`; read the payload out of
+  the page's `data-page` attribute instead (`html_entity_decode()` then `json_decode()`), which is the same JSON
+  the browser receives. Measured on `lane53-probe-feesheet-live.php`, whose first two runs reported a clean
+  verdict from a response that had never reached the controller's props at all.
 - A refusal that *said why* now reaches the desk two ways (lane 28): `resources/views/errors/403.blade.php`
   prints the reason for a desk the browser lands on, and `bootstrap/app.php` returns it as `{"message": …}`
   for a caller that asked for JSON. Both ask `App\Support\DenialReason::of()` — Laravel's placeholder
@@ -430,17 +435,33 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - In `tools/seed_full_demo_pipeline.php` a shared helper must be a plain function, not a closure: most call
   sites sit inside closures that capture only the variables they list, so a closure-valued helper throws
   `Undefined variable` the moment the pipeline reaches it. Rehearsing the whole chain on a copy caught this;
-  no test executes `tools/`.
+  no test executes `tools/`. The same trap has a silent face: a top-level block written **above** the line
+  where a closure is assigned cannot reach it either, and nothing errors — the block just writes its own rows.
+  That is how one demo fee sheet got a `studentassessments` total and no `charges` (lane 53): the pricing
+  closure was assigned some 250 lines below the section that needed it, so three neighbouring sections each
+  hand-wrote their own insert — and the third forgot its four `charges` rows entirely, which no screen,
+  test or gate noticed until the accounts were weighed line by line. Hoist the helper
+  (`charge_demo_fees()`, `demo_fee_lines()`, `desk_signer_for()`) and call it from every site.
+- **A receipt is evidence of a state transition, not just of money** (lane 53). `AccountingController::record()`
+  takes a payment only on an `assessed` enrollment and marks it `paid` when the balance clears, and
+  `EnrollmentStateMachine::transition()` is the *only* writer of `enrollmentstatushistory`. So a settled
+  account with receipts and no `-> paid` step is money that arrived with no desk action behind it, and the
+  status-history panel the Registrar reads says so — `ems:audit:record-states` counts it. A seeder that mints
+  a row already past Accounting therefore owes that row its trail: walk the states (`enrolled → assessed →
+  paid → enrolled`), and say in the remark that the tool wrote it, so a reconstruction is never mistaken for a
+  desk act. Two shapes that look like this defect and are not: a **part** payment on an `assessed` account (the
+  desk marks nothing until the last peso) and a zero balance with **no** receipt (a grant covered it, §17). Ask
+  for `Payments::held()` receipts, not for a zero balance.
 - **A data decision that a seed tool regenerates is not a decision — go find the generator.** Seven
   `enrollments` whose Clinic and ID boxes were signed with no assessment and no validated request behind them
   were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
   `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
   them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
-  `tools/seed_full_demo_pipeline.php:1686`): the guard asks only whether the student still holds a record on that
+  `tools/seed_full_demo_pipeline.php:1706`): the guard asks only whether the student still holds a record on that
   term, and a dropped one holds nothing, so the retirement looked like a missing year to be refilled, and
   `$completeWorkflow()` signed every box on the way. (Measured again 2026-10-16, after a batch that moved the first
-  140 lines of this file: the seat guard is `tools/seed_full_demo_pipeline.php:1745` and the record that guard
-  seats is created at `tools/seed_full_demo_pipeline.php:1751` — re-measure before repeating those numbers, and
+  140 lines of this file: the seat guard is `tools/seed_full_demo_pipeline.php:1765` and the record that guard
+  seats is created at `tools/seed_full_demo_pipeline.php:1771` — re-measure before repeating those numbers, and
   measure by *meaning*, which is the only reason both carry the file name: the checker reads a bare `:NN` as prose
   and passes it. The pair they replaced, `:1730` and `:1736`, land on a blank line and on a `->first();` belonging
   to the term lookup two steps earlier, and the older `:1607` sits in the clearance-slip seating block, which is
