@@ -589,34 +589,31 @@ $juanStudent = Students::where('schoolIdNumber', 'DEMO-2026-001')->first();
 if ($juanStudent) {
     $juanEnrollment = Enrollments::where('studentId', $juanStudent->studentId)->first();
     if ($juanEnrollment) {
-        $todayPayment = DB::table('payments')
-            ->where('enrollmentId', $juanEnrollment->enrollmentId)
-            ->whereDate('paymentDate', SchoolTime::today())
-            ->first();
-        if (! $todayPayment) {
-            // The OR number is unique and controlled, so re-running this on a
-            // later calendar day must re-date the existing slip rather than
-            // insert a second one with the same number.
-            $earlierPayment = DB::table('payments')->where('orNumber', 'DEMO-OR-TODAY-01')->first();
-            if ($earlierPayment) {
-                DB::table('payments')
-                    ->where('paymentId', $earlierPayment->paymentId)
-                    ->update(['paymentDate' => SchoolTime::today(), 'updated_at' => now()]);
-                echo "✔ Re-dated Juan Dela Cruz's demo payment to today (Daily Collections Report active)\n";
-            } else {
-                DB::table('payments')->insert([
-                    'enrollmentId' => $juanEnrollment->enrollmentId,
-                    'orNumber' => 'DEMO-OR-TODAY-01',
-                    'amount' => 17500.00,
-                    'paymentDate' => SchoolTime::today(),
-                    'paymentMode' => 'cash',
-                    'processedBy' => $deskSigners[OfficeId::Accounting->value],
-                    'paymentStatus' => 'paid',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                echo "✔ Added today-dated payment for Juan Dela Cruz (Daily Collections Report active)\n";
-            }
+        // The report needs the slip by its number, not merely money dated today. Asking the weaker question is
+        // how this guard went wrong on 2026-10-18: the create site above now settles the account itself, with
+        // `paymentDate` of today, so a payment WAS dated today while the named receipt did not exist — and the
+        // end-to-end leg CI runs after this step reads the number, so the demo's Daily Collections screen would
+        // have had nothing to show. The OR number is unique and controlled, so a later calendar day re-dates
+        // the existing slip rather than inserting a second one.
+        $namedSlip = DB::table('payments')->where('orNumber', 'DEMO-OR-TODAY-01')->first();
+        if ($namedSlip === null) {
+            DB::table('payments')->insert([
+                'enrollmentId' => $juanEnrollment->enrollmentId,
+                'orNumber' => 'DEMO-OR-TODAY-01',
+                'amount' => 17500.00,
+                'paymentDate' => SchoolTime::today(),
+                'paymentMode' => 'cash',
+                'processedBy' => $deskSigners[OfficeId::Accounting->value],
+                'paymentStatus' => 'paid',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            echo "✔ Added today-dated payment for Juan Dela Cruz (Daily Collections Report active)\n";
+        } elseif (substr((string) $namedSlip->paymentDate, 0, 10) !== SchoolTime::today()) {
+            DB::table('payments')
+                ->where('paymentId', $namedSlip->paymentId)
+                ->update(['paymentDate' => SchoolTime::today(), 'updated_at' => now()]);
+            echo "✔ Re-dated Juan Dela Cruz's demo payment to today (Daily Collections Report active)\n";
         }
     }
 }

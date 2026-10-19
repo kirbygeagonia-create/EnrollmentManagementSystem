@@ -137,7 +137,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `ems_l54_a` or `ems_l54_b`, and a case whose anchor matches nothing, or whose run reaches no verdict, prints BAD
   rather than passing: the first run threw on a `dirname()` one level short and still left the shell reporting
   success. `storage/app/scratch/lane54-live-ledger-baseline.php` is its read-only counterpart, asking the same
-  questions of live `ems` *before* the changed tool is run over the live rows.
+  questions of live `ems` *before* the changed tool is run over the live rows. And after any change to the
+  generator, run CI's own last step against the dataset it just built —
+  `E2E_DB_DATABASE=<schema> vendor/bin/phpunit tests/Feature/E2E --fail-on-skipped` — because that is the only
+  place the pipeline's output is read by the walkthrough's legs. On 2026-10-18 it caught what five local green
+  gates could not: making the paid step generator-owned settled Juan Dela Cruz's account with a receipt dated
+  *today*, so the guard beside it that asked "is any money dated today?" found an answer and never created
+  `DEMO-OR-TODAY-01` — the slip the Daily Collections Report reads by its number. The weaker question was the
+  bug; ask whether the named row exists.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -258,7 +265,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   had been given, while `Studentassessments::outstandingBalance()` sums `held()`; on any account holding an
   installment the generator's ledger pass would therefore rewrite `remainingBalance` back over what the cashier
   already collected, and the shortfall loop beside it would take a second receipt for money nobody handed over.
-  All five now call `demo_held()` (`tools/seed_full_demo_pipeline.php:1399-1402`), which asks the model's own
+  All five now call `demo_held()` (`tools/seed_full_demo_pipeline.php:1396-1399`), which asks the model's own
   scope rather than restating the status list. Measured: an ₱2,000 installment leaves ₱15,500 stored, and the
   paid-only version of the helper put it back to ₱17,500 — proved both ways by
   `storage/app/scratch/lane54e-installment-survives.php`, which plants the defect in a copy of the tool and
