@@ -177,7 +177,7 @@ $case('control', function () use ($build, $pipeline, $tool, $schema, $buildSchem
         return false;
     }
 
-    printf("  ok   the real tool passes clean on %s: all four Ledger lines read 0, exit 0\n", $buildSchema);
+    printf("  ok   the real tool passes clean on %s: the four Ledger lines this harness owns read 0, exit 0\n", $buildSchema);
 
     return true;
 });
@@ -345,26 +345,51 @@ $case('overpaid', function () use ($build, $pipeline, $tool, $schema, $labels, $
     }
     [$code] = $pipeline($tool, $schema);
     if ($code !== 0) {
-        printf("  BAD  the tool did not pass before this case inflated a receipt (exit %d)\n", $code);
+        printf("  BAD  the tool did not pass before this case overpaid a sheet (exit %d)\n", $code);
 
         return false;
     }
 
-    $receipt = DB::table('payments as p')
-        ->join('enrollments as e', 'e.enrollmentId', '=', 'p.enrollmentId')
+    // An extra receipt, not a perturbed one, and on an account the tool cannot rebalance. This case used to
+    // multiply the first demo receipt it found, and lane 56 made that receipt one the tool writes by OR number —
+    // so the second run restated the amount, the line stayed at 0, and the harness called a working report broken.
+    // The first receipt in the term belongs to the account whose collection the split pass rebalances, so a plant
+    // there is swallowed too. A defect the thing under test can heal before measuring is not a planted defect:
+    // plant the state, somewhere nothing reconciles.
+    $rebalanced = (int) DB::table('payments')->where('orNumber', 'DEMO-OR-TODAY-01')->value('enrollmentId');
+    $sheet = DB::table('studentassessments as a')
+        ->join('enrollments as e', 'e.enrollmentId', '=', 'a.enrollmentId')
         ->where('e.termId', $demoTerm)
-        ->whereIn('p.paymentStatus', ['paid', 'partial'])
-        ->orderBy('p.paymentId')
+        ->where('a.totalAssessedAmount', '>', 0)
+        ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('payments as p')
+            ->whereColumn('p.enrollmentId', 'a.enrollmentId')
+            ->whereIn('p.paymentStatus', ['paid', 'partial']))
+        ->when($rebalanced > 0, fn ($q) => $q->where('a.enrollmentId', '!=', $rebalanced))
+        ->orderBy('a.assessmentId')
         ->first();
 
-    if ($receipt === null) {
-        echo "  BAD  no held receipt on the demo term to inflate\n";
+    if ($sheet === null) {
+        echo "  BAD  no collected fee sheet outside the rebalanced account to overpay\n";
 
         return false;
     }
 
-    DB::table('payments')->where('paymentId', $receipt->paymentId)
-        ->update(['amount' => (float) $receipt->amount * 3]);
+    $due = (float) $sheet->totalAssessedAmount - (float) $sheet->totalScholarshipCoverage - (float) $sheet->totalWaived;
+
+    DB::table('payments')->insert([
+        'enrollmentId' => $sheet->enrollmentId,
+        'orNumber' => 'L54-OVERPAID-'.$sheet->enrollmentId,
+        'amount' => $due + 100.00,
+        'paymentDate' => App\Support\SchoolTime::today(),
+        'paymentMode' => 'cash',
+        // Signed by whoever signed this account's real receipt; a sheet with none is the Accounting desk's own,
+        // and the column is nullable — the plant differs from the honest dataset in one column, the money.
+        'processedBy' => DB::table('payments')->where('enrollmentId', $sheet->enrollmentId)->value('processedBy')
+            ?? DB::table('staffusers')->where('officeId', 2)->value('userId'),
+        'paymentStatus' => 'paid',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
     [$code, $out] = $pipeline($tool, $schema);
     $n = $lineCount($out, $labels['overpaid']);
@@ -375,7 +400,7 @@ $case('overpaid', function () use ($build, $pipeline, $tool, $schema, $labels, $
         return false;
     }
     if ($n < 1 || $code === 0) {
-        printf("  FAIL the inflated receipt left the line at %d and exit %d\n", $n, $code);
+        printf("  FAIL the extra receipt left the line at %d and exit %d\n", $n, $code);
         echo substr($out, -1500), "\n";
 
         return false;

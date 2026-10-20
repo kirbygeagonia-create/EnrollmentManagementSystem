@@ -392,9 +392,11 @@ thing is CI's own order against a MySQL schema — `migrate`, the seeders, the p
 `tools/` itself is outside every static gate — PHPStan analyses `app`, and `pint.json` excludes `tools` — so the file is proven by running it and reading what
 it prints, which is now also what CI does.
 
-**Its desk report now carries the states the audit refuses.** Since lane 54 the report prints four `Ledger —`
-lines — a fee sheet with a total and no lines, a paid step this run had to reconstruct, a returning claim with no
-year behind it, and receipts exceeding their sheet — and any one of them non-zero makes the run exit 1. Before
+**Its desk report now carries the states the audit refuses.** Since lane 54 the report has printed a `Ledger —`
+line for each state it repairs: six then — a fee sheet with a total and no lines, a paid step this run had to
+reconstruct, a returning claim with no year behind it, and receipts exceeding their sheet, beside the two it
+already had — and a seventh since lane 56, the receipt it had to re-mark. Any one of them non-zero makes the
+run exit 1. Before
 this the tool repaired lane 53's two impossible records in a loop that reported success either way, so a green
 pipeline said nothing about whether its own output needed the repair. Each line was handed exactly the defect it
 names, one case to a freshly built schema, with a clean control that reads 0 on all four
@@ -448,17 +450,18 @@ clear: the row cannot go red, because the application's own answers are already 
    had from the start: every impossible record this project found by hand — a validated ID
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
-   not exist — is one of its sixteen rules. Two of the sixteen are the timetable: two schedules of one block
+   not exist, a receipt that says the account is settled while it still owes — is one of its
+   seventeen rules. Two of the seventeen are the timetable: two schedules of one block
    meeting at one hour, and a room or an officer in two schedules at one hour — the collisions the Blocking desk
    has refused on its form since that form existed, counted here so a write path that bypasses the form is
    visible too (ruled 2026-10-19). A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Two of those sixteen are different in kind and only ever `note`, because each counts
+   the status column. Two of those seventeen are different in kind and only ever `note`, because each counts
    a state an office has ruled on rather than a defect: a Clinic box signed with no health assessment
    behind it, and an ID box signed with no validated request behind it — the second one is enrollment 53,
    whose contradictory request row was deleted 2026-10-11 while its signature was deliberately left
    standing. A report tool must not decide those over the office's hand, so it counts them and stays
-   green. The other fourteen fail the run, and the third of the once-noted rules joined them on 2026-10-15:
+   green. The other fifteen fail the run, and the third of the once-noted rules joined them on 2026-10-15:
    printed papers attributable to nobody (docx §25 P-14) had been kept as a note only because 21 legacy
    rows sat in that state and pruning or attributing them was somebody's call. That call is made — the
    rows are behind a manifest — and no paper this application prints can leave all three keys NULL, so a

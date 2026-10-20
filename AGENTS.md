@@ -128,10 +128,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **unconditionally**: a guard that made the restore a no-op after the first call left each later mutant in the
   tree, and the next case measured a tree already carrying the previous defect.
 - **After any batch that edits the demo generator's ledger passes, its year-floor pass, or its desk report**, run
-  `DB_DATABASE=ems_l54_a php storage/app/scratch/mutate-lane54-report.php` and read every case. The report's four
-  `Ledger —` lines (a fee sheet with a total and no lines, a paid step this run had to reconstruct, a returning
-  claim with no year behind it, receipts exceeding the assessment) are the only view the tool has of its own
-  output, and before lane 54 it repaired lane 53's two impossible states in silence. Each line is handed exactly
+  `DB_DATABASE=ems_l54_a php storage/app/scratch/mutate-lane54-report.php` and read every case. The report prints seven
+  `Ledger —` lines today: six since lane 54 and a seventh since lane 56 added the receipt it had to re-mark.
+  The four this harness owns (a fee sheet with a total and no lines, a paid step this run had to
+  reconstruct, a returning claim with no year behind it, receipts exceeding the assessment) are the only
+  view the tool has of its own output, and before lane 54 it repaired lane 53's two impossible states in
+  silence. Each line is handed exactly
   the defect it names — one case per freshly built schema, with a clean control that must read 0 on all four —
   because a report line that can only print 0 is decoration. The harness refuses unless `DB_DATABASE` names
   `ems_l54_a` or `ems_l54_b`, and a case whose anchor matches nothing, or whose run reaches no verdict, prints BAD
@@ -159,6 +161,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and a harness that demands every test flip will report a correct expectation as a failure. What that harness
   cannot reach is the audit's own half, so `AuditRecordStatesTest` pins the two boundaries instead: a meeting that
   starts exactly as another ends is back-to-back and unflagged, and a collision across two terms is unflagged.
+- **After any batch that edits a `Ledger —` line of the demo generator, or a money rule in
+  `ems:audit:record-states`**, run `DB_DATABASE=<scratch schema> php storage/app/scratch/mutate-lane56-ledger.php`.
+  It plants one defect — the ₱8,000 installment marked `paid` over an owing balance, which is §28.3 G-24's own
+  shape — and requires the audit to refuse it (exit 1, the rule named by its own label), the generator's report to
+  print 1 on its line, the generator to re-mark the row and exit 1, and the following run to read 0 and exit as the
+  control did. It refuses rather than reporting a pass: on live `ems`, on a schema with no `DEMO-OR-0002`, on a
+  schema where that account holds no balance, and on a mutation that did not change the row. Lane 54's rule still
+  governs the rest of the lines: `DB_DATABASE=ems_l54_a php storage/app/scratch/mutate-lane54-report.php`.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -282,22 +292,32 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   every year, so an unscoped query reads a retired term's meeting as a conflict for the term being built. A
   schedule whose block is missing has no term to scope by and the filter is dropped rather than answered "no
   conflict" — widening is the honest failure, silence is not. `ems:audit:record-states` carries the same rule as
-  two of its sixteen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
+  two of its seventeen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
   the two sides are term-equal, and half-open so **back-to-back is not a collision**. There is deliberately no
   `meetingId` exclusion on that path: Laravel rewrites `where('meetingId', '!=', null)` into `IS NOT NULL`, so the
   create-form guard that used to depend on it passed by an accident of the query builder, not by intent.
+- **A receipt's status word is a claim about the account, not about the money** (lane 56). `held()` counts both
+  `paid` and `partial`, so every balance and collection figure is indifferent to which word a row carries — and
+  that is exactly why the wrong word survives: `RegistrarController::blockingReasons()` asks whether a receipt
+  *settled*, and the Accounting screen prints the status under the amount. `AccountingController::record()` writes
+  `partial` for every peso taken while a balance remains and reserves `paid` for the money that clears it, so
+  `paid` over a owing sheet states a settlement the desk refused to state. The demo generator minted that shape for
+  ₱8,000 on Bea Alonzo's account (§28.3 G-24) and its own report could not see it; both are now guarded —
+  `receiptPaidWhileOwing()` in the audit and a `Ledger —` line that re-marks the row and refuses the run.
 - Money in the drawer is `Payments::held()` (`paid` or `partial`) — **and that includes the demo generator**. Five
   sites in `tools/seed_full_demo_pipeline.php` summed `paymentStatus = 'paid'` by hand to decide what an account
   had been given, while `Studentassessments::outstandingBalance()` sums `held()`; on any account holding an
   installment the generator's ledger pass would therefore rewrite `remainingBalance` back over what the cashier
   already collected, and the shortfall loop beside it would take a second receipt for money nobody handed over.
-  All five now call `demo_held()` (`tools/seed_full_demo_pipeline.php:1396-1399`), which asks the model's own
+  All five now call `demo_held()` (`tools/seed_full_demo_pipeline.php:1370-1373`), which asks the model's own
   scope rather than restating the status list. Measured: an ₱2,000 installment leaves ₱15,500 stored, and the
   paid-only version of the helper put it back to ₱17,500 — proved both ways by
   `storage/app/scratch/lane54e-installment-survives.php`, which plants the defect in a copy of the tool and
-  requires the erasure to reappear. Neither side was visible to any test, because the generator never writes a
-  `partial` row itself (§28.3 G-24) and live `ems` held none: a rehearsal that only *reads* the dataset the tool
-  builds cannot find a state the tool refuses to create.
+  requires the erasure to reappear. Neither side was visible to any test, because the generator wrote no `partial`
+  row at all until §28.3 G-24 was closed on 2026-10-20, and live `ems` held none on 2026-10-18: a rehearsal that
+  only *reads* the dataset the tool builds cannot find a state the tool refuses to create. A dataset built from
+  empty now seeds four `partial` rows, which is what makes the paid-only reading demonstrably wrong rather than
+  theoretically so.
   "Is clearance season?" is answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is
   derived from the student's own record, never asserted as a constant.
 - Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
@@ -531,14 +551,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   were retired on live `ems` on 2026-10-15; `ems:audit:record-states` fell to 0, and the next
   `php tools/seed_full_demo_pipeline.php` — which is a standing gate, so it *will* run — re-created five of
   them within the hour, same students, same term. They are that tool's own year-level evidence (its G-2 step,
-  `tools/seed_full_demo_pipeline.php:1706`): the guard asks only whether the student still holds a record on that
+  `tools/seed_full_demo_pipeline.php:1686-1693`): the guard asks only whether the student still holds a record on that
   term, and a dropped one holds nothing, so the retirement looked like a missing year to be refilled, and
-  `$completeWorkflow()` signed every box on the way. (Measured again 2026-10-16, after a batch that moved the first
-  140 lines of this file: the seat guard is `tools/seed_full_demo_pipeline.php:1765` and the record that guard
-  seats is created at `tools/seed_full_demo_pipeline.php:1771` — re-measure before repeating those numbers, and
-  measure by *meaning*, which is the only reason both carry the file name: the checker reads a bare `:NN` as prose
-  and passes it. The pair they replaced, `:1730` and `:1736`, land on a blank line and on a `->first();` belonging
-  to the term lookup two steps earlier, and the older `:1607` sits in the clearance-slip seating block, which is
+  `$completeWorkflow()` signed every box on the way. (Re-measured 2026-10-20, by reading rather than arithmetic: the
+  seat guard is `tools/seed_full_demo_pipeline.php:1691-1693` and the record that guard seats is created at
+  `tools/seed_full_demo_pipeline.php:1716-1729`. The pair the 2026-10-16 pass wrote — `:1765` and `:1771` — had
+  drifted onto two comment lines beside that block, and the pair before it (`:1730`, `:1736`) landed on a blank line
+  and on a `->first();` belonging to the term lookup two steps earlier; the older `:1607` sits in the
+  clearance-slip seating block, which is
   not this step at all.) The fix was in the generator —
   `attest_completed_desks()` now writes the act behind each
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in

@@ -121,9 +121,9 @@ class DemoDatasetRecordStatesTest extends TestCase
 
         $counts = $this->registerCounts($report);
 
-        // Sixteen rules print, each with its own number: a run that silently reports fewer is a run that
+        // Seventeen rules print, each with its own number: a run that silently reports fewer is a run that
         // measured less than the operator was told.
-        $this->assertCount(16, $counts, $report);
+        $this->assertCount(17, $counts, $report);
 
         foreach ($counts as $label => $count) {
             if ($label === 'An ID box signed with no validated request behind it') {

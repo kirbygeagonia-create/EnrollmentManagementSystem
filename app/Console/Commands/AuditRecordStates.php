@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
+use App\Enums\PaymentStatus;
 use App\Enums\WorkflowStatus;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Documentprintlog;
@@ -129,6 +130,11 @@ class AuditRecordStates extends Command
                 'count' => $this->collidingSchedules('resource'),
                 'severity' => 'impossible',
                 'why' => 'The two questions the Blocking desk has always asked, counted here so a write path that bypasses the form cannot leave a room teaching two classes or one officer lecturing twice at once. Compared inside the term the block belongs to, because `schedules` carries no term and rooms and officers are reused across years on purpose — a meeting in a retired term is not a collision.',
+            ],
+            'A receipt that says the account is settled while it still owes' => [
+                'count' => $this->receiptPaidWhileOwing(),
+                'severity' => 'impossible',
+                'why' => 'AccountingController::record() marks a receipt `paid` only on the money that clears the balance and `partial` on every peso taken before that (§28.3 G-24), so a `paid` receipt over an account that still owes claims a settlement the same desk refused to record. The status is not decoration: `RegistrarController::blockingReasons()` reads it as the fact that a receipt settled, and the Accounting screen paints it under the amount.',
             ],
         ];
 
@@ -339,6 +345,24 @@ class AuditRecordStates extends Command
                 ->where('remainingBalance', '<=', 0))
             ->whereDoesntHave('enrollmentstatushistory', fn ($q) => $q
                 ->where('toStatus', EnrollmentStatus::Paid->value))
+            ->count();
+    }
+
+    /**
+     * Receipts marked `paid` sitting on a fee sheet that still owes.
+     *
+     * Counted per receipt, because the receipt is the record that makes the claim: the desk that took
+     * the money wrote one status line, and a later installment that clears the account does not make an
+     * earlier `paid` true — it makes the earlier receipt's own line wrong about the moment it was taken.
+     * The balance is read from the sheet's stored column, which §28.3 G-22 makes `outstandingBalance()`
+     * answer, so this asks the same question the Accounting screen shows rather than a fourth one.
+     */
+    private function receiptPaidWhileOwing(): int
+    {
+        return Payments::where('paymentStatus', PaymentStatus::Paid->value)
+            ->whereHas('enrollment.studentassessments', fn ($q) => $q
+                ->where('totalAssessedAmount', '>', 0)
+                ->where('remainingBalance', '>', 0))
             ->count();
     }
 

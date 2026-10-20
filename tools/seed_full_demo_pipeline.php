@@ -34,6 +34,7 @@ use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Payments;
 use App\Models\Staffusers;
+use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Workflowsteps;
@@ -597,17 +598,7 @@ if ($juanStudent) {
         // the existing slip rather than inserting a second one.
         $namedSlip = DB::table('payments')->where('orNumber', 'DEMO-OR-TODAY-01')->first();
         if ($namedSlip === null) {
-            DB::table('payments')->insert([
-                'enrollmentId' => $juanEnrollment->enrollmentId,
-                'orNumber' => 'DEMO-OR-TODAY-01',
-                'amount' => 17500.00,
-                'paymentDate' => SchoolTime::today(),
-                'paymentMode' => 'cash',
-                'processedBy' => $deskSigners[OfficeId::Accounting->value],
-                'paymentStatus' => 'paid',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            record_demo_payment($juanEnrollment, 'DEMO-OR-TODAY-01', 17500.00, 'cash');
             echo "✔ Added today-dated payment for Juan Dela Cruz (Daily Collections Report active)\n";
         } elseif (substr((string) $namedSlip->paymentDate, 0, 10) !== SchoolTime::today()) {
             DB::table('payments')
@@ -1072,18 +1063,9 @@ if (! $enrBea) {
         ['assessmentId' => $assBea, 'feeTypeId' => $feeLaboratoryId, 'amount' => 4500, 'waivedAmount' => 0],
         ['assessmentId' => $assBea, 'feeTypeId' => $feeLibraryId, 'amount' => 250, 'waivedAmount' => 0],
     ]);
-    // Today's partial payment
-    DB::table('payments')->insert([
-        'enrollmentId' => $enrBea->enrollmentId,
-        'orNumber' => 'DEMO-OR-0002',
-        'amount' => 8000.00,
-        'paymentDate' => SchoolTime::today(),
-        'paymentMode' => 'cash',
-        'processedBy' => $deskSigners[OfficeId::Accounting->value],
-        'paymentStatus' => 'paid',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+    // Today's partial payment. Through the one writer, so the status is the model's answer about this account
+    // rather than a word this section chose for it (§28.3 G-24).
+    record_demo_payment($enrBea, 'DEMO-OR-0002', 8000.00, 'cash');
     echo "✔ Cashier Desk: Seeded Bea Alonzo (DEMO-2026-013) - PARTIAL payment (₱8,000 paid, ₱10,500 balance)\n";
 }
 
@@ -1120,17 +1102,7 @@ if (! $enrPat) {
         'updated_at' => now(),
     ]);
     charge_demo_fees((int) $assPat);
-    DB::table('payments')->insert([
-        'enrollmentId' => $enrPat->enrollmentId,
-        'orNumber' => 'DEMO-OR-0003',
-        'amount' => 17500.00,
-        'paymentDate' => SchoolTime::today(),
-        'paymentMode' => 'cash',
-        'processedBy' => $deskSigners[OfficeId::Accounting->value],
-        'paymentStatus' => 'paid',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+    record_demo_payment($enrPat, 'DEMO-OR-0003', 17500.00, 'cash');
     $enrPat = $stateMachine->transition(
         $enrPat,
         EnrollmentStatus::Paid,
@@ -1389,9 +1361,11 @@ function charge_demo_fees(int $assessmentId, ?array $amounts = null): void
  * installment, reads `Studentassessments::outstandingBalance()` — which sums `held()` — and marks the receipt
  * `partial` when a balance is left. So a paid-only sum reads an installment as nothing collected, and the
  * ledger pass below would then recompute the stored balance back up to the full due and, on the shortfall
- * loop, mint a second receipt for money nobody handed over. Measured on live `ems` today with zero `partial`
- * rows, which is why it has never shown: the defect needs one demo installment, and ruling 15 made that a
- * button. Restating the status list here is what let it drift from the model in the first place.
+ * loop, mint a second receipt for money nobody handed over. Measured on live `ems` on 2026-10-18 with zero
+ * `partial` rows, which is why it has never shown: the defect needs one demo installment, and ruling 15 made
+ * that a button. (§28.3 G-24 closed on 2026-10-20, so a dataset this tool builds from empty now seeds four
+ * `partial` rows and the paid-only reading has a live counter-example to be wrong about.)
+ * Restating the status list here is what let it drift from the model in the first place.
  */
 function demo_held(int $enrollmentId): float
 {
@@ -1439,11 +1413,32 @@ function record_demo_payment(Enrollments $enrollment, string $orNumber, float $a
             'paymentDate' => SchoolTime::today(),
             'paymentMode' => $mode,
             'processedBy' => $cashier,
-            'paymentStatus' => 'paid',
+            'paymentStatus' => 'partial',
             'updated_at' => now(),
             'created_at' => now(),
         ]
     );
+
+    // The desk's own order of operations, which is the only reason §28.3 G-24 could exist at all: take the money,
+    // read the balance back through the model, and let that answer choose the word. Writing `paid` here because
+    // the demo means the account to be settled is what made a receipt say more than the cashier did.
+    DB::table('payments')->where('orNumber', $orNumber)
+        ->update(['paymentStatus' => demo_receipt_status((int) $enrollment->enrollmentId)]);
+}
+
+/**
+ * The word a receipt earns: `paid` only for the money that cleared the account, `partial` for every peso before.
+ *
+ * Asked of `Studentassessments::outstandingBalance()`, the same predicate the drawer answers with, because the
+ * status column is not decoration — `RegistrarController::blockingReasons()` reads it as the fact that a receipt
+ * settled, and the Accounting screen prints it beside the amount. This is the one place the tool decides the word;
+ * a section that hard-codes `paid` for an installment is §28.3 G-24 come back.
+ */
+function demo_receipt_status(int $enrollmentId): string
+{
+    $sheet = Studentassessments::where('enrollmentId', $enrollmentId)->first();
+
+    return ($sheet === null || $sheet->outstandingBalance() <= 0.005) ? 'paid' : 'partial';
 }
 
 function assessment_for(Enrollments $enrollment, float $assessed, float $covered = 0, float $waived = 0): int
@@ -2857,9 +2852,12 @@ foreach (['DEMO-OR-0003' => 'DEMO-2026-014'] as $orNumber => $ownerSchoolId) {
             'amount' => 17500.00,
             'paymentMode' => 'cash',
             'processedBy' => $deskSigners[OfficeId::Accounting->value],
-            'paymentStatus' => 'paid',
             'updated_at' => now(),
         ]);
+        // The word is asked after the money has been attributed, from the account that now holds it — the
+        // re-assignment and the status are one decision, and hard-coding it here is how G-24 read `paid`.
+        DB::table('payments')->where('paymentId', $receipt->paymentId)
+            ->update(['paymentStatus' => demo_receipt_status((int) $owner->enrollmentId)]);
         echo "✔ Ledger: returned {$orNumber} to {$ownerSchoolId} (enrollment {$owner->enrollmentId})\n";
     }
 }
@@ -3054,6 +3052,31 @@ if ($restoredSteps > 0) {
     // which is exactly what a fresh install did until lane 54 seated all five of them at their own sites.
     $ledgerWarnings[] = "Ledger: {$restoredSteps} settled account(s) held receipts with no `assessed -> paid` step until this run wrote one"
         .' — a demo record is being created past Accounting without its lifecycle';
+}
+
+// A receipt says `paid` only for the money that cleared the account: AccountingController::record() marks every
+// peso taken before that `partial`. §28.3 G-24 found this file minting the other shape — Bea Alonzo's ₱8,000 read
+// `paid` over a ₱10,500 balance, so the demo claimed a settlement the cashier never recorded, and the status is
+// read as a fact by RegistrarController::blockingReasons(). Repair it the way the desk writes it, and report the
+// count: a run that had to repair one says a create site is still settling an account it did not close.
+$mislabelledReceipts = DB::table('payments as p')
+    ->join('studentassessments as a', 'a.enrollmentId', '=', 'p.enrollmentId')
+    ->where('p.paymentStatus', 'paid')
+    ->where('a.totalAssessedAmount', '>', 0)
+    ->where('a.remainingBalance', '>', 0)
+    ->distinct()
+    ->pluck('p.paymentId');
+
+if ($mislabelledReceipts->isNotEmpty()) {
+    DB::table('payments')->whereIn('paymentId', $mislabelledReceipts)->update([
+        'paymentStatus' => 'partial',
+        'updated_at' => now(),
+    ]);
+
+    echo '✔ Ledger: re-marked '.$mislabelledReceipts->count()." receipt(s) `partial` on accounts that still owe\n";
+
+    $ledgerWarnings[] = 'Ledger: '.$mislabelledReceipts->count().' receipt(s) said `paid` on an account that still owes'
+        .' — a demo record is being funded with a settlement the cashier would have marked `partial`';
 }
 
 echo "\n";
@@ -3285,6 +3308,10 @@ $queuedFor = [
     // its step back-filled two sections later by a loop that reported success either way.
     'Ledger — fee sheet with a total and no lines' => $bareSheetsLeft,
     'Ledger — paid step this run had to reconstruct' => $restoredSteps,
+    // The state `ems:audit:record-states` counts as its seventeenth rule, counted here at the moment this file
+    // could still have caused it: after the pass above no row can leave here saying `paid` over a balance, so a
+    // non-zero count is the pass having had to work.
+    'Ledger — receipt this run had to re-mark partial' => $mislabelledReceipts->count(),
 ];
 
 // A box signed by an officer from another office is not a cosmetic mismatch: it is a signature the

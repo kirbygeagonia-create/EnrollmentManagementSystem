@@ -546,6 +546,30 @@ class AuditRecordStatesTest extends TestCase
         $this->assertFlagged('ok', 'A receipt on an account that never entered `paid`');
     }
 
+    #[Test]
+    public function a_receipt_that_claims_settlement_over_a_balance_still_owing_is_named(): void
+    {
+        // The desk's own vocabulary: AccountingController::record() writes `partial` for every peso taken while
+        // a balance remains and reserves `paid` for the money that clears the account. A `paid` receipt over an
+        // owing sheet therefore states a settlement that same desk refused to state — and the status is read as a
+        // fact by RegistrarController::blockingReasons(). The demo's ₱8,000 installment was written this way.
+        $this->seedOwingAccount(8000.00, 'paid');
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'A receipt that says the account is settled while it still owes');
+    }
+
+    #[Test]
+    public function an_installment_marked_partial_overs_a_balance_is_the_desk_answering_correctly(): void
+    {
+        // The same money and the same owing balance, one word different: this is the state the cashier leaves
+        // behind, so the rule must read it as clean or every part payment on the demo day is a fault.
+        $this->seedOwingAccount(8000.00, 'partial');
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'A receipt that says the account is settled while it still owes');
+    }
+
     /**
      * A fee sheet settled to zero and, unless told otherwise, the receipt that settled it.
      */
@@ -605,6 +629,48 @@ class AuditRecordStatesTest extends TestCase
             'changedBy' => $this->signer->userId,
             'remarks' => 'Full payment received',
             'changedAt' => now(),
+        ]);
+    }
+
+    /**
+     * A fee sheet that still owes, and a receipt on it carrying the status the caller names.
+     */
+    private function seedOwingAccount(float $receipt, string $status): void
+    {
+        $feeTypeId = DB::table('feetypes')->insertGetId([
+            'feeName' => 'Tuition Fee (per unit)',
+            'defaultAmount' => 17500,
+            'unitBasis' => 'perUnit',
+        ]);
+
+        $assessmentId = DB::table('studentassessments')->insertGetId([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'totalAssessedAmount' => 17500.00,
+            'totalScholarshipCoverage' => 0.00,
+            'totalWaived' => 0.00,
+            'remainingBalance' => 17500.00 - $receipt,
+            'assessmentDate' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('charges')->insert([
+            'assessmentId' => $assessmentId,
+            'feeTypeId' => $feeTypeId,
+            'amount' => 17500.00,
+            'waivedAmount' => 0.00,
+        ]);
+
+        DB::table('payments')->insert([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'orNumber' => 'TEST-OR-'.uniqid(),
+            'amount' => $receipt,
+            'paymentDate' => now(),
+            'paymentMode' => 'cash',
+            'processedBy' => $this->signer->userId,
+            'paymentStatus' => $status,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
