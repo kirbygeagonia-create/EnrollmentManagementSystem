@@ -310,6 +310,124 @@ class BlockingControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_the_room_branch_refuses_a_room_taken_by_another_officer(): void
+    {
+        // The test above clashes both the officer and the room, and asserts the officer's message, so nothing
+        // proved the room branch can fire at all. Here the officer is different and only the room collides.
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+
+        $response = $this->post(route('blocking.schedules.store', $block), [
+            'subjectId' => Subjects::skip(1)->firstOrFail()->subjectId,
+            'instructorId' => $this->staffForOffice(4)->userId,
+            'roomId' => $fixture['room']->roomId,
+            'meetings' => [
+                ['dayOfWeek' => 'Monday', 'startTime' => '09:00', 'endTime' => '10:00'],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors('conflicts');
+        $this->assertStringContainsString(
+            'Room conflict',
+            session('errors')->get('conflicts')[0] ?? '',
+            'the refusal did not name the room'
+        );
+    }
+
+    #[Test]
+    public function test_a_block_is_never_booked_into_two_rooms_at_one_hour(): void
+    {
+        // `storeSchedule` is addressed to a block, so a second subject at the same hour is the ordinary way the
+        // desk builds a timetable — and neither of the two older branches can see it, because the room and the
+        // officer are both different.
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+
+        $response = $this->post(route('blocking.schedules.store', $block), [
+            'subjectId' => Subjects::skip(1)->firstOrFail()->subjectId,
+            'instructorId' => $this->staffForOffice(4)->userId,
+            'roomId' => Rooms::skip(1)->firstOrFail()->roomId,
+            'meetings' => [
+                ['dayOfWeek' => 'Monday', 'startTime' => '09:00', 'endTime' => '10:00'],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors('conflicts');
+        $this->assertStringContainsString(
+            'Block conflict',
+            session('errors')->get('conflicts')[1] ?? implode('|', session('errors')->get('conflicts') ?? []),
+            'the refusal did not name the block'
+        );
+        $this->assertSame(1, Schedules::where('blockId', $block->blockId)->count());
+    }
+
+    #[Test]
+    public function test_a_retired_term_does_not_refuse_this_terms_room(): void
+    {
+        // Rooms and officers are reused every year, and `schedules` carries no term of its own — the term lives
+        // on the block — so the conflict query has to reach through the block to tell the two apart. The save
+        // itself is asserted, not just the absence of an error: a request that died for an unrelated reason must
+        // not read as a pass.
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule();
+
+        $otherTerm = Academicterms::create([
+            'academicYearId' => Academicterms::findOrFail($this->testTermId)->academicYearId,
+            'semester' => '1st',
+            'startDate' => '2026-01-01',
+            'endDate' => '2026-05-30',
+        ]);
+        $blockB = Blocks::create([
+            'courseId' => $fixture['block']->courseId,
+            'termId' => $otherTerm->termId,
+            'yearLevel' => 1,
+            'blockName' => 'Other Term Block '.uniqid(),
+            'maxStudents' => 40,
+        ]);
+
+        // Same officer, same room, same weekday and hour as the first term's meeting — and a different term,
+        // which is the whole question. Asserting the row was written, not merely that no error key was set, so
+        // a request that died for some other reason cannot read as a pass.
+        $response = $this->post(route('blocking.schedules.store', $blockB), [
+            'subjectId' => Subjects::skip(1)->firstOrFail()->subjectId,
+            'instructorId' => $fixture['instructor']->userId,
+            'roomId' => $fixture['room']->roomId,
+            'meetings' => [
+                ['dayOfWeek' => 'Monday', 'startTime' => '09:00', 'endTime' => '10:00'],
+            ],
+        ]);
+
+        $response->assertSessionDoesntHaveErrors('conflicts');
+        $this->assertSame(
+            1,
+            Schedules::where('blockId', $blockB->blockId)->count(),
+            'the other term’s meeting was refused by a term nobody is scheduling: '
+                .json_encode(session('errors')?->getMessages() ?? [])
+        );
+    }
+
+    #[Test]
+    public function test_editing_a_schedule_does_not_collide_with_the_block_it_belongs_to(): void
+    {
+        // The block branch must exclude the schedule being edited, or moving one subject to another officer
+        // would refuse itself: its own meetings are still on the row until the update replaces them.
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule();
+
+        $response = $this->patch(route('blocking.schedules.update', $fixture['schedule']), [
+            'instructorId' => $this->staffForOffice(4)->userId,
+        ]);
+
+        $response->assertSessionDoesntHaveErrors('conflicts');
+    }
+
+    #[Test]
     public function test_block_capacity_enforced_on_assign(): void
     {
         $blockingStaff = $this->staffForOffice(5);

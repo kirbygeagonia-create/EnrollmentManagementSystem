@@ -120,6 +120,16 @@ class AuditRecordStates extends Command
                 'severity' => 'impossible',
                 'why' => 'AccountingController::record() takes money only on an `assessed` enrollment and moves it to `paid` when the balance clears, and only EnrollmentStateMachine::transition() writes that step — so a settled account with receipts and no `paid` in its history was funded behind the desk, and the status-history panel the Registrar reads shows money that appeared by itself. A zero balance with no receipt is not this state: a grant can cover an account, and that account genuinely owes no cash.',
             ],
+            'Two schedules of one block meeting at the same hour' => [
+                'count' => $this->collidingSchedules('block'),
+                'severity' => 'impossible',
+                'why' => 'Ruled 2026-10-19: one group cannot be in two rooms at once. `storeSchedule` is addressed to a block (/blocking/{block}/schedules), so a second subject at an hour the block already meets is the ordinary way to build the timetable, and BlockingController::detectConflicts() asked only about the officer and the room until this batch. A non-zero count names a timetable the desk could never have approved, which is why the generator is checked for it too.',
+            ],
+            'A room or an officer in two schedules at the same hour' => [
+                'count' => $this->collidingSchedules('resource'),
+                'severity' => 'impossible',
+                'why' => 'The two questions the Blocking desk has always asked, counted here so a write path that bypasses the form cannot leave a room teaching two classes or one officer lecturing twice at once. Compared inside the term the block belongs to, because `schedules` carries no term and rooms and officers are reused across years on purpose — a meeting in a retired term is not a collision.',
+            ],
         ];
 
         $impossible = 0;
@@ -330,5 +340,44 @@ class AuditRecordStates extends Command
             ->whereDoesntHave('enrollmentstatushistory', fn ($q) => $q
                 ->where('toStatus', EnrollmentStatus::Paid->value))
             ->count();
+    }
+
+    /**
+     * Schedules that meet at an hour another schedule of the same block (or the same room or officer) already
+     * occupies, counted once per colliding pair by keeping only the later schedule.
+     *
+     * The overlap is half-open in the database's own TIME comparison — one meeting starting exactly as another
+     * ends is a back-to-back class, which is the same rule `BlockingController::detectConflicts()` applies on
+     * the form, so the guard cannot drift from the desk that enforces it. Both sides are reached through the
+     * block, because `schedules` has no term of its own: comparing across terms would call a retired year's
+     * timetable a collision, which is the ruling of 2026-10-19.
+     *
+     * @param  string  $on  'block' for one group in two places, 'resource' for a room or an officer in two
+     */
+    private function collidingSchedules(string $on): int
+    {
+        $query = DB::table('schedulemeetings as m1')
+            ->join('schedules as s1', 's1.scheduleId', '=', 'm1.scheduleId')
+            ->join('blocks as b1', 'b1.blockId', '=', 's1.blockId')
+            ->join('schedulemeetings as m2', function ($j) {
+                $j->on('m2.dayOfWeek', '=', 'm1.dayOfWeek')
+                    ->on('m2.startTime', '<', DB::raw('m1.endTime'))
+                    ->on('m2.endTime', '>', DB::raw('m1.startTime'));
+            })
+            ->join('schedules as s2', 's2.scheduleId', '=', 'm2.scheduleId')
+            ->join('blocks as b2', 'b2.blockId', '=', 's2.blockId')
+            ->whereColumn('b1.termId', 'b2.termId')
+            ->whereColumn('s1.scheduleId', '<', 's2.scheduleId');
+
+        if ($on === 'block') {
+            $query->whereColumn('s1.blockId', 's2.blockId');
+        } else {
+            $query->where(function ($q) {
+                $q->whereColumn('s1.roomId', 's2.roomId')
+                    ->orWhereColumn('s1.instructorId', 's2.instructorId');
+            });
+        }
+
+        return $query->distinct()->count('s2.scheduleId');
     }
 }

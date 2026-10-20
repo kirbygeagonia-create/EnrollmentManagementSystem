@@ -144,7 +144,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   gates could not: making the paid step generator-owned settled Juan Dela Cruz's account with a receipt dated
   *today*, so the guard beside it that asked "is any money dated today?" found an answer and never created
   `DEMO-OR-TODAY-01` — the slip the Daily Collections Report reads by its number. The weaker question was the
-  bug; ask whether the named row exists.
+  bug; ask whether the named row exists. One more shape of the same trap: the dataset ages at the **school's**
+  midnight, because that slip is dated `SchoolTime::today()`. Measured 2026-10-20 — a whole-suite run on live
+  `ems` after Manila crossed midnight, with no code change, failed `DemoDatasetRecordStatesTest` on exactly that
+  assertion while CI, which seeds immediately before its walkthrough step, cannot see it. Re-dump and re-run the
+  pipeline before believing that failure, and never "fix" the test to forgive a stale date.
+- **After any batch that touches `BlockingController::detectConflicts()` or the two timetable rules in
+  `ems:audit:record-states`**, run `php storage/app/scratch/mutate-lane55-conflicts.php` and read all three legs.
+  It swaps HEAD's controller over the working one and requires the two named tests to go red on it, then restores
+  the batch's bytes by hash and re-runs them green — so the claim proved is *this batch changed the verdict*, not
+  merely that a test passes. It refuses when the HEAD export is missing or byte-identical, which is the state it
+  is in **after this batch is committed**: re-take the export from the previous commit before believing a run on a
+  clean tree. Its third case is deliberately expected GREEN before and after — the room branch worked all along,
+  and a harness that demands every test flip will report a correct expectation as a failure. What that harness
+  cannot reach is the audit's own half, so `AuditRecordStatesTest` pins the two boundaries instead: a meeting that
+  starts exactly as another ends is back-to-back and unflagged, and a collision across two terms is unflagged.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -260,6 +274,18 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Staff relations are named `*User` (`evaluatedByUser`, `registrarProcessedByUser`, `approvedByUser`,
   `receivedByUser`); the bare FK columns return ints. `Schedulemeetings.startTime/endTime` are plain
   strings — casting them breaks Blocking's conflict detection.
+- **A timetable collision is judged inside one term, and a block is never in two places** (lane 55, owner rulings
+  of 2026-10-19). `detectConflicts()` asks three questions of one builder — officer, room, and the block's own hour
+  (`blockId`) — because a group that meets in two rooms at one time is the defect Blocking exists to prevent, and
+  the old code only compared what two *other* schedules shared. `schedules` carries no term: the term lives on the
+  **block**, so the scope is `whereHas('schedule.block', … termId …)`. Rooms and officers are deliberately reused
+  every year, so an unscoped query reads a retired term's meeting as a conflict for the term being built. A
+  schedule whose block is missing has no term to scope by and the filter is dropped rather than answered "no
+  conflict" — widening is the honest failure, silence is not. `ems:audit:record-states` carries the same rule as
+  two of its sixteen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
+  the two sides are term-equal, and half-open so **back-to-back is not a collision**. There is deliberately no
+  `meetingId` exclusion on that path: Laravel rewrites `where('meetingId', '!=', null)` into `IS NOT NULL`, so the
+  create-form guard that used to depend on it passed by an accident of the query builder, not by intent.
 - Money in the drawer is `Payments::held()` (`paid` or `partial`) — **and that includes the demo generator**. Five
   sites in `tools/seed_full_demo_pipeline.php` summed `paymentStatus = 'paid'` by hand to decide what an account
   had been given, while `Studentassessments::outstandingBalance()` sums `held()`; on any account holding an

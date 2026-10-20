@@ -607,4 +607,164 @@ class AuditRecordStatesTest extends TestCase
             'changedAt' => now(),
         ]);
     }
+
+    #[Test]
+    public function two_schedules_of_one_block_at_one_hour_are_named_and_back_to_back_is_not(): void
+    {
+        // Ruled 2026-10-19: a group cannot be in two rooms at once, and `/blocking/{block}/schedules` is the
+        // route that makes that mistake easy — it adds a subject to a block that already meets. The boundary is
+        // asserted with the defect, because a meeting starting as another ends is the ordinary back-to-back
+        // class and a rule that counted it would fail every real timetable.
+        $this->seedTimetable(sameBlock: true, sameRoom: false, sameOfficer: false, bStart: '09:30');
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'Two schedules of one block meeting at the same hour');
+
+        DB::table('schedulemeetings')->where('startTime', '09:30')->update(['startTime' => '10:00']);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'Two schedules of one block meeting at the same hour');
+    }
+
+    #[Test]
+    public function a_room_or_an_officer_in_two_schedules_is_named_in_one_term_only(): void
+    {
+        // The two questions the Blocking form already asks, so a write path that bypasses it is visible here.
+        // The term half is the ruling in the other direction: rooms and officers are reused every year, so a
+        // meeting in another term must not read as a collision — measured by moving one schedule's block.
+        $this->seedTimetable(sameBlock: false, sameRoom: true, sameOfficer: false, bStart: '09:30');
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'A room or an officer in two schedules at the same hour');
+
+        DB::table('schedulemeetings')->where('startTime', '09:30')->update(['startTime' => '10:00']);
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+
+        $this->seedTimetable(sameBlock: false, sameRoom: false, sameOfficer: true, bStart: '11:30');
+        DB::table('schedulemeetings')->where('startTime', '11:30')->update(['startTime' => '09:30']);
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'), 'the officer branch was not counted');
+
+        // Now put the second schedule's block in another term: same hour, same people, no collision.
+        $later = DB::table('blocks')->orderByDesc('blockId')->first();
+        DB::table('blocks')->where('blockId', $later->blockId)->update(['termId' => $this->seedTerm('2nd')]);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'), 'a term other than the first vetoed the pair');
+        $this->assertFlagged('ok', 'A room or an officer in two schedules at the same hour');
+    }
+
+    /**
+     * One academic year, one course, two rooms, two schedules of one meeting each; the flags say what the pair
+     * shares. Built by insert rather than through BlockingController, because the register is being measured —
+     * the controller's own refusal is pinned in BlockingControllerTest, and a guard checked through the code it
+     * guards would prove nothing about either.
+     */
+    private function seedTimetable(bool $sameBlock, bool $sameRoom, bool $sameOfficer, bool $sameTerm = true, string $bStart = '09:30', string $bEnd = '10:30'): void
+    {
+        $unitId = DB::table('academicunits')->insertGetId([
+            'unitName' => 'Test Unit '.uniqid(),
+            'unitType' => 'college', // UnitType::College's backing value: a raw insert bypasses the cast.
+        ]);
+        $courseId = DB::table('courses')->insertGetId([
+            'unitId' => $unitId,
+            'courseName' => 'Test Course '.uniqid(),
+            'courseCode' => 'TC'.substr((string) mt_rand(100000, 999999), 0, 6),
+            'requiresEntranceExam' => 0,
+            'requiresCourseSpecificExam' => 0,
+            'entranceExamExemptsTransferee' => 0,
+            'requiresRetentionExam' => 0,
+        ]);
+        $subjectId = DB::table('subjects')->insertGetId([
+            'subjectCode' => 'TS'.substr((string) mt_rand(100000, 999999), 0, 6),
+            'subjectName' => 'Test Subject',
+            'lectureUnits' => 3,
+            'labUnits' => 0,
+            'subjectType' => 'lecture',
+        ]);
+
+        $rooms = [];
+        foreach (['Room A', 'Room B'] as $roomName) {
+            $rooms[] = DB::table('rooms')->insertGetId([
+                'roomName' => $roomName.' '.uniqid(),
+                'capacity' => 40,
+                'building' => 'Main',
+            ]);
+        }
+
+        $officers = [$this->signer->userId];
+        if (! $sameOfficer) {
+            $officers[] = DB::table('staffusers')->insertGetId([
+                'firstName' => 'Other',
+                'lastName' => 'Officer',
+                'username' => 'other_officer_'.uniqid(),
+                'email' => 'other'.uniqid().'@example.test',
+                'passwordHash' => bcrypt('password'),
+                'role' => 'instructor',
+                'status' => 'active',
+                'employeeNo' => 'EMP-'.uniqid(),
+            ]);
+        }
+
+        $termA = $this->seedTerm('1st');
+        $termB = $sameTerm ? $termA : $this->seedTerm('2nd');
+
+        $blocks = [];
+        foreach ([[$courseId, $termA], [$courseId, $termB]] as $i => [$course, $term]) {
+            $blocks[] = DB::table('blocks')->insertGetId([
+                'courseId' => $course,
+                'termId' => $term,
+                'yearLevel' => 1,
+                'blockName' => 'Test Block '.($i + 1).' '.uniqid(),
+                'maxStudents' => 40,
+                'scheduleStatus' => 'draft',
+            ]);
+        }
+        if ($sameBlock) {
+            $blocks[1] = $blocks[0];
+        }
+
+        $meetings = [
+            ['09:00', '10:00', $blocks[0], $rooms[0], $officers[0]],
+            [$bStart, $bEnd, $blocks[1], $sameRoom ? $rooms[0] : $rooms[1], $sameOfficer ? $officers[0] : $officers[1]],
+        ];
+
+        foreach ($meetings as [$start, $end, $blockId, $roomId, $officerId]) {
+            $scheduleId = DB::table('schedules')->insertGetId([
+                'blockId' => $blockId,
+                'subjectId' => $subjectId,
+                'instructorId' => $officerId,
+                'roomId' => $roomId,
+            ]);
+
+            DB::table('schedulemeetings')->insert([
+                'scheduleId' => $scheduleId,
+                'dayOfWeek' => 'Monday',
+                'startTime' => $start,
+                'endTime' => $end,
+            ]);
+        }
+    }
+
+    /**
+     * A term inside the year the first schedule's block already points at, so only the semester differs.
+     */
+    private function seedTerm(string $semester): int
+    {
+        $year = DB::table('academicyears')->first();
+        if ($year === null) {
+            $yearId = DB::table('academicyears')->insertGetId([
+                'yearLabel' => '2025-2026',
+                'startDate' => '2025-06-01',
+                'endDate' => '2026-05-31',
+            ]);
+        } else {
+            $yearId = $year->academicYearId;
+        }
+
+        return (int) DB::table('academicterms')->insertGetId([
+            'academicYearId' => $yearId,
+            'semester' => $semester,
+            'startDate' => '2025-08-01',
+            'endDate' => '2025-12-01',
+        ]);
+    }
 }
