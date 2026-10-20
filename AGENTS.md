@@ -315,9 +315,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `storage/app/scratch/lane54e-installment-survives.php`, which plants the defect in a copy of the tool and
   requires the erasure to reappear. Neither side was visible to any test, because the generator wrote no `partial`
   row at all until §28.3 G-24 was closed on 2026-10-20, and live `ems` held none on 2026-10-18: a rehearsal that
-  only *reads* the dataset the tool builds cannot find a state the tool refuses to create. A dataset built from
-  empty now seeds four `partial` rows, which is what makes the paid-only reading demonstrably wrong rather than
-  theoretically so.
+  only *reads* the dataset the tool builds cannot find a state the tool refuses to create. Measured on
+  two schemas built from empty in CI's own order (`storage/app/scratch/lane56f-probe-claims.php`): HEAD's
+  tool leaves 15 `paid` and zero `partial`, and one receipt — `DEMO-OR-0002`, ₱8,000 on an ₱18,500 sheet
+  owing ₱10,500 — says `paid` over that balance, while its report prints six `Ledger —` lines, none about
+  the status, and exits 0. This batch's tool on the same recipe leaves 14 `paid` and 1 `partial`, with no
+  lying row. One installment is enough to make the paid-only reading demonstrably wrong rather than
+  theoretically so: it is the row the ledger pass and the shortfall loop disagree about.
   "Is clearance season?" is answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is
   derived from the student's own record, never asserted as a constant.
 - Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
