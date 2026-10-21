@@ -2,7 +2,7 @@
 
 > **Last Verified:** October 1, 2026  
 > **System Version:** Laravel 13 + React (Inertia.js)  
-> **Test Suite Status:** ✅ 274 tests passed, 1,638 assertions (0 failures)  
+> **Test Suite Status:** not stated here. §1.1 of `EMS Complete Documentation.docx` carries the measured readings, each with the surface and the day it was read from; this line used to quote a September run, and a copy of a total goes stale the moment a case is added.
 
 ---
 

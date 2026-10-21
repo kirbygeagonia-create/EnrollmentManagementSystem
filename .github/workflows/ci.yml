@@ -66,6 +66,21 @@ jobs:
       - name: Refuse a silently skipped check
         run: php artisan ems:ci:no-silent-skips junit.xml
 
+      - name: Check the documents' suite and class figures
+        run: |
+          # The authority document states how big the suite is and how big three of its pinned classes are, and those
+          # figures move with every case anyone adds. Nothing watched them: the §1.1 row that read "the suite stands at
+          # 771 tests and 5191 assertions" matched no surface when it was re-measured on 2026-10-20, and it had survived
+          # three passes of being read because 771 *is* what CI prints for passed tests — beside an assertion count that
+          # came from this box on one earlier day. The step lives in the SQLite job because that is the suite the
+          # document's figures were measured on: the same code answers 5,013 assertions here and 5,015 on MySQL, and that
+          # difference is the finding rather than a nuisance to reconcile. --ci judges only what this runner can measure —
+          # this junit and `phpunit --list-tests` — and names the claims about the box's own run that only the box can
+          # check. The dump is regenerated because the document, not its dump, is what is committed. Proved able to fail
+          # by storage/app/scratch/mutate-lane58-suite-claims.php.
+          php storage/app/scratch/dump-docx-flat.php
+          php storage/app/scratch/lane58-suite-claims.php --ci --junit=junit.xml
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04

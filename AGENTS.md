@@ -180,6 +180,33 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   touched no row. The planter is `storage/app/scratch/lane57-plant-state.php`; the desk act is
   `storage/app/scratch/lane57-overcollect-state.php`, and its `revert` walks the enrollment back through the
   state machine rather than only deleting the receipt — the half-revert is what produced §28.3 G-27.
+- **After any batch that adds or edits a suite-size or class-size figure in the documents**, run
+  `php storage/app/scratch/lane58-suite-claims.php --junit=<a whole-run junit> --local-suite=<that run's log>` and prove it
+  with `php storage/app/scratch/mutate-lane58-suite-claims.php`. §1.1's revision row stated "the suite stands at 771 tests
+  and 5191 assertions" and survived three passes of being read, because 771 *is* what both CI jobs print for passed tests
+  today — beside an assertion count that came from this box on one earlier day. Measured 2026-10-20, the same build answers
+  780 passed / 5,220 assertions here, 9 skipped + 771 passed / 5,013 on CI's SQLite job, the same tests / 5,015 on its MySQL
+  job, and 8 tests / 201 in the walkthrough step; `phpunit --list-tests` discovers 780, which is 771 + 9, so the four
+  readings are one suite read four ways and **an assertion total is a property of a run, not of the code**. The checker
+  classifies before it judges — SUITE, STEP (one folder's own step), CLASS (`SchoolTimeTest`'s 6/33, which the document
+  states in three places) or HISTORY (a sentence carrying its own date, or one under a block that declares the day it was
+  *run*: "Last Run: September 24, 2026" excuses a figure, a document's own "Last Verified" date does not) — and binds only
+  the present-tense three, to `--list-tests`, to junit's per-`<testsuite>` `tests`/`assertions` attributes, and to the
+  captured `Tests:` line. **Its first version read 6 claims where the documents hold 15**: one claim per line though a
+  flat-dump row is one 23,074-byte line carrying several; only the first pair on a line; digits only, so "seven cases, 173
+  assertions" was invisible; a connective word required, so `Pest 274/274 (1,638 assertions)` and `237 passing tests` were
+  invisible; every comma figure dropped because `is_numeric("1,638")` is false; and no claim class, so it called
+  SchoolTimeTest's *true* 6/33 a stale suite figure while missing three real ones. Loosening it produced the mirror defect —
+  22 ratios (`8/8 rendered`, `24/7`, a `2/40` seat counter) read as run totals — so a count is a claim only with an
+  assertion figure beside it, or in the words `passing tests`/`tests passed`, or with the suite named before it. What no
+  text rule settles is the *surface*: a claim about this box's whole run cannot be measured on the runner, so `--ci` judges only
+  what the runner can measure — its own junit and `--list-tests` — and names the rest SKIPPED rather than passing it. CI runs it as
+  a step in the **SQLite** job, because that is the suite the document's figures were read from: the same code answers 5,013
+  assertions on that job and 5,015 on the MySQL one. Class claims are still judged in `--ci` (a class's totals come from whichever
+  junit the runner wrote); only suite totals are surface-gated. Third trap, and the reason the September guides were left alone: counting cases from the
+  source (`#[Test]` lines plus `test_` methods) is not a case count — providers expand and one method carries both markers,
+  so it was off by 75 on `PermissionMatrixTest` alone and matched 780 at the suite level only by coincidence; a claim that
+  instrument cannot reach is reported unverifiable, not false.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
