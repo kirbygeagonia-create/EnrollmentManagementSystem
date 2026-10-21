@@ -207,6 +207,26 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   source (`#[Test]` lines plus `test_` methods) is not a case count — providers expand and one method carries both markers,
   so it was off by 75 on `PermissionMatrixTest` alone and matched 780 at the suite level only by coincidence; a claim that
   instrument cannot reach is reported unverifiable, not false.
+- **After any batch that edits a figure one of these tools prints** — a rule count, a citation total, a tile or cell count,
+  a blind-spot tally — run `php storage/app/scratch/lane59-collect-readings.php` and then
+  `php storage/app/scratch/lane59-instrument-counts.php --readings=storage/app/scratch/lane59-readings.json`, and prove it with
+  `php storage/app/scratch/mutate-lane59-instrument-counts.php`. Nine were stale on 2026-10-20, eight of them in this file: the citation
+  sweep's `559 … over 115 files` where it prints 602 over 141, lane 37's `851` and `96 finding rows` where it prints 860 and 108,
+  lane 37b's `243` for 271, lane 32's `107` and `665` for 113 and 9, and a pair in §28.3's G-18 row (`18 guards … 355 lines` where
+  lane 49 prints 19 and 340). What makes a figure checkable is not its noun but **the tool named in the same sentence**: a
+  number-and-noun scan of these documents returns 109 hits and most are not readings at all (`term 18`, `21 DATE columns, 18 of them
+  cast`, `§18.3's column list`, `documentprintlog carries eight columns`), so the checker binds a figure only where it cites a tool from
+  its table and that tool's own summary line answers it, and a labelled figure whose tool printed nothing is UNBOUND and refuses.
+  Labels match on the **phrase** after the number, longest pattern first — `16 school-moment cells` and `26 day cells` both end in
+  "cells", and matching the last noun alone compares 16 against 26 and reports a true sentence as the defect. Readings are addressed
+  **by name, not position**: lane 49 prints its non-figure count before its unread count, and one positional regex read that tool and
+  lane 50's as printing nothing at all, which would then have "proved" a mutant against a null reading. Three distinctions it will not
+  collapse: a tool that ran and printed nothing is UNBOUND while a tool `--only` leaves out is *named* as unmeasured; a past-tense
+  sentence ("its first version judged 27 bindings") is a record of a defect, not a stale figure, so `corrected`, `then`, `on that date`
+  are history markers and a mutant must flip the verdict when the same number is put into the present; and a §1.1 revision row whose
+  first cell is a bare date (`2026-10-11–15 |`) is that day's record, while the row reading "(this issue)" is a living claim — lane 58's
+  finding applied to this class. One trap bit twice: the row's en dash is three bytes, so the date-cell regex needs `/u`, and without it
+  §1.1's historic "twelve rules" read as undated and the checker refused a figure the document never asserted about today.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -214,7 +234,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (18 guards whose dash sits on a line it cannot join, 355 lines where
+  `%` — and **prints its own blind spots** (19 guards whose dash sits on a line it cannot join, 340 lines where
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
@@ -518,12 +538,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (559 citations over 115 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (602 citations over 141 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  107 symbol/range pairs inside 665 cited ranges). It takes the construct the prose *names* and asks whether
+  113 symbol/range pairs it checks, 9 pairs flagged for reading). It takes the construct the prose *names* and asks whether
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
   Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
@@ -549,9 +569,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 851 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 96 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 243 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 860 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 108 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 275 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

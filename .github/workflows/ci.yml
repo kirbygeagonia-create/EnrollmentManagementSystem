@@ -81,6 +81,16 @@ jobs:
           php storage/app/scratch/dump-docx-flat.php
           php storage/app/scratch/lane58-suite-claims.php --ci --junit=junit.xml
 
+      - name: Check the figures the citation sweeps print
+        run: |
+          # Nine figures that these tools print were stale on 2026-10-20, eight of them in AGENTS.md — the file that tells
+          # the next batch what each gate answers. The checker binds a figure only where the sentence names the tool whose
+          # summary prints it, so the runner measures the four citation sweeps here and leaves the database-bound tools to
+          # this box, naming them rather than passing them unseen (see lane 59's gate note in AGENTS.md). This file's own
+          # §-references move the counts it states, which is why the numbers are re-read here and not remembered.
+          php storage/app/scratch/lane59-instrument-counts.php --ci --run \
+            --only=sweep-docx-citations,lane37-section-reference-sweep,lane37b-repo-citation-sweep,lane32-cite-meaning-sweep
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04
