@@ -451,17 +451,22 @@ clear: the row cannot go red, because the application's own answers are already 
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
    not exist, a receipt that says the account is settled while it still owes — is one of its
-   seventeen rules. Two of the seventeen are the timetable: two schedules of one block
+   nineteen rules. Two of the nineteen are the timetable: two schedules of one block
    meeting at one hour, and a room or an officer in two schedules at one hour — the collisions the Blocking desk
    has refused on its form since that form existed, counted here so a write path that bypasses the form is
-   visible too (ruled 2026-10-19). A non-zero count means a write path regressed or a row
+   visible too (ruled 2026-10-19). Two more are the money pair of 2026-10-20: a fee sheet whose held receipts
+   come to more than it is owed — measured against assessed less coverage less waived, not the assessed total,
+   because the clamp in `outstandingBalance()` hides an over-collection from every screen — and an enrollment
+   still saying `paid` after the money behind that status has gone. The desk can no longer write the first
+   (`record()` refuses an amount above the balance) and the second is what the probe that planted the first
+   discovered by un-planting it badly. A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Two of those seventeen are different in kind and only ever `note`, because each counts
+   the status column. Two of those nineteen are different in kind and only ever `note`, because each counts
    a state an office has ruled on rather than a defect: a Clinic box signed with no health assessment
    behind it, and an ID box signed with no validated request behind it — the second one is enrollment 53,
    whose contradictory request row was deleted 2026-10-11 while its signature was deliberately left
    standing. A report tool must not decide those over the office's hand, so it counts them and stays
-   green. The other fifteen fail the run, and the third of the once-noted rules joined them on 2026-10-15:
+   green. The other seventeen fail the run, and the third of the once-noted rules joined them on 2026-10-15:
    printed papers attributable to nobody (docx §25 P-14) had been kept as a note only because 21 legacy
    rows sat in that state and pruning or attributing them was somebody's call. That call is made — the
    rows are behind a manifest — and no paper this application prints can leave all three keys NULL, so a

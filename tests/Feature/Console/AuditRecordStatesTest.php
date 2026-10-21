@@ -570,6 +570,70 @@ class AuditRecordStatesTest extends TestCase
         $this->assertFlagged('ok', 'A receipt that says the account is settled while it still owes');
     }
 
+    #[Test]
+    public function money_held_above_what_the_sheet_owes_is_named_although_the_balance_reads_clear(): void
+    {
+        // ₱19,000 taken against a ₱17,500 sheet. The account's own figure cannot show it: `outstandingBalance()`
+        // answers `max(0, …)`, so the stored balance sits at ₱0.00 while the drawer holds ₱1,500 against nothing.
+        // Ruled 2026-10-20 — the desk may no longer write the receipt, so a non-zero count here names money that
+        // came in through another door: a restored dump, a hand-edited row, or a guard that regressed.
+        $this->seedOverCollectedAccount(19000.00);
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'Money held above what the sheet owes');
+    }
+
+    #[Test]
+    public function the_excess_is_measured_against_what_is_owed_not_against_the_total_assessed(): void
+    {
+        // ₱17,500 assessed, ₱5,000 covered, ₱17,500 collected: no peso was taken above the paper, yet the account
+        // was owed ₱12,500, so ₱5,000 sits against nothing. A rule that compared receipts with totalAssessedAmount
+        // alone would read this clean — which is the difference between the fee sheet and the amount owed.
+        $this->seedOverCollectedAccount(17500.00, 5000.00);
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'Money held above what the sheet owes');
+    }
+
+    #[Test]
+    public function a_receipt_that_clears_the_account_exactly_is_not_an_over_collection(): void
+    {
+        // The boundary the guard on record() shares with this rule: the balance itself is a valid amount to take,
+        // so "may not exceed" has to be read strictly and the ordinary demo payment must stay clean.
+        $this->seedSettledAccount(17500.00);
+        $this->recordPaidStep();
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'Money held above what the sheet owes');
+    }
+
+    #[Test]
+    public function an_enrollment_marked_paid_while_its_account_still_owes_is_named(): void
+    {
+        // Found by my own residue, which is the best evidence a gate can get: a probe deleted a receipt and
+        // recomputed the balance but never walked the status back, leaving enrollment 9 saying `paid` over the full
+        // fee while every rule this command ran read 0 on it. The installment stays honestly `partial`, so the only
+        // claim out of line is the status itself.
+        $this->seedOwingAccount(8000.00, 'partial');
+        $this->enrollment->fresh()->update(['enrollmentStatus' => EnrollmentStatus::Paid]);
+
+        $this->assertSame(1, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('FAIL', 'An enrollment that says `paid` while its account still owes');
+    }
+
+    #[Test]
+    public function a_status_after_paid_on_an_owing_account_is_the_new_rules_deliberate_boundary(): void
+    {
+        // The machine walks `paid → enrolled` on purpose (a settled student is put into classes), so a rule that
+        // swept every status at or after `paid` in would report normal progress as broken. Only the status that
+        // itself asserts settlement is asked — which is what makes the case above a claim rather than a coincidence.
+        $this->seedOwingAccount(8000.00, 'partial');
+        $this->enrollment->fresh()->update(['enrollmentStatus' => EnrollmentStatus::Enrolled]);
+
+        $this->assertSame(0, $this->runAudit('ems:audit:record-states'));
+        $this->assertFlagged('ok', 'An enrollment that says `paid` while its account still owes');
+    }
+
     /**
      * A fee sheet settled to zero and, unless told otherwise, the receipt that settled it.
      */
@@ -672,6 +736,53 @@ class AuditRecordStatesTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * A fee sheet whose held receipts come to more than the account was ever due, left in the shape the desk
+     * leaves it: the stored balance sits at ₱0.00, because that is what `outstandingBalance()` answers when the
+     * money taken has passed the figure owed. The `paid` step is recorded so this isolates the excess — without
+     * it the settled-account rule fires beside it and the count stops meaning one thing.
+     */
+    private function seedOverCollectedAccount(float $receipt, float $coverage = 0.00): void
+    {
+        $feeTypeId = DB::table('feetypes')->insertGetId([
+            'feeName' => 'Tuition Fee (per unit)',
+            'defaultAmount' => 17500,
+            'unitBasis' => 'perUnit',
+        ]);
+
+        $assessmentId = DB::table('studentassessments')->insertGetId([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'totalAssessedAmount' => 17500.00,
+            'totalScholarshipCoverage' => $coverage,
+            'totalWaived' => 0.00,
+            'remainingBalance' => 0.00,
+            'assessmentDate' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('charges')->insert([
+            'assessmentId' => $assessmentId,
+            'feeTypeId' => $feeTypeId,
+            'amount' => 17500.00,
+            'waivedAmount' => 0.00,
+        ]);
+
+        DB::table('payments')->insert([
+            'enrollmentId' => $this->enrollment->enrollmentId,
+            'orNumber' => 'TEST-OR-'.uniqid(),
+            'amount' => $receipt,
+            'paymentDate' => now(),
+            'paymentMode' => 'cash',
+            'processedBy' => $this->signer->userId,
+            'paymentStatus' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->recordPaidStep();
     }
 
     #[Test]

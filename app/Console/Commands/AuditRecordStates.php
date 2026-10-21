@@ -136,6 +136,16 @@ class AuditRecordStates extends Command
                 'severity' => 'impossible',
                 'why' => 'AccountingController::record() marks a receipt `paid` only on the money that clears the balance and `partial` on every peso taken before that (§28.3 G-24), so a `paid` receipt over an account that still owes claims a settlement the same desk refused to record. The status is not decoration: `RegistrarController::blockingReasons()` reads it as the fact that a receipt settled, and the Accounting screen paints it under the amount.',
             ],
+            'Money held above what the sheet owes' => [
+                'count' => $this->overCollectedSheets(),
+                'severity' => 'impossible',
+                'why' => 'Ruled 2026-10-20: an OR records money the school keeps, so `record()` refuses a figure above the outstanding balance, and a grant that would cover an already-settled account is refused before it is filed. Nothing else a desk can do leaves cash sitting above a sheet — which is why a non-zero count names money that came in through a restored dump, a hand-edited row, or a guard that regressed. It is worth failing the run for, because the balance cannot show it: `Studentassessments::outstandingBalance()` answers `max(0, …)`, so the account reads ₱0.00 owing while the drawer holds the excess. The refund (ruling 14, §17) is the act that clears it.',
+            ],
+            'An enrollment that says `paid` while its account still owes' => [
+                'count' => $this->paidStatusWhileOwing(),
+                'severity' => 'impossible',
+                'why' => 'The state machine writes `paid` only from `record()`, and only when `outstandingBalance()` reaches zero; the void and the refund both walk it back out (§17, rulings 14 and 15). So a `paid` record whose sheet still owes is money that left the account after the status went in, and nobody told the status — the mirror of the rule above, which asks whether settled money has a step behind it while this one asks whether the step still matches the money. Found by measurement, not argument: a probe that deleted a receipt and recomputed the balance left enrollment 9 on a scratch schema saying `paid` over the full ₱17,500, and every rule this command ran read 0 on it. The Registrar gate and the clearance checklist both take this status as the fact that the student has paid.',
+            ],
         ];
 
         $impossible = 0;
@@ -361,6 +371,61 @@ class AuditRecordStates extends Command
     {
         return Payments::where('paymentStatus', PaymentStatus::Paid->value)
             ->whereHas('enrollment.studentassessments', fn ($q) => $q
+                ->where('totalAssessedAmount', '>', 0)
+                ->where('remainingBalance', '>', 0))
+            ->count();
+    }
+
+    /**
+     * Fee sheets whose held receipts come to more than the account was ever due.
+     *
+     * Counted per sheet, because the sheet is the record the excess is measured against — one ₱1,500 over an
+     * ₱17,500 account is the school holding money for nothing, whichever receipt carries it. The collection is
+     * summed through `Payments::held()` rather than a re-listed status pair, and a dropped enrollment is excluded
+     * because a retired record is not work a desk can refund. The comparison is done in PHP, not in raw SQL:
+     * `outstandingBalance()` clamps at zero, so the answer this rule needs is not the one any stored column holds,
+     * and the two drivers are made to agree by reading the same three decimals.
+     */
+    private function overCollectedSheets(): int
+    {
+        $held = Payments::held()
+            ->selectRaw('enrollmentId, SUM(amount) as collected')
+            ->groupBy('enrollmentId')
+            ->pluck('collected', 'enrollmentId');
+
+        $over = 0;
+
+        $sheets = Studentassessments::where('totalAssessedAmount', '>', 0)
+            ->whereHas('enrollment', fn ($q) => $q
+                ->where('enrollmentStatus', '!=', EnrollmentStatus::Dropped->value))
+            ->get(['assessmentId', 'enrollmentId', 'totalAssessedAmount', 'totalScholarshipCoverage', 'totalWaived']);
+
+        foreach ($sheets as $sheet) {
+            $due = round((float) $sheet->totalAssessedAmount
+                - (float) $sheet->totalScholarshipCoverage
+                - (float) $sheet->totalWaived, 2);
+            $collected = round((float) ($held[$sheet->enrollmentId] ?? 0), 2);
+
+            if ($collected > $due) {
+                $over++;
+            }
+        }
+
+        return $over;
+    }
+
+    /**
+     * Enrollments whose status claims settlement while the fee sheet still carries a balance.
+     *
+     * Scoped to the `paid` status itself, not to everything after it: a student who was settled at issue and is
+     * later `enrolled`, `evaluated` or `approved` is on the ordinary path, and a rule that swept those in would
+     * report the roster as broken. The balance is the stored column, which §28.3 G-22 made `outstandingBalance()`
+     * answer, so this asks the same question the Accounting screen shows.
+     */
+    private function paidStatusWhileOwing(): int
+    {
+        return Enrollments::where('enrollmentStatus', EnrollmentStatus::Paid->value)
+            ->whereHas('studentassessments', fn ($q) => $q
                 ->where('totalAssessedAmount', '>', 0)
                 ->where('remainingBalance', '>', 0))
             ->count();

@@ -190,6 +190,22 @@ class AccountingController extends Controller
             'paymentDate' => 'required|date',
         ]);
 
+        // Ruled 2026-10-20: an OR records money the school keeps, so it may not state more than the account owes.
+        // Nothing above stopped this — `min:0.01` was the only bound on the figure, and `outstandingBalance()`
+        // answers `max(0, …)`, so a ₱19,000 receipt on a ₱17,500 sheet stored a balance of ₱0.00, marked itself
+        // `paid`, and left ₱1,500 held against nothing owed with no rule anywhere able to see it (§28.3 G-26).
+        // Change is therefore handed back at the counter before the receipt is filed, and the screen that used to
+        // invite the larger figure now caps at the same number this guard refuses above.
+        $owed = round($assessment->outstandingBalance(), 2);
+
+        if (round((float) $validated['amount'], 2) > $owed) {
+            return back()->withInput()->withErrors([
+                'amount' => 'A receipt may not exceed what this account owes — ₱'
+                    .number_format($owed, 2).' outstanding. Record that figure and hand the rest back at the counter.'
+                    .($owed <= 0 ? ' This account owes nothing, so no cash may be taken against it.' : ''),
+            ]);
+        }
+
         DB::transaction(function () use ($assessment, $validated) {
             $payment = Payments::create([
                 'enrollmentId' => $assessment->enrollmentId,

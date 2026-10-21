@@ -169,6 +169,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   control did. It refuses rather than reporting a pass: on live `ems`, on a schema with no `DEMO-OR-0002`, on a
   schema where that account holds no balance, and on a mutation that did not change the row. Lane 54's rule still
   governs the rest of the lines: `DB_DATABASE=ems_l54_a php storage/app/scratch/mutate-lane54-report.php`.
+- **After any batch that touches `AccountingController::record()`'s amount, or a money rule in
+  `ems:audit:record-states`**, run `DB_DATABASE=<scratch schema> php storage/app/scratch/mutate-lane57-overcollect.php`.
+  It plants the two states the lane added — a receipt above the amount the sheet owes, and an enrollment left
+  `paid` after its money went — and requires each to fail the audit and name its own label, then swaps HEAD's
+  `AccountingController.php` over the working file and drives the same POST through the HTTP kernel, requiring
+  the old bytes to accept the money and these to refuse it with the ceiling in the message. The tree is
+  restored by hash in a `finally`, because a half-swapped controller makes every later verdict a lie. It refuses
+  rather than reporting a pass: on live `ems`, on a schema with no owing enrollment, and on a mutation that
+  touched no row. The planter is `storage/app/scratch/lane57-plant-state.php`; the desk act is
+  `storage/app/scratch/lane57-overcollect-state.php`, and its `revert` walks the enrollment back through the
+  state machine rather than only deleting the receipt — the half-revert is what produced §28.3 G-27.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -292,10 +303,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   every year, so an unscoped query reads a retired term's meeting as a conflict for the term being built. A
   schedule whose block is missing has no term to scope by and the filter is dropped rather than answered "no
   conflict" — widening is the honest failure, silence is not. `ems:audit:record-states` carries the same rule as
-  two of its seventeen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
+  two of its nineteen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
   the two sides are term-equal, and half-open so **back-to-back is not a collision**. There is deliberately no
   `meetingId` exclusion on that path: Laravel rewrites `where('meetingId', '!=', null)` into `IS NOT NULL`, so the
   create-form guard that used to depend on it passed by an accident of the query builder, not by intent.
+- **A receipt states money the school keeps, and a status states a moment** (lane 57). `record()` bounded
+  `amount` only from below, and `outstandingBalance()` answers `max(0, …)`, so one POST of ₱19,000 against a
+  ₱17,500 sheet wrote the receipt, marked it `paid` (the honest word — nothing was left owing), stored a
+  balance of ₱0.00, and left ₱1,500 in the drawer against nothing. Ruled 2026-10-20: the OR may not state more
+  than the account owes, so the guard refuses above the balance and names the figure, and the screen that used
+  to compute change due now caps at the same number — a promise and a server must not disagree (§17).
+  `ems:audit:record-states` carries the state as its eighteenth rule, measured against *what is owed*
+  (assessed less coverage less waived), not the assessed total, so a full receipt over a covered account is
+  named too. The lane's second rule is its mirror: the probe that planted the first un-planted it by deleting
+  the row and recomputing the balance, never walking the enrollment's status back — leaving a schema saying
+  `paid` over the whole fee while all eighteen other rules read 0. So the nineteenth rule asks whether a
+  `paid` status still matches its money, scoped to `paid` alone: the machine walks `paid → enrolled` on
+  purpose, and a rule that swept every later status in would report normal progress as broken.
 - **A receipt's status word is a claim about the account, not about the money** (lane 56). `held()` counts both
   `paid` and `partial`, so every balance and collection figure is indifferent to which word a row carries — and
   that is exactly why the wrong word survives: `RegistrarController::blockingReasons()` asks whether a receipt
