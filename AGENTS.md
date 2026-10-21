@@ -227,6 +227,24 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   first cell is a bare date (`2026-10-11–15 |`) is that day's record, while the row reading "(this issue)" is a living claim — lane 58's
   finding applied to this class. One trap bit twice: the row's en dash is three bytes, so the date-cell regex needs `/u`, and without it
   §1.1's historic "twelve rules" read as undated and the checker refused a figure the document never asserted about today.
+- **After any batch that edits a figure about the SCHEMA or a ratio over rows**, run
+  `php storage/app/scratch/lane60-ratio-claims.php --run` and prove it with
+  `php storage/app/scratch/mutate-lane60-ratio-claims.php`. This is the third prose family: not the suite totals (lane 58) and
+  not the counts a tool prints (lane 59), but "62 tables (54 EMS domain + 8 framework), 418 columns, 86 foreign-key
+  constraints, 175 indexes" — a 2026-10-04 reading restated as the present schema while §23.8's own cross-check on the same
+  subject said 63, and **one of its numbers never named what it counted**: 175 is `information_schema.TABLE_CONSTRAINTS`, the
+  schema holds 129 indexes. Live `ems` today answers 63 tables (55 domain + 8 framework from the bundled `0001_` migrations),
+  452 columns, 100 foreign keys, 4 CASCADE / 26 SET NULL / 1 RESTRICT / 69 NO ACTION, and §24's 63 per-table "N columns"
+  headings all agree with the server column for column. Two rules the measurement taught. *Derive the partition, never
+  recall it*: a hardcoded list of eight framework tables answered "54", while the eight the server holds are the seven
+  `0001_` migrations create plus `migrations`, which the framework writes itself — and reading only `Schema::create` also
+  flags `studentids`, created 2026_08_02 and dropped 2026_09_22, as a missing table unless `dropIfExists` is read from the
+  same `up()` half (split on `public function down()`, because every create migration carries a drop in its rollback).
+  *A figure that matches no reading is a different finding from a stale one*: before calling 175 wrong, ask what else counts
+  175, and say which noun it was. CI runs the schema half on `ems_test` (`--ci`), because those figures are properties of the
+  migrations and a divergence is a real defect; row counts — `42 assignments over 17 roles`, `gradescale has 4 rows`, the
+  `settings` rows — are named and not judged there, since they belong to whichever database stated them. The probe refuses a
+  schema it was not told to read: `--allow-schema=<name>` is how CI says so on the command line.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -569,9 +587,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 860 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 108 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 275 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 861 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 109 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 277 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

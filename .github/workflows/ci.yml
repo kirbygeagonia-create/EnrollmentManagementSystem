@@ -184,6 +184,25 @@ jobs:
           # storage/app/scratch/mutate-lane41-claims.php.
           php storage/app/scratch/lane41-doc-claims.php --ci
 
+      # Lane 60's half of the same discipline, over the figures that describe the SCHEMA: the census sentence, the
+      # domain/framework split, the per-table column counts of §24, the foreign-key totals and the delete-rule split.
+      # These are properties of the migrations, so a schema CI builds from nothing may answer them — and if the answer
+      # differs from this box's, that is the finding (a manual ALTER on the developer's database, or a migration that
+      # does not apply clean), not a nuisance. Row counts are excluded by --ci and named instead: `42 assignments over
+      # 17 roles` is a fact about whichever database stated it, and on ems_test it is a different number honestly.
+      # The dump is regenerated because it is gitignored, and the probe refuses a schema it was not told to read.
+      - name: Check the census and column counts against the schema
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ems_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: |
+          php storage/app/scratch/dump-docx-flat.php
+          php storage/app/scratch/lane60-ratio-claims.php --ci --run --allow-schema=ems_test
+
       - name: Run the end-to-end walkthrough against MySQL
         env:
           DB_CONNECTION: mysql

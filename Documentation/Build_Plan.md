@@ -12,8 +12,8 @@
 
 | Stage | Title | Status | Description |
 |---|---|:---:|---|
-| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 62 tables (86 foreign keys at the original baseline), strict enum validation, audit tables, indexes, and full relational model. |
-| **Stage 2** | **Spatie RBAC & Security Infrastructure** | ✅ **COMPLETED** | 13 functional desk roles, 86 granular permissions, multi-guard session authentication, and audit trails. |
+| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 63 tables and 100 foreign keys now, against 62 and 86 at the original baseline; strict enum validation, audit tables, indexes, and full relational model. |
+| **Stage 2** | **Spatie RBAC & Security Infrastructure** | ✅ **COMPLETED** | 13 functional desk roles, 93 granular permissions, multi-guard session authentication, and audit trails. |
 | **Stage 3** | **Core Enrollment Lifecycle Engine (Phases 0–8)** | ✅ **COMPLETED** | Complete per-student workflow — 7 steps for first-year/transferee, 6 for continuing/shifter (Department Evaluation → Assessment → Accounting → Registrar → Blocking → Clinic → ID Office), via `WorkflowService::stepsFor()`; admissions, exams, and clearance run as their own desk flows alongside. |
 | **Stage 4** | **Enterprise UI/UX Design & App Launcher** | ✅ **COMPLETED** | Glassmorphism, Tailwind design system, MegaAppLauncher command center, phase-specific badging, responsive tables, and filters. |
 | **Stage 5** | **Enterprise Safety, Modals & Print Services** | ✅ **COMPLETED** | Universal `CauseEffectModal.jsx`, destructive action guards, sign-out safety, high-fidelity Certificate of Registration (COR), Class Cards, and Subject Load printing. |
@@ -27,7 +27,8 @@
 ## Detailed Breakdown of Stages
 
 ### Stage 1: Database Architecture (COMPLETED)
-- Strict MySQL 8 engine with 62 interconnected tables (86 foreign keys at the original baseline).
+- Strict MySQL 8 engine with 63 interconnected tables (86 foreign keys at the original baseline, 100 as re-read against
+  the live schema).
 - Complete data dictionary covering `students`, `admissions`, `examresults`, `clearances`, `enrollments`, `assessments`, `payments`, `blockschedules`, `clinicrecords`, and `idrequests`.
 - Zero nullable foreign key violations, cascade constraints where appropriate, and soft deletions on master catalogs.
 
