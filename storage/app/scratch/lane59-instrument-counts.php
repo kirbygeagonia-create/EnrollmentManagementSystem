@@ -109,6 +109,19 @@ $INSTRUMENTS = [
         'labels' => ['ranges?' => 'ranges', 'cited ranges' => 'ranges', 'pairs?' => 'pairs'],
         'db' => false,
     ],
+    'lane61-who-owes' => [
+        'cite' => '/lane61-who-owes/i',
+        'cmd' => 'storage/app/scratch/lane61-who-owes.php',
+        'parts' => [
+            'rows' => '/register rows parsed: (\d+)/',
+            'actors' => '/NAMES an actor: (\d+)/',
+            'answers' => '/states an answer:\s+(\d+)/',
+            'none' => '/names none:\s+(\d+)/',
+        ],
+        'labels' => ['register rows' => 'rows', 'rows parsed' => 'rows', 'still name an actor' => 'actors',
+            'name none' => 'none', 'of those state the answer' => 'answers'],
+        'db' => false,
+    ],
     'lane43-delete-guards' => [
         'cite' => '/lane43-delete-guards|delete-guards/i',
         'cmd' => 'storage/app/scratch/lane43-delete-guards.php',

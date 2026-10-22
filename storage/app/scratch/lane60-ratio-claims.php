@@ -197,11 +197,43 @@ $CLAIMS = [
         're' => '/academicterms \| Yes — CRUD \| Yes, (\d[\d,]*) terms/s',
         'paths' => ['rows.academictermsRows']],
     ['doc' => $DOCX, 'cls' => 'data', 'id' => 'settings-table',
-        're' => '/holds (\d[\d,]*) rows on the live database, written by SettingsSeeder/s',
+        're' => '/holds (\d[\d,]*) rows on live `ems`, written by SettingsSeeder/s',
         'paths' => ['rows.settingsRows']],
+    // Pass 172 rewrote the sentence the original claim was read from, which is exactly what UNBOUND is for:
+    // a claim whose anchor moved is re-pointed or the figure goes unscheduled, never silently dropped.
+    ['doc' => $DOCX, 'cls' => 'data', 'id' => 'settings-rows-recounted',
+        're' => '/the table is populated — (\d[\d,]*) rows, one of them the name/s',
+        'paths' => ['rows.settingsRows']],
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 's301-title',
+        're' => '/(Fifty-five), and the (sixty-three) tables in the database/i',
+        'paths' => ['domainTables', 'tables']],
+    // The §1.1 row for 2026-10-21 restates the census inside a revision record. A revision row whose first cell is
+    // a bare date is that day's record, but this one reads "(this issue)", so its figures are living claims and
+    // they belong to an instrument — which is how "129 unique-to-nothing indexes" got caught: 129 is every index.
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'revision-row-census',
+        're' => '/(\d[\d,]*) tables, (\d[\d,]*) of them domain, (\d[\d,]*) columns, (\d[\d,]*) foreign keys, (\d[\d,]*) indexes/s',
+        'paths' => ['tables', 'domainTables', 'columns', 'foreignKeys', 'indexes']],
     ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'printable-universe',
         're' => '/The printable universe is (\w+) document types/i',
         'paths' => ['documentTypeEnumValues']],
+    // §24.1's decomposition, row by row, and the cover line's own count. These are the figures a scan of the tree
+    // answers and a reader cannot check by eye: "51 created by this project's migrations" and "3 published by a
+    // package" were both true at the reading pass and neither is true now.
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'cover-application-tables',
+        're' => '/· (\d[\d,]*) application tables ·/',
+        'paths' => ['domainTables']],
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'created-by-project-migrations',
+        're' => '/Created by this project[\x{2019}\']s migrations \| (\d[\d,]*) \|/u',
+        'paths' => ['tablesByOwnMigrations']],
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'package-published-tables',
+        're' => '/Published by a package, not by this project \| (\d[\d,]*)\s*[\x{2013}\x{2014}-]/u',
+        'paths' => ['tablesByPackageMigration']],
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'quoted-application-count',
+        're' => '/difference between [\x{201c}"](\d[\d,]*) application tables[\x{201d}"] and the (\d[\d,]*)/u',
+        'paths' => ['domainTables', 'tablesByOwnMigrations']],
+    ['doc' => $DOCX, 'cls' => 'schema', 'id' => 'baseline-wave-tables',
+        're' => '/(\d[\d,]*) of them in the 2026-08 baseline wave/',
+        'paths' => ['tablesCreatedInBaselineWave']],
     ['doc' => $AGENTS, 'cls' => 'schema', 'id' => 'agents-fk-rules',
         're' => '/carries (\d[\d,]*) foreign keys: only (\w+)\s+cascade.*?and (\d[\d,]*) refuse a delete outright/s',
         'paths' => ['foreignKeys', 'deleteRules.cascade', 'deleteRules.refusing']],
@@ -263,7 +295,12 @@ $scoped = $onlyClaims !== [] ? array_flip($onlyClaims) : null;
 // purpose; without that, a two-line fixture would refuse for a class it never claimed to judge.
 $judgeHeads = $scoped === null || isset($scoped['headings']);
 
-$DATED = '/\b(?:20\d\d-\d\d-\d\d|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+20\d\d|measured on|measured:|at the time|back in|used to|was false|re-read on)\b/i';
+// History means the SENTENCE reports a reading taken on a day — "measured on 2026-10-01:", "re-read on …" — not merely
+// that a date appears in it. §24.1's rows say "49 of them in the 2026-08 baseline wave" and "shiftingrequests came
+// 2026-10-03": those dates belong to the tables, not to the act of counting, and treating them as stale-protecting made
+// two living claims unjudgeable. The §1.1 form (a row whose first cell is a bare date) is handled by lane 58's checker,
+// which reads that table cell by cell.
+$DATED = '/\b(?:measured on|measured:|measured as|re-?read on|read from[^.]{0,40}on 20\d\d|as of 20\d\d|at the time|back in 20\d\d|used to (?:state|say|read)|was false when|was stale)\b/i';
 
 $rows = [];
 $unbound = 0;

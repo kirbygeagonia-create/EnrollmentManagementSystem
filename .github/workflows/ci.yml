@@ -91,6 +91,19 @@ jobs:
           php storage/app/scratch/lane59-instrument-counts.php --ci --run \
             --only=sweep-docx-citations,lane37-section-reference-sweep,lane37b-repo-citation-sweep,lane32-cite-meaning-sweep
 
+      - name: Refuse a document that asks what its own registers answer
+        run: |
+          # Lane 61's class is a status word, not a figure: §28.7 put nine items in "the order these should be taken
+          # in" while each of those ids' own row began "Closed 2026-10-0…", §28.8 counted 46 owed slots from a column
+          # that now names an actor in eight rows, §30.6 named four open items its registers had ruled on, and §25.5
+          # said the settings table has no effect on a printed document twenty days after the provider that bridges
+          # it landed. No citation sweep can see that: every pointer lands on a live line, every §-reference resolves,
+          # and lane 60 had just corrected the figures beside those very sentences. It reads only the dump the step
+          # above regenerates, so it runs here with no database — and mutate-lane61-open-claims.php proves it refuses,
+          # including the four shapes it must NOT flag (a self-answering sentence, an id borrowed across sentences, a
+          # dated §1.1 row, and a gap whose title begins with the word "Open").
+          php storage/app/scratch/lane61-open-claims.php
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04

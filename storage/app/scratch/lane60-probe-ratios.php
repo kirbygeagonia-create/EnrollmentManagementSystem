@@ -118,6 +118,35 @@ foreach (glob($root.'/database/migrations/0001_*.php') ?: [] as $mf) {
     }
 }
 
+// §24.1's four-way decomposition, answered the way the section states it. Each migration FILE is classified by what it
+// is, not by which tables it names: the bundled 0001_ files are Laravel's, the published permission migration builds its
+// table names from config/permission.php at runtime (so a scan for a literal Schema::create finds none of them), and the
+// rest are this project's own.
+$fileClass = [];
+$packageFiles = [];
+foreach (glob($root.'/database/migrations/*.php') ?: [] as $mf) {
+    $base = basename($mf);
+    $up = (string) preg_split('/public function down\\(\\)/', (string) file_get_contents($mf))[0];
+    if (str_starts_with($base, '0001_')) {
+        $fileClass[$base] = 'bundled';
+    } elseif (preg_match('/\\$tableNames\\[/', $up) === 1) {
+        $fileClass[$base] = 'package';
+        $packageFiles[] = $base;
+    } else {
+        $fileClass[$base] = 'own';
+    }
+}
+$createdBy = [];
+foreach (glob($root.'/database/migrations/*.php') ?: [] as $mf) {
+    $base = basename($mf);
+    $up = (string) preg_split('/public function down\\(\\)/', (string) file_get_contents($mf))[0];
+    if (preg_match_all("/Schema::create\\(\\s*'([a-zA-Z0-9_]+)'/", $up, $mm)) {
+        foreach ($mm[1] as $t) {
+            $createdBy[strtolower($t)] = ['file' => $base, 'class' => $fileClass[$base], 'month' => substr($base, 0, 7)];
+        }
+    }
+}
+
 $liveTables = [];
 foreach (DB::select("SELECT TABLE_NAME t FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'") as $r) {
@@ -147,6 +176,21 @@ $fwNow = array_values(array_filter($liveTables, static function (string $t) use 
 printf("  %-34s stated %-34s server %d domain + %d framework = %d\n",
     '   §24.16 partition', '54+8 (2173/2461) vs 55+8 (§24.1)', count($liveTables) - count($fwNow), count($fwNow), count($liveTables));
 echo '      framework tables by that test: '.implode(', ', $fwNow)."\n";
+
+// §24.1's four-way decomposition, so its rows can be read against something other than whoever wrote them last.
+$ownLive = array_values(array_filter($liveTables, static fn (string $t): bool => ($createdBy[$t]['class'] ?? '') === 'own'));
+$bundledLive = array_values(array_filter($liveTables, static fn (string $t): bool => ($createdBy[$t]['class'] ?? '') === 'bundled'));
+$noLiteral = array_values(array_filter($liveTables, static fn (string $t): bool => ! isset($createdBy[$t])));
+$packageLive = array_values(array_filter($noLiteral, static fn (string $t): bool => $t !== 'migrations'));
+$bookkeepingLive = array_values(array_filter($noLiteral, static fn (string $t): bool => $t === 'migrations'));
+$baselineWave = array_values(array_filter($ownLive, static fn (string $t): bool => ($createdBy[$t]['month'] ?? '') === '2026_08'));
+$afterWave = array_values(array_filter($ownLive, static fn (string $t): bool => ($createdBy[$t]['month'] ?? '') !== '2026_08'));
+printf("  %-34s stated %-34s server own %d + bundled %d + package-named %d + bookkeeping %d = %d\n",
+    '   who creates them', '§24.1 (51 / 3)', count($ownLive), count($bundledLive), count($packageLive), count($bookkeepingLive),
+    count($ownLive) + count($bundledLive) + count($packageLive) + count($bookkeepingLive));
+echo '      package-named: '.implode(', ', $packageLive)."\n";
+printf("      created in the 2026-08 baseline wave: %d; after it: %d (%s)\n",
+    count($baselineWave), count($afterWave), implode(', ', $afterWave));
 if ($declaredButAbsent !== []) {
     echo '      MIGRATIONS CREATE, SERVER HAS NOT: '.implode(', ', $declaredButAbsent)."\n";
 }
@@ -380,6 +424,14 @@ $R = [
     'domainTables' => count($liveTables) - count($fwNow),
     'reproducibleFromMigrations' => count($fromMigrations),
     'notFromMigrations' => count($notFromMigrations),
+    'tablesByOwnMigrations' => count($ownLive),
+    'tablesByBundledMigrations' => count($bundledLive),
+    'tablesByPackageMigration' => count($packageLive),
+    'tablesByFrameworkBookkeeping' => count($bookkeepingLive),
+    'tablesCreatedInBaselineWave' => count($baselineWave),
+    'tablesCreatedAfterBaseline' => count($afterWave),
+    'tablesCreatedAfterBaselineNames' => $afterWave,
+    'tablesByPackageMigrationNames' => $packageLive,
     'columns' => (int) $columns['n'],
     'domainColumns' => $domainCols,
     'foreignKeys' => (int) $fks['n'],

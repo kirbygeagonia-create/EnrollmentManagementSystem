@@ -58,6 +58,13 @@ $READINGS = [
     'domainTables' => 55,
     'reproducibleFromMigrations' => 57,
     'notFromMigrations' => 6,
+    // The §24.1 decomposition, so the fixture cases carry the same readings the real documents bind to.
+    'tablesByOwnMigrations' => 50,
+    'tablesByBundledMigrations' => 7,
+    'tablesByPackageMigration' => 5,
+    'tablesByFrameworkBookkeeping' => 1,
+    'tablesCreatedInBaselineWave' => 49,
+    'tablesCreatedAfterBaseline' => 1,
     'columns' => 452,
     'domainColumns' => 410,
     'foreignKeys' => 100,
@@ -168,6 +175,21 @@ $case('heading-orphan',
     "P 9: payments — 13 columns\n", "P 9: wonderment — 13 columns\n",
     ['headings'], 0, 1, ['UNBOUND', 'no table by that name'], ['the server holds'],
     'a heading naming a table the readings do not carry is UNBOUND — a parser with a hole must not look like a pass');
+
+// ------------------------------------------------------------------ §24.1's decomposition and the cover line
+
+$case('cover-count-drift',
+    "P 3: Revised against the running build · 55 application tables · schema read from the live database\n",
+    "P 3: Revised against the running build · 54 application tables · schema read from the live database\n",
+    ['cover-application-tables'], 0, 1, ['STALE', 'domainTables', 'answers 55'], [],
+    'the cover line and §24.1 used to state different counts; the cover is now a bound claim, not decoration');
+
+$case('own-migrations-row-drift',
+    "P 3: Created by this project’s migrations | 50 | 49 of them in the 2026-08 baseline wave; the other 1, shiftingrequests, came 2026-10-03\n",
+    "P 3: Created by this project’s migrations | 51 | 49 of them in the 2026-08 baseline wave; the other 1, shiftingrequests, came 2026-10-03\n",
+    ['created-by-project-migrations', 'baseline-wave-tables'], 0, 1, ['STALE', 'tablesByOwnMigrations', 'answers 50'], ['UNBOUND'],
+    'a date belonging to a TABLE ("came 2026-10-03") must not make the sentence unreadable as history — that misfire '
+        .'once left two living claims unjudged');
 
 // ------------------------------------------------------------------ the expectations that must stay CLEAN
 

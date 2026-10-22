@@ -245,6 +245,30 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   migrations and a divergence is a real defect; row counts — `42 assignments over 17 roles`, `gradescale has 4 rows`, the
   `settings` rows — are named and not judged there, since they belong to whichever database stated them. The probe refuses a
   schema it was not told to read: `--allow-schema=<name>` is how CI says so on the command line.
+- **After any batch that edits a sentence about whether a finding is still open**, run
+  `php storage/app/scratch/lane61-open-claims.php` and prove it with
+  `php storage/app/scratch/mutate-lane61-open-claims.php`. This is the fourth prose family — not the suite totals
+  (lane 58), not the counts a tool prints (lane 59), not the schema census (lane 60), but the **status word**:
+  §28.7 put nine items in "the order these should be taken in" while every one of those ids' own register row began
+  `Closed 2026-10-0…`; §28.8 counted 46 owed slots over six actors from a "Who must act" column that 8 of 57 rows
+  still fills with an actor; §30.6 named C-11, D-1, X-3 and G-2 as four open items, all four ruled, closed or
+  contained in their own rows; §30.5 called the settings table empty while it holds 3 rows; and §25.5 said that table
+  "has no effect on any printed document" twenty days after `29b5532` registered `SettingsServiceProvider.php:20-24`,
+  which is the thing that carries `settings` into `config('settings.*')`. The falsification for that one was to boot
+  the app and read `config('settings.schoolName')`: it answers the table's title-case value, not the upper-case
+  literal the template passes as its fallback — a discriminator the case spelling makes unmissable. No existing
+  sweep could see any of it, because each pointer lands on a live line, each §-reference resolves, and lane 60 had
+  just corrected the figures beside those very sentences. Three rules keep the checker honest, each learned in an
+  earlier lane: the verdict is the cell that LEADS with a verb and, when any cell also carries a date, that one wins
+  (a gap's TITLE can begin "Open a second signature…"); an id is judged only inside the sentence holding the
+  open-words, so "a request still open under a box its own office signed" cannot be charged to G-2 eleven sentences
+  later; and a sentence that states its own answer, or sits in a §1.1 row whose first cell is a bare date, is a
+  record. First run: 12 contradictions over 11 ids; the harness has 11 legs and four of them require silence.
+  Two traps this lane paid for. **A register row you add moves every count of the register, including the sentence
+  that justifies adding it**: pass 173 wrote "56 register rows" into §28.8 and into G-29, then appended row 57, and
+  pass 173c had to correct both — the lane's own defect, reproduced inside its fix. And **a claim whose anchor
+  sentence you rewrite goes unscheduled, not stale**: lane 60 answered `UNBOUND settings-table` because pass 172 had
+  reworded the sentence its regex read, which is exactly why that checker refuses instead of reporting a clean count.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -556,7 +580,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (602 citations over 141 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (610 citations over 145 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -587,9 +611,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 861 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 109 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 277 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 871 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 110 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 284 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
