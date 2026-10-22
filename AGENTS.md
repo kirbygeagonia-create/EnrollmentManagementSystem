@@ -273,6 +273,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   pass 173c had to correct both — the lane's own defect, reproduced inside its fix. And **a claim whose anchor
   sentence you rewrite goes unscheduled, not stale**: lane 60 answered `UNBOUND settings-table` because pass 172 had
   reworded the sentence its regex read, which is exactly why that checker refuses instead of reporting a clean count.
+- **After any batch that edits a sentence saying a printed document was verified**, run
+  `php storage/app/scratch/lane62-print-paper-probe.php` and read its table. This is the fifth prose family: not a
+  figure, not a status word, but a **claim about an artefact** — §28.6's row 5 said the clearance slip and the
+  enrollment form "both print the schoolIdNumber they already hold, verified by reprinting and reading the paper".
+  Extracting the text of the PDFs `ems:print-fidelity` renders from live `ems` shows the slip prints its own subject's
+  ID (`DEMO-2026-018`) and the certificate and subject-load print `DEMO-2026-017`, while the enrollment form carries
+  **no ID token at all** and no school year either — so P-2, the register's only live engineering item, was true and
+  the sentence claiming it had been checked on paper was not. Two traps in the first ten minutes of using it:
+  `exec()` runs cmd.exe, so a Git-Bash path like `/mingw64/bin/pdftotext` is invisible and the probe must name the
+  `.exe`; and the fidelity set renders a **different student per document**, so "this record's ID is absent" is not
+  the same claim as "no ID reaches this paper" — the probe prints both columns because conflating them invents a
+  defect. The record is read out of the paper (the certificate states its own subject) rather than guessed from the
+  database, and a probe that cannot find a subject refuses instead of reporting an empty table.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
