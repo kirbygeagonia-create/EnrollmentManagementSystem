@@ -206,7 +206,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   junit the runner wrote); only suite totals are surface-gated. Third trap, and the reason the September guides were left alone: counting cases from the
   source (`#[Test]` lines plus `test_` methods) is not a case count — providers expand and one method carries both markers,
   so it was off by 75 on `PermissionMatrixTest` alone and matched 780 at the suite level only by coincidence; a claim that
-  instrument cannot reach is reported unverifiable, not false.
+  instrument cannot reach is reported unverifiable, not false. Fourth trap, met by pass 173 on 2026-10-21: **one surface
+  per claim.** "The suite on this box answers 780 tests and 5,220 assertions, and CI answers 5,013 on its SQLite job…" is
+  one claim to the checker, and a multi-total sentence is judged on its FIRST figure — green on this box, STALE on the
+  runner, which compared 5,220 with its own junit's 5,013. A revision row that must outlive the run it was read from
+  names one surface, or states no total at all.
 - **After any batch that edits a figure one of these tools prints** — a rule count, a citation total, a tile or cell count,
   a blind-spot tally — run `php storage/app/scratch/lane59-collect-readings.php` and then
   `php storage/app/scratch/lane59-instrument-counts.php --readings=storage/app/scratch/lane59-readings.json`, and prove it with
