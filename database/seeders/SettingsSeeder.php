@@ -13,9 +13,17 @@ class SettingsSeeder extends Seeder
      * Idempotent and non-destructive: an existing key is never overwritten, so a
      * Registrar's edits in Admin → User Management → Settings survive re-seeding.
      *
-     * PROVISIONAL: schoolAddress and schoolPhone are institutional facts this
-     * repository does not record, so they are seeded blank for the Registrar to
-     * supply — the print letterhead omits them rather than inventing them.
+     * The address and the landline are not invented here. Both are recorded in
+     * Documentation/SEAIT_Official_Information.md §1, compiled from the official
+     * portal (seait.edu.ph), and that sheet entered this repository on 2026-08-28
+     * (e35fe3d) — before this seeder was written on 2026-10-01 (29b5532), whose
+     * header declared these to be "institutional facts this repository does not
+     * record" and seeded both blank for twenty days. The declaration was false the
+     * day it was committed; see §25.5 and P-7. The phone is the Registrar's
+     * published landline, the number the institution answers the public with, and
+     * the sheet lists a second line beside it. A school that prefers another
+     * changes it on the Admin screen, and `required` validation means it cannot
+     * then be blanked again.
      */
     public function run(): void
     {
@@ -25,12 +33,12 @@ class SettingsSeeder extends Seeder
                 'description' => 'Letterhead name shown on every printed document.',
             ],
             'schoolAddress' => [
-                'value' => '',
-                'description' => 'PROVISIONAL — Registrar to supply the official campus address for the print letterhead.',
+                'value' => 'National Highway, Purok 7, Crossing Rubber, Tupi, South Cotabato, Philippines, 9505',
+                'description' => 'Main campus address, from SEAIT_Official_Information.md §1 (compiled from seait.edu.ph).',
             ],
             'schoolPhone' => [
-                'value' => '',
-                'description' => 'PROVISIONAL — Registrar to supply the official contact number for the print letterhead.',
+                'value' => '(083) 226-1602',
+                'description' => 'Registrar landline, from SEAIT_Official_Information.md §1. The sheet also lists 226-1203.',
             ],
             // The clearance replacement fee is deliberately not a setting: the amount a
             // student is charged and the amount the slip prints both come from the

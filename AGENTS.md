@@ -286,6 +286,39 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the same claim as "no ID reaches this paper" — the probe prints both columns because conflating them invents a
   defect. The record is read out of the paper (the certificate states its own subject) rather than guessed from the
   database, and a probe that cannot find a subject refuses instead of reporting an empty table.
+
+  The same lane closed P-7, and the closure says something about how a finding ages: the row waited on the Registrar
+  for twenty days because `SettingsSeeder.php` declared the campus address and the landline to be "institutional facts
+  this repository does not record" — while `Documentation/SEAIT_Official_Information.md` §1 has carried both since it
+  entered the tree on 2026-08-28, **34 days before that seeder was written**. The blocker was a belief in a comment, so
+  the first action was to read the repository, not to ask the school. **After any batch that touches `SettingsSeeder`,
+  the three letterhead keys, or a print view's `config('settings.…')` calls**, run
+  `php storage/app/scratch/mutate-lane62-letterhead-tests.php` — a green control plus four planted
+  defects (a blank address, an invented address, a renamed key, a template reading a key no row supplies), each of
+  which must kill the named test, and which refuses its whole run when the control is not green or a needle matches
+  nothing. `Tests\Feature\Print\PrintTemplateSelfContainmentTest` needs `RefreshDatabase` for this: the class asserted
+  nothing about the database before, and `settings` does not exist in an un-migrated `:memory:` schema. And its
+  `--filter` is the **method name**, not the sentence Pest prints for it — filtering on
+  `the letterhead settings are seeded` selects no test, and a harness that reads "No tests found" as a green leg is
+  the lane 44 mutant that sleeps.
+  Two findings came out of reading that sheet rather than probing the code. **P-16**: the paper prints
+  "Southeast Asian Institute of Technology" while the sheet, `GuestLayout.jsx:50`, `GuestLayout.jsx:68`, four
+  Documentation markdown files and this document's own title line carry "South East Asian Institute of Technology,
+  Inc." — so the login screen and the letterhead name the school differently, and no instrument could see it because
+  nothing in the repository asked whether the two spellings agree. It is recorded as a question, not fixed: a name is
+  the school's to choose, and the reference scans that could settle it live in the gitignored
+  `Documentation/Images`. **The mirror defect of lane 61**: closing P-7 made §30.6's opening sentence ("Nothing in
+  this section waits on an institutional
+  answer") false, because P-16 does. `lane61-open-claims.php` catches a sentence presenting an *answered* id as
+  undecided; it cannot catch a sentence presenting an *open* id as settled, because there is no contradiction with the
+  register — the paragraph has to be re-read whenever a row is opened, which pass 176b did.
+  And the print register now behaves like §28's: **one §25.4 row moved nine places** — the four that state the range
+  `P-1 … P-15` (§25's intro, §28.4's index row, §28.4's lead sentence, §29.4's family row), §29.4's count cell, the
+  two cells of the §28.4 group row it is filed under, §28.8's tally of print findings outside the register, and
+  §30.5's cross-reference — plus G-29's record of the pass that corrected the letterhead, which had to be reworded to
+  "the two rows that were blank when it was written". Pass 176's clone guard reads the ids out of the staged bytes
+  (`P-1 … P-16`, once each, in order) because §25.4 is written as two adjacent `<w:tbl>` elements, so one table's row
+  count is not the register's size.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -597,7 +630,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (610 citations over 145 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (616 citations over 147 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -628,9 +661,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 871 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 110 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 284 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 876 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 111 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 300 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
@@ -738,6 +771,15 @@ needs to add cannot always ride on a text needle: §18.3's column list ends with
 Consolas run and its full stop in a plain one, so no string spans the end of that paragraph — such an
 addition goes in as an inserted `<w:p>` (the engine's `inserts` argument), which the container guard
 counts as exactly the paragraph pair it contributes.
+
+**A cloned register row inherits every `<w:t>` run of the template cell.** A helper that writes a cell by replacing
+its first run leaves the later runs in place, so cloning a multi-run cell copies the template's tail into the new
+row: pass 173's §1.1 clone gave the 2026-10-21 row the previous row's closing paragraph verbatim, and it sat there
+unnoticed for one batch because every container guard still balanced (the row has one more run than it should, and
+one row's worth is exactly what the guard checks). Write a cloned cell by emptying **all** its runs and then require
+the flattened cell to equal the supplied text — containment is not enough. `lane62-probe-p7-targets.php` prints each
+target cell's run count for this reason, and pass 176's stage 1 refuses when the register's ids are not
+`P-1 … P-16` in order, once each.
 
 ## Agent dispatch
 
