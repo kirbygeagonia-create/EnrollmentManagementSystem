@@ -409,6 +409,33 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and CI's `ems_test` is seeded differently. **`information_schema.TABLES.TABLE_ROWS` is
   not the measure**: it is an InnoDB estimate and reports `clearanceperiods` as 0 while every
   clearance row joins to it, so emptiness is `COUNT(*)` or nothing.
+- **After any batch that states or edits a peso figure in the documents**, run
+  `php storage/app/scratch/lane65-peso-claims.php --verify` and prove it with
+  `php storage/app/scratch/mutate-lane65-peso-claims.php`. This is the sixth prose family: the money the
+  document writes down. 50 `₱` tokens sit in the flat dump — 15 bind to a `feetypes` row, to an account the
+  server holds, or to an **arithmetic triple read out of the sentence itself** ("₱8,000.00 held against a
+  ₱18,500.00 sheet leaves ₱10,500.00" must both add up and match a real assessment's assessed/held/owing),
+  20 are carried by a past-tense or dated sentence, 13 are hypothetical ("a school that charges
+  ₱150"), and 2 are printed as blind spots rather than cleared: §18's "₱100 default" gloss beside a code range,
+  and the `₱0.01` validation minimum, which is a rule in a request, not a row. Existence alone would not catch
+  a broken account sentence — ₱12,000.00 is a receipt amount the server really holds — so the harness mutates
+  "leaves ₱10,500.00" into it and requires the arithmetic, not the lookup, to refuse. It found no defect — every bound
+  figure equals the catalogue (Tuition 1,250 perUnit, Miscellaneous 1,500 flat, Laboratory 500 perUnit, Library
+  250 flat, Clearance Slip Replacement 100.00, which `StarterReferenceDataSeeder.php:68-71` and
+  `DevReferenceDataSeeder.php:715` each create) — and that is the outcome to expect from a document whose money
+  has already been weighed by lane 53; the instrument exists so the next edit cannot silently drift. Three bugs
+  it paid for, each of which produced a *clean-looking* verdict before it was fixed: `preg_match_all`
+  answers the **count**, so guarding with `!== 1` skipped every table row carrying more than one figure and left
+  the run binding 3 of 50 — the `bound === 0` refusal fired only after the fix, which is the guard earning its
+  keep; and pairing a fee name to "the next ₱ within 6 characters" accused the document of writing
+  "Miscellaneous ₱1,250", because the row lists four fees in order and each name grabbed its neighbour's amount.
+  A fee claim is bound only when the name is adjacent to *that* figure: `name\s*₱amount`. Third trap: **Pint
+  broke a working script and `pint --test` approved it** — `fully_qualified_strict_types` shortened the bootstrap
+  `Illuminate\Contracts\Console\Kernel::class` to `Kernel::class` and filed its own `use` block *below* the call,
+  so the file parsed, formatted clean, and fatalled at runtime with "Class Kernel does not exist". The imports now
+  sit above the bootstrap with a comment saying why, and the harness's rule that a red control refuses the whole
+  run is what turned a silent breakage into an error message. Run the script, not just `pint --test`, after any
+  formatting pass over a scratch file that boots the framework.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -753,7 +780,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 896 references against
   `lane37-docx-inventory.php` (196 numbered headings, 113 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 335 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 336 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
