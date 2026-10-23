@@ -330,7 +330,7 @@ half is still sound: 16 programs, the same 16 courses the live catalog holds.
 | What the snapshot returns | What that costs you |
 |---|---|
 | 10 of its 11 enrollments on **term 18** — the Summer term this build retired | every desk that reads the demo term shows nothing: **10 of 19** §3 records are walkable, and Juan holds no enrollment on that term at all |
-| 63 tables, including the retired `studentids`, and **no `shiftingrequests`** | the Shift Requests module has no table until `php artisan migrate --force` re-runs the 19 migrations the snapshot predates |
+| 63 tables, including the retired `studentids`, and **no `shiftingrequests`** | the Shift Requests module has no table until `php artisan migrate --force` re-runs the 20 migrations the snapshot predates |
 | 11 staff accounts | the 10 added since — 6 per-college Academic Department desks, the dean, 3 instructors — don't exist until both seeders run |
 | Maria's slip with **10** approved requirement lines | step 9 would open a slip that contradicts the count the guide says out loud; `db:seed` retires legacy office 8 in foreign-key order (ruling 12) and the slip reads 9 lines again |
 | `idrequests` row 53: `validated`, `cardPhotoPath` NULL, no validator | the contradictory row deleted under the owner's ruling on 2026-10-11 comes back, and `php artisan ems:audit:record-states` reports it again |

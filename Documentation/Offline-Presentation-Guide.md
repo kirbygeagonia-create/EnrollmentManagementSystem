@@ -76,7 +76,7 @@ Run through this ~10 minutes before presenting:
 `Documentation/ems-demo-backup.sql` is a **2026-09-20** snapshot, and loading it is
 one of five commands, not the whole recovery — `Documentation/Demo-Day-Guide.md` §5
 carries the order and, row by row, what the snapshot puts back (10 of its 11
-enrollments come back on the retired term 18, its schema predates 19 migrations and
+enrollments come back on the retired term 18, its schema predates 20 migrations and
 has no `shiftingrequests`, and it re-creates the contradictory ID request the owner
 ruled deleted on 2026-10-11).
 

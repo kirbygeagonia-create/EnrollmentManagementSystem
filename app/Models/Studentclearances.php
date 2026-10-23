@@ -15,13 +15,12 @@ class Studentclearances extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'clearancePeriodId', 'overallStatus', 'extendedDeadline', 'receivedBy', 'receivedDate'];
+    protected $fillable = ['studentId', 'clearancePeriodId', 'overallStatus', 'receivedBy', 'receivedDate'];
 
     protected function casts(): array
     {
         return [
             'overallStatus' => ClearanceOverallStatus::class,
-            'extendedDeadline' => 'date',
             'receivedDate' => 'datetime',
         ];
     }

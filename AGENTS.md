@@ -301,6 +301,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `--filter` is the **method name**, not the sentence Pest prints for it — filtering on
   `the letterhead settings are seeded` selects no test, and a harness that reads "No tests found" as a green leg is
   the lane 44 mutant that sleeps.
+  **After any batch that touches `PrintService::printEnrollmentForm()` or `ems:print-fidelity`'s render closures**, run
+  `php artisan test tests/Feature/Print/PrintEnrollmentFormPayloadTest.php` and prove it with
+  `php storage/app/scratch/mutate-p2-payload-tests.php`. The desk path and the fidelity command each write their own
+  eager-load list — nothing shares them — so a relation dropped from one is a line the Registrar's paper loses while
+  the other keeps reporting 8/8 rendered. The same test is why P-2 can say the data half is ready: it proves the
+  school ID, program, year level, semester and school year all resolve from the list the desk already runs, at zero
+  extra queries, so closing P-2 is one blade's layout once the blank form arrives.
   Two findings came out of reading that sheet rather than probing the code. **P-16**: the paper prints
   "Southeast Asian Institute of Technology" while the sheet, `GuestLayout.jsx:50`, `GuestLayout.jsx:68`, four
   Documentation markdown files and this document's own title line carry "South East Asian Institute of Technology,
@@ -319,6 +326,73 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   "the two rows that were blank when it was written". Pass 176's clone guard reads the ids out of the staged bytes
   (`P-1 … P-16`, once each, in order) because §25.4 is written as two adjacent `<w:tbl>` elements, so one table's row
   count is not the register's size.
+- **After any batch that drops a column, or edits a §24 per-table column count**, run
+  `php storage/app/scratch/lane60-ratio-claims.php --run` and read every line, then re-count the
+  migrations the September demo snapshot predates: `ls database/migrations | awk '$0 > "2026_09_20_1000000000_add_schedule_status_to_blocks_table.php"' | wc -l`.
+  Lane 63 ruled four register items on 2026-10-23 and one of them was a schema change:
+  `studentclearances.extendedDeadline` was nullable, `$fillable` and `date`-cast, and named by no code
+  outside the model — so §27.2's E-8 row carried it as the *remainder* of an answered question for
+  twenty days while §27.5 listed the column as vocabulary the schema carries and nobody uses. The
+  owner ruled DROP rather than wire it, because an extension is the window's state and a per-student
+  date would have needed a rule the school has not stated. Three consequences travelled together and
+  only the checkers would have caught two of them: the schema census moved 452 → 451, §24's
+  `studentclearances — 9 columns` heading moved to 8 and its column-aggregate cross-check row from 410
+  to 409, and both demo-day guides' "the 19 migrations the snapshot predates" became 20. **The empty
+  claim was measured off the pre-drop dump, not off the live schema** — after `artisan migrate` the
+  column cannot answer `COUNT(extendedDeadline)` at all, and a guard that asks a dropped column a
+  question gets an exception, not a verdict.
+  Two prose lessons from the same batch. **A dated row must not be re-aged to a newer figure:**
+  pass 179 moved "(this issue)" onto a new §1.1 row and lane 60 still judged the 2026-10-21 row's 452
+  as a living claim, because that checker has no "(this issue)" rule. Rewriting the number inside a
+  dated row would make the row state a figure that was not true on its own day, so the sentence was
+  given its own date instead — `as of 2026-10-21` is in `lane60-ratio-claims.php`'s `$DATED` list and
+  the figure becomes HISTORY, judged by nothing and false about nothing. **One name per range:** a
+  clause that put `Payments::held()` immediately before `( AssessmentController.php:123-127 )`, a
+  range belonging to the method before it, added one lane 32 flag purely from its own wording, and
+  re-spacing the clause cleared it again.
+  Fourteen items that the registers genuinely cannot settle were packaged for one meeting in
+  `Documentation/School-Decision-Sheet-2026-10-23.md`, read out of the eight §28.2/§28.3 rows whose
+  "Who must act" column still names an office, the five §28.5 rows whose answer ends in a question,
+  and the two §25.4 print items (the name's spelling, and the blank form P-2 waits on). Two of the
+  sheet's own claims were measured before they were written rather than copied from the register:
+  live `ems` answers 0 of 16 programs with `entranceExamExemptsTransferee` set and 5 with
+  `requiresCourseSpecificExam`. **Read the rows a checker prints as blind spots, don't clear them by
+  count**: lane 61's one remaining blind spot is pre-existing and now explained — §6.1's `R-1 … R-3`
+  rows hold their verdict but their id cell reads `R-2 Admission dependency`, so `>R-2<` is never a
+  run and the sweep cannot index it. The sentence that tripped it describes candidate-list logic, not
+  an open question. **A closed register row can still carry an open branch.** P-17 came from reading a
+  model method, not from a probe: the print register's P-10 row states as settled the rule that a
+  clearance slip names the enrollment of its period's own term, and its consequence cell said nothing
+  remained for the derivation — while `Studentclearances::termEnrollment()` falls back to the student's
+  newest enrollment by id when that term holds none, under a comment asking the Registrar which
+  enrollment the paper should name. No checker could see it: lane 61 catches a sentence presenting an
+  *answered* id as undecided, and this is an open branch inside a closed row; the citation sweeps pass
+  because every pointer lands on a live line; and live `ems` answers four clearances, every one of
+  which does hold an enrollment in its period's term, so no rehearsal on this box could reach the
+  branch. Both sides are now pinned by `tests/Feature/Print/ClearanceSlipTermEnrollmentTest.php`, and
+  **after any batch that touches `termEnrollment()` or the three slip print paths** run that file and
+  prove it with `php storage/app/scratch/mutate-p17-term-enrollment-tests.php`, which kills four defects
+  (fallback removed, term filter dropped, the template re-deriving the answer inline, the provisional
+  marker renamed) and refuses when the control is not green. Adding the row moved ten places — four
+  range statements, the family count cell, the group row's ids and its settled tally, the
+  outside-the-register tally, the cross-reference, both copies of the open-item sentence, and the
+  living revision row — and its finding moved the instrument figures in this file again, because the
+  register is what those tools count.
+- **A section's MEMBERSHIP goes stale even while its rows are being re-measured** (lane 64). The data
+  dictionary's list of tables that are empty in the demo database carried five wrong rows on live
+  `ems`: `gradescale` (4 rows), `scholarshiptypes` (2), `studentscholarships` (1), `schedulemeetings`
+  (18 — its own cell said 18 while the row sat in the empty list) and `settings` (3, the very rows P-7
+  closed). The `gradescale` row contradicted §24's own entry two lines above it, which states "Rows in
+  the demo database: 4". No instrument covers the shape: lane 60 binds the per-table row counts and
+  every one of those was correct, the line sweep checks pointers, lane 37 checks §-references, and a
+  contradiction between a listing and an entry is not a contradiction any of them can see. Pass 179g
+  rewrote the five rows to say what the dataset does not *exercise* rather than that the table is
+  empty, and put the counted set in the section's own intro. The durable fix is the missing checker:
+  `php storage/app/scratch/lane64-empty-table-inventory.php` counts every base table and diffs the
+  section against it — give it a refusing mode and a mutant harness before trusting its silence,
+  because a checker that cannot fail has checked nothing. **`information_schema.TABLES.TABLE_ROWS` is
+  not the measure**: it is an InnoDB estimate and reports `clearanceperiods` as 0 while every
+  clearance row joins to it, so emptiness is `COUNT(*)` or nothing.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -630,12 +704,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (616 citations over 147 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (629 citations over 149 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  113 symbol/range pairs it checks, 9 pairs flagged for reading). It takes the construct the prose *names* and asks whether
+  122 symbol/range pairs it checks, 9 pairs flagged for reading). It takes the construct the prose *names* and asks whether
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
   Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
@@ -661,9 +735,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 876 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 111 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 300 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 888 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 112 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 329 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
