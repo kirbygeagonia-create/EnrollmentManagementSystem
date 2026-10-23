@@ -751,7 +751,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 897 references against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 896 references against
   `lane37-docx-inventory.php` (196 numbered headings, 113 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the 335 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
