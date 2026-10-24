@@ -69,28 +69,27 @@ class Studentclearances extends Model
 
     /**
      * The enrollment this clearance covers — the student's enrollment in the term the
-     * clearance period belongs to. Reading `student->enrollments` in list order gives
-     * the first enrollment the student ever had, so a student who cleared after
-     * advancing would be printed with their course and year level from years ago.
+     * clearance period belongs to, or nothing when that term holds none. Reading
+     * `student->enrollments` in list order gives the first enrollment the student ever
+     * had, so a student who cleared after advancing would be printed with their course
+     * and year level from years ago.
      */
     public function termEnrollment(): ?Enrollments
     {
         $this->loadMissing('student.enrollments');
 
-        $enrollments = $this->student->enrollments;
+        $termId = $this->clearancePeriod?->termId;
 
-        if ($enrollments->isEmpty()) {
+        if ($termId === null) {
             return null;
         }
 
-        $termId = $this->clearancePeriod?->termId;
-        $exact = $termId === null
-            ? null
-            : $enrollments->first(fn (Enrollments $enrollment) => $enrollment->termId === $termId);
-
-        // PROVISIONAL: a slip raised after its term closed has no enrollment in that
-        // term, so the newest enrollment is used rather than printing "N/A". Registrar
-        // to confirm which enrollment a clearance slip should name.
-        return $exact ?? $enrollments->sortByDesc('enrollmentId')->first();
+        // Ruled 2026-10-23 (P-17): a clearance is issued when the semester ends, for the enrollment
+        // of that term. A slip raised after its term closed therefore names no enrollment rather
+        // than borrowing a later one's course and year level; each print path already renders the
+        // absence (clearance-slip.blade.php:69 "N/A", PrintSlip.jsx:33 "—", and both print-log calls
+        // key the issuance on the student). The remedy for such a slip is the right period.
+        return $this->student->enrollments
+            ->first(fn (Enrollments $enrollment) => $enrollment->termId === $termId);
     }
 }

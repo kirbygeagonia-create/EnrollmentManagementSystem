@@ -33,7 +33,7 @@
 <body>
     <div class="header">
         <img src="{{ \App\Support\PrintAssets::logoDataUri() }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
-        <div class="school-name">{{ config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY') }}</div>
+        <div class="school-name">{{ config('settings.schoolName', 'SOUTH EAST ASIAN INSTITUTE OF TECHNOLOGY, INC.') }}</div>
         <div class="school-address">{{ config('settings.schoolAddress', '') }}</div>
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
     </div>

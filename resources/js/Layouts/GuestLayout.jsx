@@ -47,7 +47,7 @@ export default function GuestLayout({ children }) {
                     </div>
                     <div className="flex flex-col items-center">
                         <span className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
-                            South East Asian Institute of Technology
+                            South East Asian Institute of Technology, Inc.
                         </span>
                         <span className="mt-1 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-seait-300">
                             <span className="h-1 w-1 rounded-full bg-seait-400" />

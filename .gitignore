@@ -14,7 +14,9 @@
 /.zed
 /auth.json
 # Photographs of the physical Registrar forms: real student numbers and staff signatures.
+# Both folders hold them — the scans moved from Documentation/Images to the repository root.
 /Documentation/Images/
+/Images/
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json

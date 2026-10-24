@@ -19,9 +19,11 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * P-2's other half: the enrollment form's paper carries no student identity, program, year level or
- * academic period, and the row stays open because the blank physical form has never been supplied —
- * but the *data* was never the obstacle, and that half is pinned here rather than remembered.
+ * P-2. The enrollment form's paper used to carry no student identity, program, year level or academic
+ * period, and the row waited weeks on a blank physical form that never arrived. Ruled 2026-10-23: build
+ * it from the designs the school's own papers already show, because the data was never the obstacle.
+ * The identification block is now on the blade, and this class pins the three things that made the wait
+ * worth something: the desk's eager-load list, the cost of reading the facts, and the printed page.
  *
  * The desk path (`PrintService::printEnrollmentForm`) and the fidelity command
  * (`PrintFidelitySamples`) each write their own eager-load list. This test copies the desk's list and
@@ -166,7 +168,7 @@ class PrintEnrollmentFormPayloadTest extends TestCase
     }
 
     #[Test]
-    public function test_the_form_payload_already_carries_every_identity_fact_the_paper_lacks(): void
+    public function test_the_form_payload_carries_every_identity_fact_the_block_prints(): void
     {
         $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
 
@@ -182,10 +184,10 @@ class PrintEnrollmentFormPayloadTest extends TestCase
     }
 
     /**
-     * The facts above are reachable, which is why P-2 is a paper question. But reaching them through
-     * the relation graph the desk loads is not the same as reaching them cheaply: this asserts the
-     * identity line does not need a query the print path did not already run, so a future blade edit
-     * cannot turn a print into an N+1 and blame the paper.
+     * The facts above are reachable, which is why closing P-2 was a layout edit rather than plumbing.
+     * But reaching them through the relation graph the desk loads is not the same as reaching them
+     * cheaply: this asserts the identity line does not need a query the print path did not already run,
+     * so a future blade edit cannot turn a print into an N+1 and blame the paper.
      */
     #[Test]
     public function test_reading_those_facts_issues_no_further_query(): void
@@ -210,5 +212,36 @@ class PrintEnrollmentFormPayloadTest extends TestCase
         $this->assertSame(0, $queries,
             "Reading the four identity facts issued {$queries} query(ies) after the desk’s own load list — a blade that prints them would be doing an N+1 on every print."
         );
+    }
+
+    /**
+     * P-2 closed: the identification block is on the paper, not merely reachable from the payload.
+     * The document's `<title>` carried the student number all along and never reached the printed
+     * page, so this reads the body only — an assertion that passed on a head element is the same
+     * sleep `lane62-print-paper-probe.php` found in the register's "verified on paper" sentence.
+     */
+    #[Test]
+    public function test_the_form_prints_the_identification_block_on_its_face(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+
+        $html = view('prints.enrollment-form', ['enrollment' => $enrollment])->render();
+        $body = substr($html, (int) strpos($html, '<body'));
+
+        $this->assertNotSame($html, $body, 'The form renders no <body>, so there is nothing to read a printed line from.');
+
+        foreach ([
+            'Student ID' => $enrollment->student->schoolIdNumber,
+            'School Year' => $enrollment->term->academicYear->yearLabel,
+            'Course' => $enrollment->course->courseName,
+            'Year Level' => 'Year '.$enrollment->yearLevel,
+            'Semester' => $enrollment->term->semester->value,
+        ] as $label => $value) {
+            $this->assertMatchesRegularExpression(
+                '/'.preg_quote($label, '/').':?<\/span>.{0,200}?'.preg_quote((string) $value, '/').'/su',
+                $body,
+                'The form prints no "'.$label.'" line carrying '.$value.' within the same field, so a page that leaves this desk cannot be tied back to the file it belongs in — which is what P-2 was opened for.'
+            );
+        }
     }
 }

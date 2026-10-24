@@ -71,7 +71,7 @@ export default function PrintCertificate({ enrollment, documentNumber, issuedDat
                         is officially enrolled at
                     </p>
                     <p className="text-xl font-heading font-semibold text-brand-900 mb-2">
-                        Southeast Asian Institute of Technology
+                        South East Asian Institute of Technology, Inc.
                     </p>
                     <p className="text-brand-600 mb-4">
                         in the program

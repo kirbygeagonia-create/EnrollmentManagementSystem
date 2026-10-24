@@ -301,24 +301,34 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `--filter` is the **method name**, not the sentence Pest prints for it — filtering on
   `the letterhead settings are seeded` selects no test, and a harness that reads "No tests found" as a green leg is
   the lane 44 mutant that sleeps.
-  **After any batch that touches `PrintService::printEnrollmentForm()` or `ems:print-fidelity`'s render closures**, run
+  **After any batch that touches `PrintService::printEnrollmentForm()`, `ems:print-fidelity`'s render closures, or
+  the enrollment form's identification block**, run
   `php artisan test tests/Feature/Print/PrintEnrollmentFormPayloadTest.php` and prove it with
   `php storage/app/scratch/mutate-p2-payload-tests.php`. The desk path and the fidelity command each write their own
   eager-load list — nothing shares them — so a relation dropped from one is a line the Registrar's paper loses while
-  the other keeps reporting 8/8 rendered. The same test is why P-2 can say the data half is ready: it proves the
-  school ID, program, year level, semester and school year all resolve from the list the desk already runs, at zero
-  extra queries, so closing P-2 is one blade's layout once the blank form arrives.
-  Two findings came out of reading that sheet rather than probing the code. **P-16**: the paper prints
+  the other keeps reporting 8/8 rendered. P-2 was closed on 2026-10-23 by building that block (Student ID, Course,
+  Year Level, School Year, Semester) from the school's own Subject Load wording rather than from a blank form, which
+  the owner says will not be supplied; the class now pins the printed body, not only the payload. **A rendered
+  document's `<title>` element is not paper** — it has carried the student number the whole time, so the case reads
+  the HTML from `<body>` onward, and the harness's fifth mutant deletes the Student ID field while the title still
+  prints it, which is the only way to prove that distinction.
+  Two findings came out of reading that sheet rather than probing the code. **P-16**: the paper printed
   "Southeast Asian Institute of Technology" while the sheet, `GuestLayout.jsx:50`, `GuestLayout.jsx:68`, four
-  Documentation markdown files and this document's own title line carry "South East Asian Institute of Technology,
-  Inc." — so the login screen and the letterhead name the school differently, and no instrument could see it because
-  nothing in the repository asked whether the two spellings agree. It is recorded as a question, not fixed: a name is
-  the school's to choose, and the reference scans that could settle it live in the gitignored
-  `Documentation/Images`. **The mirror defect of lane 61**: closing P-7 made §30.6's opening sentence ("Nothing in
-  this section waits on an institutional
+  Documentation markdown files and this document's own title line carried "South East Asian Institute of Technology,
+  Inc." — so the login screen and the letterhead named the school differently, and no instrument could see it because
+  nothing in the repository asked whether the two spellings agree. Ruled 2026-10-23 in the sheet's favour, and the
+  school's own stationery in the reference scans carries the same two-word form, so the ruling's evidence is the
+  paper rather than a comment. **The scans moved: they are at the repository root in `Images/`, not
+  `Documentation/Images`, and `.gitignore` now names both** — a folder of real signed Registrar forms sat untracked
+  and un-ignored on a public remote, which is the only kind of finding that cannot be recovered by a later pass.
+  One letterhead value still has two answers in the sheet it comes from: `SEAIT_Official_Information.md` §1 lists the
+  Registrar landline as "(083) 226-1602 / 226-1203", the settings row carries the first and the stationery the second.
+  **The mirror defect of lane 61**: closing P-7 made §30.6's opening sentence ("Nothing in this section waits on an
+  institutional
   answer") false, because P-16 does. `lane61-open-claims.php` catches a sentence presenting an *answered* id as
   undecided; it cannot catch a sentence presenting an *open* id as settled, because there is no contradiction with the
-  register — the paragraph has to be re-read whenever a row is opened, which pass 176b did.
+  register — the paragraph has to be re-read whenever a row is opened, which pass 176b did, and whenever one is
+  *answered*, which pass 181 did for §30.6 and §28.4's group row.
   And the print register now behaves like §28's: **one §25.4 row moved nine places** — the four that state the range
   `P-1 … P-15` (§25's intro, §28.4's index row, §28.4's lead sentence, §29.4's family row), §29.4's count cell, the
   two cells of the §28.4 group row it is filed under, §28.8's tally of print findings outside the register, and
@@ -353,7 +363,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   Fourteen items that the registers genuinely cannot settle were packaged for one meeting in
   `Documentation/School-Decision-Sheet-2026-10-23.md`, read out of the eight §28.2/§28.3 rows whose
   "Who must act" column still names an office, the five §28.5 rows whose answer ends in a question,
-  and the two §25.4 print items (the name's spelling, and the blank form P-2 waits on). Two of the
+  and the two §25.4 print items (the name's spelling, and the identity the enrollment form did not
+  print). Four of the fifteen came back the day it was issued — the three print items and the proxy row,
+  answered "not yet deployed" — and the sheet now marks each ANSWERED where it was asked, because a
+  packet that only ever grows a tick box reads as still outstanding. Two of the
   sheet's own claims were measured before they were written rather than copied from the register:
   live `ems` answers 0 of 16 programs with `entranceExamExemptsTransferee` set and 5 with
   `requiresCourseSpecificExam`. **Read the rows a checker prints as blind spots, don't clear them by
@@ -363,21 +376,40 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   an open question. **A closed register row can still carry an open branch.** P-17 came from reading a
   model method, not from a probe: the print register's P-10 row states as settled the rule that a
   clearance slip names the enrollment of its period's own term, and its consequence cell said nothing
-  remained for the derivation — while `Studentclearances::termEnrollment()` falls back to the student's
-  newest enrollment by id when that term holds none, under a comment asking the Registrar which
+  remained for the derivation — while `Studentclearances::termEnrollment()` fell back to the student's
+  newest enrollment by id when that term held none, under a comment asking the Registrar which
   enrollment the paper should name. No checker could see it: lane 61 catches a sentence presenting an
   *answered* id as undecided, and this is an open branch inside a closed row; the citation sweeps pass
   because every pointer lands on a live line; and live `ems` answers four clearances, every one of
   which does hold an enrollment in its period's term, so no rehearsal on this box could reach the
-  branch. Both sides are now pinned by `tests/Feature/Print/ClearanceSlipTermEnrollmentTest.php`, and
+  branch. Ruled 2026-10-23: a clearance is issued when the semester ends, for the enrollment of that
+  term, so the slip names **nothing** when the period's term holds none — the three print paths already
+  rendered the absence (`clearance-slip.blade.php:69` prints `N/A`, `PrintSlip.jsx:33` an em dash, both
+  print-log calls key the issuance on the student), and the remedy for such a slip is the right period.
+  The ruling's second half — the system keeps every student who has completed a clearance — was
+  **measured before it was written down**: `uq_student_clearanceperiod` on (studentId,
+  clearancePeriodId), four `NO ACTION` foreign keys around the table, no delete path anywhere in `app/`
+  or `routes/`, and `generateSlip` refusing to re-issue over a clearance a desk has answered.
+  Both sides are now pinned by `tests/Feature/Print/ClearanceSlipTermEnrollmentTest.php`, and
   **after any batch that touches `termEnrollment()` or the three slip print paths** run that file and
-  prove it with `php storage/app/scratch/mutate-p17-term-enrollment-tests.php`, which kills four defects
-  (fallback removed, term filter dropped, the template re-deriving the answer inline, the provisional
-  marker renamed) and refuses when the control is not green. Adding the row moved ten places — four
+  prove it with `php storage/app/scratch/mutate-p17-term-enrollment-tests.php`, which kills seven defects
+  (the ruled-against fallback re-appearing, the term filter dropped, the template re-deriving the answer
+  inline, a delete written across two lines, a delete through a loaded model, the refusal that protects an
+  answered clearance widened, and the ruling marker renamed) and refuses when the control is not green.
+  **A guard that keys on one spelling of a defect sleeps through the other three:** the delete scan first
+  matched a single-line `Studentclearances::where(...)->delete()` only, so the harness plants the
+  multi-line statement and the `$clearance->delete()` variable form as separate cases. And when a ruling
+  turns a `PROVISIONAL` marker into a `Ruled …` marker, every mutant that anchored on the old marker
+  becomes a mutant that cannot apply — the harness was rewritten the same day, not extended.
+  Adding the row moved ten places — four
   range statements, the family count cell, the group row's ids and its settled tally, the
   outside-the-register tally, the cross-reference, both copies of the open-item sentence, and the
   living revision row — and its finding moved the instrument figures in this file again, because the
-  register is what those tools count.
+  register is what those tools count. **Closing a row moves fewer places than opening one**: pass 181
+  changed no range, no family count and no register size, because the seventeen rows stayed seventeen —
+  only verdict words, the §28.4 group row's settled tally, §28.8's four-findings sentence and §30's two
+  cross-references moved. §28.8's sentence had been left stating four and naming three when P-17 was
+  opened: the figure grew and the list did not, which is lane 64's membership defect in prose.
 - **A section's MEMBERSHIP goes stale even while its rows are being re-measured** (lane 64). The data
   dictionary's list of tables that are empty in the demo database carried five wrong rows on live
   `ems`: `gradescale` (4 rows), `scholarshiptypes` (2), `studentscholarships` (1), `schedulemeetings`
@@ -603,7 +635,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   lying row. One installment is enough to make the paid-only reading demonstrably wrong rather than
   theoretically so: it is the row the ledger pass and the shortfall loop disagree about.
   "Is clearance season?" is answered only by `Clearanceperiods::accepting()` (open **or** extended). Year level is
-  derived from the student's own record, never asserted as a constant.
+  derived from the student's own record, never asserted as a constant. **A slip names the enrollment of its own
+  period's term, or nothing** (P-17, ruled 2026-10-23): `Studentclearances::termEnrollment()` has one branch, and the
+  newest-enrollment-by-id fallback that used to sit behind it printed a course and year level from a term the
+  clearance was not about. The same ruling keeps a completed clearance forever — nothing deletes a
+  `studentclearances` row, and the guard for that is a test, not a convention.
 - Migrations containing raw MySQL must guard on the driver (`getDriverName() !== 'mysql'`) — the
   SQLite suite depends on that escape hatch.
 - Record timestamps exist only on students, admissions, enrollments, payments, studentassessments,
@@ -747,7 +783,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (629 citations over 149 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (629 citations over 150 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -780,7 +816,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 896 references against
   `lane37-docx-inventory.php` (196 numbered headings, 113 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 336 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 345 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

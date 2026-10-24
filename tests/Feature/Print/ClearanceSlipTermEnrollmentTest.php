@@ -23,19 +23,20 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * P-17. §25.4's P-10 row states that a clearance slip takes its course, year level and print-log
- * enrollment "from the enrollment of the clearance period's own term", and its consequence cell reads
- * "Nothing for the derivation." The code is not that clean: `Studentclearances::termEnrollment()`
- * returns the term's enrollment when one exists and otherwise falls back to the student's newest
- * enrollment by id — and the comment above that fallback asks the Registrar to decide which
- * enrollment a slip should name. Three print paths read the method (`ClearanceController.php:386`,
- * `PrintService.php:77`, `clearance-slip.blade.php:65`), so the answer the fallback gives is what
- * reaches paper.
+ * P-10 and P-17. §25.4's P-10 row states that a clearance slip takes its course, year level and
+ * print-log enrollment "from the enrollment of the clearance period's own term"; its consequence
+ * cell read "Nothing for the derivation." That was true only of the branch the code reached first:
+ * `Studentclearances::termEnrollment()` returned the term's enrollment when one existed and
+ * otherwise fell back to the student's newest enrollment by id, under a comment asking the
+ * Registrar which enrollment the paper should name. Ruled 2026-10-23: "a clearance is issued when
+ * a semester ends", so the slip names the enrollment of the period's own term and nothing else —
+ * and a clearance once completed stays on the record.
  *
- * Measured on live `ems` before writing this: all four clearance rows hold an enrollment in their
- * period's term, so the fallback has never fired there — which is exactly why no instrument could see
- * it. These tests pin both branches so the choice is made deliberately rather than inherited, and pin
- * the three call sites so a fourth inline lookup cannot quietly re-derive the answer somewhere else.
+ * Live `ems` holds four clearance rows, every one of which does have an enrollment in its period's
+ * term, so the fallback could never be reached by a rehearsal on this box — which is why no
+ * instrument saw it. These tests pin both branches, pin the three print paths so a fourth cannot
+ * quietly re-derive the answer elsewhere, and pin the retention the ruling states: nothing in the
+ * application deletes a clearance, so the store of completed clearances is permanent.
  */
 class ClearanceSlipTermEnrollmentTest extends TestCase
 {
@@ -44,10 +45,10 @@ class ClearanceSlipTermEnrollmentTest extends TestCase
     private array $scene = [];
 
     /**
-     * One student, two terms with an enrollment in each, and the ids ordered so "newest by
-     * enrollmentId" and "latest by term" agree — the case the fallback answers today.
+     * One student, two terms with an enrollment in each, and a third term holding none — the term
+     * whose clearance period used to borrow one of the first two enrollments.
      *
-     * @return array{student: Students, first: Enrollments, second: Enrollments, termA: Academicterms, termB: Academicterms, course: Courses}
+     * @return array{student: Students, first: Enrollments, second: Enrollments, termA: Academicterms, termB: Academicterms, termC: Academicterms, course: Courses}
      */
     private function scene(): array
     {
@@ -190,11 +191,12 @@ class ClearanceSlipTermEnrollmentTest extends TestCase
     }
 
     /**
-     * P-17: the other branch. The fallback is the answer the paper gets today, and it was never
-     * chosen by anybody — the code says so in its own comment.
+     * P-17, the other half of the ruling: a period whose term holds no enrollment names nothing.
+     * Before 2026-10-23 this branch returned the highest enrollmentId instead, which put a course and
+     * year level from an unrelated term on a paper that was about a term the student is not clearing.
      */
     #[Test]
-    public function test_a_slip_raised_after_its_term_closed_names_the_newest_enrollment_by_id(): void
+    public function test_a_slip_raised_after_its_term_closed_names_no_enrollment(): void
     {
         $scene = $this->scene();
         $clearance = $this->clearanceOn($scene['termC']);
@@ -202,27 +204,27 @@ class ClearanceSlipTermEnrollmentTest extends TestCase
         $this->assertSame(
             0,
             Enrollments::where('studentId', $scene['student']->studentId)->where('termId', $scene['termC']->termId)->count(),
-            'The fixture is wrong: the period’s term holds an enrollment, so this is not the fallback branch.'
+            'The fixture is wrong: the period’s term holds an enrollment, so this is not the branch P-17 was about.'
         );
 
-        $named = $clearance->termEnrollment();
-
-        $this->assertNotNull($named, 'With no enrollment in the period’s term the slip prints N/A for course and year level.');
-        $this->assertSame(
-            $scene['second']->enrollmentId,
-            $named->enrollmentId,
-            'P-17 is open precisely because this choice is the developer’s: the method takes the highest enrollmentId, '
-                .'not the enrollment of the term the student last attended, and no desk has ruled which the paper should say.'
+        $this->assertNull(
+            $clearance->termEnrollment(),
+            'P-17 was ruled on 2026-10-23: a slip whose term holds no enrollment prints N/A. Returning the newest '
+                .'enrollment by id would name a course from a term the clearance is not about.'
         );
     }
 
     /**
      * The three print paths must keep asking the one method. If a fourth re-derives the answer inline
-     * — or the blade stops calling this at all — the pinned fallback above stops describing the paper,
+     * — or the blade stops calling this at all — the pinned branch above stops describing the paper,
      * and that is how §25.4's rows come to disagree with the build without any test noticing.
+     *
+     * The same ruling's second half is that a completed clearance stays on the record, so this also
+     * refuses the day somebody gives a desk a delete: an erased clearance is a student the school
+     * cannot show ever cleared.
      */
     #[Test]
-    public function test_every_print_path_asks_the_one_method(): void
+    public function test_every_print_path_asks_the_one_method_and_nothing_erases_a_clearance(): void
     {
         foreach ([
             'app/Http/Controllers/Clearance/ClearanceController.php',
@@ -236,10 +238,97 @@ class ClearanceSlipTermEnrollmentTest extends TestCase
             );
         }
 
+        $model = (string) file_get_contents(base_path('app/Models/Studentclearances.php'));
         $this->assertStringContainsString(
-            'PROVISIONAL',
-            (string) file_get_contents(base_path('app/Models/Studentclearances.php')),
-            'The fallback is no longer marked provisional in the code, so either P-17 has been answered — and §25.4 and the school packet must say so — or the marker was lost.'
+            'Ruled 2026-10-23 (P-17)',
+            $model,
+            'The method no longer records where its answer came from, so either P-17 has been ruled again — and §25.4 and the school packet must say so — or the marker was lost.'
+        );
+        $this->assertStringNotContainsString(
+            'sortByDesc',
+            $model,
+            'P-17 was ruled 2026-10-23: a slip whose period’s term holds no enrollment names nothing. Sorting the student’s enrollments by id re-introduces the fallback that borrowed a course from a term the clearance is not about.'
+        );
+
+        $deleters = [];
+        foreach (['app', 'routes'] as $dir) {
+            $it = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(base_path($dir), \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($it as $file) {
+                if (! $file->isFile() || ! preg_match('/\.php$/i', $file->getFilename())) {
+                    continue;
+                }
+                $bytes = (string) file_get_contents($file->getPathname());
+
+                // A delete that reaches a clearance row is written four ways: the model's destroy, a
+                // `Studentclearances::where(...)->delete()`, a relation delete, or `->delete()` on a
+                // variable the file loaded from one of those. The window asks for a delete call near a
+                // mention of the model rather than trusting one spelling.
+                if (preg_match('/Studentclearances\b[\s\S]{0,300}(?:->(?:delete|forceDelete)\(\)|::destroy\()/i', $bytes)
+                    || preg_match('/->(?:studentclearances|clearances)\(\)->(?:delete|forceDelete)\(\)/i', $bytes)
+                    || preg_match('/\b(?:clearance|slip)\w*->(?:delete|forceDelete)\(\)/i', $bytes)) {
+                    $deleters[] = ltrim(str_replace(base_path(), '', $file->getPathname()), '\\/');
+                }
+            }
+        }
+
+        $this->assertSame([], $deleters, 'P-17 rules that the school keeps every student who has completed a clearance, so a code path that deletes a studentclearances row erases that evidence: '
+            .implode(', ', $deleters).'.');
+    }
+
+    /**
+     * The retention the ruling states, measured as data rather than as prose: one clearance row per
+     * student per period, the schema enforcing that key, and the period before untouched when the
+     * next one issues its own slip.
+     */
+    #[Test]
+    public function test_a_completed_clearance_survives_the_period_that_follows_it(): void
+    {
+        $scene = $this->scene();
+
+        $cleared = $this->clearanceOn($scene['termA']);
+        $cleared->update(['overallStatus' => ClearanceOverallStatus::Approved]);
+
+        $next = $this->clearanceOn($scene['termB']);
+
+        $stored = Studentclearances::orderBy('studentClearanceId')->get();
+
+        $this->assertCount(2, $stored, 'One student clears one term, so a second period must add a row rather than replace the first.');
+        $this->assertSame(
+            [ClearanceOverallStatus::Approved, ClearanceOverallStatus::Pending],
+            $stored->pluck('overallStatus')->all(),
+            'The period before was answered by the desks; raising the next slip may not rewrite what it said.'
+        );
+
+        $this->assertSame($scene['first']->enrollmentId, $cleared->termEnrollment()->enrollmentId);
+        $this->assertSame($scene['second']->enrollmentId, $next->fresh()->termEnrollment()->enrollmentId);
+
+        try {
+            Studentclearances::create([
+                'studentId' => $scene['student']->studentId,
+                'clearancePeriodId' => $next->clearancePeriodId,
+                'overallStatus' => ClearanceOverallStatus::Pending,
+            ]);
+            $this->fail('A second clearance row for one student in one period slipped in, so "has this student cleared?" would answer with two verdicts.');
+        } catch (QueryException $e) {
+            // MySQL names the violated key in its error; SQLite names the columns. The suite runs on
+            // the latter and the desk on the former, so the assertion follows whichever driver answered.
+            $namesConstraint = DB::getDriverName() === 'sqlite'
+                ? 'studentclearances.studentId, studentclearances.clearancePeriodId'
+                : 'uq_student_clearanceperiod';
+
+            $this->assertStringContainsStringIgnoringCase(
+                $namesConstraint,
+                $e->getMessage(),
+                'The refusal came from something other than the unique key on (studentId, clearancePeriodId), so the rule above is not what stopped it.'
+            );
+        }
+
+        $this->assertStringContainsString(
+            'overallStatus !== ClearanceOverallStatus::Incomplete',
+            (string) file_get_contents(base_path('app/Http/Controllers/Clearance/ClearanceController.php')),
+            'generateSlip no longer refuses to re-issue over a clearance a desk has answered, so the store loses the verdict it already held.'
         );
     }
 }

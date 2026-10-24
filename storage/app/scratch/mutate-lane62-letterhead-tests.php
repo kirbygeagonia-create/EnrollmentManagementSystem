@@ -39,6 +39,12 @@ $cases = [
         "'value' => 'Some Campus The Repository Made Up',"],
     ['phone key renamed away', $seeder, $VALUES,
         "'schoolPhone' => [", "'schoolTelephone' => ["],
+    ['seeder name drifted from the sheet (P-16)', $seeder, $VALUES,
+        "'value' => 'South East Asian Institute of Technology, Inc.',",
+        "'value' => 'Southeast Asian Institute of Technology',"],
+    ['a template falls back to the other spelling', $slip, $VALUES,
+        "config('settings.schoolName', 'SOUTH EAST ASIAN INSTITUTE OF TECHNOLOGY, INC.')",
+        "config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY')"],
     ['template reads a key nobody seeds', $slip, $KEYS,
         "<div class=\"school-address\">{{ config('settings.schoolAddress', '') }}</div>",
         "<div class=\"school-address\">{{ config('settings.schoolAddress', '') }}</div>\n        <div>{{ config('settings.schoolMotto', '') }}</div>"],
@@ -98,7 +104,10 @@ try {
         if ($verdict !== 'red') {
             printf("       %s\n", preg_match('/Tests:.*$/mu', $out, $mm) ? trim($mm[0]) : substr(trim($out), -300));
             $fails++;
-        } elseif (preg_match('/Failed asserting|longer seeds|is blank|which SEAIT|the letterhead keys are three/u', $out)) {
+        } elseif (preg_match('/Failed asserting|longer seeds|is blank|which SEAIT|the letterhead keys are three|falls back to a name other|school’s own Official Name/u',
+            // Pest colourises the summary, so "Failed" arrives wrapped in escape codes: matching the raw
+            // bytes made a genuinely-named refusal look like a silent one.
+            preg_replace('/\e\[[0-9;]*m/u', '', $out))) {
             echo "       it refused with its own words, not with a crash\n";
         } else {
             printf("  FAIL it went red without naming the defect\n");

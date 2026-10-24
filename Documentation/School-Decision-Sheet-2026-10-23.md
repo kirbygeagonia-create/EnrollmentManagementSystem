@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-23 · fifteen items · nothing in the software changes until a row comes back**
+**Issued 2026-10-23 · fifteen items · four came back the day it was issued**
 
 Every item here is a question the build cannot answer for itself. They are gathered from the
 authority document's own registers — §28.2/§28.3 (the rows whose "Who must act" column still names
@@ -13,6 +13,11 @@ Two of these were settled internally on 2026-10-23 and are *not* on this sheet: 
 is authoritative (the code's, §26.2), and whether a returned enrollment keeps its payment (it does).
 The `extendedDeadline` column that looked like a per-student clearance deadline was dropped the same
 day, because an extension is the window's state.
+
+Four rows came back on 2026-10-23, answered by the project owner in conversation rather than on
+paper: items **12**, **13** and **14** — the three printed-paper questions — and the first half of
+item **15**. Each is marked **ANSWERED** where it was asked, with what the build now does, so the
+sheet reads as the packet was answered rather than as a list still outstanding.
 
 **To take a decision on each row:** tick, and initial. Where the answer is "as it stands", say so —
 that is a decision and it closes the row.
@@ -101,47 +106,64 @@ and shifter enrollments), a grant is written against the assessment of the enrol
 Scholarship desk acts. Whether every term *must* be re-determined is policy, not code.
 - Answer: every term ☐ / until expiry of the award ☐ / other: ............. Initial: ..........
 
-## D. The three printed-paper items that are not code decisions
+## D. The three printed-paper items that are not code decisions — all three answered 2026-10-23
 
-**12. Which spelling of the institution's name does the paper carry?** `[P-16]`
-The printed letterhead says **Southeast Asian Institute of Technology**. The school's own contact
-sheet (`Documentation/SEAIT_Official_Information.md` §1), the login screen, four Documentation files
-and the authority document's title line say **South East Asian Institute of Technology, Inc.** The
-address and the Registrar's landline on the letterhead were taken from that sheet on 2026-10-23; the
-name is the one line this repository cannot settle for itself, because a name is the school's to
-choose. Whichever wins, the other places are amended to match.
-- Answer: one word ☐ / two words ☐ / with "Inc." ☐ / exact wording: .................... Initial: ..........
+**12. Which spelling of the institution's name does the paper carry?** `[P-16 — ANSWERED 2026-10-23]`
+The answer given was **South East Asian Institute of Technology, Inc.** — the two-word `South East`
+and the corporate suffix, which is what `Documentation/SEAIT_Official_Information.md` §1 already
+records as the Official Name. Before the ruling the printed letterhead said **Southeast Asian
+Institute of Technology** while the login screen, four Documentation files and the authority
+document's title line carried the sheet's spelling, so the screen and the paper named the school
+differently. Built the same day: the settings row, the seeder and the fallback each of the six print
+views passes into its own `config('settings.schoolName', …)` call now carry the ruled name, and
+`tests/Feature/Print/PrintTemplateSelfContainmentTest.php` reads the Official Name out of the sheet
+and refuses any surface that disagrees with it. Re-read off the paper: all eight documents
+`php artisan ems:print-fidelity` renders print the ruled form, and the school's own stationery in the
+scans the owner supplied carries it too.
+- ~~Answer: one word ☐ / two words ☐ / with "Inc." ☐~~ — answered: **two words, with "Inc."** Initial: ..........
 
-**13. A blank of the Enrollment Form, so the form can be laid out to match it.** `[P-2, and row 10 of the 2026-10-11 sheet]`
-The enrollment form today prints **no student ID, no program, no year level, no semester and no
-school year**. The data behind it is ready: those facts all resolve from the record the Registrar
-desk already loads, and `tests/Feature/Print/PrintEnrollmentFormPayloadTest.php` pins that, so
-closing this item is a layout change on one template — not plumbing. The 2026-10-11 print sheet asked
-for this blank on 2026-10-11 and it has not arrived; nothing in the repository, its history or its
-reference scans holds a blank of the form.
-- Answer: blank attached ☐ / the form has no school paper and the system's layout stands ☐ Initial: ..........
+**13. A blank of the Enrollment Form, so the form can be laid out to match it.** `[P-2 — ANSWERED 2026-10-23]`
+The owner's answer was to build it: no blank Registrar form will be supplied, and the designs in the
+`Images` folder — a Subject Load, a Class Card, a Clearance Slip and a Class Block and Schedule — are
+the pattern to follow. Built the same day: the enrollment form now prints an identification block
+under its title carrying **Student ID, Course, Year Level, School Year and Semester**, in the words
+the Registrar's own Subject Load uses and from the relations the desk already loads, so the block
+costs no extra query. Read back off the rendered PDF rather than off the template:
+`enrollment-form.pdf` now carries the student number, the course, the year level and the school year
+where the 2026-10-21 reading found no identity token of any kind. What remains is a layout review —
+only the Registrar can say whether the enrollment form's own paper puts those five fields elsewhere.
+- ~~Answer: blank attached ☐ / the form has no school paper and the system's layout stands ☐~~ —
+  answered: **the system's layout stands, built from the supplied designs** Initial: ..........
 
-**14. Which enrollment should a clearance slip name when its own term holds none?** `[P-17]`
-The slip's course, year level and print-log enrollment come from one method with two branches
-(`app/Models/Studentclearances.php:76-95`). When the student has an enrollment in the clearance
-period's term, that is what prints — the rule the document records as closed. When the period's term
-holds none, which is what a slip raised **after its term closed** looks like, the method quietly takes
-the student's newest enrollment by id (`:94`), under a comment asking the Registrar which enrollment
-the paper should name. Measured first: live `ems` holds four clearances and all four do have an
-enrollment in their period's term, so nothing on this box has ever shown the fallback on paper.
-- Answer: the last enrollment attended (as today) ☐ / the enrollment being cleared, and N/A when there is none ☐ / a slip may not be raised after its term closed ☐ / other: .................... Initial: ..........
+**14. Which enrollment should a clearance slip name when its own term holds none?** `[P-17 — ANSWERED 2026-10-23]`
+The answer given was that a clearance is issued when a semester ends, as a requirement for the
+clearance pass an enrollment brings, and that the enrollment system must keep every student who has
+already completed a clearance. Built the same day: the slip names the enrollment of the clearance
+period's own term, and when that term holds none it names **nothing** — the paper prints `N/A` for
+course and year level rather than borrowing a later enrollment's, and the remedy for such a slip is
+the right clearance period. The keeping half was measured before it was written: `studentclearances`
+is keyed by the unique pair (studentId, clearancePeriodId), the four foreign keys around it refuse a
+delete, no path in `app/` or `routes/` deletes a clearance row, and re-issuing a slip over one a desk
+has already answered is refused. `tests/Feature/Print/ClearanceSlipTermEnrollmentTest.php` pins both
+branches and the keeping, and `storage/app/scratch/mutate-p17-term-enrollment-tests.php` proves it.
+- ~~Answer: the last enrollment attended ☐ / the enrollment being cleared, and N/A when there is none ☐ /
+  a slip may not be raised after its term closed ☐~~ — answered: **the enrollment being cleared, and
+  N/A when there is none** Initial: ..........
 
 ## E. For the owner, or whoever provisions the school's server — not a school question
 
 **15. Two items the build cannot reach from this machine.** `[G-13, C-10]`
-- **Name the proxy** (`G-13`): `Strict-Transport-Security` is sent only when the app sees HTTPS
-  itself, and this build trusts no proxy — `bootstrap/app.php` never calls `trustProxies()`, so
-  behind a TLS-terminating proxy the header never appears. The operator must name the proxy's address
-  in `trustProxies(at: …)`. Never `*`: that lets any client forge its own scheme and address, and
-  login throttling and the audit log both read the client address. `DEPLOYMENT.md` §2 carries the
-  instruction, and `tests/Feature/SecurityHeadersTest.php` pins the behaviour.
-  Answer: proxy named: .................... ☐ / not yet deployed ☐ Initial: ..........
-- **Is a queue worker part of the installed deployment?** (`C-10`): the demo and UAT install runs
+- **Name the proxy** (`G-13`) — **ANSWERED 2026-10-23: not yet deployed.** The owner has no decision
+  to deploy this build and may never take one, so the row stays open as a fact about an install that
+  does not exist rather than as work owed. `Strict-Transport-Security` is sent only when the app sees
+  HTTPS itself, and this build trusts no proxy — `bootstrap/app.php` never calls `trustProxies()`, so
+  behind a TLS-terminating proxy the header never appears. Whoever provisions a server must name that
+  proxy's address in `trustProxies(at: …)`. Never `*`: that lets any client forge its own scheme and
+  address, and login throttling and the audit log both read the client address. `DEPLOYMENT.md` §2
+  carries the instruction, and `tests/Feature/SecurityHeadersTest.php` pins the behaviour.
+  Answer: proxy named: .................... ☐ / **not yet deployed ☑** Initial: ..........
+- **Is a queue worker part of the installed deployment?** (`C-10`) — owed for the same reason: there
+  is no installed deployment to answer for. The demo and UAT install runs
   `QUEUE_CONNECTION=sync` and delivers inside the request, which is what closed the 56-job backlog;
   only two listeners are ever queued, and PDF rendering has never been queued work. A real install
   that runs a worker changes nothing in the software; one that does not must stay on `sync`.

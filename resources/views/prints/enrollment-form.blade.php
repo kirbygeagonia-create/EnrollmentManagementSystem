@@ -39,12 +39,45 @@
 <body>
     <div class="header">
         <img src="{{ \App\Support\PrintAssets::logoDataUri() }}" alt="School Logo" class="logo" onerror="this.style.display='none'">
-        <div class="school-name">{{ config('settings.schoolName', 'SOUTHEAST ASIAN INSTITUTE OF TECHNOLOGY') }}</div>
+        <div class="school-name">{{ config('settings.schoolName', 'SOUTH EAST ASIAN INSTITUTE OF TECHNOLOGY, INC.') }}</div>
         <div class="school-address">{{ config('settings.schoolAddress', '') }}</div>
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
     </div>
 
     <div class="title">Enrollment Form</div>
+
+    <!--
+        Identification block (P-2). The form used to print none of this, so a page that left the
+        Registrar's desk could not be tied back to the file it belonged in: no student number, no
+        course, no year level, no semester, no school year. The five labels are the school's own —
+        Student ID, Course, Year Level, School Year, Semester are the words its Subject Load paper
+        uses — and the values come from the same relations the Subject Load reads, which the desk's
+        own eager-load list already carries (tests/Feature/Print/PrintEnrollmentFormPayloadTest.php
+        pins that list, so this block costs no extra query). Year level comes from the record and
+        prints "Year N/A" when the record cannot answer it — never a constant.
+    -->
+    <div class="form-grid">
+        <div class="field">
+            <span class="label">Student ID:</span>
+            <span class="value">{{ $enrollment->student->schoolIdNumber }}</span>
+        </div>
+        <div class="field">
+            <span class="label">School Year:</span>
+            <span class="value">{{ $enrollment->term?->academicYear?->yearLabel }}</span>
+        </div>
+        <div class="field full-width">
+            <span class="label">Course:</span>
+            <span class="value">{{ $enrollment->course?->courseName }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
+        </div>
+        <div class="field">
+            <span class="label">Year Level:</span>
+            <span class="value">{{ $enrollment->yearLevel ? 'Year '.$enrollment->yearLevel : 'Year N/A' }}</span>
+        </div>
+        <div class="field">
+            <span class="label">Semester:</span>
+            <span class="value">{{ $enrollment->term?->semester?->value }}</span>
+        </div>
+    </div>
 
     <!-- Part 1: Demographic Profile -->
     <div class="section-title">Part 1: Demographic Profile</div>

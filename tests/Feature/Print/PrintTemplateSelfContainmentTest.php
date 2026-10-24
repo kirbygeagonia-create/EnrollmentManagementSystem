@@ -93,6 +93,14 @@ class PrintTemplateSelfContainmentTest extends TestCase
 
         $sheet = (string) file_get_contents(base_path('Documentation/SEAIT_Official_Information.md'));
 
+        // §1's own line is the register of truth. Read it rather than restating it here, or this test
+        // becomes the second copy that drifts — which is how P-16 started.
+        $official = '';
+        if (preg_match('/\*\*Official Name\*\*:\s*(.+)/', $sheet, $m) === 1) {
+            $official = trim($m[1]);
+        }
+        $this->assertNotSame('', $official, 'SEAIT_Official_Information.md §1 no longer states an Official Name, so nothing pins the letterhead.');
+
         foreach (['schoolName', 'schoolAddress', 'schoolPhone'] as $key) {
             $row = Settings::find($key);
 
@@ -100,15 +108,33 @@ class PrintTemplateSelfContainmentTest extends TestCase
             $value = trim((string) $row->settingValue);
             $this->assertNotSame('', $value, "settings.{$key} is blank, and a blank prints an empty letterhead line.");
 
-            // The name is spelled one way on the sheet and another in the seeded value
-            // (P-16), so only the two keys this file supplied are traced to their source.
-            if ($key !== 'schoolName') {
-                $this->assertStringContainsString(
-                    $value,
-                    $sheet,
-                    "settings.{$key} carries “{$value}”, which SEAIT_Official_Information.md does not record."
-                );
+            $this->assertStringContainsString(
+                $value,
+                $sheet,
+                "settings.{$key} carries “{$value}”, which SEAIT_Official_Information.md does not record."
+            );
+        }
+
+        $this->assertSame(
+            $official,
+            trim((string) Settings::find('schoolName')->settingValue),
+            'the seeded name is not the school’s own Official Name — P-16 was closed by ruling the spelling, not by leaving two in the build.'
+        );
+
+        // Every template that can print a name must fall back to the same one, in the case that block
+        // uses, so an install that has never been seeded cannot print a different institution from one
+        // that has.
+        foreach (glob(base_path('resources/views/prints/*.blade.php')) ?: [] as $view) {
+            $src = (string) file_get_contents($view);
+            if (! str_contains($src, "config('settings.schoolName'")) {
+                continue;
             }
+
+            $this->assertStringContainsString(
+                "config('settings.schoolName', '".mb_strtoupper($official, 'UTF-8')."')",
+                $src,
+                basename($view).' falls back to a name other than the sheet’s Official Name.'
+            );
         }
     }
 }

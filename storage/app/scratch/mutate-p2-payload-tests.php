@@ -1,20 +1,25 @@
 <?php
 
 /**
- * Proof over the three P-2 payload tests.
+ * Proof over the four P-2 tests.
  *
- * P-2 stays open — the blank physical enrollment form has never been supplied — so the only half this batch can
- * close is the claim that the desk already has the data. A test written to prove that is worth nothing until it can
- * fail, and two of these three assertions are of the kind that pass when they read nothing at all:
+ * P-2 was opened because the enrollment form printed no identity at all, and it was blocked for weeks on a blank
+ * physical form that never arrived; the owner supplied the reference designs on 2026-10-23 and the identification
+ * block is now on the paper. Two halves are pinned, and each is the kind that passes when it reads nothing:
  *
  *  - the drift check compares a list in the test against lists in two source files, so a regex that matches nothing
  *    would have to refuse, not shrug;
- *  - the query counter measures lazily-loaded relations, so if the model never lazy-loads it reports 0 forever.
+ *  - the query counter measures lazily-loaded relations, so if the model never lazy-loads it reports 0 forever;
+ *  - the block test reads the rendered HTML, and the document's `<title>` has carried the student number the whole
+ *    time — an assertion that matches the head element would have "proved" P-2 closed on a form that still prints
+ *    nothing, which is exactly how the register's "verified on paper" sentence came to be false (lane 62).
  *
  * Legs: A drops a relation from the desk path, B drops the same one from the fidelity command, C removes the eager
- * load from the N+1 test itself (that one mutates the test, deliberately: it proves the counter measures something).
- * Each must turn the named case red. Bytes are restored unconditionally, and the run refuses when a needle matches
- * nothing, when the control is not green, or when artisan prints no "Tests:" line.
+ * load from the N+1 test itself (that one mutates the test, deliberately: it proves the counter measures something),
+ * D takes the identification block off the paper, E takes only its Student ID field — the block test must still go
+ * red with `<title>` printing that number. Each must turn the named case red. Bytes are restored unconditionally, and
+ * the run refuses when a needle matches nothing, when the control is not green, or when artisan prints no
+ * "Tests:" line.
  *
  * Usage: php storage/app/scratch/mutate-p2-payload-tests.php
  */
@@ -26,9 +31,43 @@ $php = 'C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe';
 $suite = 'tests/Feature/Print/PrintEnrollmentFormPayloadTest.php';
 $service = 'app/Services/PrintService.php';
 $fidelity = 'app/Console/Commands/PrintFidelitySamples.php';
+$form = 'resources/views/prints/enrollment-form.blade.php';
 
 $DRIFT = 'test_the_desk_loads_the_relations_the_form_would_need';
 $NPLUS = 'test_reading_those_facts_issues_no_further_query';
+$BLOCK = 'test_the_form_prints_the_identification_block_on_its_face';
+
+$IDENTIFICATION_BLOCK = <<<'BLADE'
+    <div class="form-grid">
+        <div class="field">
+            <span class="label">Student ID:</span>
+            <span class="value">{{ $enrollment->student->schoolIdNumber }}</span>
+        </div>
+        <div class="field">
+            <span class="label">School Year:</span>
+            <span class="value">{{ $enrollment->term?->academicYear?->yearLabel }}</span>
+        </div>
+        <div class="field full-width">
+            <span class="label">Course:</span>
+            <span class="value">{{ $enrollment->course?->courseName }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
+        </div>
+        <div class="field">
+            <span class="label">Year Level:</span>
+            <span class="value">{{ $enrollment->yearLevel ? 'Year '.$enrollment->yearLevel : 'Year N/A' }}</span>
+        </div>
+        <div class="field">
+            <span class="label">Semester:</span>
+            <span class="value">{{ $enrollment->term?->semester?->value }}</span>
+        </div>
+    </div>
+BLADE;
+
+$STUDENT_ID_FIELD = <<<'BLADE'
+        <div class="field">
+            <span class="label">Student ID:</span>
+            <span class="value">{{ $enrollment->student->schoolIdNumber }}</span>
+        </div>
+BLADE;
 
 $cases = [
     ['desk path drops term.academicYear', $service, $DRIFT,
@@ -41,6 +80,8 @@ $cases = [
     ['the N+1 counter with no eager load at all', $suite, $NPLUS,
         '$enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);'."\n\n        ".'DB::flushQueryLog();',
         '$enrollment = $this->issuedEnrollment()->load([]);'."\n\n        ".'DB::flushQueryLog();'],
+    ['the identification block is off the paper', $form, $BLOCK, $IDENTIFICATION_BLOCK."\n", ''],
+    ['only the <title> carries the student number', $form, $BLOCK, $STUDENT_ID_FIELD."\n", ''],
 ];
 
 $fails = 0;
@@ -59,8 +100,8 @@ $run = function (string $method) use ($php, $suite, $root): array {
 };
 
 try {
-    echo "control — all three cases on the unmutated tree:\n";
-    foreach ([['drift check', $DRIFT], ['identity facts', 'test_the_form_payload_already_carries_every_identity_fact_the_paper_lacks'], ['n+1 counter', $NPLUS]] as [$label, $method]) {
+    echo "control — every case on the unmutated tree:\n";
+    foreach ([['drift check', $DRIFT], ['identity facts', 'test_the_form_payload_carries_every_identity_fact_the_block_prints'], ['n+1 counter', $NPLUS], ['identification block', $BLOCK]] as [$label, $method]) {
         [$verdict, $out] = $run($method);
         printf("  %-16s %s\n", $label, $verdict);
         if ($verdict !== 'green') {
@@ -87,7 +128,7 @@ try {
         file_put_contents($root.'/'.$file, str_replace($from, $to, $bytes));
 
         [$verdict, $out] = $run($method);
-        $says = preg_match('/drifted from|different relations|query\(ies\) after|no longer holds an eager-load|no longer renders/u', $out)
+        $says = preg_match('/drifted from|different relations|query\(ies\) after|no longer holds an eager-load|no longer renders|prints no|cannot be tied back/u', $out)
             ? 'it named the drift in its own message'
             : 'FAILED OPEN — red, but without saying which contract broke';
         printf("  %-4s the named test on the mutant  (%s)\n", $verdict === 'red' ? 'ok  ' : 'FAIL', $says);

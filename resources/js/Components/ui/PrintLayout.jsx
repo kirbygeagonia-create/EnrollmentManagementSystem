@@ -33,7 +33,7 @@ export default function PrintLayout({ title, subtitle, date, children, className
                         />
                         <div>
                             <h1 className="print-header-title">SEAIT</h1>
-                            <p className="print-header-subtitle">Southeast Asian Institute of Technology</p>
+                            <p className="print-header-subtitle">South East Asian Institute of Technology, Inc.</p>
                         </div>
                     </div>
                     <div className="text-right sm:text-left">

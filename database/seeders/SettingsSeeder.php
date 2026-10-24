@@ -13,7 +13,7 @@ class SettingsSeeder extends Seeder
      * Idempotent and non-destructive: an existing key is never overwritten, so a
      * Registrar's edits in Admin → User Management → Settings survive re-seeding.
      *
-     * The address and the landline are not invented here. Both are recorded in
+     * The address and the landline are not invented here. All three values are recorded in
      * Documentation/SEAIT_Official_Information.md §1, compiled from the official
      * portal (seait.edu.ph), and that sheet entered this repository on 2026-08-28
      * (e35fe3d) — before this seeder was written on 2026-10-01 (29b5532), whose
@@ -24,13 +24,22 @@ class SettingsSeeder extends Seeder
      * the sheet lists a second line beside it. A school that prefers another
      * changes it on the Admin screen, and `required` validation means it cannot
      * then be blanked again.
+     *
+     * The name is the sheet's Official Name, spelled as §1 records it. It used to be
+     * "Southeast Asian Institute of Technology" — one word, no suffix — which is what every
+     * printed letterhead said while the login screen, the desk screens and this repository's
+     * own documentation said the other (P-16). Ruled on 2026-10-23 in the school's favour,
+     * and confirmed by the physical papers: the Subject Load's letterhead reads
+     * "South East Asian Institute of Technology, Inc." Print templates fall back to the
+     * upper-case form of the same string, so a fresh install cannot print a different name
+     * from one that has been edited.
      */
     public function run(): void
     {
         $settings = [
             'schoolName' => [
-                'value' => 'Southeast Asian Institute of Technology',
-                'description' => 'Letterhead name shown on every printed document.',
+                'value' => 'South East Asian Institute of Technology, Inc.',
+                'description' => 'Letterhead name shown on every printed document; SEAIT_Official_Information.md §1 records it.',
             ],
             'schoolAddress' => [
                 'value' => 'National Highway, Purok 7, Crossing Rubber, Tupi, South Cotabato, Philippines, 9505',
