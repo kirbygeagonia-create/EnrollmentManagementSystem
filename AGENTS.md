@@ -657,6 +657,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   re-classified one" is to count both. Neither number is wrong; AGENTS.md now says what the tool resolves
   rather than what the document holds. **Do not chase such a delta as a document defect until the raw count
   has been read off both versions.**
+- **A commit is not the working tree: list what you staged, against what was dirty.** Lane 69 staged
+  `resources/js` and `tests` but never `resources/views`, so CI ran the tests asserting the new year-level
+  spelling against six print blades still building `'Year '.$level` — three failures on a tree that had
+  passed the whole suite locally 806/806 minutes earlier. The guard is two lines, not care:
+  `git status --porcelain` before the commit, and again after it, and the second one must be empty of `M `
+  entries. `git commit` in fact prints the files it did not commit under `no changes added to commit:` —
+  the warning was in the output I did not read, which is the same failure as not running the check at all. (What caught
+  it was `YearLevelVocabularyTest`'s own scan for a hand-spelled level — a guard that fails on CI is worth
+  the red it caused.)
+- **Never let a wrapper command swallow the exit code you are watching for.** The same lane's first CI
+  watch was `gh run watch … > log 2>&1; echo "EXIT=$?" >> log`, so the command's own status was the
+  trailing `echo`'s — success — while the run was red, and I reported the jobs as if they had passed. The
+  exit code must be the last thing the pipeline evaluates; capture it in its own file if it must be kept.
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
