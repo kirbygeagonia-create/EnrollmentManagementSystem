@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-23 · sixteen items · five came back the day it was issued, and one of those arrived that day**
+**Issued 2026-10-23 · sixteen items · twelve answered, four left for the Registrar's window**
 
 Every item here is a question the build cannot answer for itself. They are gathered from the
 authority document's own registers — §28.2/§28.3 (the rows whose "Who must act" column still names
@@ -24,7 +24,7 @@ still outstanding. **Item 16 was then answered a second time, on 2026-10-24:** t
 spelling of the year level — "Year 2" where the school's slip writes "2nd Year" — and the owner ruled that
 "the proper format is 2nd year", so that one deferred wording is now the school's on every surface too.
 
-**Six of the eleven rows still open were then read against the school's own records the same day**, and
+**Six of the eleven rows still open that day were then read against the school's own records**, and
 each now carries what those records answer, so a tick can be given against evidence rather than memory.
 Items **1, 2, 4 and 5** were read off a real clearance slip (the student's copy: four fields, one
 signatory, no requirements table, no fee line, and a "(Student's Copy)" designation the system never
@@ -33,6 +33,27 @@ programs — BSCrim as a board course requiring the SCAT entrance and retention 
 a board program — while the database carries the departmental flag on five. **The gap between the
 school's slip and the system's became §25.4 P-19 and item 16, and was ruled and built the same day.**
 Items **3, 7, 8, 10 and 11** have nothing in the repository that speaks to them.
+
+**On 2026-10-24 the owner answered seven of the eleven, and four remain.** Items **6, 7, 8 and 10**
+were ticked *as they stand* — the state the build already holds is the decision, which is what the
+sheet says closes a row — and items **3** and **11** were ruled: the enrollment certificate keeps the
+sentences it prints today, and a returning or shifting student **is** re-determined every term, which
+is the strictest reading and also the one the system already forces, since their form carries no
+Assessment box and nothing copies a grant forward. Item **15**'s second half closed too, and reading
+the code for it narrowed the question considerably: the only two listeners that ever queue are
+`SendEnrollmentNotification` and `SendWorkflowNotification`, and `SendWorkflowNotification::notify()`
+does nothing but `Notifications::create(...)` — plain inserts of the in-app bell rows for staff
+accounts, with no `app/Notifications/` directory, no mail channel, and no queued PDF rendering. A
+worker therefore exists in this system for one purpose: delivering the desk's bell. `QUEUE_CONNECTION=sync`
+stays, and the `database` default in `.env.example` keeps `DEPLOYMENT.md` §5's worker as the instruction
+for whoever provisions a real server.
+
+**Four rows are left, and all four ask the same thing of the Registrar's window rather than of the
+software:** items **1** (where each of the nine offices actually signs, since the student's copy names
+one signatory and no requirements table at all), **2** (what a printed slip must contain to be accepted
+at the window), **4** (whether the generated PDF or the desk screen is that paper), and **5** (whether
+every lost slip is paid for before replacement, when the school's copy carries no fee line). Each is
+already read against the real slip, so an answer can be given at the meeting without opening a file.
 
 **To take a decision on each row:** tick, and initial. Where the answer is "as it stands", say so —
 that is a decision and it closes the row.
@@ -66,12 +87,13 @@ those and never printed the copy designation — the shape of the name is record
 itself, because this sheet is committed and the reference scans, which carry it, are deliberately not.
 - Answer: as printed ☐ / **match the student copy (P-19: drop the extras, add the copy designation) ☐** / wording amended ☐ / order amended ☐ Initial: ..........
 
-**3. In what words does the enrollment certificate state student type and enrollment type?** `[§28.5, P-13]`
+**3. In what words does the enrollment certificate state student type and enrollment type?** `[§28.5, P-13 — ANSWERED 2026-10-24]`
 The certificate prints both, the student type in its own words and the enrollment kind separately, so
 the two are no longer conflated on paper. The sentences now printed are the ones the developer chose;
 §25 records them as the code's wording rather than SEAIT's. No certificate was among the school papers
 supplied, so nothing in the repository can settle the words.
-- Answer: as printed ☐ / replacement wording attached ☐ Initial: ..........
+- ~~Answer: as printed ☐ / replacement wording attached ☐~~ — answered 2026-10-24:
+  **as printed.** The certificate states student type in its own words and enrollment type separately, and those sentences\n  stand as the school's. §25 keeps them recorded as the build's wording now ruled in, and P-13 closes on that. Initial: ..........
 
 **4. Is the generated PDF, or the desk screen, the paper a window accepts?** `[§28.5, P-19]`
 Both paths are reachable: the enrollment form is issued only as a PDF download (`print.enrollmentForm`),
@@ -92,23 +114,27 @@ not stated on the slip. Whether every replacement is paid for, and whether a `pe
 reissued free, is still the school's.
 - Answer: as built ☐ / free reissue allowed when: ............. Initial: ..........
 
-**6. Which programs waive the General Entrance Examination for a transferee who arrives with credit?** `[C-4]`
+**6. Which programs waive the General Entrance Examination for a transferee who arrives with credit?** `[C-4 — ANSWERED 2026-10-24]`
 Built per-program, default off: `courses.entranceExamExemptsTransferee` waives the General
 examination for transferees and for no other type, never the departmental examination, and **no
 program ships with it set** — so today the answer is "nobody". The school's own record speaks about the
 entrance examination for exactly one program — BSCrim is marked "Board Course — Requires **SCAT
 Entrance** & Retention Exams" — and says nothing about waiving it for a transferee, so the default off
 is the reading the record supports. Name the programs and it becomes data, not a code change.
-- Answer: none ☐ / these programs: ............................................. Initial: ..........
+- ~~Answer: none ☐ / these programs: .............................................~~ — answered
+  2026-10-24: **none.** The default stays off; a program is exempted only when the Registrar sets the
+  flag on Reference Data → Courses, which is desk-side data and needs no release. Initial: ..........
 
-**7. How long must enrollment evidence be kept?** `[C-8]`
+**7. How long must enrollment evidence be kept?** `[C-8 — ANSWERED 2026-10-24]`
 Answered as *indefinite* and measured: the system purges nothing, no retention period is configured
 anywhere in `config/`, and every audit row on the box is still reachable. That is a measurement, not a
 promise. If the school names a period, a purge command has to be built to honour it — it does not
 exist yet, and retention should not be guessed by code.
-- Answer: indefinite ☐ / period: .......... years, to be built ☐ Initial: ..........
+- ~~Answer: indefinite ☐ / period: .......... years, to be built ☐~~ — answered 2026-10-24:
+  **indefinite, as it stands.** Nothing is deleted and no purge command will be written until the school
+  names a period; the measured state is the decision. Initial: ..........
 
-**8. Does a program change always make a student Irregular?** `[C-2]`
+**8. Does a program change always make a student Irregular?** `[C-2 — ANSWERED 2026-10-24]`
 Built as a rule: a program change — same department or another — makes the student Irregular, and so
 does arriving from another school as a transferee (`StudentType::arrivesIrregular()`). Everything
 else is left to the rule the register row calls "Item 16", which cites §7.4 (the student type × stage
@@ -117,7 +143,8 @@ is recorded here rather than guessed at. The rule it points at: for a first-year
 the standing is what the grades
 support, proposed by the department and stated by the Registrar at approval. Confirm the exception,
 or name any population it should not cover.
-- Answer: confirmed ☐ / exception should also not cover: ............. Initial: ..........
+- ~~Answer: confirmed ☐ / exception should also not cover: .............~~ — answered 2026-10-24:
+  **confirmed, as built.** A program change makes the student Irregular, arriving as a transferee does the same, and no population is carved out of it. `StudentType::arrivesIrregular()` remains the single definition. Initial: ..........
 
 **16. Which of the two clearance slips is the paper the school recognises?** `[§28.5, P-19 — ANSWERED 2026-10-23]`
 Numbered 16 because it was opened after the sheet was issued; the four items it governs keep their
@@ -169,20 +196,22 @@ owner's instruction alone and the departments should confirm or clear them.
   three of them would drop a gate a department may in fact want. add: ............. remove: BSCE, BSEE, BSA ☐
   Initial: ..........
 
-**10. Does a shifter sit a departmental examination on entry to the new program?** `[C-6]`
+**10. Does a shifter sit a departmental examination on entry to the new program?** `[C-6 — ANSWERED 2026-10-24]`
 Built as *no*: a shifter is assessed through credit evaluation at stage 6, and an enrollment granted
 by a shift request is exempted from the retention examination. Confirm, because a department that
 wants an entrance paper for shifters would need it as a rule and not as a workaround.
-- Answer: confirmed, no examination ☐ / the department requires one: ............. Initial: ..........
+- ~~Answer: confirmed, no examination ☐ / the department requires one: .............~~ — answered 2026-10-24:
+  **confirmed, no examination.** A shifter is assessed through credit evaluation at stage 6 and the shift grant exempts the\n  retention examination; `ShiftRequestFlowTest` pins both halves. A department that later wants an entrance paper asks for a\n  rule, not a workaround. Initial: ..........
 
 ## C. Scholarship and Accounting, with the Registrar
 
-**11. Must a returning or shifting student receive a fresh scholarship determination every term?** `[C-7]`
+**11. Must a returning or shifting student receive a fresh scholarship determination every term?** `[C-7 — ANSWERED 2026-10-24]`
 Their form carries no Assessment box by design (`WorkflowService::stepsFor` omits it for continuing
 and shifter enrollments), a grant is written against the assessment of the enrollment it covers, and
 **nothing copies last term's grant forward** — so such an enrollment is uncovered until the
 Scholarship desk acts. Whether every term *must* be re-determined is policy, not code.
-- Answer: every term ☐ / until expiry of the award ☐ / other: ............. Initial: ..........
+- ~~Answer: every term ☐ / until expiry of the award ☐ / other: .............~~ — answered 2026-10-24:
+  **every term.** The strictest reading, which is also the state the build forces: a continuing or shifter form carries no\n  Assessment box, a grant is written against the assessment of the enrollment it covers, and nothing copies last term's grant\n  forward — so such an enrollment is uncovered until the Scholarship desk acts, and that gap is the rule rather than a defect.\n  No code change: the system already refuses to decide this for the desk. Initial: ..........
 
 ## D. The three printed-paper items that are not code decisions — all three answered 2026-10-23
 
@@ -230,7 +259,7 @@ branches and the keeping, and `storage/app/scratch/mutate-p17-term-enrollment-te
 
 ## E. For the owner, or whoever provisions the school's server — not a school question
 
-**15. Two items the build cannot reach from this machine.** `[G-13, C-10]`
+**15. Two items the build cannot reach from this machine.** `[G-13 — ANSWERED 2026-10-23, C-10 — ANSWERED 2026-10-24]`
 - **Name the proxy** (`G-13`) — **ANSWERED 2026-10-23: not yet deployed.** The owner has no decision
   to deploy this build and may never take one, so the row stays open as a fact about an install that
   does not exist rather than as work owed. `Strict-Transport-Security` is sent only when the app sees
@@ -245,7 +274,8 @@ branches and the keeping, and `storage/app/scratch/mutate-p17-term-enrollment-te
   `QUEUE_CONNECTION=sync` and delivers inside the request, which is what closed the 56-job backlog;
   only two listeners are ever queued, and PDF rendering has never been queued work. A real install
   that runs a worker changes nothing in the software; one that does not must stay on `sync`.
-  Answer: sync ☐ / a worker runs: ............. ☐ Initial: ..........
+  Answer: **sync ☑** / a worker runs: ............. ☐ — answered 2026-10-24, closing C-10 for this install.
+  Reading the code narrowed what the question was ever about: the only two queued listeners are `SendEnrollmentNotification`\n  and `SendWorkflowNotification`, and `SendWorkflowNotification::notify()` does nothing but `Notifications::create(...)` —\n  plain inserts of the in-app bell rows for staff accounts. There is no `app/Notifications/` directory, no mail channel, and\n  PDF rendering has never been queued. So a worker exists here for one purpose: delivering the desk's bell. On `sync` it\n  happens inside the request, which is why the bell shows what a desk just did; on `database` with no worker the rows simply\n  never appear — the whole story of the 56 stale jobs. `.env` runs `sync`; `.env.example:70` still ships `database`, and\n  `DEPLOYMENT.md` §5 carries the worker for whoever provisions a real server. Initial: ..........
 
 ---
 
