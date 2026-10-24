@@ -74,7 +74,7 @@
     @endphp
     <div class="info-row">
         <span class="info-label">Course & Year:</span>
-        <span class="info-value">{{ $slipCourseLabel }} - {{ $termEnrollment?->yearLevel ? 'Year '.$termEnrollment->yearLevel : 'Year N/A' }}</span>
+        <span class="info-value">{{ $slipCourseLabel }} - {{ \App\Support\YearLevel::format($termEnrollment?->yearLevel) ?? 'Year N/A' }}</span>
     </div>
     <div class="info-row">
         <span class="info-label">Date to be Signed:</span>

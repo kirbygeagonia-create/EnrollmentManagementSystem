@@ -80,7 +80,7 @@
         </div>
         <div class="field">
             <span class="label">Year Level:</span>
-            <span class="value">{{ $enrollment->yearLevel ? 'Year '.$enrollment->yearLevel : 'Year N/A' }}</span>
+            <span class="value">{{ \App\Support\YearLevel::format($enrollment->yearLevel) ?? 'Year N/A' }}</span>
         </div>
         <div class="field">
             <span class="label">Semester:</span>
