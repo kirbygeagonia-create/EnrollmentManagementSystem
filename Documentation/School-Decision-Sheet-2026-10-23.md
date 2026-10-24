@@ -19,7 +19,9 @@ Five rows came back on 2026-10-23, answered by the project owner in conversation
 paper: items **12**, **13** and **14** — the three printed-paper questions — item **16**, which arrived
 after the sheet was issued, and the first half of item **15**. Each is marked **ANSWERED** where it was
 asked, with what the build now does, so the sheet reads as the packet was answered rather than as a list
-still outstanding.
+still outstanding. **Item 16 was then answered a second time, on 2026-10-24:** the build had kept its own
+spelling of the year level — "Year 2" where the school's slip writes "2nd Year" — and the owner ruled that
+"the proper format is 2nd year", so that one deferred wording is now the school's on every surface too.
 
 **Six of the eleven rows still open were then read against the school's own records the same day**, and
 each now carries what those records answer, so a tick can be given against evidence rather than memory.
