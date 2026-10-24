@@ -1,4 +1,10 @@
 <?php
+
+use App\Models\Enrollments;
+use App\Models\Students;
+use App\Support\YearLevel;
+use Illuminate\Contracts\Console\Kernel;
+
 /**
  * Lane 62 probe (read-only): what is actually ON the paper?
  *
@@ -17,7 +23,6 @@
  * Usage: php storage/app/scratch/lane62-print-paper-probe.php [--dir=storage/app/prints/fidelity]
  *        PDFTOTEXT=<windows path to pdftotext.exe> when it is not at the default.
  */
-
 $root = dirname(__DIR__, 3);
 chdir($root);
 $dir = 'storage/app/prints/fidelity';
@@ -40,7 +45,7 @@ if ($files === []) {
 
 require_once $root.'/vendor/autoload.php';
 $app = require_once $root.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 $texts = [];
 foreach ($files as $f) {
@@ -80,19 +85,19 @@ if ($onPaper === null) {
     printf("REFUSED: no rendered document states a School ID, so the probe cannot tell which record the paper is about.\n");
     exit(1);
 }
-$student = App\Models\Students::where('schoolIdNumber', $onPaper)->first();
+$student = Students::where('schoolIdNumber', $onPaper)->first();
 if ($student === null) {
     printf("REFUSED: School ID %s is on the paper but not in this database — the set is from another box.\n", $onPaper);
     exit(1);
 }
-$enrollment = App\Models\Enrollments::where('studentId', $student->studentId)
+$enrollment = Enrollments::where('studentId', $student->studentId)
     ->orderByDesc('enrollmentId')->first();
 $program = (string) (optional($enrollment?->course)->courseName ?? '');
 // The probe asks the same definition the papers use. It used to build this token by hand as
 // 'Year '.$enrollment->yearLevel, which is a second spelling living in a scratch file — and the day the
 // level became an ordinal it stopped matching anything, so the "year level" column read NO on all eight
 // documents while every one of them printed the level. A blind detector prints the table a finding would.
-$level = $enrollment === null ? '' : (string) App\Support\YearLevel::format((int) $enrollment->yearLevel);
+$level = $enrollment === null ? '' : (string) YearLevel::format((int) $enrollment->yearLevel);
 printf("record behind it: student %d, enrollment %s, program %s, level %s\n\n",
     $student->studentId, (string) ($enrollment?->enrollmentId ?? '(none)'),
     $program !== '' ? $program : '(none)', $level !== '' ? $level : '(none)');
@@ -106,6 +111,7 @@ $allFlat = '';
 foreach ($texts as $name => $body) {
     if (trim($body) === '') {
         printf("%-30s %s\n", $name, '(no extractable text — not evidence of absence)');
+
         continue;
     }
     $anyId = preg_match('/[A-Z]{3,}-\d{4}-\d{3}/', $body, $m) === 1 ? $m[0] : 'NO';
@@ -137,5 +143,12 @@ if ($unseen !== []) {
     exit(1);
 }
 
-echo "\n\"NO\" under own ID only means the document belongs to somebody else. \"NO\" under any ID means the paper\n"
-    ."carries no student identity at all — that is the finding §28.6 and P-2 have to agree with.\n";
+echo "\nReading the columns. \"NO\" under own ID only means the document belongs to somebody else — the fidelity set\n"
+    ."renders a DIFFERENT student per paper, so that column cannot judge identity. \"NO\" under any ID means the\n"
+    ."paper carries no student identity at all, which is the finding §28.6 and P-2 have to agree with.\n\n"
+    ."A NO under program or year level is NOT always an absence, and two things cause the exception. The fidelity\n"
+    ."set renders one student per document, so the slip's level is a different student's level and this record's\n"
+    ."token cannot be on it. And a two-column layout can interleave a neighbour column's words between the parts\n"
+    ."of a value — subject-load.pdf extracts as \"… Criminology - 1st Total Units:\" then \"Year\" on the next line,\n"
+    ."so folding whitespace alone cannot reunite it. When either applies, the paper is read directly:\n"
+    ."pdftotext -layout <file> | grep -iE 'Year|1st|2nd'. Absence is only what survives that check.\n";

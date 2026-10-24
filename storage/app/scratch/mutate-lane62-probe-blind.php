@@ -15,7 +15,10 @@ $src = $root.'/storage/app/scratch/lane62-print-paper-probe.php';
 $copy = $root.'/storage/app/scratch/lane69-probe-blind-copy.php';
 
 $live = (string) file_get_contents($src);
-$needle = "\$level = \$enrollment === null ? '' : (string) App\\Support\\YearLevel::format((int) \$enrollment->yearLevel);";
+// Read off the file as Pint leaves it: `fully_qualified_strict_types` rewrites the helper call into an
+// import + short name, so a needle written against the fully-qualified spelling matches nothing — and this
+// harness refused on exactly that the first time it happened, which is the guard doing its job.
+$needle = "\$level = \$enrollment === null ? '' : (string) YearLevel::format((int) \$enrollment->yearLevel);";
 $defect = "\$level = \$enrollment === null ? '' : 'Year '.\$enrollment->yearLevel;";
 
 if (substr_count($live, $needle) !== 1) {
