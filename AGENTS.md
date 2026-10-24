@@ -950,12 +950,50 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (638 citations over 152 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (642 citations over 152 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
+- **A `File.php:NN , :MM` sentence is two citations, and a checker that needs a filename before the colon
+  sees only one of them.** Found by extending that sweep on 2026-10-24: §24 names the clearance print actions
+  as `ClearanceController.php:380 and :404`, and when P-17 grew `printSlip()` four lines the download action
+  moved to `:408`, the print-route table was re-pointed, and §24's bare continuation was not — so the document
+  cited a blank line while the sweep printed 0 problems, and this file carried that same sentence about bare
+  continuations as a *warning* above the very defect. Extending it found five drifted pointers and one claim
+  the build had overtaken (§13.6 said the Evaluation queue shows "student type but not standing"; that queue
+  has had a Proposed Standing column for a while, and the tile it complains about is a different line now —
+  both were re-measured by reading, not shifted). A bare `:NN` is now attributed to the file named most
+  recently before it on the same dump line — a full citation *or* a file named without a number, because
+  `( Students/Show.jsx ) | Name, School ID ( :152 )` names its file one cell earlier — but only within 160
+  characters: past that the token is printed as a blind spot instead of judged, because an attribution
+  invented by distance is how a checker clears a pointer that belongs to the neighbouring cell. That is not
+  hypothetical: the first run attributed `( :248-267 )` to `IDPolicy.php`, a 135-line file, and the number was
+  *right* — it was `IDController.php`'s validate action, which the document never named. So: read the printed
+  blind list, and when a pointer's file is genuinely absent, name the file rather than teach the checker to
+  guess. Prove the whole rule with `php storage/app/scratch/mutate-lane69-bare-cites.php` — a planted blank
+  line, a planted past-end number, a token pushed past the window that must move into the blind list without
+  changing the verdict, a byte-identical control, and a missing dump, which must refuse rather than answer
+  "0 line problem(s)". Two things this still cannot see, both printed rather than cleared: a comma list that
+  shares one colon (`:152,186,193` — only the first is a token), and a pointer whose file was named on a
+  *previous* dump line. CI runs the sweep as a gate now, not just as an instrument.
+- **§28.8's "Who owes what" table must agree with the column it claims to be counted from** (lane 69). It
+  asserted 46 owed slots while `lane61-who-owes.php` — which reads the "Who must act"/"Who must decide"
+  column itself — counted 8, and 2 after the owner's rulings of 2026-10-24. This file recorded that exact
+  discrepancy in a pass note and left the table standing, because every checker in the repository judges
+  *sentences*, and none compared a table to its source. `php storage/app/scratch/lane69-owes-table-check.php`
+  now does, and deliberately does NOT re-classify the column: re-implementing "names an actor" would create a
+  second definition of it, which is the defect lane 69 spent a batch removing for year levels. It cross-checks
+  the identifiers in both directions, prints the instrument's own blind spots, and refuses when the dump, the
+  tally or the table is missing. Prove it with
+  `php storage/app/scratch/mutate-lane69-owes-table.php`: a re-grown actor count, an identifier the column no
+  longer charges to anyone, an owed item dropped in favour of a closed one, and a byte-identical control.
+  **Its first run refused all three mutants for the wrong reason:** it judged "byte-identical" by `filesize()`,
+  so a one-digit count and a `C-5`→`C-6` swap — same length by construction — were reported as mutations that
+  changed nothing, and its exit-capture leg redirected to `/dev/null`, which cmd.exe cannot find, so cmd
+  exited 1 before the checker ran and the *control* failed. Compare bytes, not sizes; `2>&1`, never a
+  POSIX device.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  122 symbol/range pairs it checks, 9 pairs flagged for reading). It takes the construct the prose *names* and asks whether
+  122 symbol/range pairs it checks, 8 pairs flagged for reading). It takes the construct the prose *names* and asks whether
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
   Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
@@ -981,9 +1019,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 905 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 385 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 389 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

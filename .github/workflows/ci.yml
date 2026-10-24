@@ -104,6 +104,24 @@ jobs:
           # dated §1.1 row, and a gap whose title begins with the word "Open").
           php storage/app/scratch/lane61-open-claims.php
 
+      - name: Refuse a citation that lands on a blank line or a table that disagrees with its own column
+        run: |
+          # Two bounds that nothing enforced until 2026-10-24. The first: `ClearanceController.php:380 and :404` is one
+          # sentence and two citations, and a sweep that needs a filename before the colon sees only the first — so when
+          # P-17 grew printSlip() by four lines, the same §-section carried the download action's new number in one row
+          # and the old one in another, and the old one is now a blank line. The sweep now attributes a bare `:NN` to the
+          # file named before it on the same line (within 160 characters; further than that it prints the token as a blind
+          # spot instead of guessing), and mutate-lane69-bare-cites.php proves it refuses a planted blank line, a planted
+          # past-end number, and a missing dump, and that the 160-character rule really moves the token into the blind list.
+          # The second: §28.8's "Who owes what" table asserted 46 owed slots while lane61-who-owes counted 8 from the
+          # column it claims to be counted from, and 2 after the owner's rulings that day. AGENTS.md recorded that
+          # discrepancy and left it standing for a pass, because no checker compared the table to its source. This step
+          # asks the proved instrument rather than re-classifying, and mutate-lane69-owes-table.php proves it refuses a
+          # re-grown count, an identifier the column no longer charges to anyone, and an owed item dropped in favour of
+          # a closed one — with a byte-identical control, so --dump= is shown to be read.
+          php storage/app/scratch/sweep-docx-citations.php
+          php storage/app/scratch/lane69-owes-table-check.php
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04
