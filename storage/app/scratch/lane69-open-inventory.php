@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Lane 69 probe: what do the registers actually leave open today?
  *
@@ -15,7 +16,6 @@
  *
  * Read-only: it writes nothing and changes no state.
  */
-
 $root = dirname(__DIR__, 3);
 $dump = (string) file_get_contents($root.'/storage/app/scratch/docx-flat.txt');
 
@@ -71,6 +71,7 @@ echo "\n=== SHEET: Documentation/School-Decision-Sheet-2026-10-23.md, item by it
 $sheet = (string) file_get_contents($root.'/Documentation/School-Decision-Sheet-2026-10-23.md');
 $items = preg_split('/\n\*\*(\d+)\. /', $sheet, -1, PREG_SPLIT_DELIM_CAPTURE);
 $sheetOpen = [];
+$answeredCount = 0;
 // Judged on the two places the sheet writes a ruling — the item's own title and its "Answer:" line — and
 // never on its prose. The first version grepped the whole block case-insensitively, so "answered" inside
 // the next section's heading (the blocks run up to the next item's marker) read as that item being closed,
@@ -83,13 +84,51 @@ for ($i = 1; $i < count($items); $i += 2) {
     if (preg_match('/^- Answer:.*$(?:\n {2,}.*)*/m', $block, $am) === 1) {
         $answerLine = $am[0];
     }
+    // A ruling word counts only in DECISION position — after a dash that closes the struck-out question, or
+    // after the emphasis opener that starts the answer value. Item 2 taught this the hard way on 2026-10-24:
+    // its tick line says "(the copy designation and the course code are already built, ruled 2026-10-23)",
+    // which reports another row's ruling inside an UNticked answer, and a substring test for `ruled` marked
+    // the row closed — the instrument inherited exactly the defect class it was written to catch.
     $marked = str_contains($title, 'ANSWERED')
         || str_contains($answerLine, '☑')
-        || preg_match('/answered:|ruled/i', $answerLine) === 1;
+        || preg_match('/(?:—|-)\s*(?:\*\*)?(answered|ruled)\b|\*\*\s*(answered|ruled)\b/i', $answerLine) === 1;
     printf("  item %-3s %-16s %s\n", $num, $marked ? '[answered/ruled]' : '[OPEN]', mb_substr($title, 0, 92));
     if (! $marked) {
         $sheetOpen[] = (int) $num;
+    } else {
+        $answeredCount++;
     }
 }
 echo '  open on the sheet: '.count($sheetOpen).' → items '.implode(', ', $sheetOpen)."\n";
 
+// Cross-check the classifier against the claim the sheet makes about itself, because that claim is what a
+// reader takes to the meeting. The header spells its numbers as words ("twelve answered, four left"), so the
+// words are mapped before anything is compared. A tally that disagrees with the document's own sentence is a
+// defect in one of them, and this run cannot tell which — so it says so instead of answering quietly.
+$words = ['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5, 'six' => 6, 'seven' => 7,
+    'eight' => 8, 'nine' => 9, 'ten' => 10, 'eleven' => 11, 'twelve' => 12, 'thirteen' => 13,
+    'fourteen' => 14, 'fifteen' => 15, 'sixteen' => 16, 'seventeen' => 17, 'eighteen' => 18, 'nineteen' => 19,
+    'twenty' => 20];
+$total = $num = null;
+if (preg_match('/(\d+|'.implode('|', array_keys($words)).')\s+items?\b/i', $sheet, $tm) === 1) {
+    $total = ctype_digit($tm[1]) ? (int) $tm[1] : ($words[strtolower($tm[1])] ?? null);
+}
+if (preg_match('/(\d+|'.implode('|', array_keys($words)).')\s+answered,?\s*(\d+|'.implode('|', array_keys($words)).')\s+left/i', $sheet, $hm) === 1) {
+    $claimsAnswered = ctype_digit($hm[1]) ? (int) $hm[1] : ($words[strtolower($hm[1])] ?? null);
+    $claimsLeft = ctype_digit($hm[2]) ? (int) $hm[2] : ($words[strtolower($hm[2])] ?? null);
+    $itemsRead = count($sheetOpen) + $answeredCount;
+    if ($claimsAnswered === null || $claimsLeft === null) {
+        echo "  the sheet's header could not be read as two counts, so nothing was cross-checked\n";
+    } else {
+        printf("  the sheet's header says %d answered, %d left of %s → %s\n", $claimsAnswered, $claimsLeft,
+            $total === null ? 'an unstated total' : $total,
+            ($claimsLeft === count($sheetOpen) && $claimsAnswered + $claimsLeft === $itemsRead
+                && ($total === null || $total === $itemsRead)) ? 'AGREES' : 'DISAGREES — read both, neither is proof');
+        if (! ($claimsLeft === count($sheetOpen) && $claimsAnswered + $claimsLeft === $itemsRead
+            && ($total === null || $total === $itemsRead))) {
+            $fails = ($fails ?? 0) + 1;
+        }
+    }
+} else {
+    echo "  the sheet's header states no answered/left pair, so this run cannot cross-check itself\n";
+}
