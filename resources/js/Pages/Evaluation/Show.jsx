@@ -228,7 +228,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                             </Badge>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
-                            School ID: <span className="font-mono font-bold text-slate-700">{student?.schoolIdNumber || '—'}</span> • Program: <span className="font-semibold text-slate-800">{enrollment.course?.courseCode}</span> • Year Level: <span className="font-semibold text-slate-800">Year {enrollment.yearLevel}</span>
+                            School ID: <span className="font-mono font-bold text-slate-700">{student?.schoolIdNumber || '—'}</span> • Program: <span className="font-semibold text-slate-800">{enrollment.course?.courseCode}</span> • Year Level: <span className="font-semibold text-slate-800">{formatYearLevel(enrollment.yearLevel)}</span>
                         </p>
                     </div>
                 </div>
@@ -433,7 +433,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                             <span className="text-slate-500 block">{row.subjectName}</span>
                                         </td>
                                         <td className="px-3 py-2 text-slate-600">{row.termLabel}</td>
-                                        <td className="px-3 py-2 text-slate-600">{row.yearLevel}</td>
+                                        <td className="px-3 py-2 text-slate-600">{formatYearLevel(row.yearLevel)}</td>
                                         <td className="px-3 py-2 text-right font-mono font-bold text-red-700">{row.grade.toFixed(2)}</td>
                                     </tr>
                                 ))}

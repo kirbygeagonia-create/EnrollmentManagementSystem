@@ -135,15 +135,18 @@ replacement fee is printed at all.
 - ~~Answer: match the student copy; the office table moves to an internal sheet / keep the table and add the
   copy designation and the school's Course wording to the face~~ — answered: **keep the table and mark the
   copy.** Built the same day, on both print surfaces together: the slip titles itself
-  `Clearance Slip (Student's Copy)` and its program line reads `(BSIT) Bachelor of Science in Information
-  Technology - Year 2`, from `clearance-slip.blade.php:38-82` and `PrintSlip.jsx:37-44`, and the nine-office
-  block is untouched. Re-read off the rendered PDF rather than off the template. **One half of the school's
-  wording was deliberately not adopted:** the paper writes the level "2nd Year", and the build keeps "Year 2",
-  because `resources/js/Components/ui/statusLabel.js:50-56` records that six pages once printed four
-  vocabularies for one number and the shared formatter exists to stop that — so the ordinal is a one-formatter
-  change that moves every §25 paper with it, if the Registrar asks for it. Items **1, 2, 4 and 5 stay open on
-  their own questions**: the ruling settled which copy the paper is, not where each office signs, what the
-  window accepts, or whether the student's copy should carry the number, the status word and the fee.
+  `Clearance Slip (Student's Copy)` and its program line leads with the code, from
+  `clearance-slip.blade.php:38-82` and `PrintSlip.jsx:37-44`, and the nine-office block is untouched.
+  Re-read off the rendered PDF rather than off the template. **The level wording the build first kept was
+  ruled against the next day:** the build printed "Year 2", the owner ruled 2026-10-24 that "the proper
+  format is 2nd year", and the ordinal is now what every surface prints — `CLEARANCE SLIP (STUDENT'S COPY)`
+  over `(BSIT) Bachelor of Science in Information Technology - 2nd Year`, read off the re-rendered PDF.
+  The vocabulary lives in one place per side (`App\Support\YearLevel` for the papers, `formatYearLevel` and
+  `yearLevelChoices` in `resources/js/Components/ui/statusLabel.js`) and
+  `tests/Feature/YearLevelVocabularyTest.php` pins the two against each other and refuses any surface that
+  spells a level by hand. Items **1, 2, 4 and 5 stay open on their own questions**: the ruling settled which
+  copy the paper is, not where each office signs, what the window accepts, or whether the student's copy
+  should carry the number, the status word and the fee.
   Initial: ..........
 
 ## B. Departments

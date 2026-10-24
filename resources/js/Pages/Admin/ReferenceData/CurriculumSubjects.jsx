@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, formatYearLevel, yearLevelChoices } from '@/Components/ui';
 
 export default function CurriculumSubjects({ curriculum, subjects, allSubjects, semesters }) {
     const [showModal, setShowModal] = useState(false);
@@ -26,7 +26,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
     const columns = useMemo(() => [
         { key: 'subject', label: 'Subject Code', render: (row) => row.subject?.subjectCode || '—', className: 'font-mono text-sm' },
         { key: 'subject', label: 'Subject Title', render: (row) => row.subject?.subjectName || '—' },
-        { key: 'yearLevel', label: 'Year Level', className: 'text-center' },
+        { key: 'yearLevel', label: 'Year Level', className: 'text-center', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'semesterOffered', label: 'Semester', render: (row) => (
             <Badge tone="info">{row.semesterOffered}</Badge>
         ), className: 'text-center' },
@@ -238,13 +238,7 @@ export default function CurriculumSubjects({ curriculum, subjects, allSubjects, 
                             <Select
                                 value={form.data.yearLevel}
                                 onChange={(v) => form.setData('yearLevel', parseInt(v))}
-                                options={[
-                                    { value: 1, label: 'Year 1' },
-                                    { value: 2, label: 'Year 2' },
-                                    { value: 3, label: 'Year 3' },
-                                    { value: 4, label: 'Year 4' },
-                                    { value: 5, label: 'Year 5' },
-                                ]}
+                                options={yearLevelChoices()}
                                 placeholder="Select year level"
                                 className="form-input"
                                 error={form.errors.yearLevel}

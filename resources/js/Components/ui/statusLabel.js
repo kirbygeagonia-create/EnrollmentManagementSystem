@@ -47,13 +47,34 @@ export function academicStandingToneFor(standing) {
     return standing ? (academicStandingTone[standing] || 'neutral') : 'pending';
 }
 
-// A year level is a level, not a rank. Six pages each carried their own
-// getYearSuffix and printed four vocabularies for one number — "1st Year", a
-// bare "1st", "Year 1", and the raw digit — so the printed paper disagreed with
-// the picker the evaluator used to record it. One formatter, matching that
-// picker, and it names the empty case instead of rendering "th Year".
+// A year level is spelled the way the school's own papers spell it: an ordinal, "2nd Year". Ruled
+// 2026-10-24. Six pages once carried their own getYearSuffix and printed four vocabularies for one
+// number, so the fix was one formatter — but the vocabulary it chose was "Year 2", which is not what the
+// school writes: its own clearance slip reads "2nd Year", and App\Enums\Semester already spells the term
+// "1st" / "2nd" on the same paper. This changes which vocabulary the single definition picks, not how
+// many there are: App\Support\YearLevel carries the same rule on the server, and
+// tests/Feature/YearLevelVocabularyTest.php pins the two against each other and refuses any surface that
+// spells a level by hand, so a paper cannot disagree with the picker that recorded the level.
 export function formatYearLevel(level) {
-    return level ? `Year ${level}` : '—';
+    if (!level) return '—';
+    return `${ordinalSuffix(level)} Year`;
+}
+
+// The five levels a desk may record. Nothing else may spell a level, so the option a desk chooses is
+// word-for-word what the paper prints back — five pick-lists used to carry their own `Year ${n}` labels
+// while three sibling tables already read formatYearLevel, which is one number in two vocabularies on
+// the same screen.
+export const YEAR_LEVELS = [1, 2, 3, 4, 5];
+
+export function yearLevelChoices(levels = YEAR_LEVELS) {
+    return levels.map((level) => ({ value: level, label: formatYearLevel(level) }));
+}
+
+function ordinalSuffix(level) {
+    // 11th–13th are the English exceptions; nothing else in a school's range reaches them.
+    if (level % 100 >= 11 && level % 100 <= 13) return `${level}th`;
+
+    return `${level}${({ 1: 'st', 2: 'nd', 3: 'rd' })[level % 10] ?? 'th'}`;
 }
 
 // The seven gates RegistrarController::checklist() enforces, in the order a

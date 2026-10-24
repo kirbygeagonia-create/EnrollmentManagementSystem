@@ -538,7 +538,10 @@ class AcademicStandingOwnershipTest extends TestCase
                 'yearLevel' => 3,
             ])
             ->assertSessionHasNoErrors()
-            ->assertSessionHas('success', fn (string $message) => str_contains($message, 'Placement set to year level 3 (was 1)'));
+            // The desk's own words for a level are the school's: an ordinal, ruled 2026-10-24. This message
+            // used to read "Placement set to year level 3 (was 1)", which put a third vocabulary on the same
+            // screen as the picker that had just offered "3rd Year".
+            ->assertSessionHas('success', fn (string $message) => str_contains($message, 'Placement set to 3rd Year (was 1st Year)'));
 
         $this->assertSame(3, (int) $enrollment->fresh()->yearLevel);
     }

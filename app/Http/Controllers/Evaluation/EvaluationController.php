@@ -43,6 +43,7 @@ use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use App\Support\CollegeScope;
 use App\Support\StudentRecordDefaults;
+use App\Support\YearLevel;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -550,7 +551,7 @@ class EvaluationController extends Controller
         // placement that moved has to be said out loud: the load proposed before
         // this change was resolved against the old year.
         $placed = $previousLevel !== $yearLevel
-            ? " Placement set to year level {$yearLevel} (was {$previousLevel}); re-propose the load if it was drawn against the old year."
+            ? ' Placement set to '.YearLevel::format($yearLevel).' (was '.YearLevel::format($previousLevel).'); re-propose the load if it was drawn against the old year.'
             : '';
 
         return back()->with('success', ($overrides
@@ -964,7 +965,7 @@ class EvaluationController extends Controller
         ], Auth::user());
 
         return redirect()->route('evaluation.show', $enrollment->enrollmentId)
-            ->with('success', 'Enrollment form issued for '.strtolower($student->lastName).', '.strtolower($student->firstName).' — Year '.$enrollment->yearLevel.'.');
+            ->with('success', 'Enrollment form issued for '.strtolower($student->lastName).', '.strtolower($student->firstName).' — '.YearLevel::format($enrollment->yearLevel).'.');
     }
 
     /**

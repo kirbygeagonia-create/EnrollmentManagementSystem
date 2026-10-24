@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel, formatYearLevel, yearLevelChoices } from '@/Components/ui';
 import { useState } from 'react';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
@@ -147,7 +147,7 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
                                         <p className="text-xs text-slate-600 mt-1">
                                             {r.currentCourse?.courseCode} → <span className="font-semibold">{r.targetCourse?.courseCode}</span>
                                             {r.term ? ` · entering ${r.term.academicYear?.yearLabel} ${r.term.semester}` : ''}
-                                            {r.yearLevel ? ` · Year ${r.yearLevel}` : ''}
+                                            {r.yearLevel ? ` · ${formatYearLevel(r.yearLevel)}` : ''}
                                         </p>
                                     </div>
                                     <Badge tone={statusTone[r.requestStatus] || 'neutral'}>{formatStatusLabel(r.requestStatus)}</Badge>
@@ -300,7 +300,7 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
                         <Select
                             value={endorseForm.data.yearLevel}
                             onChange={(v) => endorseForm.setData('yearLevel', v)}
-                            options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `Year ${n}` }))}
+                            options={yearLevelChoices()}
                             placeholder="Year level"
                             className={`form-input ${endorseForm.errors.yearLevel ? 'form-input-error' : ''}`}
                             required

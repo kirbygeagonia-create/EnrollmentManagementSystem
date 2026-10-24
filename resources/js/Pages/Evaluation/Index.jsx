@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, yearLevelChoices } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 export default function Index({ enrollments, stats = {}, filters = {}, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
@@ -306,7 +306,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, canIssueE
                         <Select
                             value={issueForm.data.yearLevel}
                             onChange={(v) => issueForm.setData('yearLevel', v)}
-                            options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `Year ${n}` }))}
+                            options={yearLevelChoices()}
                             placeholder="Year level"
                             className={`form-input ${issueForm.errors.yearLevel ? 'form-input-error' : ''}`}
                             required

@@ -488,7 +488,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 340 lines where
+  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 339 lines where
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
@@ -592,6 +592,60 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the blind **id** in the output, not the header — the old leg passed against the gated version, which is a mutant
   that sleeps. Prove any such change by re-adding the gate and watching that leg go BAD (done: it did, and the
   file was restored by sha1).
+- **A ruling about how a value is *spelled* is a vocabulary change, and one number must have one definition
+  per runtime** (lane 69). The owner ruled 2026-10-24 that "the proper format is 2nd year, not year 2", which
+  reversed the one half of §25.4 P-19 the previous pass had deliberately not adopted — the school's own student
+  copy writes `- 2nd Year`, and `App\Enums\Semester` already spells the term `1st` / `2nd` on the same paper.
+  A browser cannot call PHP, so the vocabulary necessarily lives in two places (`App\Support\YearLevel::format()`
+  for the Browsershot papers, `formatYearLevel()` + `yearLevelChoices()`/`YEAR_LEVELS` in
+  `resources/js/Components/ui/statusLabel.js` for every desk screen) and `tests/Feature/YearLevelVocabularyTest.php`
+  pins the pair **by reading the JavaScript source**: it parses the suffix map and the `level % 100 >= 11 && <= 13`
+  bounds out of `statusLabel.js`, re-derives levels 1-125 with them and requires each to equal the PHP helper's
+  answer — that is the only way to test a cross-runtime pairing in a repository with no JS test suite. The same
+  file refuses any surface that spells a level by hand, which found **five pick-lists offering "Year 2" while
+  three sibling tables already read the formatter**, three cells printing a bare integer under a "Year Level"
+  heading, and two `EvaluationController.php` messages building `'Year '.$level`.
+  **Reading a rule is not running it**, so `node storage/app/scratch/lane69-prove-js-formatter.mjs` imports
+  the actual module and compares its output with the PHP helper for twelve levels including 11th/12th/13th/
+  21st/111th, then checks the three absence spellings, `yearLevelChoices()` and `YEAR_LEVELS`. Two of its
+  first three runs failed on the tool's own bugs — a static `../resources` import resolves against the
+  module's directory, which from `storage/app/scratch` is a path that does not exist, and `php -r` takes code
+  **without** the `<?php` tag — which is why the tool is kept rather than the one-off command that happened
+  to work.
+  **After any batch that touches a level's spelling, a print view's year line, or either formatter**, run
+  `php artisan test tests/Feature/YearLevelVocabularyTest.php` and prove it with
+  `php storage/app/scratch/mutate-lane69-yearlevel-tests.php` (eleven planted defects — the ordinal re-spelled,
+  the JS vocabulary drifted, the suffix map and the exception bounds edited, year 0 invented as a level, a
+  pick-list hand-written again, a print view bypassing the helper, a print view hand-spelling it, the slip
+  paper reverting, the form payload reverting — each killed by the case that names it, green control before
+  and after, tree restored by hash). **The same ruling blinded one of my own checkers:**
+  `lane62-print-paper-probe.php` built the token it searches the PDF for as
+  `'Year '.$enrollment->yearLevel`, so the morning every paper became an ordinal it matched nothing and
+  printed `year level: NO` on all eight documents — a table that reads exactly like a finding. The probe now
+  asks `App\Support\YearLevel::format()`, folds the PDF's whitespace before searching (a two-column layout
+  wraps `1st` and `Year` onto separate lines, which is not an absence), and **refuses the run when a needle it
+  searched for appears in no document**, because a busy instrument may not report a negative. Prove it with
+  `php storage/app/scratch/mutate-lane62-probe-blind.php` (green control, then the hand-built token and an
+  impossible program name planted in throwaway copies, each of which must make the run refuse).
+- **A needle list of shared tokens corrupts the tree; rewrite by byte offset and attribute by reading**
+  (lane 69, three defects caught only by reading the dry run's own counts). Two desk messages needed the
+  helper, Pint will not let a static call keep a fully-qualified name in `app/` (it files the import, proved:
+  it rewrote an inline `\App\Support\YearLevel::format(...)` in a test into `use` + short call), and one line
+  inserted at :46 moved every line below it — so ~47 explicit citations into `EvaluationController.php` had to
+  move +1. (a) **A short citation is a prefix of a long one**: replacing `EvaluationController.php:57` hit three
+  places, two of them inside `:577-583`, and wrote `:588-584`. Replace with one regex pass over the
+  file-name-prefixed pattern, never a needle list. (b) **`strip_tags()` welds adjacent runs together**, so the
+  sentence read as a file named `curriculumsubjects` + `EvaluationController.php` and refused to move pointers
+  that did belong to the moved file; join runs with a space (`preg_replace('/<[^>]*>/', ' ', …)`). (c) **A bare
+  `:NNN` must be rewritten by offset**: `:94` occurs seven times in the document and only one belongs to the
+  moved file — the other six are `PrintCertificate.jsx`, `HandleInertiaRequests.php`,
+  `EnrollmentReadiness.php` and `SendWorkflowNotification.php` pointers that a global replace would have
+  corrupted; and an empty negative lookahead `(?! )` matches nothing, which had all seven "named by no file".
+  One bare number (`queue at :55`) was already pointing at a **blank** line in HEAD, and this batch's inserted
+  line slid live code onto that number — a bounds sweep would have started clearing a pointer that never was
+  true. It was re-pointed by reading, with both endpoints verified against the lines they land on; the other
+  ten unverifiable numbers were reported, not shifted. **A shift that makes a stale pointer look valid is worse
+  than leaving it flagged.**
 - **Split lines on `\n`, never `preg_split('/\R/')`, when a script reports line numbers.** `\R` also matches
   the byte 0x85, which occurs as a UTF-8 continuation byte inside emoji: it read a 55-line report as 71
   lines and printed line numbers no editor would show. Every `File.php:NN` citation this repository writes
@@ -859,7 +913,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (636 citations over 151 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (638 citations over 152 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -890,9 +944,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 903 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 904 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 376 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 377 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

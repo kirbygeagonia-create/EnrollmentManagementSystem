@@ -1,15 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard, formatYearLevel, yearLevelChoices } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
+// The filter value travels in the query string, so it stays a string; the label comes from the
+// one formatter, so what a desk picks is what its own table column prints.
 const yearLevelOptions = [
     { value: '', label: 'All Year Levels' },
-    { value: '1', label: 'Year 1' },
-    { value: '2', label: 'Year 2' },
-    { value: '3', label: 'Year 3' },
-    { value: '4', label: 'Year 4' },
-    { value: '5', label: 'Year 5' },
+    ...yearLevelChoices().map((choice) => ({ value: String(choice.value), label: choice.label })),
 ];
 
 const availableToneMap = {

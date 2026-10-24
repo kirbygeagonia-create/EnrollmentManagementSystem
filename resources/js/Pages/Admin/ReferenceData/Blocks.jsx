@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatYearLevel, yearLevelChoices } from '@/Components/ui';
 
 export default function Blocks({ blocks, courses, terms, filters = {} }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -22,7 +22,7 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
         { key: 'blockName', label: 'Name' },
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'term', label: 'Term', render: (row) => row.term?.academicYear?.yearLabel + ' ' + row.term?.semester || '—' },
-        { key: 'yearLevel', label: 'Year Level', className: 'text-center' },
+        { key: 'yearLevel', label: 'Year Level', className: 'text-center', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'maxStudents', label: 'Max Students', className: 'text-center' },
     ], []);
 
@@ -215,13 +215,7 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                             <Select
                                 value={form.data.yearLevel}
                                 onChange={(v) => form.setData('yearLevel', parseInt(v))}
-                                options={[
-                                    { value: 1, label: 'Year 1' },
-                                    { value: 2, label: 'Year 2' },
-                                    { value: 3, label: 'Year 3' },
-                                    { value: 4, label: 'Year 4' },
-                                    { value: 5, label: 'Year 5' },
-                                ]}
+                                options={yearLevelChoices()}
                                 placeholder="Select year level"
                                 className="form-input"
                                 error={form.errors.yearLevel}

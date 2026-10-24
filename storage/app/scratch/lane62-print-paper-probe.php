@@ -88,7 +88,11 @@ if ($student === null) {
 $enrollment = App\Models\Enrollments::where('studentId', $student->studentId)
     ->orderByDesc('enrollmentId')->first();
 $program = (string) (optional($enrollment?->course)->courseName ?? '');
-$level = $enrollment === null ? '' : 'Year '.$enrollment->yearLevel;
+// The probe asks the same definition the papers use. It used to build this token by hand as
+// 'Year '.$enrollment->yearLevel, which is a second spelling living in a scratch file — and the day the
+// level became an ordinal it stopped matching anything, so the "year level" column read NO on all eight
+// documents while every one of them printed the level. A blind detector prints the table a finding would.
+$level = $enrollment === null ? '' : (string) App\Support\YearLevel::format((int) $enrollment->yearLevel);
 printf("record behind it: student %d, enrollment %s, program %s, level %s\n\n",
     $student->studentId, (string) ($enrollment?->enrollmentId ?? '(none)'),
     $program !== '' ? $program : '(none)', $level !== '' ? $level : '(none)');
@@ -98,18 +102,40 @@ printf("record behind it: student %d, enrollment %s, program %s, level %s\n\n",
 // is absent" is not the same claim as "no School ID reaches this paper at all".
 $terms = ['own ID' => $onPaper, 'program' => $program, 'year level' => $level];
 printf("%-30s %-10s %-11s %-11s %-11s  %s\n", 'document', 'any ID', 'own ID', 'program', 'year level', 'period on the paper');
+$allFlat = '';
 foreach ($texts as $name => $body) {
     if (trim($body) === '') {
         printf("%-30s %s\n", $name, '(no extractable text — not evidence of absence)');
         continue;
     }
     $anyId = preg_match('/[A-Z]{3,}-\d{4}-\d{3}/', $body, $m) === 1 ? $m[0] : 'NO';
+    // Two-column layouts wrap a value across lines ("Bachelor of Science in Criminology - 1st" / "Year"),
+    // so the needle is searched in the text with its runs of whitespace folded. Without this the probe
+    // reports absence wherever the paper merely broke a line.
+    $flat = preg_replace('/\s+/u', ' ', $body);
+    $allFlat .= $flat;
     $cells = [];
     foreach ($terms as $needle) {
-        $cells[] = $needle !== '' && mb_stripos($body, $needle) !== false ? 'yes' : 'NO';
+        $cells[] = $needle !== '' && mb_stripos($flat, $needle) !== false ? 'yes' : 'NO';
     }
     $period = preg_match('/20\d\d[-\x{2013} ]20\d\d/u', $body, $mm) ? $mm[0] : '—';
     printf("%-30s %-10s %-11s %-11s %-11s  %s\n", $name, $anyId, $cells[0], $cells[1], $cells[2], $period);
 }
+
+// A needle the set never shows is this instrument's failure, not the school's: refuse rather than let a
+// column of NOs be read as a finding about the paper.
+$unseen = [];
+foreach ($terms as $what => $needle) {
+    if ($needle !== '' && mb_stripos($allFlat, $needle) === false) {
+        $unseen[] = $what.' (“'.$needle.'”)';
+    }
+}
+if ($unseen !== []) {
+    printf("\nREFUSED: no rendered document contains %s, so this probe cannot say whether the paper carries it.\n"
+        ."Ask the build where that value is written before reading any column of this table as a finding.\n",
+        implode('; ', $unseen));
+    exit(1);
+}
+
 echo "\n\"NO\" under own ID only means the document belongs to somebody else. \"NO\" under any ID means the paper\n"
     ."carries no student identity at all — that is the finding §28.6 and P-2 have to agree with.\n";

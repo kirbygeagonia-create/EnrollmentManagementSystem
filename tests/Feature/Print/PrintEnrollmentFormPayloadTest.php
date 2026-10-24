@@ -17,6 +17,7 @@ use App\Models\Majors;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Models\Subjects;
+use App\Support\YearLevel;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -246,7 +247,7 @@ class PrintEnrollmentFormPayloadTest extends TestCase
             'Student ID' => $enrollment->student->schoolIdNumber,
             'School Year' => $enrollment->term->academicYear->yearLabel,
             'Course' => $enrollment->course->courseName,
-            'Year Level' => 'Year '.$enrollment->yearLevel,
+            'Year Level' => YearLevel::format($enrollment->yearLevel),
             'Semester' => $enrollment->term->semester->value,
         ] as $label => $value) {
             $this->assertMatchesRegularExpression(

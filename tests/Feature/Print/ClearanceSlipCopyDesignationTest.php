@@ -213,10 +213,16 @@ class ClearanceSlipCopyDesignationTest extends TestCase
                 .'the program without the code, so P-19’s ruling covers the code as well as the copy mark.'
         );
         $this->assertStringContainsString(
+            '2nd Year',
+            $body,
+            'Ruled 2026-10-24: the school writes an ordinal, so the slip that already carries the code must spell '
+                .'the level "2nd Year" like the evaluator’s picker and every other paper. "Year 2" here is the '
+                .'vocabulary the owner rejected — see YearLevelVocabularyTest.'
+        );
+        $this->assertStringNotContainsString(
             'Year 2',
             $body,
-            'The level vocabulary is the one formatYearLevel and the evaluator’s picker already agree on; the '
-                .'ruling added the code, not a second spelling of the year level.'
+            'Both spellings reached one paper, so the level the student reads is not one vocabulary.'
         );
     }
 
