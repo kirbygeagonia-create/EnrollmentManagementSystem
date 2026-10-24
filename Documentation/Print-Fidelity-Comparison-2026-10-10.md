@@ -19,11 +19,15 @@ have been overtaken since, and one sentence above has moved:
 - The scans are no longer under `Documentation/Images/` — that folder does not exist. They live at
   the repository root in `Images/`, and `.gitignore` names **both** paths, so nothing is tracked
   either way. Verified 2026-10-24: `git ls-files` answers zero for both.
-- **Row 1.3 (clearance slip) is closed.** The owner ruled on 2026-10-23 that the face leads with the
+- **Rows 1.1 and 1.3 (clearance slip) are closed.** The owner ruled on 2026-10-23 that the face leads with the
   course code in parentheses and marks whose copy it is, and on 2026-10-24 that the level is written
   `2nd Year`. The slip now prints `(BSIT) Bachelor of Science in Information Technology - 2nd Year`
   under a title reading `Clearance Slip (Student's Copy)` — the paper's own form, so the
-  "abbreviation first, ordinal word last" gap this row recorded no longer exists.
+  "abbreviation first, ordinal word last" gap row 1.3 recorded no longer exists. **Half of row 1.1 closes on
+  the same ruling** and is named here because row 1.1, not 1.3, is the cell that recorded "no copy is ever
+  named" — the heading does name it now. What does not close is the other half of that row: the semester and
+  the academic year are still two labelled rows under the title rather than inside it, and that shape is the
+  Registrar's call, asked again as the Term line of row 2 on the 2026-10-11 decision sheet.
 - **Rows 2.3, 3.2 and 4.2 narrowed but did not close.** Every year level now comes from one helper
   on each side (`App\Support\YearLevel`, and `formatYearLevel` in the JSX), so nothing prints the bare
   `Year n` this column quotes — the class card prints `1st Year` where the paper spells the level as

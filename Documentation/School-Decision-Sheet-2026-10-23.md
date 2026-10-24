@@ -54,6 +54,10 @@ one signatory and no requirements table at all), **2** (what a printed slip must
 at the window), **4** (whether the generated PDF or the desk screen is that paper), and **5** (whether
 every lost slip is paid for before replacement, when the school's copy carries no fee line). Each is
 already read against the real slip, so an answer can be given at the meeting without opening a file.
+One row is owed somewhere else: item **9** was ruled on 2026-10-23 to leave all five board-program flags
+standing, but the owning departments have not yet confirmed or cleared them, so §28.8 still charges that
+one to a department, and its "add / remove" line is open. Together those two — C-5 and the install-time
+G-13 under item **15** — are the only items the registers still owe anyone.
 
 **To take a decision on each row:** tick, and initial. Where the answer is "as it stands", say so —
 that is a decision and it closes the row.
@@ -83,9 +87,10 @@ Science in Information Technology - 2nd Year", code in parentheses and the level
 **Full Name** in "SURNAME, FIRST MIDDLE" capitals, **Date**, and **Received by** with the Registrar
 In-charge's signature over the printed name and its own date. Nothing else is on it: no student number,
 no overall status word, no "date to be signed", no document number, no fee line. The system prints all of
-those and never printed the copy designation — the shape of the name is recorded here rather than the name
-itself, because this sheet is committed and the reference scans, which carry it, are deliberately not.
-- Answer: as printed ☐ / **match the student copy (P-19: drop the extras, add the copy designation) ☐** / wording amended ☐ / order amended ☐ Initial: ..........
+those, and since the ruling recorded under item **16** its heading names the copy too — the shape of the
+name is recorded here rather than the name itself, because this sheet is committed and the reference
+scans, which carry it, are deliberately not.
+- Answer: as printed ☐ / **match the student copy: take the number, the status word, the "date to be signed" and the document number off the student's page ☐** (the copy designation and the course code are already built, ruled 2026-10-23) / wording amended ☐ / order amended ☐ Initial: ..........
 
 **3. In what words does the enrollment certificate state student type and enrollment type?** `[§28.5, P-13 — ANSWERED 2026-10-24]`
 The certificate prints both, the student type in its own words and the enrollment kind separately, so
@@ -98,11 +103,13 @@ supplied, so nothing in the repository can settle the words.
 **4. Is the generated PDF, or the desk screen, the paper a window accepts?** `[§28.5, P-19]`
 Both paths are reachable: the enrollment form is issued only as a PDF download (`print.enrollmentForm`),
 every other paper can reach either the desk page or a generated PDF, and `php artisan ems:print-fidelity`
-renders either for inspection. **The school's paper answers one half of this:** the real slip is marked
-"(Student's Copy)", so the school does distinguish copies of the same document — a designation no print
-view in this repository ever prints. Which copy the window keeps, and which the file holds, is still the
-Registrar's.
-- Answer: desk print ☐ / generated PDF ☐ / either, PDF is the record ☐ / **state the copy on the paper: ☐** Initial: ..........
+renders either for inspection. **The school's paper answers one half of this, and the build now agrees:**
+the real slip is marked "(Student's Copy)", so the school does distinguish copies of the same document,
+and since the ruling under item **16** both surfaces say so on the face — `clearance-slip.blade.php:36`
+titles the paper *Clearance Slip (Student's Copy)* and `PrintSlip.jsx:27` gives the desk screen the same
+title. Which copy the window keeps, which copy the file holds, and whether the nine-office table belongs
+on the student's page at all is still the Registrar's.
+- Answer: desk print ☐ / generated PDF ☐ / either, PDF is the record ☐ / **a second copy exists; name it: ................................ ☐** Initial: ..........
 
 **5. Must every lost clearance slip be paid for before it is replaced?** `[§28.5, P-12]`
 Two acts are now two rules: a second **free** slip is allowed only while the row is `incomplete`;

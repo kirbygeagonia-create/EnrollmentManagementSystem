@@ -14,10 +14,10 @@
  * lines contain — that reading is the human half, and no regex here can do it honestly.
  *
  * usage: php storage/app/scratch/repo-file-line-citations.php [file ...]
- *        (defaults to the seven prose files that carry `File.php:NN` citations: AGENTS.md, DEPLOYMENT.md,
- *        the walkthrough, both demo guides, and the two third-party assessments)
+ *        (defaults to the ten prose files that carry `File.php:NN` citations: AGENTS.md, DEPLOYMENT.md,
+ *        the walkthrough, both demo guides, the two third-party assessments, and the three decision and
+ *        fidelity sheets the Registrar holds)
  */
-
 $root = dirname(__DIR__, 3);
 $args = array_values(array_filter(array_slice($argv ?? [], 1), fn ($a) => ! str_starts_with($a, '--')));
 $targets = $args !== [] ? $args : [
@@ -28,6 +28,12 @@ $targets = $args !== [] ? $args : [
     'Documentation/Offline-Presentation-Guide.md',
     'SEAIT-EMS-Round3-Current-State.md',
     'Documentation/Audit-Remediation-2026-08-29.md',
+    // The sheets are the papers an office actually ticks, and every row of the print ones is a line
+    // reference into a template. No instrument read them until 2026-10-24, which is why three of the
+    // 2026-10-11 sheet's pointers had drifted onto another block when the ruling above them was built.
+    'Documentation/School-Decision-Sheet-2026-10-23.md',
+    'Documentation/Registrar-Print-Decision-Sheet-2026-10-11.md',
+    'Documentation/Print-Fidelity-Comparison-2026-10-10.md',
 ];
 
 $index = null;
@@ -60,7 +66,7 @@ $buildIndex = function () use ($root, &$index): array {
  * guessed at: the docx sweep once returned a real-looking "past end of file" for a citation the document had
  * already qualified, because its resolver answered with whichever `Index.jsx` the walk reached first.
  *
- * @return array{0: ?string, 1: list<string>}  the chosen path (null when unresolvable) and every candidate
+ * @return array{0: ?string, 1: list<string>} the chosen path (null when unresolvable) and every candidate
  */
 $resolve = function (string $name) use ($root, $buildIndex): array {
     if (str_contains($name, '/')) {

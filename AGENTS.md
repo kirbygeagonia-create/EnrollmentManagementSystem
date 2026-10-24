@@ -691,9 +691,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and one of its pointers had drifted onto a comment, because a dated document re-cited as live reference is read
   as present tense by whoever holds it. Its own date does not save it once another document points at it. Now
   carries an explicit supersession note; **do not re-age its cells** — the reading of that day stays, labelled.
-  No instrument reads these sheets' prose: `repo-file-line-citations.php` covers AGENTS.md, DEPLOYMENT.md and the
-  walkthrough (7 files), so a `:NN` inside a decision sheet is unjudged and must be re-read by hand whenever a
-  print view moves.
+  Nothing reads these sheets' *meaning*, but their pointers are now judged: `repo-file-line-citations.php` was
+  widened on 2026-10-24 to cover the three sheets an office holds, after three citations in the 2026-10-11 print
+  sheet were found to have drifted onto other blocks when the P-19 ruling was built (`:78-100` → `:84-107` for the
+  office table, `:72` → `:80` for the date row, `:103-105` → `:111-113` for the receipt). Same day, the live sheet
+  was carrying two present-tense claims the build had overtaken — that no surface marks whose copy the slip is —
+  which is the lane 69 defect class one document later. **Re-take a pointer; never re-age a reading.**
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
@@ -1021,10 +1024,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 389 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 390 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
-  `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
-  walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder
+  `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
+  walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
+  holds** (the school decision sheet, the Registrar print sheet, the print-fidelity comparison), which is how
+  a false pointer *inside this very warning* was found (and how the placeholder
   `…:945-993` written while describing it was flagged a minute later — a citation-shaped token is a
   citation, even in prose about citations). Three citation forms mean
   three different things and the rules were written from the forms measured in the text: "§28 G-9" claims

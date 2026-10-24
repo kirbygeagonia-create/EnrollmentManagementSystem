@@ -18,6 +18,15 @@ so this sheet still stands as a packet of questions, but its "the system prints"
 2026-10-11 reading and each row's own line reference is that day's, which is why row 2's programme
 pointer now reads `clearance-slip.blade.php:77` rather than the `:68` it was when written.
 
+**The line references are re-taken, the readings are not.** Building the ruling above added lines to
+`clearance-slip.blade.php`, so three pointers in rows 1 and 2 moved and were re-read against the file
+on 2026-10-24: the office table is `:84-107` (it opened on `:78-100`), the `Date to be Signed:` row is
+`:80` (row 2 quoted `:72`, which is now the course-code expression), and the receipt block is
+`:111-113` (row 2 quoted `:103-105`, which is now inside the table's own row loop). A quoted *reading*
+— `Year 2`, "no code", "never naming whose copy it is" — stays as that day wrote it, because that is
+what the desk was offered on 2026-10-11. Only pointers to lines are re-taken, since a pointer that
+lands in the wrong block misdirects whoever is carrying out a tick.
+
 **To take a decision on each row:** tick which side wins, and initial. Where the paper wins, the
 change is to the printed layout — the data behind it does not move. Where the system wins, nothing
 changes and the physical form is amended instead, which is also a valid answer.
@@ -34,7 +43,7 @@ Form** if one exists (row 10).
 
 - The paper: the stub carries no per-office table at all.
 - The system: one sheet, with the office table printed above the signature block
-  (`clearance-slip.blade.php:78-100`), and the heading never naming whose copy it is (`:36`).
+  (`clearance-slip.blade.php:84-107`), and the heading never naming whose copy it is (`:36`).
 - If the office wants the copy split: the slip gains a `Student's Copy` / `Office Copy` designation
   in the title, and the checklist may move to its own page.
 - Decision: paper ☐ / system ☐ / other: ..................................... Initial: ..........
@@ -45,8 +54,8 @@ Form** if one exists (row 10).
 | --- | --- | --- | --- |
 | Name | `Full Name:` | `Student Name:` | `clearance-slip.blade.php:53` |
 | Programme | `Course:` with `(code) full name - 2nd Year` | `Course & Year:` with `full name - Year 2`, no code (the 2026-10-11 reading; see the note above — the code and the ordinal both arrived later) | `:77` |
-| Date | a `Date` field, written by hand at issue | `Date to be Signed:` filled from the period end | `:72` |
-| Signature | `Received by:` over `Registrar In-charge (Signature over Printed Name) & Date` | `Received by Registrar`, then the name, then the date and time of receipt — and blank rules for both lines until someone is recorded | `:103-105` |
+| Date | a `Date` field, written by hand at issue | `Date to be Signed:` filled from the period end | `:80` |
+| Signature | `Received by:` over `Registrar In-charge (Signature over Printed Name) & Date` | `Received by Registrar`, then the name, then the date and time of receipt — and blank rules for both lines until someone is recorded | `:111-113` |
 | Term | semester and year inside the title | two separate rows under the title | `:36`, `:45-51` |
 
 - Decision: paper ☐ / system ☐ / mixed (write which rows): ..................................... Initial: ..........
