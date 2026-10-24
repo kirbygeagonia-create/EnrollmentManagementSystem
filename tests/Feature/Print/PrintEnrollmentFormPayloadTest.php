@@ -2,16 +2,21 @@
 
 namespace Tests\Feature\Print;
 
+use App\Enums\AddressType;
+use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\Semester;
 use App\Enums\StudentType;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
+use App\Models\Addresses;
 use App\Models\Courses;
+use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Majors;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Models\Subjects;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +35,13 @@ use Tests\TestCase;
  * then reads it back out of that file, so the two cannot drift without going red: if a relation is
  * dropped from the desk path, the PDF the Registrar hands a student loses a line silently while
  * `ems:print-fidelity` — which renders from its own list — keeps printing it.
+ *
+ * P-18 is the review that followed, and it is the same document stating three things wrongly: Part 2
+ * counted proposed and dropped subjects as the term's load, the home/current box compared an enum cast
+ * with `===` to a string so it could never print, and the print's own number was minted after the page
+ * was drawn and appeared nowhere on it. Every one of those survived a green suite, because a filter
+ * dropped from a blade still renders, a dead `@if` still renders nothing, and a late `recordIssue()`
+ * still writes a log row.
  */
 class PrintEnrollmentFormPayloadTest extends TestCase
 {
@@ -243,5 +255,205 @@ class PrintEnrollmentFormPayloadTest extends TestCase
                 'The form prints no "'.$label.'" line carrying '.$value.' within the same field, so a page that leaves this desk cannot be tied back to the file it belongs in — which is what P-2 was opened for.'
             );
         }
+    }
+
+    /**
+     * P-18's first half: the form's Part 2 table is the registered load of the term, so a proposed or
+     * dropped row may not appear in it or be counted in its TOTAL. The Subject Load has always filtered
+     * this way; the form did not, and on live `ems` all 18 enrollments holding a non-confirmed row
+     * hold no confirmed row at all — each printed a full subject table for a load nobody confirmed.
+     */
+    #[Test]
+    public function test_part_2_prints_only_the_subjects_the_term_confirmed(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+
+        $confirmed = $this->subject('P18CONF', 3, 1);
+        $proposed = $this->subject('P18PROP', 5, 0);
+        $dropped = $this->subject('P18DROP', 4, 0);
+        foreach ([[$confirmed, EnrolledSubjectStatus::Confirmed], [$proposed, EnrolledSubjectStatus::Proposed], [$dropped, EnrolledSubjectStatus::Dropped]] as [$subject, $status]) {
+            Enrolledsubjects::create([
+                'enrollmentId' => $enrollment->enrollmentId,
+                'subjectId' => $subject->subjectId,
+                'status' => $status,
+            ]);
+        }
+
+        $body = $this->printedBody($enrollment->fresh()->load(self::DESK_RELATIONS));
+
+        $this->assertStringContainsString('P18CONF', $body, 'The confirmed subject did not reach the paper.');
+        $this->assertStringNotContainsString('P18PROP', $body, 'A proposed subject printed on the enrollment form, so the paper states a subject the department only intended.');
+        $this->assertStringNotContainsString('P18DROP', $body, 'A dropped subject printed on the enrollment form, so the paper states a subject the Registrar removed.');
+
+        // 3 + 1 from the confirmed row only; the other two would have added nine more. The unit
+        // columns are decimal-cast, so the pattern accepts "3" and "3.0" alike.
+        $this->assertMatchesRegularExpression('/TOTAL<\/td>\s*<td>3(?:\.0+)?<\/td>\s*<td>1(?:\.0+)?<\/td>\s*<td>4(?:\.0+)?<\/td>/u', $body,
+            'The TOTAL row did not add up to the confirmed load alone — the table on the face of the sheet and its own total disagree.');
+    }
+
+    /**
+     * The same filter, seen from the other paper: the form and the Subject Load must state one load for
+     * one enrollment. This is the claim a reader holding two sheets would assume, and nothing checked.
+     */
+    #[Test]
+    public function test_the_form_and_the_subject_load_state_the_same_load(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+
+        Enrolledsubjects::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'subjectId' => $this->subject('P18BOTH', 2, 2)->subjectId,
+            'status' => EnrolledSubjectStatus::Proposed,
+        ]);
+
+        $withLoad = $enrollment->fresh()->load(array_merge(self::DESK_RELATIONS, ['enrolledSubjects.schedule']));
+
+        $form = $this->printedBody($withLoad);
+        $load = (string) view('prints.subject-load', ['enrollment' => $withLoad])->render();
+
+        $this->assertStringNotContainsString('P18BOTH', $form, 'The enrollment form prints a subject the Subject Load withholds.');
+        $this->assertStringNotContainsString('P18BOTH', $load, 'The fixture stopped holding its proposed row, so this no longer tests the two papers agreeing.');
+        $this->assertStringContainsString('No confirmed subjects for this term.', $load, 'The Subject Load stopped stating an empty load, so the pair below is no longer compared.');
+        $this->assertStringContainsString('No confirmed subjects for this term.', $form,
+            'An enrollment with nothing confirmed printed a bare TOTAL 0 instead of saying so — the two papers now have to state the same absence in the same words.');
+    }
+
+    /**
+     * P-18's second half: `addressType` is cast to a backed enum, so `=== 'home'` and
+     * `where('addressType', 'current')` are each false — the box existed in the template and could
+     * never print. It also now compares every line a courier reads, not the street alone.
+     */
+    #[Test]
+    public function test_the_home_address_says_whether_the_current_address_is_the_same(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+        $student = $enrollment->student;
+
+        $this->address($student->studentId, 'home', '12', 'Rizal', 'Norla', '9505');
+        $this->address($student->studentId, 'current', '12', 'Rizal', 'Norla', '9505');
+
+        $same = $this->printedBody($enrollment->fresh()->load(self::DESK_RELATIONS));
+
+        $this->assertStringContainsString('Current address is the same as this home address', $same,
+            'The home/current line never printed at all: an enum cast compared with === to a string is false, which is how the box was dead.');
+        $this->assertMatchesRegularExpression('/type="checkbox"[^>]*checked/u', $same,
+            'Two identical addresses left the box unticked, so the paper denies a fact the record states.');
+
+        Addresses::where('studentId', $student->studentId)->where('addressType', AddressType::Current->value)
+            ->update(['barangay' => 'Lagao']);
+
+        $different = $this->printedBody($enrollment->fresh()->load(self::DESK_RELATIONS));
+
+        $this->assertStringContainsString('Current address is the same as this home address', $different,
+            'The line disappeared when the addresses differ; it should print unticked.');
+        $this->assertStringNotContainsString('type="checkbox" id="sameAsCurrentAddress" checked', $different,
+            'A different barangay still ticked the box, so the paper claimed one address where the record holds two.');
+    }
+
+    /**
+     * P-18's third half: every desk print writes a `documentprintlog` row, and the slip and the
+     * certificate print their number so a sheet traces back to its issuance. The form minted its row
+     * after rendering and printed nothing, so its number existed only in the database.
+     */
+    #[Test]
+    public function test_the_form_prints_the_number_of_the_print_that_issued_it(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+
+        $body = $this->printedBody($enrollment, 'EF-2026-0007');
+
+        $this->assertMatchesRegularExpression('/Document No\.:?<\/span>.{0,200}?EF-2026-0007/su', $body,
+            'The issuance number was not printed beside its own label, so a page on a desk cannot be tied to the print that drew it.');
+
+        $service = (string) file_get_contents(base_path('app/Services/PrintService.php'));
+        $start = (int) strpos($service, 'function printEnrollmentForm');
+        $method = substr($service, $start, (int) strpos($service, 'function ', $start + 10) - $start);
+        $this->assertLessThan(
+            (int) strpos($method, 'generatePdf('),
+            (int) strpos($method, 'recordIssue('),
+            'printEnrollmentForm() renders before it mints the number again, which is the ordering that leaves the paper without one.'
+        );
+    }
+
+    /**
+     * One enum value, one spelling, on every paper. The certificate and the Subject Load use
+     * `Str::headline()`; the form used `ucfirst()`, which prints "FirstYear".
+     */
+    #[Test]
+    public function test_student_type_is_spelled_the_way_the_other_papers_spell_it(): void
+    {
+        $enrollment = $this->issuedEnrollment()->load(self::DESK_RELATIONS);
+
+        $body = $this->printedBody($enrollment);
+
+        $this->assertStringContainsString('First Year', $body,
+            'The form did not print the student type the way the certificate and the Subject Load print the same enum value.');
+        $this->assertStringNotContainsString('FirstYear', $body, 'The raw camel-case enum value reached the paper.');
+    }
+
+    /**
+     * The number that reaches the paper is the one the issuance carries. Asserted against the
+     * service's own source rather than by calling it: `generatePdf()` renders through Browsershot and
+     * needs a real Chrome binary, which this box has and the runner does not — a test that printed a
+     * PDF here would be red there, which is the trap this repository has been caught by twice.
+     */
+    #[Test]
+    public function test_the_desk_passes_its_own_issuance_number_to_the_paper(): void
+    {
+        $service = (string) file_get_contents(base_path('app/Services/PrintService.php'));
+        $start = (int) strpos($service, 'function printEnrollmentForm');
+        $method = substr($service, $start, (int) strpos($service, 'function ', $start + 10) - $start);
+
+        $this->assertMatchesRegularExpression(
+            "/recordIssue\(\s*\\\$enrollment->enrollmentId,\s*DocumentType::EnrollmentForm,/",
+            $method,
+            'printEnrollmentForm() no longer records its own issuance, so the paper has nothing honest to print.'
+        );
+        $this->assertStringContainsString(
+            "'documentNumber' => \$printLog->documentNumber,",
+            $method,
+            'The desk stopped handing the render the number of its own log row, so the sheet and documentprintlog drift.'
+        );
+    }
+
+    private function printedBody(Enrollments $enrollment, ?string $documentNumber = null): string
+    {
+        $data = ['enrollment' => $enrollment];
+        if ($documentNumber !== null) {
+            $data['documentNumber'] = $documentNumber;
+        }
+
+        $html = (string) view('prints.enrollment-form', $data)->render();
+
+        return substr($html, (int) strpos($html, '<body'));
+    }
+
+    private function subject(string $code, int $lecture, int $lab): Subjects
+    {
+        return Subjects::create([
+            'subjectCode' => $code,
+            'subjectName' => $code.' Subject',
+            'lectureUnits' => $lecture,
+            'labUnits' => $lab,
+            'subjectType' => 'lecture',
+        ]);
+    }
+
+    private function address(int $studentId, string $type, string $house, string $street, string $barangay, string $zip): Addresses
+    {
+        return Addresses::create([
+            'studentId' => $studentId,
+            'addressType' => $type,
+            'houseBuildingNo' => $house,
+            'street' => $street,
+            'sitioPurok' => 'Purok 3',
+            'barangay' => $barangay,
+            'cityMunicipality' => 'Tupi',
+            'district' => 'SOCCSKSARGEN',
+            'province' => 'South Cotabato',
+            'region' => 'Region XII',
+            'country' => 'Philippines',
+            'zipCode' => $zip,
+        ]);
     }
 }

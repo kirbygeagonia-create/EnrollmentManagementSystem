@@ -322,6 +322,16 @@ class PrintService
     {
         $filename = "enrollment-form-{$enrollment->enrollmentId}-".now()->format('YmdHis').'.pdf';
 
+        // Minted before the page is built, the way the slip does it: the number is printed on the
+        // form's own face, and a sheet that carries no number cannot be traced back to the print
+        // that produced it even though the log row exists (P-18).
+        $printLog = $this->recordIssue(
+            $enrollment->enrollmentId,
+            DocumentType::EnrollmentForm,
+            $printedBy,
+            $enrollment->studentId
+        );
+
         $path = $this->generatePdf('prints.enrollment-form', [
             'enrollment' => $enrollment->load([
                 'student.addresses',
@@ -333,12 +343,10 @@ class PrintService
                 'evaluatedByUser',
                 'registrarProcessedByUser',
             ]),
+            'documentNumber' => $printLog->documentNumber,
         ], $filename);
 
-        return new PrintedDocument(
-            $this->recordIssue($enrollment->enrollmentId, DocumentType::EnrollmentForm, $printedBy, $enrollment->studentId),
-            $path
-        );
+        return new PrintedDocument($printLog, $path);
     }
 
     /**

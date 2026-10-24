@@ -302,7 +302,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `the letterhead settings are seeded` selects no test, and a harness that reads "No tests found" as a green leg is
   the lane 44 mutant that sleeps.
   **After any batch that touches `PrintService::printEnrollmentForm()`, `ems:print-fidelity`'s render closures, or
-  the enrollment form's identification block**, run
+  the enrollment form's identification block, Part 2 table or address block**, run
   `php artisan test tests/Feature/Print/PrintEnrollmentFormPayloadTest.php` and prove it with
   `php storage/app/scratch/mutate-p2-payload-tests.php`. The desk path and the fidelity command each write their own
   eager-load list — nothing shares them — so a relation dropped from one is a line the Registrar's paper loses while
@@ -312,6 +312,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   document's `<title>` element is not paper** — it has carried the student number the whole time, so the case reads
   the HTML from `<body>` onward, and the harness's fifth mutant deletes the Student ID field while the title still
   prints it, which is the only way to prove that distinction.
+  **P-18 is what a line-by-line review of that sheet found the next hour** — three defects, each of which survived a
+  green suite because nothing renders the paper: Part 2 looped `$enrollment->enrolledSubjects` whole and totalled it,
+  while the Subject Load has always filtered to `Confirmed` (live `ems` holds 33 proposed and 21 dropped rows across
+  18 enrollments, and **every one of those 18 holds no confirmed row at all**, so each printed a whole table for a
+  load nobody confirmed); the "Same as above (Current Address)" line compared `addressType` — an enum cast — with
+  `===` to a string, so it was false for every address and **had never printed once**; and the issuance number was
+  minted by `recordIssue()` *after* `generatePdf()` and printed nowhere, so the log row had no sheet to match it —
+  `printClearanceSlip` mints first and says why. All three fixed, six new cases, the harness grown to eleven legs.
+  **A dead `@if` is the quietest defect on a print surface**: an `@isset` or an enum-to-string `===` renders nothing
+  and fails nothing, so the check for a conditional block is a test that asserts the block's *label* reaches the body.
+  Two things the review recorded rather than fixed, both letterhead questions for the school: the form is the only
+  paper printing `students.semestersCompleted` and `yearsInInstitution`, which intake zeroes and one controller
+  maintains (§30.4), and it carries no OFFICE OF THE REGISTRAR line where the class card and the Subject Load do.
   Two findings came out of reading that sheet rather than probing the code. **P-16**: the paper printed
   "Southeast Asian Institute of Technology" while the sheet, `GuestLayout.jsx:50`, `GuestLayout.jsx:68`, four
   Documentation markdown files and this document's own title line carried "South East Asian Institute of Technology,
@@ -783,7 +796,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (629 citations over 150 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (631 citations over 150 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -814,9 +827,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 896 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 113 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 345 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 898 references against
+  `lane37-docx-inventory.php` (196 numbered headings, 114 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 346 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

@@ -54,7 +54,10 @@
         uses — and the values come from the same relations the Subject Load reads, which the desk's
         own eager-load list already carries (tests/Feature/Print/PrintEnrollmentFormPayloadTest.php
         pins that list, so this block costs no extra query). Year level comes from the record and
-        prints "Year N/A" when the record cannot answer it — never a constant.
+        prints "Year N/A" when the record cannot answer it — never a constant. The Document No. is
+        the print-log number of the issuance that drew this sheet, so a page on a desk traces back
+        to the print that produced it; it is absent only when a caller renders the form without
+        recording an issuance.
     -->
     <div class="form-grid">
         <div class="field">
@@ -65,6 +68,12 @@
             <span class="label">School Year:</span>
             <span class="value">{{ $enrollment->term?->academicYear?->yearLabel }}</span>
         </div>
+        @isset($documentNumber)
+        <div class="field">
+            <span class="label">Document No.:</span>
+            <span class="value">{{ $documentNumber }}</span>
+        </div>
+        @endisset
         <div class="field full-width">
             <span class="label">Course:</span>
             <span class="value">{{ $enrollment->course?->courseName }}{{ $enrollment->major ? ' - '.$enrollment->major->majorName : '' }}</span>
@@ -135,6 +144,10 @@
             <span class="label">Email:</span>
             <span class="value">{{ $enrollment->student->email }}</span>
         </div>
+        {{-- These two are the school's own counters, not derived here: intake zeroes both and one
+             controller maintains them (§30.4 records that), which is why the Year Level above is read
+             from the enrollment and these are read from the student. Ruled 2026-10-23 to stay on the
+             paper, because the Registrar's demographic sheet asks for them. --}}
         <div class="field">
             <span class="label">Semesters Completed:</span>
             <span class="value">{{ $enrollment->student->semestersCompleted }}</span>
@@ -147,6 +160,18 @@
 
     <!-- Addresses -->
     <div class="section-title">Addresses</div>
+    @php
+        // "Same as the home address" is true only when every line a courier reads matches, not when
+        // the street alone agrees. Both enum comparisons must go through ->value: `=== 'home'` and
+        // `where('addressType', 'current')` are each false against a backed enum object, and that
+        // pair is what kept this box from ever printing (P-18).
+        $postalTuple = fn ($a): array => array_map(
+            static fn ($v): string => trim((string) $v),
+            [$a->houseBuildingNo, $a->street, $a->sitioPurok, $a->barangay, $a->cityMunicipality, $a->zipCode],
+        );
+        $currentAddress = $enrollment->student->addresses
+            ->first(fn ($a) => $a->addressType?->value === 'current');
+    @endphp
     @foreach($enrollment->student->addresses as $address)
     <div class="address-section">
         <div class="address-title">{{ ucfirst($address->addressType?->value ?? '') }} Address</div>
@@ -192,10 +217,10 @@
                 <span class="value">{{ $address->country }}</span>
             </div>
         </div>
-        @if($address->addressType === 'home')
+        @if($address->addressType?->value === 'home')
         <div class="checkbox-row">
-            <input type="checkbox" id="sameAsAbove" {{ $enrollment->student->addresses->where('addressType', 'current')->first()?->street === $address->street ? 'checked' : '' }}>
-            <label for="sameAsAbove">Same as above (Current Address)</label>
+            <input type="checkbox" id="sameAsCurrentAddress" {{ $currentAddress !== null && $postalTuple($currentAddress) === $postalTuple($address) ? 'checked' : '' }}>
+            <label for="sameAsCurrentAddress">Current address is the same as this home address</label>
         </div>
         @endif
     </div>
@@ -238,7 +263,7 @@
     <div class="form-grid">
         <div class="field">
             <span class="label">Student Type:</span>
-            <span class="value">{{ ucfirst($enrollment->studentType->value) }}</span>
+            <span class="value">{{ \Illuminate\Support\Str::headline($enrollment->studentType->value) }}</span>
         </div>
         <div class="field">
             <span class="label">Academic Standing:</span>
@@ -281,11 +306,25 @@
         </thead>
         <tbody>
             @php
+                // Only confirmed subjects are the registered load of the term. Proposed and dropped
+                // rows are workflow state — the department's intention and the Registrar's deletion —
+                // so counting them here let this form state units the Subject Load, which filters the
+                // same way, refuses to print. Measured on live ems 2026-10-23: 54 such rows across 18
+                // enrollments, and every one of those 18 holds no confirmed row at all, so each
+                // printed a full subject table for a load nobody confirmed (P-18).
+                $confirmed = $enrollment->enrolledSubjects->filter(
+                    fn ($es) => $es->status === \App\Enums\EnrolledSubjectStatus::Confirmed
+                )->values();
                 $totalLec = 0;
                 $totalLab = 0;
                 $counter = 0;
             @endphp
-            @foreach($enrollment->enrolledSubjects as $es)
+            @if($confirmed->isEmpty())
+                <tr>
+                    <td colspan="6" style="font-style: italic;">No confirmed subjects for this term.</td>
+                </tr>
+            @endif
+            @foreach($confirmed as $es)
                 @php
                     $counter++;
                     $totalLec += $es->subject->lectureUnits;
