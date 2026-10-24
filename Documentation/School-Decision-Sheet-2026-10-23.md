@@ -5,8 +5,9 @@
 Every item here is a question the build cannot answer for itself. They are gathered from the
 authority document's own registers — §28.2/§28.3 (the rows whose "Who must act" column still names
 an office), §28.5 (the decisions that section says it cannot make), and §25.4 (the printed-paper
-items that are not code decisions at all, three of which were answered on 2026-10-23 and one of
-which is not) — and each line says what the system does today, so an
+items that are not code decisions at all — all four that came onto this sheet were answered on
+2026-10-23, the last of them the same day its own row was opened, and §25.4 now holds no open
+finding) — and each line says what the system does today, so an
 answer can be given without opening a file. The **id** in brackets is the register row; the packet
 does not restate a ruling, it asks the questions the rulings left standing.
 

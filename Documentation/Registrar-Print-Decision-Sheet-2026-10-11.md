@@ -8,6 +8,16 @@ already uses and the paper the system produces. Every line was read out of the t
 is remembered to say. The line references are given so a decision can be carried out without
 guessing which file to open.
 
+**Read that "today" as 2026-10-11, and not as the paper a window would be handed now.** Three of
+these cells were overtaken by rulings taken on 2026-10-23 and 2026-10-24, recorded in
+`School-Decision-Sheet-2026-10-23.md` and §25.4: the slip's heading **does** now name whose copy it
+is (`Clearance Slip (Student's Copy)`), the programme line **does** now carry the course code, and
+the year level is written **`2nd Year`** where row 2 and row 4 below quote `Year 2` and `Year 1`.
+The questions those rows ask are unchanged — where the office signs, which copy the window keeps —
+so this sheet still stands as a packet of questions, but its "the system prints" column is a
+2026-10-11 reading and each row's own line reference is that day's, which is why row 2's programme
+pointer now reads `clearance-slip.blade.php:77` rather than the `:68` it was when written.
+
 **To take a decision on each row:** tick which side wins, and initial. Where the paper wins, the
 change is to the printed layout — the data behind it does not move. Where the system wins, nothing
 changes and the physical form is amended instead, which is also a valid answer.
@@ -34,7 +44,7 @@ Form** if one exists (row 10).
 | Field | The paper says | The system prints | Where |
 | --- | --- | --- | --- |
 | Name | `Full Name:` | `Student Name:` | `clearance-slip.blade.php:53` |
-| Programme | `Course:` with `(code) full name - 2nd Year` | `Course & Year:` with `full name - Year 2`, no code | `:68` |
+| Programme | `Course:` with `(code) full name - 2nd Year` | `Course & Year:` with `full name - Year 2`, no code (the 2026-10-11 reading; see the note above — the code and the ordinal both arrived later) | `:77` |
 | Date | a `Date` field, written by hand at issue | `Date to be Signed:` filled from the period end | `:72` |
 | Signature | `Received by:` over `Registrar In-charge (Signature over Printed Name) & Date` | `Received by Registrar`, then the name, then the date and time of receipt — and blank rules for both lines until someone is recorded | `:103-105` |
 | Term | semester and year inside the title | two separate rows under the title | `:36`, `:45-51` |

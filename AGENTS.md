@@ -670,6 +670,30 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   watch was `gh run watch … > log 2>&1; echo "EXIT=$?" >> log`, so the command's own status was the
   trailing `echo`'s — success — while the run was red, and I reported the jobs as if they had passed. The
   exit code must be the last thing the pipeline evaluates; capture it in its own file if it must be kept.
+- **A verdict word must be read from where a verdict is WRITTEN, never from the block around it** (lane 69).
+  Answering "is anything left?" found a committed sentence the register had already overtaken —
+  `Documentation/School-Decision-Sheet-2026-10-23.md` introduced §25.4 as "the printed-paper items … three of
+  which were answered on 2026-10-23 and one of which is not", while that fourth row (`P-19`) was closed the
+  same day it was opened and §25.4 now leads `Closed` on all 19 of its rows. No instrument could see it:
+  lane 61 reads the docx dump, and the sheet is markdown. **A classifier that greps a whole item block is the
+  same defect as a checker that reads the wrong construct** — splitting on the *next* item's marker makes each
+  block run past its own answer and swallow the following `##` heading, so item 11 inherited section D's "all
+  three answered 2026-10-23" and reported itself closed, while item 7's narrative "Answered as *indefinite* and
+  measured" (a reading of the box, not a tick) read as a ruling. Judge on the title's `ANSWERED` marker, the
+  item's own `Answer:` line, and `☑` — and read every printed row before quoting the tally, because §17's
+  worked-example step "Accounting | Open the queue" is an instruction to a desk, not an open finding.
+  `php storage/app/scratch/lane69-open-inventory.php` is the read-only answer to "what is left": OPEN and OFFICE
+  rows out of the registers, then the sheet item by item with its open count.
+  **The same audit found the older sheet carrying the mirror defect:** `Registrar-Print-Decision-Sheet-2026-10-11.md`
+  introduces its comparison table by promising the quoted wording "is what a PDF says today" — true when written,
+  and the newer 2026-10-23 sheet closes by telling the Registrar that this one "still stands". Two of its cells
+  therefore stated the build wrongly (the heading "never naming whose copy it is", a program line "with no code")
+  and one of its pointers had drifted onto a comment, because a dated document re-cited as live reference is read
+  as present tense by whoever holds it. Its own date does not save it once another document points at it. Now
+  carries an explicit supersession note; **do not re-age its cells** — the reading of that day stays, labelled.
+  No instrument reads these sheets' prose: `repo-file-line-citations.php` covers AGENTS.md, DEPLOYMENT.md and the
+  walkthrough (7 files), so a `:NN` inside a decision sheet is unjudged and must be re-read by hand whenever a
+  print view moves.
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
@@ -959,7 +983,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 904 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 377 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 382 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

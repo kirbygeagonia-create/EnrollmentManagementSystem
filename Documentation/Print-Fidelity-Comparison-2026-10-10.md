@@ -13,6 +13,25 @@ reproduces a value from the forms: the photographs carry a student number, perso
 handwritten signatures, so they are deliberately **not in the repository** (`.gitignore`
 excludes `Documentation/Images/`) and this comparison names fields, never contents.
 
+**Read the *The system prints* column as the 2026-10-10 build, not as today's paper.** Four rows
+have been overtaken since, and one sentence above has moved:
+
+- The scans are no longer under `Documentation/Images/` — that folder does not exist. They live at
+  the repository root in `Images/`, and `.gitignore` names **both** paths, so nothing is tracked
+  either way. Verified 2026-10-24: `git ls-files` answers zero for both.
+- **Row 1.3 (clearance slip) is closed.** The owner ruled on 2026-10-23 that the face leads with the
+  course code in parentheses and marks whose copy it is, and on 2026-10-24 that the level is written
+  `2nd Year`. The slip now prints `(BSIT) Bachelor of Science in Information Technology - 2nd Year`
+  under a title reading `Clearance Slip (Student's Copy)` — the paper's own form, so the
+  "abbreviation first, ordinal word last" gap this row recorded no longer exists.
+- **Rows 2.3, 3.2 and 4.2 narrowed but did not close.** Every year level now comes from one helper
+  on each side (`App\Support\YearLevel`, and `formatYearLevel` in the JSX), so nothing prints the bare
+  `Year n` this column quotes — the class card prints `1st Year` where the paper spells the level as
+  the word `First Year`; the enrollment form prints `Year Level: 3rd Year` where the paper writes the
+  bare ordinal `3rd`; the subject load prints the ordinal inside its course line where the paper
+  carries a separate `Year Level` field. Each is still the Registrar's call, and the row above saying
+  this document decides nothing still holds.
+
 **Method, so a later session can repeat it.** Page size read from each PDF's own `/MediaBox`;
 layout read from the Blade template in `resources/views/prints/` that produces it; the paper
 read from the photograph. Orientation is set in one place:

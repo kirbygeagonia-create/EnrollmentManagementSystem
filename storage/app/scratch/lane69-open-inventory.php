@@ -69,11 +69,27 @@ echo '  count: '.count($actorRows)."\n";
 
 echo "\n=== SHEET: Documentation/School-Decision-Sheet-2026-10-23.md, item by item ===\n";
 $sheet = (string) file_get_contents($root.'/Documentation/School-Decision-Sheet-2026-10-23.md');
-$items = preg_split('/\n\*\*(\d+)\. /u', $sheet, -1, PREG_SPLIT_DELIM_CAPTURE);
+$items = preg_split('/\n\*\*(\d+)\. /', $sheet, -1, PREG_SPLIT_DELIM_CAPTURE);
+$sheetOpen = [];
+// Judged on the two places the sheet writes a ruling — the item's own title and its "Answer:" line — and
+// never on its prose. The first version grepped the whole block case-insensitively, so "answered" inside
+// the next section's heading (the blocks run up to the next item's marker) read as that item being closed,
+// and an "Answered as indefinite" narrative — a measurement the school has not ticked — read as a ruling.
 for ($i = 1; $i < count($items); $i += 2) {
     $num = $items[$i];
     $block = $items[$i + 1] ?? '';
-    $title = strtok($block, "\n");
-    $answered = preg_match('/answered|ruled|not yet deployed/iu', $block) ? 'answered/ruled' : 'OPEN';
-    printf("  item %-3s %-16s %s\n", $num, '['.$answered.']', mb_substr((string) $title, 0, 92));
+    $title = (string) strtok($block, "\n");
+    $answerLine = '';
+    if (preg_match('/^- Answer:.*$(?:\n {2,}.*)*/m', $block, $am) === 1) {
+        $answerLine = $am[0];
+    }
+    $marked = str_contains($title, 'ANSWERED')
+        || str_contains($answerLine, '☑')
+        || preg_match('/answered:|ruled/i', $answerLine) === 1;
+    printf("  item %-3s %-16s %s\n", $num, $marked ? '[answered/ruled]' : '[OPEN]', mb_substr($title, 0, 92));
+    if (! $marked) {
+        $sheetOpen[] = (int) $num;
+    }
 }
+echo '  open on the sheet: '.count($sheetOpen).' → items '.implode(', ', $sheetOpen)."\n";
+
