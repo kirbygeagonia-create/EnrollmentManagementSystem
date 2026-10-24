@@ -33,7 +33,7 @@
         <div class="school-address">{{ config('settings.schoolPhone', '') }}</div>
     </div>
 
-    <div class="title">Clearance Slip</div>
+    <div class="title">Clearance Slip (Student's Copy)</div>
 
     @isset($documentNumber)
     <div class="info-row">
@@ -63,10 +63,18 @@
     </div>
     @php
         $termEnrollment = $clearance->termEnrollment();
+        $slipCourse = $termEnrollment?->course;
+        // The school's own slip leads the program with its code in parentheses; no paper
+        // this system printed carried the code at all.
+        $slipCourseLabel = $slipCourse === null
+            ? 'N/A'
+            : ($slipCourse->courseCode !== null && $slipCourse->courseCode !== ''
+                ? '('.$slipCourse->courseCode.') '.$slipCourse->courseName
+                : $slipCourse->courseName);
     @endphp
     <div class="info-row">
         <span class="info-label">Course & Year:</span>
-        <span class="info-value">{{ $termEnrollment?->course?->courseName ?? 'N/A' }} - {{ $termEnrollment?->yearLevel ? 'Year '.$termEnrollment->yearLevel : 'Year N/A' }}</span>
+        <span class="info-value">{{ $slipCourseLabel }} - {{ $termEnrollment?->yearLevel ? 'Year '.$termEnrollment->yearLevel : 'Year N/A' }}</span>
     </div>
     <div class="info-row">
         <span class="info-label">Date to be Signed:</span>

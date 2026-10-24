@@ -16,9 +16,15 @@ export default function PrintSlip({ clearance, termEnrollment, documentNumber })
     const term = period?.term;
     const academicYear = term?.academicYear;
 
+    // Same shape as clearance-slip.blade.php: the school's paper leads the program with its code.
+    const slipCourse = termEnrollment?.course;
+    const courseLabel = slipCourse
+        ? (slipCourse.courseCode ? `(${slipCourse.courseCode}) ${slipCourse.courseName}` : slipCourse.courseName)
+        : '—';
+
     return (
         <PrintLayout
-            title="Clearance Slip"
+            title="Clearance Slip (Student's Copy)"
             subtitle={student ? `${student.lastName}, ${student.firstName} ${student.middleName ? student.middleName.charAt(0) + '.' : ''}` : 'Student Clearance'}
             date={academicYear ? `${academicYear.yearLabel} ${term?.semester?.value || term?.semester || ''}`.trim() : undefined}
             downloadUrl={route('clearance.download-slip', { clearance: clearance.studentClearanceId })}
@@ -30,7 +36,7 @@ export default function PrintSlip({ clearance, termEnrollment, documentNumber })
                     </div>
                     <div>
                         <p className="font-medium">Course:</p>
-                        <p>{termEnrollment?.course?.courseName || '—'}</p>
+                        <p>{courseLabel}</p>
                     </div>
                     <div>
                         <p className="font-medium">Year Level:</p>

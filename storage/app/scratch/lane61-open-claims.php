@@ -21,12 +21,11 @@
  *  - a sentence that states its own answer is history, not a live claim: "ruled 2026-10-06
  *    (C-2), a student … is issued irregular rather than being left undecided" records the fix.
  *
- * Usage: php storage/app/scratch/lane61-open-claims.php [--flat=path] [--verbose]
+ * Usage: php storage/app/scratch/lane61-open-claims.php [--flat=path]
  * Exits non-zero on any contradiction, and refuses when it parsed no verdicts at all.
  */
 
 $flat = 'storage/app/scratch/docx-flat.txt';
-$verbose = in_array('--verbose', $argv, true);
 foreach ($argv as $a) {
     if (str_starts_with((string) $a, '--flat=')) {
         $flat = substr((string) $a, 7);
@@ -202,13 +201,13 @@ foreach ($byId as $id => $list) {
 if ($blind !== []) {
     printf("BLIND SPOTS: %d sentence(s) name an id this run holds no verdict for — read them, they are not cleared:\n",
         count($blind));
-    if ($verbose) {
-        foreach ($blind as $b) {
-            $s = trim($b['sent']);
-            printf("    line %-5d %-6s %s\n", $b['line'], $b['id'], mb_strlen($s) > 200 ? mb_substr($s, 0, 200) . '…' : $s);
-        }
-        echo "\n";
+    // Printed unconditionally: a tally that names its own count and withholds the rows asks the reader to
+    // trust a claim the run never showed, which is the defect every lane in this file was built to refuse.
+    foreach ($blind as $b) {
+        $s = trim($b['sent']);
+        printf("    line %-5d %-6s %s\n", $b['line'], $b['id'], mb_strlen($s) > 200 ? mb_substr($s, 0, 200) . '…' : $s);
     }
+    echo "\n";
 }
 
 if ($hits === []) {

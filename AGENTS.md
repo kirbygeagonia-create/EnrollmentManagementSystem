@@ -488,7 +488,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (19 guards whose dash sits on a line it cannot join, 340 lines where
+  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 340 lines where
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
@@ -546,10 +546,63 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   twice, in the §29.4 family table (28) and in the arithmetic sentence beside it (30, the truth), and pass 138
   rewrote only the sentence: the document contradicted itself for three passes until pass 142 recounted the table
   from its own bytes and rewrote both.
+- **A school question belongs in every register that asks school questions** (lane 68). Working the decision sheet
+  meant reading the school's own paper for the first time: a real clearance slip — the student's copy — carries
+  Course, Full Name, Date and Received by over "Registrar In-charge", and **no requirements table, no student
+  number, no status word, no fee line and no document number**, under a title that marks itself `(Student's Copy)`.
+  The system prints the office table and never marks a copy, so §25.4 P-19 was opened as the register's first
+  *open* print item in nine passes. §1.1's own record of pass 42 states the convention the new row had to honour:
+  an answered question "exists twice — in §25.11, §26.7 or §27.7 and again here [§28.5]" — so pass 183 wrote
+  **three** rows, not one, and moved `§29.4`'s two count cells (18→19 print findings, 19→20 open decisions) plus
+  the four `P-1 … P-18` range statements, §28.4's group row and its id list, §28.8's "five print findings" tally,
+  §28.5's own "the fifteen that wait on an office" sentence, §30.6's opening (which pass 181 had just declared
+  owed nothing) and §25.6's identity paragraph. **Closing a row moves fewer places than opening one, and opening a
+  *question* moves the registers that list questions** — §28.8's actor table did not move, because it counts only
+  §28.2 and §28.3. Two figure defects came from the same batch and both are this file's own recurring class:
+  §1.1 attributed the sheet's item count to §29.4 (which counts the register — twenty, not sixteen), and P-19
+  stated "seven identity rows" from the rendered inspection PDF while the same row said the system prints a
+  document number. The cause is measurable and now recorded: **`ems:print-fidelity` hands each view only a record
+  (`PrintFidelitySamples.php:115`) and passes no `documentNumber` at all, while every `PrintService` desk path
+  mints and passes one (`PrintService.php:85`) — so the inspection PDF is not the paper a window receives, and a
+  row count read off it is a property of the render.** The sheet grew item 16, and its item 8 had copied the
+  register's phrase "Item 16" into a document whose own rows are numbered items — a pointer to nothing; it now
+  says what the register literally holds (§7.4 and §13.4 cited, no numbered list anywhere is headed "Item 16")
+  rather than guessing which decision was meant.
+- **Re-read every citation into a file you changed; the range check cannot see a wrong target** (lane 68,
+  same batch). The owner then ruled P-19: keep the office table, add the copy designation and the school's
+  course-code wording to the face. Built on both surfaces (`clearance-slip.blade.php:38-82`,
+  `PrintSlip.jsx:37-44`), pinned by `tests/Feature/Print/ClearanceSlipCopyDesignationTest.php` and proved by
+  `storage/app/scratch/mutate-p19-copy-designation-tests.php` (seven defects, all killed, control green, tree
+  restored), and read back off the re-rendered PDF: the title now prints CLEARANCE SLIP (STUDENT'S COPY) and
+  the program reads `(BSIT) Bachelor of Science in Information Technology - Year 2`. **One half of the school's
+  paper was deliberately not adopted and the register says so:** it writes the level "2nd Year", and
+  `statusLabel.js:50-56` records that six pages once printed four vocabularies for one number, so the build
+  kept "Year 2" rather than restart that. Adding six and eight lines to the two files invalidated four
+  pointers into them. The line sweep caught one (it landed on a blank line); **reading caught a second the
+  sweep could never see** — §25.4 P-10 cited `clearance-slip.blade.php:38-55` for "the enrollment that matches
+  clearancePeriod.termId", but those lines print Document No., Semester, Academic Year and Student Name and
+  none of them reads an enrollment. That pointer was one construct short *before this batch touched the file*,
+  which is what AGENTS.md means when it says a citation can land on a live line that belongs to something
+  else. `storage/app/scratch/probe-moved-cites.php` now prints, for every citation into a file, the lines it
+  actually lands on — run it after changing any file the document cites more than once.
+- **A checker that tallies its own blind spots must print them** (lane 68, same batch). `lane61-open-claims.php`
+  printed `BLIND SPOTS: 1 sentence(s) … read them, they are not cleared` and then printed nothing, because the
+  rows sat behind a `--verbose` flag no caller passed: the tally asked the reader to trust evidence the run had
+  withheld. Printing is now unconditional and `mutate-lane61-open-claims.php`'s `blind-spot-printed` leg requires
+  the blind **id** in the output, not the header — the old leg passed against the gated version, which is a mutant
+  that sleeps. Prove any such change by re-adding the gate and watching that leg go BAD (done: it did, and the
+  file was restored by sha1).
 - **Split lines on `\n`, never `preg_split('/\R/')`, when a script reports line numbers.** `\R` also matches
   the byte 0x85, which occurs as a UTF-8 continuation byte inside emoji: it read a 55-line report as 71
   lines and printed line numbers no editor would show. Every `File.php:NN` citation this repository writes
   comes from a line counter, so the counter has to agree with the reader's screen.
+- **A checker's *checked* count is its own classification, not a census of the text.** Pass 183c added one
+  `§25.4` reference to a §28.7 row and `lane37-section-reference-sweep.php` went from 906 checked to 905 while
+  the raw `§`-plus-digit token count in the same two files went 1,012 → 1,013 — measured against the
+  pre-pass backup, because the only honest way to tell "the document lost a pointer" from "the sweep
+  re-classified one" is to count both. Neither number is wrong; AGENTS.md now says what the tool resolves
+  rather than what the document holds. **Do not chase such a delta as a document defect until the raw count
+  has been read off both versions.**
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
@@ -806,7 +859,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (631 citations over 150 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (636 citations over 151 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -837,9 +890,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the document's own 898 references against
-  `lane37-docx-inventory.php` (196 numbered headings, 114 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 346 references PHP comments and the markdown files
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 903 references it resolves against
+  `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
+  under); `lane37b-repo-citation-sweep.php` judges the 377 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md and the
   walkthrough, which is how a false pointer *inside this very warning* was found (and how the placeholder

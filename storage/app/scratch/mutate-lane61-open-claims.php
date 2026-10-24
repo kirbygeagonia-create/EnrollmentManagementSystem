@@ -119,8 +119,9 @@ $leg('no-verdicts-parsed', "ROW 12: G-95 | A gap with no status cell at all | be
     1, ['REFUSED'], [],
     'zero verdicts is a broken instrument, not a clean document');
 $leg('blind-spot-printed', $BASE_ROWS."\nP 30: X-77 remains open and this run holds no row for it.",
-    0, ['BLIND SPOTS'], ['VERDICT: 1 contradiction'],
-    'an id with no verdict is reported unverifiable, never counted clean');
+    0, ['BLIND SPOTS', 'X-77'], ['VERDICT: 1 contradiction'],
+    'an id with no verdict is reported unverifiable, never counted clean — and its own row is printed, because a '
+    .'header that tallies blind spots without showing them asks the reader to trust a claim the run never made');
 
 echo "\n-- the real document, read today --\n";
 $real = $run($php.' '.escapeshellarg($checker));
