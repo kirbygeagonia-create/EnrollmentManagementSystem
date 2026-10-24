@@ -575,6 +575,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`App\\Models\\Staffusers`), so a single-backslash SQL literal matches nothing and every account
   looks role-less.
 - Never delete rows found during probing. Deleting probe residue is its own decision for the owner.
+- Scratch schemas accumulate one per rehearsal lane, and some are load-bearing: `mutate-lane54-report.php`
+  refuses to run unless `DB_DATABASE` names `ems_l54_a` or `ems_l54_b`, and the lane 55/56/57 and lane 38/40
+  harnesses clone `ems` into theirs. So a schema is retired only when **no tracked file names it** —
+  `php storage/app/scratch/drop-retired-scratch-databases.php` reads every `.php`/`.md`/`.yml` under
+  `storage/`, `tools/`, `.github/`, `tests/`, `app/`, `database/` and `Documentation/` for the literal name,
+  prints KEEP for any hit and only drops the rest, and refuses on any collision with `ems` or the four
+  foreign project schemas. (`git grep` is not an option: shell_exec cannot reach git from PHP on this box.)
+  It ran on 2026-10-24 and dropped seven schemas while live `ems` was verified unchanged before and after —
+  that before/after comparison is why the tool does not assert a frozen count like its predecessor
+  `drop-scratch-databases.php`, whose expected figures were the 2026-10-14 reading and are now marked as such.
 
 ## Facts new code must respect
 

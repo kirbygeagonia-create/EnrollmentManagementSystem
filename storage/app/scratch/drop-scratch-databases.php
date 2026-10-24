@@ -13,6 +13,13 @@
  * The two rehearsal schemas were dumped first to C:\Users\ADMIN\ems-backups (verified: 63 CREATE TABLEs each,
  * zero DROP DATABASE statements, because they were dumped without --databases).
  *
+ * SPENT as of 2026-10-24: all eight allowlisted schemas are gone, so this script now reports "already gone: 8"
+ * and drops nothing. The expected counts below are the **2026-10-14** reading of live `ems` and are kept as that
+ * day's record — measured 2026-10-24, live `ems` answers 37 enrollments, 199 boxes, 21 staff and 3,507 audit
+ * rows. A later batch that needs to retire schemas again should use `drop-retired-scratch-databases.php`, which
+ * reads the repository for what still names each schema instead of carrying a remembered list, and compares
+ * live `ems` before and after rather than asserting a frozen count.
+ *
  * usage: php storage/app/scratch/drop-scratch-databases.php [--apply]
  */
 
