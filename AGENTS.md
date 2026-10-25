@@ -953,7 +953,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (651 citations over 152 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (654 citations over 152 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -995,7 +995,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's
   item 2 was marked closed by a sentence that *reported another row's ruling* inside its own unticked answer),
   four rows wait on the Registrar's window (items 1, 2, 4, 5), two items wait on actors outside the software
-  (C-5 with the departments, G-13 at install time), and the read-only queues are the 83 unattributed pointers,
+  (C-5 with the departments, G-13 at install time), and the read-only queues are the 80 unattributed pointers,
   the meaning sweep's 8 flags, `lane61-open-claims.php`'s one R-2 blind spot, and the fidelity sheet's rows the
   Registrar has not ticked. Those are work for a reader, not for a wrapper.
 - **§28.8's "Who owes what" table must agree with the column it claims to be counted from** (lane 69). It
