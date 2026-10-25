@@ -1496,6 +1496,29 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the line sweep on any batch that moves lines, and re-prove it with planted moved-ranges
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
+- **After any batch that touches a model's `$primaryKey` / `$timestamps`, or a §24 "Model …" row**, run
+  `php storage/app/scratch/dump-docx-flat.php` then `php storage/app/scratch/lane71-model-decls.php` and prove it with
+  `php storage/app/scratch/mutate-lane71-model-decls.php` (8 legs). This is the first checker for the class §28.3 G-31
+  names: **a sentence that states how code behaves today carries no status word, no figure, no instrument count and no
+  dead line number, so every earlier judge passes it while the build overtakes it** — §19.4, §20 and §24.14 all said
+  the notification listeners write `App\Models\Students` twenty-four days after §28.3 closed N-1 and after both listeners
+  began writing `Staffusers::class`. §24's model row is the one member of that class narrow enough to answer without a
+  judgement call: it states `$primaryKey = 'someId'` and `$timestamps = true|false`, and the class either declares those
+  properties or takes Laravel's defaults, so the probe is a comparison, not an interpretation. Measured: **54 claims,
+  54 files in `app/Models`, 54 judged, 0 problems** — the census agrees three ways, which is what makes the zero
+  mean something. The harness plants a wrong primary key and a wrong timestamps flag (each must raise exactly one named
+  complaint and no other row may move), a path that is not in the repository, a byte-identical control that must change
+  no verdict, and the three refusals are told apart **by their own messages** (judged-nothing, missing dump, unknown
+  flag) because all three exit 1. It is a CI step in the SQLite job. Two traps already paid for: a mutant aimed at a
+  token that occurs ten times (`$timestamps = true` appears in ten §24 rows) reports ten complaints and proves nothing,
+  so plant on a needle unique to one row; and a leg that greps for the tool's own label must allow the `printf` padding
+  (`WRONG-PK\s+line`, not `WRONG-PK line`) — that leg passed on the first run by matching nothing.
+  The two exploration tools are kept with their failure documented in the file header:
+  `lane71-mechanism-census.php` counts 4,590 sentences and shows a broad "verb + code token" rule yields 1,762
+  candidates, which is not a queue; `lane71-mechanism-shapes.php` narrows to 73 VALUE + 16 NEG claims — a workable
+  queue — but its corpus-wide `substr_count` verdict probe is noise (it "refuted" `Clearanceperiods::accepting()` for
+  existing, called `studentId` consistent because it occurs 926 times, and let a §1.1 history row into the NEG bucket).
+  Each shape needs its own subject→predicate binding, the way lanes 46, 47, 50, 60, 64 and 71 each needed one.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 910 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits

@@ -122,6 +122,23 @@ jobs:
           php storage/app/scratch/sweep-docx-citations.php
           php storage/app/scratch/lane69-owes-table-check.php
 
+      - name: Refuse a §24 model declaration the class does not make
+        run: |
+          # The seventh prose family, and the one no earlier judge could see: a sentence that states how the code
+          # behaves today carries no status word (lane61), no figure (lane58, 59, 60), no instrument count (lane59) and
+          # no dead line number (the sweeps) — so §19.4, §20 and §24.14 went on narrating gap N-1 in the present tense
+          # twenty-four days after §28.3 closed it and after both listeners had started writing staff-addressed rows.
+          # §28.3 G-31 records that, and this is the first checker for the class: §24 states, for every table,
+          # `$primaryKey = 'someId'` and `$timestamps = true|false`, and the model file either declares those two
+          # properties or takes Laravel's defaults — a claim narrow enough to answer with no judgement call at all.
+          # It reads 54 claims / 54 model files and answers 0 problems; mutate-lane71-model-decls.php proves all eight
+          # legs can fail — a planted primary key, a planted timestamps flag, a path that is not in the repository, a
+          # byte-identical control that must move no verdict, and three refusals told apart by their own messages
+          # (judged-nothing, missing dump, unknown flag), because a tool that prints 0 problems after reading nothing
+          # is the failure mode this whole lane exists to catch.
+          php storage/app/scratch/dump-docx-flat.php
+          php storage/app/scratch/lane71-model-decls.php
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04
