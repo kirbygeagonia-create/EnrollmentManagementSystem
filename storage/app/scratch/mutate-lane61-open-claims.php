@@ -94,13 +94,23 @@ $leg('planted-spelled-number', $BASE_ROWS."\nP 30: Three open items — G-90, G-
     1, ['VERDICT: 2 contradiction(s) over 2 ids'], [],
     'the two answered ids are flagged and the genuinely open one is not');
 
-echo "\n-- and must stand down for the four shapes that are not claims --\n";
+echo "\n-- and must stand down for the five shapes that are not claims --\n";
 $leg('self-answering', $BASE_ROWS."\nP 30: Ruled 2026-10-06 (G-90), a student coming in is issued irregular rather than being left undecided for a desk.",
     0, ['no sentence in the document asks a question'], [],
     'a sentence carrying its own answer is a record');
 $leg('clause-attribution', $BASE_ROWS."\nP 30: A request still open under a box its own office already signed is the audit rule. Nine rows later, §28.3 G-90 closes in code.",
     0, ['no sentence in the document asks a question'], [],
     'open-words in one sentence must not borrow an id from the next');
+// The distance rule added for §6.1's R-2: an examination paragraph says a *record* is undecided and signs itself
+// (G-90) two hundred characters later. That is not a claim about the register, and a CI step that called it one
+// would be cried wolf at. The next leg proves the bound does not blind the checker to a real claim that simply
+// sits at the end of a long sentence.
+$leg('far-id-stand-down', $BASE_ROWS."\nP 30: The window the code defines lists admission records that are still undecided or approved with no enrollment yet for that term, and that query is the definition of the moment a candidate exists before the student is evaluated, which is the requirement this section cites at its end (G-90).",
+    0, ['no sentence in the document asks a question'], [],
+    'an id more than 90 characters from the open-words predicates nothing about them');
+$leg('far-id-still-caught', $BASE_ROWS."\nP 30: The window the code defines lists admission records before the student is evaluated, and the desk has been told nothing about the exemption, so G-90 remains open for the build to answer.",
+    1, ['G-90', 'VERDICT: 1 contradiction'], [],
+    'a real claim at the end of a long sentence is still caught');
 $leg('dated-revision-row', $BASE_ROWS."\nROW 5: 2026-10-05–06 | Its one open item was G-90, and that report was false as committed.",
     0, ['no sentence in the document asks a question'], [],
     'a §1.1 row whose first cell is a date is that day’s record');

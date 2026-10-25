@@ -41,7 +41,10 @@ if ($lines === false || $lines === []) {
 }
 
 /** Verbs that settle a register row, and which way they settle it. */
-$ANSWERED = ['Closed', 'Ruled', 'Contained', 'Built', 'Answered', 'Implemented', 'Verified', 'Partly closed'];
+// 'Enforced' belongs here: §6.1's dependency rows answer with it ("R-2 Admission dependency | … | Enforced"),
+// and a row whose status cell says the rule is enforced is answered, not open. Until it was listed, three of
+// this document's own registers could not be indexed and every sentence naming one of those ids was a blind spot.
+$ANSWERED = ['Closed', 'Ruled', 'Contained', 'Built', 'Answered', 'Implemented', 'Verified', 'Partly closed', 'Enforced'];
 $OPEN = ['Open', 'Unanswered', 'Deferred', 'Not closed', 'Still open'];
 
 // ---------------------------------------------------------------- 1. the verdicts
@@ -51,7 +54,10 @@ $openVerdict = [];  // ids whose OWN row says they are open — the honest live 
 $liveWork = [];     // ids whose LEADING verdict is answered but a later cell opens work
 $registerRows = 0;    // rows that look like register rows, judged or not — the empty-scope guard
 foreach ($lines as $i => $l) {
-    if (! preg_match('/^ROW \d+: ([A-Z]{1,3}-\d{1,2}) \|/', $l, $m)) {
+    // The id is either the whole first cell (§25.4, §28: "G-26 | …") or the first two words of it (§6.1's
+    // dependency rows: "R-2 Admission dependency | …"). Without the second form those rows never indexed, and
+    // an id the run holds no verdict for is a blind spot, not a clearance.
+    if (! preg_match('/^ROW \d+: ([A-Z]{1,3}-\d{1,2})(?: [A-Za-z][A-Za-z ]{0,40})? \|/', $l, $m)) {
         continue;
     }
     $id = $m[1];
@@ -148,7 +154,17 @@ foreach ($lines as $i => $l) {
         if (! preg_match_all('/\b([A-Z]{1,3}-\d{1,2})\b/', $sent, $mm)) {
             continue;
         }
+        // The open-words must PREDICATE the id, not merely share a sentence with it. A 250-character
+        // examination paragraph can end "(R-2)" while its only "undecided" describes admission records in the
+        // window the requirement enforces — and charging that to R-2 makes a CI step cry wolf. A register claim
+        // reads "G-2 remains open", "four open items: C-11, D-1, X-3, G-2"; the id and the verb sit close.
+        preg_match('/' . $OPENWORDS . '/i', $sent, $om, PREG_OFFSET_CAPTURE);
+        $openAt = $om[0][1] ?? -1;
         foreach (array_unique($mm[1]) as $id) {
+            $idAt = strpos($sent, $id);
+            if ($openAt >= 0 && $idAt !== false && abs($idAt - $openAt) > 90) {
+                continue;
+            }
             if (! isset($verdict[$id])) {
                 $blind[] = ['line' => $i + 1, 'id' => $id, 'sent' => $sent];
                 continue;

@@ -54,7 +54,6 @@ $stale = [
     'A completed workflow does not mean a released card.' => 0,
     ' or released.' => 0,
     'releasedDate' => 0,
-    '1st Year' => 0,
     'five gates' => 0,
     'five-gate' => 0,
     '5 registrar_ready' => 0,
@@ -79,7 +78,11 @@ $fresh = [
     'WorkflowInbox' => 'the notification recipient resolver',
     'formSignedDate' => 'the signature compute now needs',
     'formatYearLevel' => 'the one year-level formatter',
-    'Year 1 (Freshman)' => 'the year-level vocabulary',
+    // Ruled 2026-10-24: a level is an ordinal word, so `1st Year` is the CURRENT vocabulary and must appear.
+    // Until a week ago this file demanded the opposite (`1st Year` in $stale, `Year 1 (Freshman)` required),
+    // which is the ruling's own spelling from before the decision — and it has been red on a correct document
+    // ever since the batch that applied it. A verifier that hard-codes one spelling goes blind on the ruling.
+    '1st Year' => 'the year-level vocabulary the owner ruled',
 ];
 
 echo "\nstale strings (want the stated count):\n";
