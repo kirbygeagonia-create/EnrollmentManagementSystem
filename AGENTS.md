@@ -1302,6 +1302,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   citations, so that assertion could only ever fail. *A uniqueness check on a needle is not yet a check on the
   consequence:* scope the after-check to the replaced pair. The document now carries `:327-333` three times and
   `:311-317` zero, with the sweep unchanged at 728 citations / 0 line problems.
+  **Pass 231 is the twenty-sixth, and it shows what a *range* citation can hide at a method boundary.** §10.4's
+  board-course row claims "non-board programs are never examined at either stage" and cites
+  `ExamController.php:181-247 and :311-343`. Neither half of that property lives in `:311-343`: it is the tail of
+  `recordGeneral()`'s upsert (`firstOrNew` at :312) and the *first lines* of `recordCourseSpecific()`'s signature
+  (:339-343). What keeps both stages from running is the pair of guards — `if (! $course->requiresEntranceExam)` at
+  :306 returning "This course does not require an entrance exam" at :307, and `if ($course->requiresEntranceExam)` at
+  :366 under the BR9/C-4/C-5 comment at :358 that pass 224 established — so the row now reads
+  `…:181-247, :306-308 and :358-366`. **A range that straddles `} … public function … {` looks alive to every bounds
+  check and says nothing about either method**; check which function each endpoint is inside. The pass also refused
+  twice before it wrote, because its own assertion put `recordGeneral()`'s closing brace at :334 when it is :333 —
+  which is the point of asserting the lines rather than trusting the arithmetic. After the write the queue is
+  136 judged = 17 OK + 7 MOVED + 2 NO-ANCHOR + **109 UNBOUND** + 1 BLIND: one pointer became two, so the human-read
+  queue grew by one and that is the honest accounting, not a regression.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
