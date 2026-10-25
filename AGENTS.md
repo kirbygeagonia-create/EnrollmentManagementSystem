@@ -967,7 +967,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (708 citations over 154 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (711 citations over 154 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1009,7 +1009,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's
   item 2 was marked closed by a sentence that *reported another row's ruling* inside its own unticked answer),
   four rows wait on the Registrar's window (items 1, 2, 4, 5), two items wait on actors outside the software
-  (C-5 with the departments, G-13 at install time), and the read-only queues are the 20 unattributed pointers
+  (C-5 with the departments, G-13 at install time), and the read-only queues are the 16 unattributed pointers
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
   the meaning sweep's 5 distinct pairs (all of them the documented attribution noise, each re-read against the
@@ -1037,8 +1037,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
   the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
   re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
-  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **708 citations over
-  154 files, 0 line problems, 132 bare continuations judged, blind queue down to 20.** Two instrument lessons in
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **711 citations over
+  154 files, 0 line problems, 132 bare continuations judged, blind queue down to 16.** Two instrument lessons in
   one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
   fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
   must be anchored on a RUN, not a phrase — "both print enrollmentType instead" is three `<w:t>` elements and does
@@ -1088,6 +1088,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   needles and 208b took four of them as bare ranges plus two positional anchors — an anchor is only safe when it
   is unique, and a range that occurs twice (the other copy already prefixed with its file) was left for the cell
   kind rather than guessed at.
+  **Never rebuild a cell or paragraph from the flat dump — rebuild it from `document.xml`.**
+  `dump-docx-flat.php` joins `<w:t>` runs **with a space** (the lane 69 fix that stops `strip_tags()` welding two
+  filenames into one), so a string copied out of the dump invents spacing the document never had: pass 212's first
+  draft read the workflow cell as `pending →…→ assessed ; box 2` while the file holds
+  `pending→…→ assessed; box 2`, and writing the dump's version would have retyped the table. Flatten the way the
+  engine does — `implode('', $tm[1])` over its `<w:t>` matches, then `html_entity_decode` — and substitute inside
+  *that*. Two more traps in the same call: the engine compares a cell prefix in **bytes** with no whitespace
+  folding, so a prefix taken from a collapsed dump string fails to match at the first multibyte arrow (use the
+  cell's leading ASCII word); and the `cell`/`para` kinds rewrite the whole block as **one run**, dropping the
+  styled spans inside it, so a paragraph with code formatting goes through `text` whenever any needle in it is
+  contiguous.
+  **A fourth wrong target, and the first whose row never named the file.** The workflow table's Assessment row said
+  "box 2 signed for a first-year, skipped for a continuing student" and cited three lines of the fee controller,
+  which are `applyScholarship()`'s balance recompute and `withdrawScholarship()`'s docblock; the skip is
+  `WorkflowService.php:52-71` — `$includesAssessment`, then the box list filtered before the labels are mapped.
+  Reading the cited span's own text against the sentence is the only check that catches this shape: a bounds sweep
+  sees four live lines and says nothing.
   **A reading aid must use the checker's key, not its own** (pass 206, same batch). `lane70-blind-sheet.php` had
   collected the blind *numbers* from the sweep and then searched the document for each one, so the token the sweep
   flagged once printed eleven rows — `:44` matched `:44-62` and `:441` — and the queue read three times its real
