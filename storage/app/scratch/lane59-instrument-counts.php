@@ -28,7 +28,6 @@
  *
  *   php storage/app/scratch/lane59-instrument-counts.php [--run] [--readings=f] [--dump-readings] [--ci] [--only=a,b] [--trace]
  */
-
 $root = dirname(__DIR__, 3);
 $scratch = $root.'/storage/app/scratch';
 
@@ -210,6 +209,19 @@ $INSTRUMENTS = [
         'labels' => ['Ledger lines?' => 'ledger', 'lines' => 'ledger'],
         'db' => true,
     ],
+    // The mechanism-claim class' first checker. §24 states `$primaryKey` and `$timestamps` for every table and this
+    // tool answers each against the class, so a sentence about how many declarations it reads is bindable here
+    // rather than recalled — the reason the instrument is in this table at all.
+    'lane71-model-decls' => [
+        'cite' => '/lane71-model-decls|model declaration/i',
+        'cmd' => 'storage/app/scratch/lane71-model-decls.php',
+        'parts' => [
+            'claims' => '/(\d+) claim\(s\) read =/',
+            'judged' => '/read = (\d+) judged/',
+        ],
+        'labels' => ['claims?' => 'claims', 'declarations?' => 'claims', 'judged' => 'judged'],
+        'db' => false,
+    ],
 ];
 
 // ------------------------------------------------------------------ the readings
@@ -219,7 +231,7 @@ if (($rf = $opt('--readings')) !== null) {
     $path = is_file($rf) ? $rf : $scratch.'/'.basename($rf);
     $j = json_decode((string) @file_get_contents($path), true);
     if (! is_array($j) || $j === []) {
-        echo "REFUSED: --readings=".basename($path)." is not a readings file written by this checker's --dump-readings.\n";
+        echo 'REFUSED: --readings='.basename($path)." is not a readings file written by this checker's --dump-readings.\n";
         exit(2);
     }
     $readings = $j;

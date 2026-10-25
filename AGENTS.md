@@ -1042,9 +1042,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (C-5 with the departments, G-13 at install time), and the read-only queue is the one unattributed pointer, quoted as an example on purpose
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
-  the meaning sweep's 5 distinct pairs (all of them the documented attribution noise, each re-read against the
-  code this session and true), and the fidelity sheet's rows the
-  Registrar has not ticked. Those are work for a reader, not for a wrapper.
+  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 134 ranges and flags 10 pairings across seven distinct
+  constructs — each pairing re-read this session and every one the
+  documented attribution noise, not a claim the build contradicts: a vendor path the basename index cannot see
+  (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208` really is `forPage()`), a `recordIssue()` landing on the block-schedule print action while
+  its own `PrintService.php:115` sits later in the sentence, `Payments::held()` on the accounting range its clause
+  opened with, two prose-order glosses in the workflow listener, a migration's `:24` cited beside a clause about
+  the seeder that names the same constant, and `ProvisionalClearanceRequirements::NAMES` paired with the migration
+  that backfills from it — and the fidelity sheet's rows the
+  Registrar has not ticked. Those are work for a reader, not for a wrapper. The anchor checker's 107 UNBOUND rows
+  are **read**, not cleared: they stay UNBOUND because their sentences name no construct for a tool to pair, and
+  reading them against the code is what produced passes 241 and 242 (seven more wrong targets, the 36th to 42nd).
   **A column can have one owner for the whole table, and then no row-scoped checker will ever see it.** §21.2's
   "Seeded?" column is nine cells carrying bare numbers, and the sentence introducing the table says "Seeded =
   created by `DevReferenceDataSeeder`" — so every one of those numbers belongs to the seeder and none was ever
@@ -1278,6 +1286,104 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `storage/app/scratch/lane70-read-queue.php`: for a pointer the checker cannot bind, it prints the enclosing
   `public function` of the cited line next to the document's own sentence, which is the check to run when the
   prose names no identifier at all.
+  **Pass 241 is the tranche that shows a one-line pointer inside the right method is still not evidence.** Two of
+  the 107 UNBOUND rows were wrong targets, both in `ExamController.php`, and both landed inside the very method the
+  prose names — so lane 32's encloses rule agreed with them while they carried a different claim from the one the
+  sentence makes. §13's query-builder paragraph says "G-8 removed the status write from **both** examination paths
+  (`ExamController.php:325-332` and `:355-362`)": the general half is right, and :355-362 is the head of
+  `recordCourseSpecific()` — the "This course administers no entrance examination" refusal at :355 and the
+  BR9/C-4/C-5 comment at :358-362 — while that path's G-8 closure is the comment at :397-402 with the redirect that
+  writes no status at :403-404, which §13's own effect-of-the-result row already cites **with the file named**. The
+  document again held the true owner twice and left one copy unattributed (pass 228's shape, reached a second time).
+  The second was §28.3 G-15's citation cell, `ExamController.php:424-427 and :441`: the row's closure is two claims,
+  "results() honours `search` exactly as index() does **and echoes both keys**", and :424-427 is the first while the
+  echo is `'filters' => $request->only(['result', 'search'])` at **:476** — :441 is the departmental `orWhere` inside
+  the ownership split. Reading a `:NNN` pointer therefore asks *which claim of the sentence does this line carry*,
+  not which method it sits in; and a row whose cell cites two numbers is two citations, exactly as the
+  bare-continuation rule says. The rest of that tranche read **true** and is recorded as read, so the next reader
+  does not re-open it: `NotificationController.php` :20-21/:33-34/:51/:65-66/:65-68 (reader, unread count, ownership
+  test, bulk mark-read), `PrintService.php` :49/:115/:254, `DevReferenceDataSeeder.php` :137/:141/:148 (the three
+  `Academicyears::firstOrCreate` calls behind §21's `academicyears` row), `Studentclearances.php` :87-93,
+  `AdmissionPolicy.php` :67-152 (the whole extracted method, return at :151, brace at :152), `AuditRecordStates.php`
+  :305-327 — **a range deliberately straddling two rules**, "the two box rules", so the straddle is the claim — and
+  its "nineteen rules" is 19 `'count' =>` entries, measured not recalled; also `RbacSeeder.php`, `IDController.php`
+  :184, `StudentController.php` :49, `AuthenticatedLayout.jsx` :85-113, `Toast.jsx` :164-168,
+  `SendWorkflowNotification.php` :57, `WorkflowService.php` :54-73, and the pointers passes 229-234 wrote themselves
+  in `BlockingController.php` and `ExamController.php`. **The instrument-side trap in that count is mine again:**
+  grouping the queue by `grep '^UNBOUND '` made the footer's own sentence a file named `and` — a queue row is the
+  padded `printf` shape, not the leading word (the same lesson the blind-sheet harness already carries).
+  **Pass 243 is the one that never ran, and it is kept because the refusal is the finding.** I came to
+  `resources/js/Pages/Registrar/Index.jsx:93` believing the page badge the sentence quotes was :92 and that :93 was
+  the office badge — read off `sed -n '92p;93p'`, which prints two lines in file order with **no numbers attached**. A
+  real line-numbered reader says otherwise: :92 is the `subtitle`, :93 is `phaseBadge="Phase 5 · Registrar Central Desk"`
+  — the citation was always right. The pass asserts the false hypothesis in its stage 1, so it fails three guards and
+  exits `NOTHING WRITTEN` every time it is run, and the file stays as the proof: a unique needle, a correct
+  pair-form, a bounds-clean document and a confident reader still cannot make an edit true. **When the claim is "this
+  pointer is one line off", read it with a numbered reader** (`lane70-read-span.php` prints the number), never with a
+  bare `sed -n 'Ap;Bp'`.
+  **A queue that has been read must say so, or the next session reads it again.**
+  `storage/app/scratch/lane70-queue-reads.json` records the rows this lane has opened, keyed by
+  `lane70-anchor-cites.php`'s OWN identity — the file its sentence names, the range, and a hash of the sentence; never
+  a dump line, because one inserted paragraph above would age every later record to make one unrelated edit. The
+  checker prints `queue reads on record: 107 of 107 UNBOUND row(s) carry a recorded read; 0 record(s) match no current
+  row` with `104 record(s) answer 104 distinct key(s); 3 key(s) carry more than one row` beneath it — one sentence
+  written in two places in the document is ONE read covering TWO rows — and every row of the queue has been opened
+  once (every record names its own evidence). A record whose key has
+  gone is printed as **STALE**, not dropped: the two ways a key disappears are "a pass fixed the row" and "a pass
+  re-pointed the pointer", and the second means the saved verdict says nothing about the new citation. Nothing is
+  recorded that was not opened. **What a record does not claim:** it says *this span carried this sentence's claim on
+  this date* — a later code move leaves the key untouched, so a record is no substitute for re-running
+  `probe-moved-cites.php` or lane 51's reconcile after editing a cited file, and the same pointer can be keyed under
+  two spellings (`ExamController.php:476` and `app/Http/Controllers/Exam/ExamController.php:476`), only one of which a
+  record covers unless both are written. **That hole was measured and it opens one way only:** grouping the 104 keys by
+  `basename + range + sentence-hash` answers **0 collisions**, because the file component always resolves to one real
+  file — so an alias can make a read row look *unread* (the conservative direction, and what STALE is for) but can
+  never make an unread row look read. A record set may under-report coverage; it cannot falsely clear it.
+  `lane70-make-reads.php` regenerates the file
+  from `--show-keys` output so the keys can never be re-derived by a second definition of "pointer" (the blind sheet's
+  eleven-fold phantom), and `mutate-lane70-queue-reads.php` (11 legs) proves the mechanism: a ghost record must be
+  STALE and must lower the covered count **by that key's own row count**, an empty file must leave every row unread,
+  muting the collector's four sites must make the run refuse because `tally ≠ collected`, a byte-identical copy must
+  answer like the control, and the coverage line must add up to the queue.
+  **A coverage figure must count the same thing as its denominator.** That harness once asserted "−1" for every
+  removal and the tool printed `104 of 107` — records over rows — for a queue in which **every** row had been opened:
+  three sentences are written in two places, so 104 keys answer 107 rows, and the number sent the next reader after
+  three phantom reads while making the document's own claim ("the whole queue has been opened once") look
+  contradicted by its instrument. Coverage is now `array_sum` over the matched keys' tallies, the run refuses unless
+  `covered + uncovered == tallied`, and leg 6 plants the old shape back (a record-count numerator) and requires it to
+  report read rows as still unread — which is what makes the two "−2 / −1" legs bite instead of being decoration.
+  Two bugs in that leg came from reading rather than trusting it: its anchor was built by concatenation and put
+  `"UNBOUND"` where the file writes `'UNBOUND'`, so it matched nothing and **refused the whole run** (the guard
+  earning its keep), and its array was indexed `[1] < [2]` when `preg_match` had filled `[0]` and `[1]` — a leg whose
+  detail line printed the right numbers while its assertion compared the wrong pair.
+  **A record that is not tracked is not a record.** `storage/app/.gitignore` re-includes `scratch/` by extension
+  (`.php`, `.ps1`, `.mjs`) and ignores everything else, so the reads file was invisible to `git` and the mechanism
+  would have lived on this machine only; it needs its own `!scratch/lane70-queue-reads.json`, and the check that
+  proves a negation is targeted is `git add --dry-run <file>` plus `git check-ignore -v` on a file that must stay out
+  (`lane59-readings.json` still answers `yes`).
+  Three of its own traps: `2>/dev/null` is no device for `cmd.exe`, so the generator's first run produced a
+  well-formed file with **zero** records; a copy of the tool cannot live in a temp subdirectory, because the tool
+  finds the project root by `dirname(__DIR__, 3)` and dies on the require, which a leg that greps for `REFUSED`
+  reads as a mutation; and muting ONE collector site mutates nothing when that branch carries no rows today, so the
+  leg mutes all four.
+  **Pass 242 then took five pointers out of two desk-display rows, and the shape is different from every one above:
+  the numbers had slid off a field onto its neighbour, inside a JSX file the row names correctly.** The Student 360
+  row cited `Students/Show.jsx` `:152,186,193` for "Name, School ID"; those lines are `officeBadge=`, the
+  `{/* Identity fields */}` comment and a `</FormSection>` — the name is the `PageHeader` title at :147, the School ID
+  its subtitle at :148 and the identity field's value at :189. The same row's next pointer, 68-69 in that file
+  ("Student Type and Enrollment Type"), is a closing `</div>` and a blank line while the two types print at 60-61,
+  and its 73-74 ("enrollment status") is the money grid's wrapper divs while the badge is 65-66. The Evaluation
+  queue row cited lines 84 to 91 of `resources/js/Pages/Evaluation/Index.jsx` for "Student Type as a badge column,
+  with Year Level and Proposed Standing beside it" and the pair 84/90 for "Year Level and Academic Standing": 78 is Year Level, :79-83 is the Student Type badge,
+  :84 is Proposed Standing and **:90 is the Status column** — a number that belongs to neither claim. Now
+  `:78-91` and `(:78, :84)`, with the row's third citation re-read and left alone because `:186` really is
+  `label="Transferees / Shifters"`. Two rules this adds. **A JSX pointer needs the render line, not the block's
+  opening tag** — a component's props and its closing tags are live lines too, so the bounds sweep says nothing when
+  a number lands on `</FormSection>`. And **a re-taken number that already exists elsewhere cannot be post-checked
+  by document-wide absence**: `:60-61` and `:65-66` were live citations before this pass (2 and 3 copies), so the
+  only honest after-check is *the replaced token is gone* plus *the new one occurs one more time than it did*,
+  which is what the pass asserts; my first draft instead compared run-boundaries old-to-new and refused a write
+  that had already landed correctly.
   **The queue's second row was a different finding, and it is the twenty-fourth wrong target.** A bare `:62-104` in
   §2's clearance paragraph claims that ruling 12 retired office 8 in foreign-key order, and the nearest name before
   it on that dump line is `ClearancePolicy.php:68-94` — in that policy :62 and :104 are both bare `}`. The span that
@@ -1498,15 +1604,78 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   silence: a checker that cannot fail has checked nothing.
 - **After any batch that touches a model's `$primaryKey` / `$timestamps`, or a §24 "Model …" row**, run
   `php storage/app/scratch/dump-docx-flat.php` then `php storage/app/scratch/lane71-model-decls.php` and prove it with
-  `php storage/app/scratch/mutate-lane71-model-decls.php` (8 legs). This is the first checker for the class §28.3 G-31
+  `php storage/app/scratch/mutate-lane71-model-decls.php` (8 legs). **And after any batch that touches a
+  notification's addressee — a listener's `notifiable_type`, `WorkflowInbox::actors()`, `NotificationSeeder`, or a
+  sentence naming who the bell reads** — run `php storage/app/scratch/lane71-morph-targets.php` (and `--ci` for the
+  two portable surfaces) and prove it with
+  `php storage/app/scratch/mutate-lane71-morph-targets.php` (13 legs). That is the second member of the G-31 class
+  turned into an instrument: one value read from three independent surfaces — what the document asserts, what the
+  code passes, what the rows hold — measured 2026-10-25 as **8 document sentences, 5 code sites, 14 rows, all
+  `App\Models\Staffusers`**, so the sentence §19.4 used to carry is now answerable rather than arguable. Two things
+  it paid for immediately: `parse_ini_file()` on `.env` throws a syntax warning on this file's line 3 and hands back
+  nothing, which the probe read as "the environment names no database" — parse `.env` line by line, as every other
+  probe here does; and the probe first counted two classes because the document writes `Staffusers::class` and the
+  rows hold `App\Models\Staffusers`, which is lane 69's one-definition rule applied to my own instrument, so the
+  class identity is resolved once and shared by all three readers. **Two of its three surfaces are now a CI step.**
+  `--ci` judges what a runner can reach — the document's claim and the code's write sites — and **names** the row
+  surface instead of asking it, because a row count belongs to whichever database stated it (lane 60's rule) and the
+  SQLite job has no persistent MySQL; the full three-surface run stays a hand command against live `ems`. The flag
+  refuses `--allow-schema=…` rather than accepting it inertly, and the step prints
+  `rows surface: NOT JUDGED` so an unread surface can never be read as an agreeing one. Proved by legs 8-10 of the
+  harness: `--ci` must answer in its own shape, must quote no schema it never opened, and must still `DISAGREE` about
+  a document claim the code disproves — a step that stopped judging would otherwise look like the cleanest line in
+  the job. `--selftest` was **deleted rather than left working**: it set a variable whose only use printed a note,
+  while its own docblock promised it would plant a wrong class in a copy of the dump (planting is the harness's job),
+  and a flag the tool does not read is now refused by name — leg 13. **A sweep for further inert flags is reported
+  withdrawn, not clean:** three passes produced 65 hits, then 312, then 0, and the 0 fell the moment the known positive
+  was planted and walked straight through — the flag's use sits behind an `if` whose body prints, which a line-shape
+  classifier cannot see. "This flag changes nothing" is a behavioural claim; the honest test is run-with, run-without,
+  compare bytes. And `str_replace()` has **no limit parameter**: its 4th argument is the by-reference `$count`, so
+  `preg_replace`'s shape throws "Argument #4 could not be passed by reference".
+  **The behavioural version was tried and also failed, twice, before it measured anything.** Pass 4 ran each tool with
+  and without its flags and compared bytes — and reported **12 behaviourally inert flags**, all of them truncated by
+  one character (`--verbos`, `--appl`, `--show-key`, `--c`): the pattern `(--[a-z0-9-]*)(?![=\x27"])` makes the greedy
+  class **backtrack one character so the lookahead can pass on the closing quote**, so every run passed an unknown flag
+  that a tool correctly ignores — identical bytes, invented verdicts. Pass 5, which captures the delimiter instead,
+  then found **0 candidates** in the same walk, i.e. its own population was empty: a census whose population is zero
+  and whose previous population was wrong is not a clean result either. The one genuine signal out of both passes is
+  the accidental one: `lane71-morph-targets.php` **refused the truncated `--c` by name** rather than ignoring it, which
+  is the strict-flag guard proving itself on an input nobody planned.
+  **Pass 6 ran the behavioural test properly and retired it, because identical bytes is the wrong predicate.** It
+  walked 38 pairs and printed its population first: 19 flags changed the output, and every "did not" turned out to be
+  the census measuring nothing rather than the flag doing nothing — `$opt('--readings')` and `$opt('--only')` are
+  **value** flags whose bare names appear quoted, so passing them with no value is correctly ignored;
+  `lane59-instrument-counts --trace` compared two 155-byte refusals; `lane70-read-span --functions` compared two usage
+  lines because no file argument had been supplied. And the deepest: the very flag that started this — `--selftest` —
+  **printed a note**, so a byte-diff grades it as read, while its real defect was that it changed nothing *judged*.
+  So a flag is proven read only per tool, by a harness leg that asserts a **named difference in the verdict**
+  (`--ci` must answer in its own shape and still `DISAGREE` about a planted claim; `--limit=N` must withhold rows the
+  queue tally counts and then say the queue is INCOMPLETE; `EMS_LANE46_PAGES` must change what is scanned and refuse
+  an empty scope). The family-wide inert-flag sweep is therefore closed as **not decidable by one instrument**, not as
+  clean: `--selftest` stands as the one inert flag this repository found — by reading a file, not by a census.
+  **The residual of the mechanism census was measured, not assumed.** Of the shapes `lane71-mechanism-shapes.php`
+  prints, the two members that cite no instrument were opened and both read true: §20.3's quoted
+  `SENSITIVE_KEY_PATTERN` literal is attributed by its own lead sentence, whose `AuditLogObserver.php` range really
+  runs from that const to the redaction method's closing brace, and §12's no-open-period row cites the two lines
+  where `accepting()` is called and the refusal sentence is returned. The class is therefore bound wherever it is
+  mechanically answerable; the remainder is prose a reader judges. **And all six of the shapes tool's own
+  `REFUTED` verdicts were read and are the probe, not the document** (measured with `--limit=200`: 2 VALUE + 4 NEG):
+  three deny a *query result or row set* (`accepting()` returning nothing, `payments` gaining no row, a rendered page's
+  row count) where a `substr_count` for an identifier's existence cannot answer; one probed the wrong token (a row
+  that says the test reads `studentType`, `never academicStanding` was tested on the file's own class name); and two
+  searched a literal that only exists entity-decoded (`enum(\x27active…`) or in SQL spelling (`DECIMAL(10,2)`, which
+  the migrations write as `decimal(…, 10, 2)` and `information_schema` as `decimal(10,2)`, already bound by
+  `lane60-ratio-claims.php`). No register row is owed for them; the lesson is that the next binding must be
+  subject→predicate per shape — a SELECT, a parsed span, a schema query — never a corpus grep.
+  This is the first checker for the class §28.3 G-31
   names: **a sentence that states how code behaves today carries no status word, no figure, no instrument count and no
   dead line number, so every earlier judge passes it while the build overtakes it** — §19.4, §20 and §24.14 all said
   the notification listeners write `App\Models\Students` twenty-four days after §28.3 closed N-1 and after both listeners
   began writing `Staffusers::class`. §24's model row is the one member of that class narrow enough to answer without a
   judgement call: it states `$primaryKey = 'someId'` and `$timestamps = true|false`, and the class either declares those
-  properties or takes Laravel's defaults, so the probe is a comparison, not an interpretation. Measured: **54 claims,
-  54 files in `app/Models`, 54 judged, 0 problems** — the census agrees three ways, which is what makes the zero
-  mean something. The harness plants a wrong primary key and a wrong timestamps flag (each must raise exactly one named
+  properties or takes Laravel's defaults, so the probe is a comparison, not an interpretation. Measured:
+  `lane71-model-decls` answers **54 claims read = 54 judged**, none of them wrong — and 54 is also what `app/Models`
+  holds, which is the agreement that makes the zero mean something. The harness plants a wrong primary key and a wrong timestamps flag (each must raise exactly one named
   complaint and no other row may move), a path that is not in the repository, a byte-identical control that must change
   no verdict, and the three refusals are told apart **by their own messages** (judged-nothing, missing dump, unknown
   flag) because all three exit 1. It is a CI step in the SQLite job. Two traps already paid for: a mutant aimed at a
@@ -1527,7 +1696,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
   about the sweep adds a reference for the sweep to judge and invalidates the figure in the same edit (measured
   twice on 2026-10-25 while recording pass 226: 403 → 405 → 406). Lane 58's rule for a revision row applies to a
-  tool's own census — name the surface or state no total, and the reading lives in `lane59-readings.json` instead; and
+  tool's own census — name the surface or state no total, and the reading lives in `lane59-readings.json` instead (that
+  file is deliberately **untracked**: `storage/app/.gitignore` keeps `scratch/` to code by extension, because a
+  measurement committed is a measurement frozen, and the collector regenerates it on any clone; the reads record
+  beside it is tracked for the opposite reason — see "A record that is not tracked is not a record" above); and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
   holds** (the school decision sheet, the Registrar print sheet, the print-fidelity comparison), which is how

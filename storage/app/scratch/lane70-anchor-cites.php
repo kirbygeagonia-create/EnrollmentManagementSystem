@@ -36,9 +36,13 @@ require_once $root.'/storage/app/scratch/docx-cite-attribution.php';
 $dump = $root.'/storage/app/scratch/docx-flat.txt';
 $limit = 0;
 $showOk = false;
+$readsFile = $root.'/storage/app/scratch/lane70-queue-reads.json';
 foreach ($argv as $a) {
     if (str_starts_with($a, '--dump=')) {
         $dump = substr($a, 7);
+    }
+    if (str_starts_with($a, '--reads=')) {
+        $readsFile = substr($a, 8);
     }
     if (str_starts_with($a, '--limit=')) {
         $limit = (int) substr($a, 8);
@@ -123,6 +127,18 @@ $sentenceSymbols = static function (string $sentence): array {
 };
 
 $counts = ['OK' => 0, 'MOVED' => 0, 'NO-ANCHOR' => 0, 'UNBOUND' => 0, 'BLIND' => 0];
+$unboundKeys = [];
+// A queue row is keyed by the file the sentence names AND the range, not by the basename: `Show.jsx` is the basename
+// of both `Students/Show.jsx` and `Registrar/Show.jsx`, and a read of one would otherwise clear the other — the same
+// one-name-two-owners defect this lane keeps paying for. The key is what `lane70-queue-reads.json` records against,
+// so a pointer a later pass re-points makes its own record stale rather than silently staying "read".
+$markUnbound = static function (string $file, int $from, int $to, string $sentence) use (&$unboundKeys, $root): void {
+    // The dump line cannot be part of a read's identity: one inserted paragraph above moves every later line, which
+    // would age a hundred honest records to make one unrelated edit. The sentence IS the pointer's identity — it is
+    // what the reading was about, and it changes only when the citation or the claim it makes changes.
+    $k = str_replace($root.'/', '', $file).':'.$from.'-'.$to.'#'.substr(md5(preg_replace('/\s+/u', ' ', $sentence)), 0, 8);
+    $unboundKeys[$k] = ($unboundKeys[$k] ?? 0) + 1;
+};
 $printed = 0;
 $withheld = 0;
 // Every row this tool puts in a queue bucket MUST reach the output, or the run must say how many it held back —
@@ -179,6 +195,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
         // not in front of it. Say UNBOUND instead of inventing a position: an honest queue row beats a confident
         // wrong pairing, which is the whole lesson of the 47 complaints this pass replaced.
         $counts['UNBOUND']++;
+        $markUnbound($own['file'], $from, $to, (string) $sentence);
 
         continue;
     }
@@ -222,6 +239,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     ));
     if ($symbols === []) {
         $counts['UNBOUND']++;
+        $markUnbound($own['file'], $from, $to, (string) $sentence);
         if ($mayPrint()) {
             printf("UNBOUND    %-28s :%d-%d  the sentence names no construct at all — %s\n",
                 basename($own['file']), $from, $to, trim(mb_substr((string) $sentence, 0, 96)));
@@ -234,6 +252,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $pair = docxPairByUnit($sentence, $cites, $symbols);
     if (! array_key_exists($mineKey, $pair['byCite'])) {
         $counts['UNBOUND']++;
+        $markUnbound($own['file'], $from, $to, (string) $sentence);
         if ($mayPrint()) {
             printf("UNBOUND    %-28s :%d-%d  no construct in the sentence reaches it — %s\n",
                 basename($own['file']), $from, $to, trim(mb_substr($sentence, 0, 90)));
@@ -250,6 +269,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     if ($sym['hint'] !== null && strcasecmp(basename($own['file'], '.php').'.php', $sym['hint']) !== 0
         && basename($own['file']) !== $sym['hint']) {
         $counts['UNBOUND']++;
+        $markUnbound($own['file'], $from, $to, (string) $sentence);
         if ($mayPrint()) {
             printf("UNBOUND    %-28s :%d-%d  paired with %s, whose own qualifier is %s — a clause boundary, read it\n",
                 basename($own['file']), $from, $to, $sym['name'], $sym['hint']);
@@ -346,6 +366,70 @@ if ($judged === 0) {
         ."       a broken read, not a clean one (UNBOUND %d, BLIND %d).\n",
         count($scan['bare']), $counts['UNBOUND'], $counts['BLIND']);
     exit(1);
+}
+
+// The queue is only worth reading once if the next reader can tell which rows were already opened. The record lives
+// in `lane70-queue-reads.json`, keyed by THIS tool's own key (relative path + range), and its authority is bounded
+// by two checks: a record may cover only a row the run actually puts in the queue, and a record whose key has gone
+// is reported as stale rather than dropped — because the two ways a key disappears are "a pass fixed the row" and
+// "a pass re-pointed the pointer", and the second one needs a fresh read, not a saved verdict.
+if (array_sum($unboundKeys) !== $counts['UNBOUND']) {
+    printf("REFUSED: %d row(s) were tallied UNBOUND but the collector saw %d, so the reads file cannot be trusted.\n",
+        $counts['UNBOUND'], array_sum($unboundKeys));
+    exit(1);
+}
+$reads = [];
+if (is_file($readsFile)) {
+    $j = json_decode((string) file_get_contents($readsFile), true);
+    // The file carries a `_note` and a `_date` beside its records, so the record set is the `reads` member — reading
+    // the top level would make every annotation a stale record and the tool would complain about its own comments.
+    if (is_array($j) && isset($j['reads']) && is_array($j['reads'])) {
+        $reads = $j['reads'];
+    } elseif (is_array($j)) {
+        $reads = $j;
+    }
+}
+if (in_array('--show-keys', $argv, true)) {
+    // The reads file must be written with THIS tool's keys, never re-derived by a helper with its own idea of a
+    // pointer (lane 70's blind sheet counted a phantom eleven times for exactly that reason).
+    foreach (array_keys($unboundKeys) as $k) {
+        echo 'KEY        ', $k, "\n";
+    }
+}
+$matched = array_intersect_key($reads, $unboundKeys);
+$stale = array_diff_key($reads, $unboundKeys);
+// Coverage is counted in ROWS, the same unit as the denominator. One sentence written in two places in the document is
+// ONE key and TWO rows, so counting records against rows reported "104 of 107" and told the reader that three rows were
+// still unopened when every one of them had been read — a queue that understates its own evidence sends the next reader
+// after work that is not there. `--show-keys` still answers one line per key, because that is what the record is keyed
+// by; the duplication is printed below so a harness can read the checker's own tally instead of inventing one.
+$coveredRows = array_sum(array_intersect_key($unboundKeys, $matched));
+$uncoveredRows = array_sum(array_diff_key($unboundKeys, $matched));
+if ($coveredRows + $uncoveredRows !== $counts['UNBOUND']) {
+    printf("REFUSED: %d row(s) covered plus %d uncovered is not the %d the queue tallies, so the reads line counts two\n"
+        ."different things and its number means nothing.\n", $coveredRows, $uncoveredRows, $counts['UNBOUND']);
+    exit(1);
+}
+printf("\nqueue reads on record: %d of %d UNBOUND row(s) carry a recorded read; %d record(s) match no current row.\n",
+    $coveredRows, $counts['UNBOUND'], count($stale));
+$dupes = array_filter($unboundKeys, static fn (int $t): bool => $t > 1);
+printf("  %d record(s) answer %d distinct key(s); %d key(s) carry more than one row%s\n",
+    count($matched), count($unboundKeys), count($dupes),
+    $dupes === [] ? '' : ' — '.implode(', ', array_keys($dupes)));
+if ($stale !== []) {
+    echo "  STALE (re-read: either the row was fixed or the pointer moved — a saved verdict is not evidence about a\n"
+        ."  citation that is no longer at this key):\n";
+    $shown = 0;
+    foreach (array_keys($stale) as $k) {
+        if ($shown++ >= 15) {
+            printf("  ... and %d more\n", count($stale) - $shown + 1);
+            break;
+        }
+        echo '  STALE      ', $k, "\n";
+    }
+}
+if ($counts['UNBOUND'] > 0 && $reads === []) {
+    echo '  note: no reads file at ', $readsFile, " — every UNBOUND row is presented as unread.\n";
 }
 
 printf("\n%d bare pointer(s) judged: %d OK, %d MOVED, %d NO-ANCHOR, %d UNBOUND (no construct reaches it), %d BLIND (no owner within the window)\n",

@@ -139,6 +139,20 @@ jobs:
           php storage/app/scratch/dump-docx-flat.php
           php storage/app/scratch/lane71-model-decls.php
 
+      - name: Refuse a notification addressee the document and the code disagree about
+        run: |
+          # The second member of the same class, and the half that is portable: `lane71-morph-targets.php` reads one
+          # value — who a notification is addressed to — from three surfaces, what the document asserts, what the
+          # listeners pass, and what `notifications.notifiable_type` actually holds. Gap N-1 was the defect: four
+          # sections narrated `App\Models\Students` in the present tense after §28.3 had closed it and both listeners
+          # wrote staff rows. Only the two surfaces a runner can reach are judged here — the row count belongs to
+          # whichever database stated it (lane 60's rule), and the SQLite job has no persistent MySQL to ask — so
+          # `--ci` NAMES the third surface instead of reading it, and the run refuses an `--allow-schema` it would
+          # have no database to honour rather than accepting the flag inertly. mutate-lane71-morph-targets.php proves
+          # all twelve legs can fail, including that `--ci` still refuses a document claim the code disproves: a step
+          # that stopped judging would otherwise look like the cleanest step in the job.
+          php storage/app/scratch/lane71-morph-targets.php --ci
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04

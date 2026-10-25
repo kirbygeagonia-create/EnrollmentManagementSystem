@@ -33,6 +33,19 @@
  *   - `enum(` matched 66 times and proved nothing about the enum a sentence describes;
  *   - a §1.1 history row ("It found one dead right that every role holds and no code reads") reached the NEG bucket at
  *     all, because the past-tense marker sits in another clause and `$PAST` has no `found`.
+ *
+ * MEASURED AGAIN 2026-10-25, with `--limit=200`: the probe refutes 6 of its 89 claims (2 VALUE, 4 NEG) and ALL SIX
+ * are the probe, not the document. Three shapes, named so the next binding does not repeat them:
+ *   - STATE-vs-SYMBOL (3 rows): "Clearanceperiods::accepting() finds nothing", "the refusal wrote nothing: `payments`
+ *     gained no row", "the seven labels above are what the file read here prints" — each denies a QUERY RESULT or a ROW
+ *     SET, and a `substr_count` for the identifier's existence can never answer that. The witnesses are a live SELECT
+ *     and a rendered page, not the corpus.
+ *   - WRONG TOKEN (1 row): "the test reads studentType, never academicStanding" was probed on `RegistrarPolicy`, which
+ *     of course appears — the picker took the first identifier in the row instead of the OBJECT of the negation.
+ *   - TOKEN ONLY EXISTS AFTER DECODING, OR IN SQL SPELLING (2 rows): the dump carries `enum(\x27active\x27,…)` with
+ *     entities, which appears nowhere; and "every amount column is DECIMAL(10,2)" is `$table->decimal(…, 10, 2)` in
+ *     the migrations and `decimal(10,2)` in `information_schema`. Both sentences are true — `lane60-ratio-claims.php`
+ *     binds the column types — and a corpus grep cannot see either.
  * So treat the printed rows as a QUEUE of sentences to bind, and the verdicts as unfalsified noise: each shape needs
  * its own subject→predicate probe (column values from `information_schema`, a span's parsed keys, a method's call
  * sites), the way lanes 46, 47, 50, 60, 64 and 71-each-needed-their-own-binding. Nothing here is a gate.

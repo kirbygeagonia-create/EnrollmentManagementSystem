@@ -18,3 +18,7 @@ scratch/*
 !scratch/*.php
 !scratch/*.ps1
 !scratch/*.mjs
+# One data file is tracked, deliberately: the record of which queue rows a human has already opened is the point
+# of that instrument, and it is worth nothing if it lives on only the machine that made it. It holds file paths,
+# line ranges, a sentence hash and a reason per row — no institutional data, nothing a public remote must not see.
+!scratch/lane70-queue-reads.json
