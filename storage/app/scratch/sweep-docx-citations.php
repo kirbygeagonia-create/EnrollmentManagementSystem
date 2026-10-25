@@ -210,8 +210,10 @@ foreach ($bare as [$from, $to, $offset]) {
     };
     if ($current === null || $currentLine !== $line || ($offset - $currentEnd) > 160) {
         // One line per blind spot: the dump joins table cells with tabs and newlines, and a context string
-        // that wraps turns the printed evidence into an unreadable block.
-        $blind[] = $token.' near "'.$context(46, 86).'"';
+        // that wraps turns the printed evidence into an unreadable block. The dump line is printed because a
+        // reader cannot work from the token alone — the same number is a live citation somewhere else in the
+        // document, and a reading aid that re-searches for it by string reports those too.
+        $blind[] = $token.' near "'.$context(46, 86).'" on dump line '.($line + 1);
 
         continue;
     }
