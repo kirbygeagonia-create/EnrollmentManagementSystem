@@ -980,10 +980,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   Since 2026-10-16 `tools/seed_full_demo_pipeline.php` is also *executed* by CI (the MySQL job's step between
   the seeders and the walkthrough legs) and it exits 1 when its own desk report lists a finding, so a fatal or
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
-- Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
-  citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
-  moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (727 citations over 155 files; it exits non-zero on a
+- **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
+  citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
+  `php storage/app/scratch/sweep-docx-citations.php` (728 citations over 155 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1068,8 +1067,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
   the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
   re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
-  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **727 citations over
-  155 files, 0 line problems, 135 bare continuations judged, blind queue down to 1.** Two instrument lessons in
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **the census that day was
+  727 citations over 155 files, 0 line problems, 135 bare continuations judged, blind queue down to 1** (that figure
+  is pass 199's own reading and is not re-aged; the living count is the one in the gate bullet above). Two instrument lessons in
   one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
   fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
   must be anchored on a RUN, not a phrase — "both print enrollmentType instead" is three `<w:t>` elements and does
@@ -1247,7 +1247,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   proved by its own message, because `judges-nothing` and `missing-dump` both exit 1 and a leg that accepts either
   passes on a broken instrument. `--show-ok` exists so the harness can find a live correct pairing instead of
   remembering one. It is NOT a CI step — ruled again on 2026-10-25 after every numbered row in its queue had been
-  opened: the run judges 136 bare pointers and **110 of them are UNBOUND**, so a gate on this tool would demand red
+  opened: the run judges 135 bare pointers and **108 of them are UNBOUND**, so a gate on this tool would demand red
   on rows that are legitimately a human read. **And the reason those 110 had never been read is a defect in the
   instrument, not in the document:** the footer claimed "UNBOUND and BLIND are printed as queues" while every print
   condition read `if ($all && $printed++ < $limit)` with `$limit` defaulting to **0** — false for every caller, so
@@ -1278,6 +1278,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `storage/app/scratch/lane70-read-queue.php`: for a pointer the checker cannot bind, it prints the enclosing
   `public function` of the cited line next to the document's own sentence, which is the check to run when the
   prose names no identifier at all.
+  **The queue's second row was a different finding, and it is the twenty-fourth wrong target.** A bare `:62-104` in
+  §2's clearance paragraph claims that ruling 12 retired office 8 in foreign-key order, and the nearest name before
+  it on that dump line is `ClearancePolicy.php:68-94` — in that policy :62 and :104 are both bare `}`. The span that
+  actually deletes, in FK order, is `DevReferenceDataSeeder.php:62-104` (:62 is the ruling-12 comment, :104 the
+  `offices` delete), and §27's own office-8 row already cites it **with the file named** — so the document held the
+  true owner twice and one of them unattributed. Pass 228 names the file rather than teaching any checker to guess
+  (`( :62-104 :` occurs exactly once in `document.xml`, so the edit is a single unique `text` replacement), the
+  attribution dispute the reader raised is thereby settled by the document rather than by a tool, and the census
+  moved the way a repair should: **728 citations / 155 files / 0 line problems, 134 bare judged + 1 blind**, and the
+  anchor's UNBOUND queue down from 110 to 108.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
