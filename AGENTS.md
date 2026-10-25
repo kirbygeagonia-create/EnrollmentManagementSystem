@@ -960,7 +960,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (666 citations over 152 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (681 citations over 153 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1002,7 +1002,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's
   item 2 was marked closed by a sentence that *reported another row's ruling* inside its own unticked answer),
   four rows wait on the Registrar's window (items 1, 2, 4, 5), two items wait on actors outside the software
-  (C-5 with the departments, G-13 at install time), and the read-only queues are the 70 unattributed pointers,
+  (C-5 with the departments, G-13 at install time), and the read-only queues are the 54 unattributed pointers,
   the meaning sweep's 5 distinct pairs (all of them the documented attribution noise, each re-read against the
   code this session and true), and the fidelity sheet's rows the
   Registrar has not ticked. Those are work for a reader, not for a wrapper.
@@ -1015,10 +1015,26 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   citation the resolver cannot match (`DevReferenceDataSeeder:770-773`, no `.php`). Passes 194 and 195 fixed the
   column, and the cells had to go through `docx-edit-engine.php`'s **cell** and **anchored text** kinds: a plain
   needle cannot address `:189` when another row cites the same number, which is why pass 193 refused itself rather
-  than half-write. After the fix the sweep reports 666 citations over 152 files with 0 line problems and the blind
+  than half-write. After that fix the sweep reported 666 citations over 152 files with 0 line problems and the blind
   queue at 70. The lesson for any future checker: a citation's owner may live in the prose above the table, the
   paragraph above the list, or the column heading — when the tool can only read the row, the document has to name
   the file, rather than the tool learning to guess it.
+  **A matrix has one owner per COLUMN, and two sides per cell.** §25's identity matrix is one row per required
+  context fact against one column per printed document, and its cells read `desk ✓ ( :87-90 ) / PDF ✗`. The intro
+  sentence says only that desk means the page staff print and PDF means the Blade template, so every number in all
+  six columns was unattributable — 16 of those 70 blind spots — and `lane70-matrix-cites.php` (read-only) is what
+  finally read them by resolving each cell to its column's two files and taking the side from the word before it.
+  Most were stale the way only a template edit causes: the student-type cell quoted a plain div, the certificate's
+  *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
+  the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
+  re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **681 citations over
+  153 files, 0 line problems, 121 bare continuations judged, blind queue down to 54.** Two instrument lessons in
+  one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
+  fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
+  must be anchored on a RUN, not a phrase — "both print enrollmentType instead" is three `<w:t>` elements and does
+  not exist contiguously in `document.xml`, while `:207</w:t>` does. A short run like `:48` is a prefix of others,
+  so run-boundary anchors are checked for uniqueness by the pass itself before anything is written.
 - **After any batch that edits a method body the document quotes, or a citation whose parenthetical contains
   source code**, run `php storage/app/scratch/lane70-gloss-snippets.php` and prove it with
   `php storage/app/scratch/mutate-lane70-gloss.php`. This is the seventh prose family: **a citation that quotes a
@@ -1064,7 +1080,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   exited 1 before the checker ran and the *control* failed. Compare bytes, not sizes; `2>&1`, never a
   POSIX device.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  126 symbol/range pairs it checks, 8 pairs flagged for reading across 5 distinct constructs). It takes the construct the prose *names* and asks whether
+  127 symbol/range pairs it checks, 8 pairs flagged for reading across 5 distinct constructs). It takes the construct the prose *names* and asks whether
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
   Against the Current Build" (pass 118/119/120) and one citation copied into two sections that both pointed at
@@ -1092,7 +1108,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 391 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 392 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
