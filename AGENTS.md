@@ -1247,11 +1247,26 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   proved by its own message, because `judges-nothing` and `missing-dump` both exit 1 and a leg that accepts either
   passes on a broken instrument. `--show-ok` exists so the harness can find a live correct pairing instead of
   remembering one. It is NOT a CI step — ruled again on 2026-10-25 after every numbered row in its queue had been
-  opened: the run judges 136 bare pointers and **110 of them are UNBOUND** because the sentence names no construct
-  at all, so a gate on this tool would demand red on rows that are legitimately a human read. Reading the rows that remain shows why the same
+  opened: the run judges 136 bare pointers and **110 of them are UNBOUND**, so a gate on this tool would demand red
+  on rows that are legitimately a human read. **And the reason those 110 had never been read is a defect in the
+  instrument, not in the document:** the footer claimed "UNBOUND and BLIND are printed as queues" while every print
+  condition read `if ($all && $printed++ < $limit)` with `$limit` defaulting to **0** — false for every caller, so
+  the queue existed only as a number, and one branch of 71 rows had no print statement at all. Fixed: queue rows now
+  print unconditionally, `--limit=N` is an opt-in skim that appends `the queue above is INCOMPLETE` with the
+  withheld count, `--all` was **deleted rather than left working** (an accepted-and-inert flag is how a mutating run
+  looks clean), and the run refuses unless `printed + withheld == UNBOUND + BLIND` — proved by switching one printer
+  off in a copy of the tool, which answered `tallies 111 queue row(s) … but wrote 40 and withheld 0`, exactly the 71
+  rows that branch owns. Measured decomposition of the queue, over 37 files: **71** sentences name no construct at
+  all, **32** name one that no pairing rule reaches, **7** pair a `Class::method` from a different clause
+  (`RegistrarController.php` 16, `BlockingController.php` 8, `EvaluationController.php` 7, `ExamController.php` 6,
+  `WorkflowService.php` 5, `Students/Show.jsx` 5 are the largest). Reading the rows that remain shows why the same
   ruling held from the first day — they are still the tool's own limits, a prose-order gloss
   (`:30 (PrintAssets::logoDataUri) and :31 (config(…)))`, where the second half names a call with arguments the
   identifier pattern does not capture) and a register row's camelCase column label.
+  **A leg must be able to fail on its own terms:** the new cap leg first counted **6** rows under `--limit=5`,
+  because `^UNBOUND ` also matches the footer's own sentence — a queue row is recognised by the padding its printf
+  writes, not by the leading word. And an exit code cannot prove a refusal here: the tool already exits 1 whenever
+  MOVED is non-zero, so the invariant leg asserts on the message, not the status.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read

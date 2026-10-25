@@ -211,6 +211,52 @@ $report('judges-nothing-refuses',
 $report('missing-dump-refuses', $rc6 === 1 && str_contains($out6, 'REFUSED') && str_contains($out6, 'dump-docx-flat'),
     strtok($out6, "\n") ?: 'exit '.$rc6);
 
+// LEGS on the QUEUE printing. The footer used to claim UNBOUND and BLIND were printed while `$limit = 0` made every
+// print condition false — so a 110-row human queue existed only as a number. These three legs are what makes that
+// claim true: the rows must arrive, a cap must SAY it capped, and a branch that tallies without writing must stop
+// the run.
+$b7 = $parse($out);
+$unboundLines = preg_match_all('/^UNBOUND    \S/m', $out);
+$blindLines = preg_match_all('/^BLIND      /m', $out);
+$report('queue-rows-arrive', $b7 !== null && $unboundLines === $b7['unbound'] && $blindLines === $b7['blind'],
+    $b7 === null ? 'no summary' : sprintf('%d UNBOUND and %d BLIND line(s) written against a tally of %d + %d',
+        $unboundLines, $blindLines, $b7['unbound'], $b7['blind']));
+
+[$rc8, $out8] = $run(['--limit=5']);
+// `^UNBOUND ` also matches the footer's own sentence, so a row is recognised by the run of spaces the printf pads.
+$capLines = preg_match_all('/^(?:UNBOUND {4}|BLIND {6})\S/m', $out8);
+$report('cap-says-it-capped', $rc8 === 1 && $capLines === 5 && str_contains($out8, 'INCOMPLETE')
+    && str_contains($out8, 'withheld'),
+    sprintf('%d row(s) under --limit=5; footer says %s', $capLines,
+        str_contains($out8, 'INCOMPLETE') ? 'INCOMPLETE' : 'nothing about a cap'));
+
+// The invariant is proved against a COPY of the tool with one printer switched off, because the defect it guards
+// against is a branch of the tool itself. The copy sits beside the real file: `dirname(__DIR__, 3)` from a
+// sub-directory resolves outside the repository and the require of the shared module fails there.
+$copy = $root.'/storage/app/scratch/mut-lane70-anchor-toolcopy.php';
+$toolLines = (array) file($tool);
+$guardAt = null;
+foreach ($toolLines as $i => $row) {
+    if (str_contains((string) $row, '$mayPrint()') && str_contains((string) ($toolLines[$i + 1] ?? ''), 'the sentence names no construct at all')) {
+        $guardAt = $i;
+
+        break;
+    }
+}
+if ($guardAt === null) {
+    $report('silent-bucket-refuses', false, 'REFUSED TO RUN: the queue printer could not be found in the tool, so the invariant is unproved');
+} else {
+    $toolLines[$guardAt] = str_replace('$mayPrint()', 'false', (string) $toolLines[$guardAt]);
+    file_put_contents($copy, implode('', $toolLines));
+    $cmd = escapeshellarg($php).' '.escapeshellarg($copy).' 2>&1';
+    $out9 = [];
+    exec($cmd, $out9, $rc9);
+    $out9 = implode("\n", $out9);
+    $report('silent-bucket-refuses', $rc9 === 1 && str_contains($out9, 'REFUSED')
+        && str_contains($out9, 'queue row(s)'), strtok($out9, "\n") ?: 'exit '.$rc9);
+    unlink($copy);
+}
+
 array_map('unlink', glob($tmp.'/*') ?: []);
 @rmdir($tmp);
 

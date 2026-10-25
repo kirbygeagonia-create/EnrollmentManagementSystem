@@ -29,20 +29,16 @@
  * them thirteen pointers inside one policy file). A clean read of a pairing is not a clean read of the file it
  * points at.**
  *
- *   php storage/app/scratch/lane70-anchor-cites.php [--dump=path] [--all] [--limit=N]
+ *   php storage/app/scratch/lane70-anchor-cites.php [--dump=path] [--limit=N] [--show-ok]
  */
 $root = dirname(__DIR__, 3);
 require_once $root.'/storage/app/scratch/docx-cite-attribution.php';
 $dump = $root.'/storage/app/scratch/docx-flat.txt';
-$all = false;
 $limit = 0;
 $showOk = false;
 foreach ($argv as $a) {
     if (str_starts_with($a, '--dump=')) {
         $dump = substr($a, 7);
-    }
-    if ($a === '--all') {
-        $all = true;
     }
     if (str_starts_with($a, '--limit=')) {
         $limit = (int) substr($a, 8);
@@ -54,6 +50,10 @@ foreach ($argv as $a) {
         $showOk = true;
     }
 }
+// `--all` was deleted rather than left working: the queue rows it gated are now printed unconditionally, and
+// `$limit` used to default to 0, which made `printed++ < limit` false for every caller — so `--all` printed nothing
+// and the footer still claimed the queue was in the output. A flag that is accepted and inert is how a checker
+// reports a queue it never wrote (lane 44's sleeping mutant).
 if (! is_file($dump) || filesize($dump) < 1000) {
     echo "REFUSED: no dump at {$dump} — run dump-docx-flat.php first.\n";
     exit(1);
@@ -124,6 +124,22 @@ $sentenceSymbols = static function (string $sentence): array {
 
 $counts = ['OK' => 0, 'MOVED' => 0, 'NO-ANCHOR' => 0, 'UNBOUND' => 0, 'BLIND' => 0];
 $printed = 0;
+$withheld = 0;
+// Every row this tool puts in a queue bucket MUST reach the output, or the run must say how many it held back —
+// `printed + withheld == UNBOUND + BLIND` is refused below if it is not true. A tally of blind spots with no
+// evidence under it is the defect this repository already removed from lane 61's blind list and from the gloss
+// checker's summary; the footer used to promise these rows were printed while `$limit = 0` made every print
+// condition false.
+$mayPrint = function () use (&$printed, &$withheld, $limit): bool {
+    if ($limit > 0 && $printed >= $limit) {
+        $withheld++;
+
+        return false;
+    }
+    $printed++;
+
+    return true;
+};
 foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $to = $to ?? $from;
     if ($from < 1) {
@@ -132,7 +148,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $own = $owners[$k];
     if ($own === null) {
         $counts['BLIND']++;
-        if ($all && $printed++ < $limit) {
+        if ($mayPrint()) {
             printf("BLIND      :%d-%d  no file named within the attribution window on dump line %d\n",
                 $from, $to, docxLineOf($offset, $lineStart) + 1);
         }
@@ -192,6 +208,10 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $mineKey = array_search(true, array_column($cites, 'mine'), true);
     if ($mineKey === false) {
         $counts['BLIND']++;
+        if ($mayPrint()) {
+            printf("BLIND      %-28s :%d-%d  the token could not be found in its own sentence after pairing — read dump line %d\n",
+                basename((string) $own['file']), $from, $to, docxLineOf($offset, $lineStart) + 1);
+        }
 
         continue;
     }
@@ -202,6 +222,10 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     ));
     if ($symbols === []) {
         $counts['UNBOUND']++;
+        if ($mayPrint()) {
+            printf("UNBOUND    %-28s :%d-%d  the sentence names no construct at all — %s\n",
+                basename($own['file']), $from, $to, trim(mb_substr((string) $sentence, 0, 96)));
+        }
 
         continue;
     }
@@ -210,7 +234,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $pair = docxPairByUnit($sentence, $cites, $symbols);
     if (! array_key_exists($mineKey, $pair['byCite'])) {
         $counts['UNBOUND']++;
-        if ($all && $printed++ < $limit) {
+        if ($mayPrint()) {
             printf("UNBOUND    %-28s :%d-%d  no construct in the sentence reaches it — %s\n",
                 basename($own['file']), $from, $to, trim(mb_substr($sentence, 0, 90)));
         }
@@ -226,7 +250,7 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     if ($sym['hint'] !== null && strcasecmp(basename($own['file'], '.php').'.php', $sym['hint']) !== 0
         && basename($own['file']) !== $sym['hint']) {
         $counts['UNBOUND']++;
-        if ($all && $printed++ < $limit) {
+        if ($mayPrint()) {
             printf("UNBOUND    %-28s :%d-%d  paired with %s, whose own qualifier is %s — a clause boundary, read it\n",
                 basename($own['file']), $from, $to, $sym['name'], $sym['hint']);
         }
@@ -240,12 +264,20 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
     $path = $resolve($own['file']) ?? ($sym['hint'] === null ? null : $resolve($sym['hint']));
     if ($path === null) {
         $counts['BLIND']++;
+        if ($mayPrint()) {
+            printf("BLIND      %-28s :%d-%d  neither the citation's file nor the name's qualifier resolves in this repository\n",
+                basename((string) $own['file']), $from, $to);
+        }
 
         continue;
     }
     $fl = file($path);
     if ($fl === false || $to > count($fl)) {
         $counts['BLIND']++;
+        if ($mayPrint()) {
+            printf("BLIND      %-28s :%d-%d  the file could not be read, or %d is past its end (%d lines) — the bounds sweep should have refused this\n",
+                basename((string) $own['file']), $from, $to, $to, $fl === false ? 0 : count($fl));
+        }
 
         continue;
     }
@@ -298,6 +330,16 @@ foreach ($scan['bare'] as $k => [$from, $to, $offset]) {
 }
 
 $judged = $counts['OK'] + $counts['MOVED'] + $counts['NO-ANCHOR'];
+$queue = $counts['UNBOUND'] + $counts['BLIND'];
+if ($printed + $withheld !== $queue) {
+    printf("REFUSED: the run tallies %d queue row(s) (UNBOUND %d, BLIND %d) but wrote %d and withheld %d.\n"
+        ."       A queue that is counted and not printed is the defect this tool exists to avoid — some branch\n"
+        ."       increments a bucket without going through the printer, so a reader would be sent after rows that\n"
+        ."       were never delivered.\n",
+        $queue, $counts['UNBOUND'], $counts['BLIND'], $printed, $withheld);
+    exit(1);
+}
+
 if ($judged === 0) {
     // Lane 43's lesson: a checker that matched nothing looks exactly like a checker that found nothing wrong.
     printf("REFUSED: %d bare pointer(s) read and 0 judged — the dump is empty of attributable pointers, which is\n"
@@ -308,9 +350,11 @@ if ($judged === 0) {
 
 printf("\n%d bare pointer(s) judged: %d OK, %d MOVED, %d NO-ANCHOR, %d UNBOUND (no construct reaches it), %d BLIND (no owner within the window)\n",
     count($scan['bare']), $counts['OK'], $counts['MOVED'], $counts['NO-ANCHOR'], $counts['UNBOUND'], $counts['BLIND']);
-echo "UNBOUND and BLIND are printed as queues, not cleared: a sentence that names no construct can only be read.\n"
+echo "UNBOUND and BLIND are written above as a queue, not cleared: a sentence that names no construct can only be\n"
+    ."read. Run with --limit=N to skim, and the run refuses unless printed + withheld equals the queue tally.\n"
     ."MOVED says which pairing to open, not that the pointer is false — attribution here is shared with the\n"
     ."bounds sweep and the meaning sweep (docx-cite-attribution.php), so a MOVED row is a claim this tool can\n"
-    ."make only where those two already agree.\n";
+    ."make only where those two already agree.\n"
+    .($withheld > 0 ? '  NOTE: '.$withheld.' queue row(s) withheld by --limit='.$limit." — the queue above is INCOMPLETE.\n" : '');
 
 exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0);
