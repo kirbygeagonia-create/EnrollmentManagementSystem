@@ -27,12 +27,10 @@ $openWords = '\b(Open[ed]?|still owed|Owed|waits? on|Waiting|To be (?:confirmed|
 $closedWords = '\b(Closed|Answered|Ruled|Fixed|Resolved|Implemented|Done|Adopted|Retired|Documented)\b';
 
 $openRows = [];
-$actorRows = [];
 foreach ($rows as $r) {
     $n = (int) $r[1];
     $body = trim($r[2]);
     $cells = array_map('trim', explode('|', $body));
-    $leading = $cells[0] ?? '';
     $flat = preg_replace('/\s+/u', ' ', $body);
 
     // A gap's TITLE can begin "Open a second signature…", so a verdict is the cell that LEADS with the
@@ -47,10 +45,10 @@ foreach ($rows as $r) {
         $openRows[] = [$n, mb_substr($flat, 0, 190)];
     }
 
-    // §28.8's question is different: which rows still name an actor.
-    if (preg_match('/Registrar|Accounting|Scholarship|Guidance|Admission|Academic|Blocking|Office|department|the school/iu', $leading) && preg_match('/(?:'.$openWords.')/iu', $body) && ! preg_match('/(?:'.$closedWords.')/iu', $body)) {
-        $actorRows[] = [$n, mb_substr($flat, 0, 150)];
-    }
+    // "Names an actor" is NOT asked here. An earlier version of this tool matched the office words against a row's
+    // LEADING cell, which for a §24 dictionary row is the table name — so `scholarshiptypes` was charged as work
+    // owed by the Scholarship office, a false row built out of a substring. `lane61-who-owes.php` reads the actual
+    // "Who must act" column, and its answer is quoted below instead of re-derived (one definition per word).
 }
 
 printf("%d rows parsed from the dump.\n\n", count($rows));
@@ -61,11 +59,34 @@ foreach ($openRows as [$n, $t]) {
 }
 echo '  count: '.count($openRows)."\n\n";
 
-echo "=== OFFICE: rows that name an actor AND still carry open words (owed work) ===\n";
-foreach (array_slice($actorRows, 0, 25) as [$n, $t]) {
-    echo "  ROW {$n}: {$t}\n";
+// The owed-work half is read out of the instrument that owns it. If it answers nothing, this run refuses rather
+// than reporting an empty OFFICE list — a broken reader otherwise looks exactly like a clean register. `--owes=`
+// points the delegation at another file, which is how the refusal below is proved (a stub that prints no tally
+// must stop the run) rather than being asserted from the code's intention.
+$owesTool = $root.'/storage/app/scratch/lane61-who-owes.php';
+foreach ($argv as $a) {
+    if (str_starts_with($a, '--owes=')) {
+        $owesTool = substr($a, 7);
+    }
 }
-echo '  count: '.count($actorRows)."\n";
+$owes = [];
+exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg($owesTool).' 2>&1', $owes, $owesRc);
+$owesText = implode("\n", $owes);
+if (preg_match('/rows whose column still NAMES an actor: (\d+)/u', $owesText, $om) !== 1) {
+    printf("REFUSED: lane61-who-owes.php answered no actor tally (exit %d), so owed work cannot be reported.\n", $owesRc);
+    foreach (array_slice($owes, 0, 6) as $l) {
+        echo '  '.$l."\n";
+    }
+    exit(1);
+}
+echo "=== OFFICE: the rows whose \"Who must act\" column still names an actor ===\n"
+    .'  read from lane61-who-owes.php, which indexes that column; this tool no longer guesses at it.'."\n";
+foreach ($owes as $l) {
+    if (preg_match('/^(?:rows whose column still NAMES|Owner|Registrar|Accounting|Scholarship|Guidance|Admission|Academic|Blocking|Developer|Front-end|SysAdmin|Project|Department|School|College)/u', $l) === 1) {
+        echo '  '.trim($l)."\n";
+    }
+}
+echo '  count: '.(int) $om[1]."\n";
 
 echo "\n=== SHEET: Documentation/School-Decision-Sheet-2026-10-23.md, item by item ===\n";
 $sheet = (string) file_get_contents($root.'/Documentation/School-Decision-Sheet-2026-10-23.md');
