@@ -1267,6 +1267,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   because `^UNBOUND ` also matches the footer's own sentence — a queue row is recognised by the padding its printf
   writes, not by the leading word. And an exit code cannot prove a refusal here: the tool already exits 1 whenever
   MOVED is non-zero, so the invariant leg asserts on the message, not the status.
+  **Printing the queue is what made it readable, and it found the twenty-third wrong target immediately.** §28's
+  row 9 and §27's zero-balance deadlock row both name a checklist key **`registrar_ready`** — a key that exists
+  nowhere in `app/`, `resources/`, `routes/`, `tools/`, `tests/`, the guides or CI. The array at
+  `RegistrarController.php:151-162` holds exactly seven keys and the one they mean is
+  `registrarApprovalPending` at **:156**, false precisely when the next pending box is another office — so the
+  *claim* was right and the identifier it quoted was invented, which no bounds check can see because both line
+  numbers are live in the named file. Pass 227 renamed both occurrences (`expect=2`, and it asserts the seven-key
+  count before writing). The reading aid that turned the row up is
+  `storage/app/scratch/lane70-read-queue.php`: for a pointer the checker cannot bind, it prints the enclosing
+  `public function` of the cited line next to the document's own sentence, which is the check to run when the
+  prose names no identifier at all.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
