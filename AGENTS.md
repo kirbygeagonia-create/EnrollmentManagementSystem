@@ -982,7 +982,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (728 citations over 155 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (729 citations over 155 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1315,6 +1315,50 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   which is the point of asserting the lines rather than trusting the arithmetic. After the write the queue is
   136 judged = 17 OK + 7 MOVED + 2 NO-ANCHOR + **109 UNBOUND** + 1 BLIND: one pointer became two, so the human-read
   queue grew by one and that is the honest accounting, not a regression.
+  **Passes 232-232c are the twenty-seventh, and they closed a claim, not only a pointer.** Reading the WorkflowService
+  cluster found three shapes at once. (a) Two ranges for `stepsFor()` — `:49-80` (two copies) and `:52-83` — both walk
+  off the construct's closing brace (:76) into `createWorkflow()`'s docblock; every bounds check calls them live.
+  (b) The §29.2 T-1 row cited `WorkflowService.php:208-297 (box list)`, but 208-297 is `signStep()`, which holds no box
+  list — the seven entries and the `array_filter()` that makes six are `stepsFor()` at `:56-71`, while the row's *other*
+  pointer (`:261-272 (order check)`) was correct. Sixth wrong target of this lane. (c) §13's "One workflow form per
+  enrollment" row said `createWorkflow()` "is called once, from the Evaluation signature", and §18.6's workflow row said
+  the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
+  one caller", citing `EvaluationController.php:532-535 (the only createWorkflow call)`. A call-site census of `app/`
+  answers **two**: `EnrollmentIssuer.php:75`, inside `issue()` directly after `Enrollments::create` at :73, and
+  `EvaluationController.php:803`, behind `if (! $enrollment->enrollmentworkflow)` at :802. So the one-form rule is held
+  by that existence check, not by a single call site — the row's conclusion stands, its stated reason does not — and
+  neither cited span contained the call at all (`:532-535` is `decideStanding()`'s validation, `:466-485` is
+  `captureProfile()`'s address loop). **When a register row explains a rule by a count, measure the count**: the script
+  refuses unless `app/` answers exactly the number the new sentence asserts.
+  **Then my own repair made a blind spot, and only the sweep's blind list saw it.** Lengthening §13's step-row sentence
+  pushed its bare `:796-809` past the sweep's 160-character attribution window: the run went from 0 blind to 1 blind
+  while still printing **0 line problem(s)**. Pass 232c named the file in the pointer. *After any pass that lengthens a
+  sentence, read the blind-list delta, not just the problem count* — a citation can become unreadable to the gate purely
+  because prose grew. Second instrument lesson in the same pair of edits: `the only createWorkflow call` is **count 0**
+  in `document.xml` because the styled `createWorkflow` run splits it, so the label was rewritten around the split with
+  needle `the only ` + anchor `:801-804` (first needle occurrence after a unique anchor) rather than a cell rewrite,
+  which would have flattened the cell's styled runs to one. After all three writes: **729 citations / 155 files /
+  0 line problems, 134 bare judged + 1 blind** (the by-design example in §1.1), the anchor run 135 judged = 17 OK +
+  7 MOVED + 2 NO-ANCHOR + **108 UNBOUND** + 1 BLIND, `lane37` 908 references / 0 problems, `lane32` 5 distinct pairs /
+  8 flags, OOXML CLEAN, `verify-docx` CONSISTENT.
+  **Passes 233-234 took the §13 examination cluster, and a refusal is what found the third shape.** Six copies of
+  `ExamController.php:181-247` all named the *passer transfer* while the branch closes at :241 and `} else {` is :244 —
+  so each range reached six lines into the comment that explains the **opposite** case (:245-249) — now `:181-241`.
+  The row's two bare continuations were loose the same way: `:225` (one line inside the waived query) became the whole
+  guarded block `:210-240`, and `:239-250` (opened on the waived row's closing bracket) became the else arm
+  `:244-251`. §13's paragraph said **`entranceApplicants at :239-250`** — the *call site* at :250 re-used as if it were
+  the definition; the method is `:279-288`. And two rows cited the method as `:279-290`, which walks past its brace at
+  :288, over the blank line after it, into `recordGeneral()`'s docblock at :290. **A token's count is not its owner list:** a
+  first draft asked `expect=3` for `:279-290` and the engine answered **3 occurrences** — the third is
+  `IDController.php:279-290` in §20's ID-remark row, a different file whose span is a legitimate method. Both
+  ExamController copies were then taken by anchor instead, after measuring each anchor phrase unique in
+  `document.xml`. Same batch, same shape at `WorkflowService.php:52-83` and `:49-80` → `:52-76`.
+  Readings after 234: **729 citations / 155 files / 0 line problems, 134 bare judged + 1 blind**, anchor 135 judged =
+  17 OK + 7 MOVED + 2 NO-ANCHOR + **108 UNBOUND** + 1 BLIND, `lane37` 908 references / 0 problems, `lane32` 5 distinct
+  pairs / 8 flags, `repo-file-line-citations` 78 / 0, `lane59` 6 judged all match, `lane61` silent, whole Pest suite
+  **806 passed / 5,458 assertions**, Pint 391 PASS, PHPStan 0, ESLint 0, Vite ✓, OOXML CLEAN, `verify-docx` CONSISTENT,
+  Word 224 pp / 185 tables. **No test in `tests/` reads the authority docx** (measured by grep), so a docx pass never
+  invalidates a suite run — but the docx has its own gate, the citation sweep, which every pass must leave at 0.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
