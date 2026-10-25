@@ -3,8 +3,9 @@
 /**
  * Lane 70: does the line a bare pointer quotes actually hold the thing the sentence names?
  *
- * `:113-135` says nothing to a bounds checker as long as line 113 is not blank, and 92 of the document's
- * continuations are bare. Printing them as blind spots (lane 69) was honest but left them unmeasured, and the
+ * `:113-135` says nothing to a bounds checker as long as line 113 is not blank, and 136 of the document's
+ * continuations are bare (the bounds sweep judges 135 and prints 1 as a blind spot). Printing them as blind spots
+ * (lane 69) was honest but left them unmeasured, and the
  * proposer in this same folder showed why that matters: the row that reads "Copied from applicantType ( :328 )"
  * lands on `'uploadedDate' => now()`, and the one that reads `ShiftRequestController::decide(), :200` lands on
  * `decide()` at :228. So this tool takes the identifier the sentence itself names — a `Class::method`, a column,
@@ -14,8 +15,18 @@
  * the true line is printed), NO-ANCHOR (the anchor is nowhere in that file, so the row names the wrong file),
  * UNBOUND (the sentence offers no identifier to search for, which stays a human read and is counted, not cleared).
  *
- * It refuses on MOVED and NO-ANCHOR, because both are false claims about the build. Reading is the human half,
- * but a checker can at least say which sentences are worth reading.
+ * **MOVED is a pairing to read, not a refutation. Measured in full on 2026-10-25: every one of the 47 MOVED rows
+ * was read back, and 0 of them is a pointer the build contradicts.** 8 name a different file than the sentence's
+ * own citation names, because this tool picks the first file on the dump row while the bounds sweep picks the one
+ * nearest before the token; 6 cite a clause *inside* the named construct, which lane 32's encloses rule permits
+ * and this tool has no such rule; the remaining 33 charge the sentence's FIRST identifier to a range another
+ * construct owns — very often the register row's own column label (`maxStudents`, `totalAssessedAmount`,
+ * `requiresEntranceExam`, `enrollmentType`) rather than the thing the citation was offered for. Its exit is loud
+ * on purpose — a silent instrument gets ignored — but exit 1 here means "47 pairings worth reading", not "the
+ * document is wrong". Only the single defect it surfaced on 2026-10-24 (a settlement row quoting a range that
+ * named no file, fixed in pass 190) has ever been the document's, and that came from reading, not from the exit.
+ *
+ *   php storage/app/scratch/lane70-anchor-cites.php [--dump=path] [--all] [--limit=N]
  *
  *   php storage/app/scratch/lane70-anchor-cites.php [--dump=path] [--all] [--limit=N]
  */
@@ -218,5 +229,8 @@ foreach ($tokens as $t) {
 
 printf("\n%d bare pointer(s) judged: %d OK, %d MOVED, %d NO-ANCHOR, %d UNBOUND (no identifier to ask about), %d UNRESOLVED (no file anywhere near)\n",
     count($tokens), $counts['OK'], $counts['MOVED'], $counts['NO-ANCHOR'], $counts['UNBOUND'], $counts['UNRESOLVED']);
-echo "UNBOUND and UNRESOLVED are printed as queues, not cleared: a sentence that names no identifier can only be read.\n";
+echo "UNBOUND and UNRESOLVED are printed as queues, not cleared: a sentence that names no identifier can only be read.\n"
+    ."MOVED is the same kind of queue: it says which pairing to read, not that the pointer is false. Read the row's\n"
+    ."own sentence first — this tool takes the file named anywhere on the dump row and the first identifier in the\n"
+    ."sentence, and both choices have been measured as wrong more often than the document has been wrong.\n";
 exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0);

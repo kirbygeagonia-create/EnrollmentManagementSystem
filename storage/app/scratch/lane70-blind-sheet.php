@@ -13,13 +13,42 @@
  * chasing pointers that were never unattributed.
  *
  *   php storage/app/scratch/lane70-blind-sheet.php
+ *   php storage/app/scratch/lane70-blind-sheet.php --dump=<copy>   # read that dump (and let the sweep read it too)
+ *   php storage/app/scratch/lane70-blind-sheet.php --sweep=<copy>  # read that sweep's output (the harness's stub)
  */
 $root = dirname(__DIR__, 3);
 $php = PHP_BINARY;
 $sweep = $root.'/storage/app/scratch/sweep-docx-citations.php';
 $flat = $root.'/storage/app/scratch/docx-flat.txt';
 
-exec(escapeshellarg($php).' '.escapeshellarg($sweep).' 2>&1', $out, $rc);
+// Honouring --dump= is what lets a mutant harness plant a defect in a copy: a flag that is accepted but not read
+// turns a planted failure into a clean-looking run, which is exactly how lane 41's first harness lied. --sweep=
+// exists for the same reason one level up: the refusals below fire when the sweep's OWN output changes shape (a
+// row with no dump line, a tally with no rows, a line number that names no such token), and nothing but a stub
+// can hand this tool that answer. Both flags are forwarded, so the pair is always read together.
+$dumpFlag = '';
+foreach ($argv as $a) {
+    if (preg_match('/^--dump=(.+)$/', $a, $m) === 1) {
+        $flat = $m[1];
+        $dumpFlag = ' --dump='.escapeshellarg($m[1]);
+    }
+    if (preg_match('/^--sweep=(.+)$/', $a, $m) === 1) {
+        $sweep = $m[1];
+    }
+}
+
+if (! is_file($sweep)) {
+    printf("REFUSED: the sweep to read is not a file (%s) — no output, so no blind spot can be listed.\n", $sweep);
+    exit(1);
+}
+
+exec(escapeshellarg($php).' '.escapeshellarg($sweep).$dumpFlag.' 2>&1', $out, $rc);
+
+if ($rc !== 0 && $rc !== 1) {
+    printf("REFUSED: the sweep exited %d — that is neither a clean run nor a reported problem, so its output is\n"
+        ."       not a measurement. Last line: %s\n", $rc, (string) end($out));
+    exit(1);
+}
 
 $tally = null;
 $hits = [];
@@ -33,7 +62,14 @@ foreach ($out as $l) {
 }
 
 if ($tally === null) {
-    echo "REFUSED: the sweep printed no blind-spot tally, so nothing here was read.\n";
+    // Quote the sweep rather than just saying nothing was parsed: its own first line usually names the real cause
+    // (a missing dump, a bad flag), and a refusal that hides it sends the reader to the wrong tool. Measured:
+    // `--dump=<nonexistent>` exits 1 here with "no blind-spot tally" alone, while the sweep had already said
+    // "the dump … is missing or too short".
+    echo "REFUSED: the sweep printed no blind-spot tally, so nothing here was read. Its own output was:\n";
+    foreach (array_slice($out, 0, 6) as $l) {
+        echo '  '.$l."\n";
+    }
     exit(1);
 }
 if (count($hits) !== $tally) {
@@ -52,6 +88,34 @@ $fileRe = '/[A-Za-z0-9_.\-\/]+\.(?:php|jsx|js|md|json|neon|xml)/';
 // The sweep's context is a byte window out of the dump with newlines and tabs folded to spaces; fold the same way
 // so the two agree on where the token actually sits.
 $fold = static fn (string $s): string => preg_replace('/ +/', ' ', strtr($s, ["\n" => ' ', "\r" => ' ', "\t" => ' ']));
+
+// Each row the sheet is about to print is a claim about a physical line: "the sweep says this token sits on dump
+// line N". Check that before printing any row. Without the check, an off-by-one in either tool's line counter
+// paints an empty sentence, which reads exactly like a pointer written with no context — and it also lets a
+// --dump= that the sweep never read pass unnoticed, because a copy's line number names nothing in the real file.
+// A row that cannot be located refuses the whole run; a blank row is not evidence.
+$unlocatable = [];
+foreach ($hits as $h) {
+    if ($h['line'] < 1 || $h['line'] > count($lines)) {
+        $unlocatable[] = sprintf('%s: the sweep names dump line %d, but the dump has %d line(s).',
+            $h['token'], $h['line'], count($lines));
+
+        continue;
+    }
+    if (strpos($fold($lines[$h['line'] - 1]), $h['token']) === false) {
+        $unlocatable[] = sprintf('%s: dump line %d does not carry that token — its own text reads "%s".',
+            $h['token'], $h['line'], mb_substr($fold($lines[$h['line'] - 1]), 0, 60));
+    }
+}
+if ($unlocatable !== []) {
+    printf("REFUSED: %d of %d blind row(s) could not be located in %s, so none is printed. The dump and the sweep\n"
+        ."       are not the same reading — re-run dump-docx-flat.php, or check what --dump= was pointed at.\n",
+        count($unlocatable), count($hits), $flat);
+    foreach ($unlocatable as $u) {
+        echo '  '.$u."\n";
+    }
+    exit(1);
+}
 
 usort($hits, static fn (array $a, array $b): int => [$a['line'], $a['token']] <=> [$b['line'], $b['token']]);
 

@@ -999,8 +999,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   clause mis-attribution — it hung `:31` on `PrintAssets.php` when the number belonged to the
   `clearance-slip.blade.php:30` clause two words earlier, and hung `:80` on `Str::headline()` when the sentence
   had already cited that construct at `:72`. Five verdicts were read back against the code: **four were the
-  instrument, one was the document**. So it prints, and exits 0, and is NOT a CI step; promoting a checker whose
-  precision is one in five would teach everyone to ignore the red. The one real defect it surfaced was fixed in
+  instrument, one was the document**. So it prints, and exits 1 **loudly by design**, and is NOT a CI step; promoting
+  a checker whose precision is one in five would teach everyone to ignore the red. **That sample is now a full read,
+  and the sample was optimistic: on 2026-10-25 all 47 MOVED rows were read back and none of them is a pointer the
+  build contradicts.** 8 name a file other than the one the sentence's own citation names — this tool takes the
+  first file on the dump row, where the bounds sweep takes the nearest one *before* the token; 6 quote a clause
+  inside the construct they name (the verdict's last clause, the signature line, the cap), which lane 32's encloses
+  rule permits and this tool never learned; the remaining 33 charge the sentence's **first** identifier to a range
+  another construct owns, and very often that identifier is the register row's own **column label** —
+  `maxStudents`, `totalAssessedAmount`, `requiresEntranceExam`, `enrollmentType` — not the thing the pointer was
+  offered for. Read a MOVED row as "which pairing to open", never as "this citation is false"; the tool now says so
+  in its own footer, and its docblock carries the count. The instrument's three choices (file, sentence, anchor) are
+  the whole defect, and all three are already solved elsewhere: the sweep's nearest-preceding-name rule, lane 32's
+  direction-plus-encloses rule. **Re-measure a precision claim before repeating it** — AGENTS.md asserted this
+  tool "exits 0" while its own last line reads `exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0)`,
+  and the assertion was written from the tool's intention rather than its output. The one real defect it surfaced was fixed in
   pass 190: the settlement row quoted `( :195-215 )` for a balance formula, the number named no file so no
   instrument had ever read it, and the formula is `AssessmentController.php:256-272` — the grant insert and the
   balance update inside `applyScholarship()`, which the scholarship row had been citing correctly all along.
@@ -1150,6 +1163,31 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   ("`Payments::held()` ( `PaymentPolicy.php:115` )") is accounted for on the line. It exits 0 by design — only
   NOT-IN-FILE is a statement the repository can falsify, and the queue verdicts are the human half — so it is an
   instrument, not a gate, until its precision is measured on more than one file.
+- **After any batch that changes `lane70-blind-sheet.php` or the shape of the sweep's UNATTRIBUTED line**, run
+  `php storage/app/scratch/lane70-blind-sheet.php` and prove it with
+  `php storage/app/scratch/mutate-lane70-blind-sheet.php` (10 legs). The sheet is the reader's only route to the
+  blind list, so every guard it carries is a refusal the repository has already paid for, and each one now has a
+  leg: a row the sweep tallies but the sheet cannot parse, a run that printed no tally at all, a sweep that exited
+  2 (neither clean nor a reported problem, so its output is not a measurement), a dump line number past the end of
+  the file, a named line that does not carry the token it names, a missing dump, a byte-identical copy that must
+  change nothing, and a copy in which the blind token is given its file — which must answer **0 blind pointer(s)**,
+  proving `--dump=` is forwarded to the sweep rather than accepted by the sheet alone. Two of those legs are only
+  reachable through `--sweep=`, a stub-output override, because the sheet and the sweep deliberately read the *same*
+  bytes: a divergence between them cannot be planted in a dump, and that divergence is exactly what the per-row
+  check exists to catch. **The check itself replaced a blank with a refusal**: a wrong line number used to render an
+  empty sentence, which reads exactly like a pointer written with no context and sends the reader to the wrong
+  paragraph. **Prove a harness against the tool's own previous bytes.** `git show HEAD:` gave back the committed
+  sheet, and fed the out-of-range stub it answered `1 blind pointer(s)` and **exit 0** — the flag was inert and the
+  guard did not exist. Had I run only the new harness and watched ten PASSes, I would have recorded a green suite
+  over code that cannot fail; a harness whose legs all pass on the first run is the shape that deserves the extra
+  probe, not the extra trust. And a refusal must relay the cause it was handed: `--dump=<nonexistent>` first
+  printed only "no blind-spot tally" while the sweep had already said *"the dump … is missing or too short"*, so
+  the sheet now quotes the sweep's own lines — a reader pointed at the wrong tool fixes the wrong tool. The dump is
+  2,766 lines and the one remaining blind row is the by-design example inside §1.1's own `2026-10-16–20` revision
+  row — lane 51's record of the re-measure, which quotes `the signature at :273` to show a bare continuation that
+  names no file; the harness reads that phrase's line number out of the dump rather than
+  hardcoding it, and refuses the whole run if it does not occur exactly once — a needle that cannot land reports
+  BAD, never a pass.
 - **§28.8's "Who owes what" table must agree with the column it claims to be counted from** (lane 69). It
   asserted 46 owed slots while `lane61-who-owes.php` — which reads the "Who must act"/"Who must decide"
   column itself — counted 8, and 2 after the owner's rulings of 2026-10-24. This file recorded that exact
@@ -1199,7 +1237,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 398 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 399 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
