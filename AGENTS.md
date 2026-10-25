@@ -1288,6 +1288,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   attribution dispute the reader raised is thereby settled by the document rather than by a tool, and the census
   moved the way a repair should: **728 citations / 155 files / 0 line problems, 134 bare judged + 1 blind**, and the
   anchor's UNBOUND queue down from 110 to 108.
+  **The next row read was the twenty-fifth wrong target, and it took two passes because one sentence is spelled two
+  ways.** §26's room-capacity row says "Filing or editing a schedule that names a room too small for the block warns
+  and proceeds (`BlockingController.php:264-271`, `:311-317`)" and then quotes both warning strings. The filing half
+  was right — :264-271 is `storeSchedule()`'s warning block (`maxStudents > $room->capacity` at :269, "Schedule was
+  still added" at :270). The editing half was not: `:311-317` is `updateSchedule()`'s *temp-schedule build for
+  conflict detection* (`$schedule->replicate()` at :310, `->fill(` at :311), while the capacity warning whose words
+  the same sentence quotes is **:327-333** (condition :330, "Schedule was still updated" at :331, returned
+  warn-and-proceed at :345-347). `:311-317` occurs 3× in `document.xml` and `BlockingController.php:264-271` 4×, so
+  neither is a usable needle alone; the *pairs* are, and there are two spellings — wide comma (1 copy, pass 229) and
+  tight comma (2 copies, pass 230 with `expect=2`). **A first draft of pass 229 refused its own correct edit** because
+  its post-condition asserted the bare number had vanished document-wide; two of the three copies belong to other
+  citations, so that assertion could only ever fail. *A uniqueness check on a needle is not yet a check on the
+  consequence:* scope the after-check to the replaced pair. The document now carries `:327-333` three times and
+  `:311-317` zero, with the sweep unchanged at 728 citations / 0 line problems.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
