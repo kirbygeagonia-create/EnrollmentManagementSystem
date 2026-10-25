@@ -982,7 +982,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (729 citations over 155 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (730 citations over 156 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1359,6 +1359,44 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **806 passed / 5,458 assertions**, Pint 391 PASS, PHPStan 0, ESLint 0, Vite ✓, OOXML CLEAN, `verify-docx` CONSISTENT,
   Word 224 pp / 185 tables. **No test in `tests/` reads the authority docx** (measured by grep), so a docx pass never
   invalidates a suite run — but the docx has its own gate, the citation sweep, which every pass must leave at 0.
+  **Passes 235-238 drained the next tranche of the human queue, and the tranche produced a new defect class.** Fifteen
+  rows were read against their files: all fifteen `RegistrarController.php` pointers are *true* — each cites an action by
+  its effect (the three `print*` pages at :360/:382/:413, the four `download*` PDFs at :437/:452/:464/:490, the seven
+  boxes and their caps at :483-493/:495-507), which is precisely why no identifier rule can bind them — and the rest
+  gave five real defects. §28's E-11 row cited `:288-289` for "a warning string is returned": :288 is the ternary's
+  **false** branch (the return when no warning exists) and :289 closes the transaction; the warn-and-proceed whose words
+  the row quotes is **:286-287**. §13's step row cited `EvaluationController.php:273` for "evaluatedBy written by
+  profile capture" — :273 is a *comment* inside `returningStudents()`; the write is **:496**, inside `captureProfile()`
+  (416-522). §28's T-5 row cited `:259-293` for `satisfiedPrerequisites`, which is **:316-340** (:334 is the
+  `Creditedsubjects` read the sentence names; :293 is the *next* method's signature); §21's proposal row cited
+  `:586-605` for the "prerequisite auto-gate" (**:643-667** — 586-605 is the curriculum load plus elective grouping) and
+  `:236-257` for "curriculum pinning" (**:184-186** — 236-257 is `show()`'s capability props).
+  **Then came something no instrument in this repository can see.** Four sections narrate gap **N-1** in the present
+  tense: §19.4's writer table (`notifiable_type = "App\Models\Students", notifiable_id = studentId`), §19.4's
+  consequence ("no real notification is ever displayed. The writers address Students; the only reader filters on
+  Staffusers"), §20's FK-purpose row ("**Broken today**: writers store `App\Models\Students` rows that no reader
+  queries"), and §24.14 ("Correction established in this edition: … both listeners write `notifiable_type =
+  App\Models\Students`"). §28.3 closed N-1 on **2026-10-01** and the code agrees: both listeners write
+  `Staffusers::class` / `$userId` (`SendEnrollmentNotification.php:62-63`, `SendWorkflowNotification.php:88-89`),
+  `WorkflowInbox::actors()` plucks staff userIds (`app/Support/WorkflowInbox.php:87-99`), and the listener's own
+  docblock states that students are not notifiable. **The pass measures live `ems` instead of recalling it** — it
+  refuses unless the table answers exactly one `notifiable_type`, `App\Models\Staffusers` (14 rows). The instrument
+  gap: `lane61` judges *status words*, `lane60` *figures*, `lane59` *instrument counts*, the sweeps *line numbers* —
+  none binds "the document states how this code behaves today" to the code, so a mechanism sentence can be overtaken
+  while every gate stays green. This is the §12 Gate-4 shape (a stale claim under a live pointer) reached from the
+  architecture side, and the operating rule follows: **when you correct one section, grep the whole document for the
+  same mechanism sentence** — the false claim appeared four times and three of them were outside the section that owns
+  the finding. Three mechanics paid for: `App\Models\Students` occurs **7 times** in `document.xml`, so no blanket
+  replace was allowed (the two writer rows went through the `cell` kind, §24.14 through `para`, because its class name
+  sits in a styled run and no text needle spans it); a guard that counted
+  `substr_count(file_get_contents($docx), …)` measured the **zip bytes**, not `document.xml`, so it "found" 0 copies of a
+  plaintext needle and refused a correct edit — read the part out of the archive first; and a shell wrapper that applied
+  on `grep -q "DRY RUN"` matched the banner printed *before* its own refusal, so decide from the **last line**.
+  Readings after 238 (which supersede the 234 line above): **730 citations / 156 files / 0 line problems, 133 bare
+  judged + 1 blind** — naming the file in §19.4's pointer took a row *out* of the human queue, UNBOUND 108 → **107**,
+  the first net reduction of that queue in this lane; anchor 134 judged = 17 OK + 7 MOVED + 2 NO-ANCHOR + 107 UNBOUND +
+  1 BLIND; `lane37` 909 / 0; `lane32` 5 pairs / 8 flags; `lane61` silent; `lane69-open-inventory` 0 OPEN, 4 sheet items;
+  OOXML CLEAN; `verify-docx` CONSISTENT; Pint 391 PASS; PHPStan 0; Word 224 pp / 185 tables, 104,733 words.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
   notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
   `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
@@ -1459,7 +1497,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (`mutate-lane32-sweep.php`, which must also show the *unmutated* document unflagged) before trusting its
   silence: a checker that cannot fail has checked nothing.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 909 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
