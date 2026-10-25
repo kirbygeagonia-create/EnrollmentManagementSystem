@@ -677,6 +677,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   watch was `gh run watch … > log 2>&1; echo "EXIT=$?" >> log`, so the command's own status was the
   trailing `echo`'s — success — while the run was red, and I reported the jobs as if they had passed. The
   exit code must be the last thing the pipeline evaluates; capture it in its own file if it must be kept.
+- **The mirror defect: a watcher's non-zero exit is not a red run.** On 2026-10-25 `gh run watch <id> --exit-status`
+  returned 1 while its own final poll showed one job still `in_progress` with an empty conclusion, and the run the
+  API reports now is `completed / success` on all three jobs. A watcher can terminate on a partial read, so the
+  exit code alone cannot say which verdict the run reached. After the watch, ask the run itself —
+  `gh run view <id> --json status,conclusion`, then the per-job list — and quote that, never the watcher's status.
+  Reporting a green pipeline as red costs the same trust as the reverse, and both are the same failure: quoting an
+  instrument's exit code as if it were the fact it observes.
 - **A verdict word must be read from where a verdict is WRITTEN, never from the block around it** (lane 69).
   Answering "is anything left?" found a committed sentence the register had already overtaken —
   `Documentation/School-Decision-Sheet-2026-10-23.md` introduced §25.4 as "the printed-paper items … three of
@@ -960,7 +967,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (706 citations over 154 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (707 citations over 154 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1002,7 +1009,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's
   item 2 was marked closed by a sentence that *reported another row's ruling* inside its own unticked answer),
   four rows wait on the Registrar's window (items 1, 2, 4, 5), two items wait on actors outside the software
-  (C-5 with the departments, G-13 at install time), and the read-only queues are the 23 unattributed pointers
+  (C-5 with the departments, G-13 at install time), and the read-only queues are the 21 unattributed pointers
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
   the meaning sweep's 5 distinct pairs (all of them the documented attribution noise, each re-read against the
@@ -1030,8 +1037,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
   the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
   re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
-  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **706 citations over
-  154 files, 0 line problems, 131 bare continuations judged, blind queue down to 23.** Two instrument lessons in
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **707 citations over
+  154 files, 0 line problems, 132 bare continuations judged, blind queue down to 21.** Two instrument lessons in
   one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
   fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
   must be anchored on a RUN, not a phrase — "both print enrollmentType instead" is three `<w:t>` elements and does
