@@ -960,7 +960,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (684 citations over 153 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (690 citations over 154 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1002,7 +1002,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's
   item 2 was marked closed by a sentence that *reported another row's ruling* inside its own unticked answer),
   four rows wait on the Registrar's window (items 1, 2, 4, 5), two items wait on actors outside the software
-  (C-5 with the departments, G-13 at install time), and the read-only queues are the 51 unattributed pointers
+  (C-5 with the departments, G-13 at install time), and the read-only queues are the 43 unattributed pointers
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
   the meaning sweep's 5 distinct pairs (all of them the documented attribution noise, each re-read against the
@@ -1030,13 +1030,36 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
   the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
   re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
-  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **684 citations over
-  153 files, 0 line problems, 121 bare continuations judged, blind queue down to 51.** Two instrument lessons in
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **690 citations over
+  154 files, 0 line problems, 124 bare continuations judged, blind queue down to 43.** Two instrument lessons in
   one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
   fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
   must be anchored on a RUN, not a phrase — "both print enrollmentType instead" is three `<w:t>` elements and does
   not exist contiguously in `document.xml`, while `:207</w:t>` does. A short run like `:48` is a prefix of others,
   so run-boundary anchors are checked for uniqueness by the pass itself before anything is written.
+  **A pointer that lands on a live line of the right file is invisible to every gate, and fixing a whole
+  paragraph may need the engine's `para` kind.** Passes 201-205 took the last three paragraph families and moved
+  the blind queue 70 → 43. §25's issuance paragraph carried three numbers that name no file: `:168-181` for the
+  scope chooser (`:168` is a docblock line and the range stops inside the signature, before the match arms — it
+  is `PrintService.php:176-191`), `:130` for the row lock — **a blank line** — which is really `:140`, and
+  `:132-142` for the reserved-number skip loop, which is `:142-152`. §25's P-11 paragraph had four of its five
+  desk pointers on live but wrong lines: `:47` is the document-number row, `:93` a closing `</Card>`, `:101` the
+  received-on line and `:112` the Registrar signature line. Nothing could see either case because the file was
+  never named, so the bounds sweep never opened it. Both went through the `para` kind: the runs split at every
+  paren, so no contiguous needle reaches more than one number and `</w:t>` may not be written into a replacement
+  — and the paragraph *anchor* has to sit inside one run, which pass 203 found the hard way (the P-11
+  paragraph's tail is a single run while its earlier clause is split across five).
+  **The §12 Gate 4 sentence was not a stale pointer; it was a stale claim.** It read "Gate 4 treats *no open
+  clearance period* as satisfied (`:116-119`). Deliberate, but it means a Registrar who has not opened the period
+  silently clears everyone" — which is the build before ruling 4; the method's own docblock says "Ruling 4 closes
+  the silence that used to pass this gate." The range was live, the file was right, the prose described a retired
+  state in the present tense, and it sits in the section a desk reads before approving anyone. It now states what
+  the check does (`EnrollmentReadiness.php:61-63`). Only reading the pointer's sentence against the method sees
+  this shape — it is the same defect lane 69 found in the decision sheet, reached from the code side.
+  **A §1.1 record row moves the census it reports.** Pass 204 wrote the citation count measured after pass 203,
+  and its own new `( EnrollmentReadiness.php:61-63 )` pointer was one of the citations the next sweep counted, so
+  pass 205 re-aged the figure it had just written (689 → 690). Lane 61's register-row lesson one level up: a
+  sentence that states what an instrument prints must be measured after that instrument's own row exists.
 - **After any batch that edits a method body the document quotes, or a citation whose parenthetical contains
   source code**, run `php storage/app/scratch/lane70-gloss-snippets.php` and prove it with
   `php storage/app/scratch/mutate-lane70-gloss.php`. This is the seventh prose family: **a citation that quotes a
@@ -1076,6 +1099,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   tally or the table is missing. Prove it with
   `php storage/app/scratch/mutate-lane69-owes-table.php`: a re-grown actor count, an identifier the column no
   longer charges to anyone, an owed item dropped in favour of a closed one, and a byte-identical control.
+  Its three standing blind spots are now read and explained: rows whose verdict cell carries a **prose pipe**
+  (`granted | rejected` in a status trail) split into 6, 13 and 7 cells, and all three lead with a closed verb —
+  they are shape noise, not missed actors, so the run is clean at 2 owed slots while still printing them.
   **Its first run refused all three mutants for the wrong reason:** it judged "byte-identical" by `filesize()`,
   so a one-digit count and a `C-5`→`C-6` swap — same length by construction — were reported as mutations that
   changed nothing, and its exit-capture leg redirected to `/dev/null`, which cmd.exe cannot find, so cmd
@@ -1110,7 +1136,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 392 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 396 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
