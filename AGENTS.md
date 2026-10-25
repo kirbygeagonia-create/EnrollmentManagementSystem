@@ -1162,7 +1162,22 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `$variable` needs a different lookup than a quoted `call(`, and a symbol the neighbouring citation owns
   ("`Payments::held()` ( `PaymentPolicy.php:115` )") is accounted for on the line. It exits 0 by design — only
   NOT-IN-FILE is a statement the repository can falsify, and the queue verdicts are the human half — so it is an
-  instrument, not a gate, until its precision is measured on more than one file.
+  instrument, not a gate — and its precision has now been measured over the whole document. Measured 2026-10-25:
+  the run claimed "examined 11 / OK 6" with an empty queue, so **five rows fell through a `continue` that counted
+  nothing** and the printed zero was an unexamined five, not a clean document. Every row now lands in a bucket
+  (`OK`, `NOT-IN-FILE`, `queue`, `dropped`), the tool refuses when `examined ≠ the buckets added up`, and the
+  identifier patterns were widened to the two shapes that were being discarded — a class member with no call
+  (`Str::headline`, `ClinicRecordStatus::Completed`, `ApplicantType::class`) and a property written as an
+  assignment (`appliesTo = firstYear | transferee | all`). The reconciled tally is **11 = 10 OK + 0 not-in-file +
+  0 queue + 1 dropped**, and the one honest drop is `routes/web.php:266-268`'s column list, which is a schema
+  description rather than a call. The reconciliation is what found the **twelfth wrong target**: §6 and the
+  requirement row both cite `AdmissionController.php:211-222` for "only rows whose `appliesTo` equals the chosen
+  `applicantType` or `all` receive a submission row", but those lines are the `Admissions::create([...])` array —
+  which writes `applicantType` and never reads `appliesTo` — and the selection is `:225-238` (the `where`/`orWhere`
+  at :226-227, the `Studentrequirementsubmissions::create()` loop at :231-237). Pass 223 moved both copies
+  together (`AdmissionController.php:211-222` occurs exactly twice in `document.xml`, so `expect=2` and no
+  guessing at a third). **A checker whose summary does not add up is not reporting a clean document, and an
+  uncounted `continue` is how it looks clean.**
 - **Citation attribution has ONE implementation now** (lane 70, 2026-10-25): `storage/app/scratch/docx-cite-attribution.php`
   holds the bounds sweep's rule (a bare `:NN` belongs to the file named most recently *before* it on the same dump
   line, within 160 characters), lane 32's rule (a name labels the range after it when the gap is short and clean or
@@ -1288,7 +1303,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 402 references PHP comments and the markdown files
+  under); `lane37b-repo-citation-sweep.php` judges the 403 references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually

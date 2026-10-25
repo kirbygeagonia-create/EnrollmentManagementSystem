@@ -25,7 +25,6 @@
  *
  * usage: php storage/app/scratch/lane70-gloss-snippets.php [--dump=<flat dump>]
  */
-
 $root = dirname(__DIR__, 3);
 $dumpPath = $root.'/storage/app/scratch/docx-flat.txt';
 foreach ($argv ?? [] as $a) {
@@ -54,6 +53,7 @@ $prune = new RecursiveCallbackFilterIterator(
             return true;
         }
         $rel = str_replace('\\', '/', substr($current->getPathname(), strlen($root) + 1));
+
         return ! in_array($rel, $skipDirs, true) && ! str_starts_with($rel, '.git');
     }
 );
@@ -103,6 +103,7 @@ $prose = [' the ', ' and ', ' not ', ' with ', ' only ', ' which ', ' no ', ' is
 
 $hard = [];
 $soft = [];
+$dropped = [];
 $okCount = 0;
 $glossCount = 0;
 
@@ -187,8 +188,29 @@ foreach ($lines as $li => $raw) {
                 $patterns['$'.$v] = '/\$'.preg_quote($v, '/').'\b/';
             }
         }
+        // Two shapes the bracket pattern cannot see, both of which the document really does quote: a class
+        // constant or static member WITHOUT a call (`Str::headline of studentType`, `ClinicRecordStatus::Completed`,
+        // `ApplicantType::class`), and a property written as an assignment (`appliesTo = firstYear | transferee`).
+        // They were silently discarded as "nothing checkable", which is how 5 of 11 rows vanished from a summary
+        // that printed a clean zero.
+        if (preg_match_all('/([A-Z][A-Za-z0-9_]+)::([A-Za-z][A-Za-z0-9_]*)/', $g, $cmm, PREG_SET_ORDER) >= 1) {
+            foreach ($cmm as $x) {
+                $patterns[$x[0]] = '/'.preg_quote($x[0], '/').'/';
+            }
+        }
+        if (preg_match_all('/\b([a-z][A-Za-z0-9_]{3,})\s*=/', $g, $am) > 0) {
+            foreach ($am[1] as $a) {
+                $patterns[$a] = '/\b'.preg_quote($a, '/').'\b/';
+            }
+        }
         if ($patterns === [] && preg_match('/->|\|\||&&|\=\>/', $g) !== 1) {
-            continue; // nothing checkable in the gloss after all
+            // Counted, never swallowed. The first version of this file printed "examined: 11 / OK: 6" with an
+            // empty queue, which reads as a clean document while five rows went nowhere; an instrument whose own
+            // numbers do not add up cannot report a zero.
+            $dropped[] = 'NO-SYMBOL      '.$best['file'].':'.$best['from'].'-'.$best['to'].'  gloss "('.$g
+                .')" — code-shaped prose with no call, variable or operator left to look for';
+
+            continue;
         }
         // A path-shaped citation is resolved directly: vendor/ and any absolute name never enters the index.
         $paths = null;
@@ -294,4 +316,21 @@ echo "\nqueue — worth re-reading, not refusals (".count(array_unique($soft))."
 foreach (array_unique($soft) as $s) {
     echo "  $s\n";
 }
+echo "\ndropped — the gloss had nothing this tool can look up (".count(array_unique($dropped))."):\n";
+foreach (array_unique($dropped) as $d) {
+    echo "  $d\n";
+}
+
+// Every examined row must land in exactly one bucket. This is an internal invariant, not a claim about the
+// document, and it exists because the first published summary of this tool added up to nothing: a reader who sees
+// "0 flagged" needs to know whether 11 rows were judged or 6.
+$bucketed = $okCount + count($hard) + count($soft) + count($dropped);
+if ($bucketed !== $glossCount) {
+    printf("\nREFUSED: %d gloss(es) examined but %d accounted for (%d OK, %d not-in-file, %d queue, %d dropped) —"
+        ."\n       a row that goes nowhere is a lost pointer, so this run does not get to report a clean count.\n",
+        $glossCount, $bucketed, $okCount, count($hard), count($soft), count($dropped));
+    exit(1);
+}
+printf("\nthe tally adds up: %d examined = %d OK + %d not-in-file + %d queue + %d dropped.\n",
+    $glossCount, $okCount, count($hard), count($soft), count($dropped));
 echo "\nThis is a queue. It exits 0 by design: only NOT-IN-FILE is a statement the repository can falsify.\n";
