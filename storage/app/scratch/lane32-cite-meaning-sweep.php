@@ -28,8 +28,8 @@
  *
  * usage: php storage/app/scratch/lane32-cite-meaning-sweep.php [path-to-flat-dump] [--verbose]
  */
-
 $root = dirname(__DIR__, 3);
+require_once $root.'/storage/app/scratch/docx-cite-attribution.php';
 $verbose = in_array('--verbose', $argv, true);
 $flat = $root.'/storage/app/scratch/docx-flat.txt';
 foreach (array_slice($argv, 1) as $a) {
@@ -115,26 +115,7 @@ $linesOf = function (string $rel) use ($root): array {
 };
 
 /** The construct a line sits inside: nearest `function x(` above it, else nearest `class X`. */
-$enclosing = function (array $lines, int $at): string {
-    $class = '';
-    for ($i = $at - 1; $i >= 0; $i--) {
-        $l = trim($lines[$i]);
-        if ($class === '' && preg_match('/^\s*(?:final\s+|abstract\s+)?class\s+([A-Za-z0-9_]+)/', $l, $m)) {
-            $class = $m[1];
-        }
-        if (preg_match('/\bfunction\s+([A-Za-z0-9_]+)\s*[({\n]/', $l, $m)) {
-            return $m[1].'()';
-        }
-        if (preg_match('/^const\s+([A-Za-z0-9_]+)/', $l, $m)) {
-            return $m[1].' (const)';
-        }
-        if (preg_match('/\b(?:const|let|var)\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\(\s*\)|[A-Za-z0-9_$]+\s*=>|function)/', $l, $m)) {
-            return $m[1].' (component)';
-        }
-    }
-
-    return $class !== '' ? $class.' (file scope)' : '';
-};
+$enclosing = static fn (array $lines, int $at): string => docxEnclosingConstruct($lines, $at);
 
 $fileInner = '(?:[A-Za-z0-9_.\-]+\/)*[A-Za-z0-9_.\-]+\.(?:php|jsx|js|json|neon|xml|md)';
 // One pattern, two alternatives: a citation that names its file, and a bare range that inherits the file the
@@ -199,38 +180,17 @@ foreach ($units as $unit) {
         $sStart = $s[0][1];
         $sEnd = $sStart + strlen($s[0][0]);
 
-        // Attribution, by the two orders this document actually uses:
-        //   LABEL first — `signStepByOffice() :150-174`, `recordIssue() at :105`: nothing but spaces or the
-        //     word `at` between the name and the range, so the name belongs to the range AFTER it.
-        //   GLOSS after — `:734-740 builds one named requirement line per office from X::NAMES, and :62-104
-        //     retires office 8`: the words following a range describe THAT range, and a comma, a closing
-        //     parenthesis or a period means the run of words has already moved on to the next item.
-        // Raw nearest-distance got both of these wrong: it hung `NAMES` on `:62-104` (six characters away,
-        // but across a comma) and `logoDataUri` on `:31`, inventing two document defects that do not exist.
-        $next = null;
-        $prev = null;
-        foreach ($cites as $c) {
-            if ($c['start'] >= $sEnd && ($next === null || $c['start'] < $next['start'])) {
-                $next = $c;
-            }
-            if ($c['end'] <= $sStart && ($prev === null || $c['end'] > $prev['end'])) {
-                $prev = $c;
-            }
-        }
-        $forwardGap = $next === null ? null : substr($unit, $sEnd, $next['start'] - $sEnd);
-        // Two ways a name reaches forward: a short label (`signStepByOffice() :289-305`, `recordIssue() at :115`),
-        // or a clause that OPENS a parenthesis the next citation sits inside — `confirmClearance() records the
-        // officer's confirmation as the verdict's last clause ( :958-999 , permission … )`. Without the second,
-        // the name fell back to the range before it and the sweep kept flagging a citation that was correct.
-        $reachesForward = $forwardGap !== null
-            && (
-                (strlen(trim($forwardGap)) < 25 && ! preg_match('/[,.;)\\n]/', $forwardGap))
-                || (str_contains($forwardGap, '(') && ! str_contains($forwardGap, ')'))
-            );
-        $best = $reachesForward ? $next : ($prev ?? $next);
-        if ($best === null) {
+        // Attribution lives in docx-cite-attribution.php: the two orders this document actually uses (LABEL first,
+        // GLOSS after), including the way a name reaches forward by OPENING the parenthesis the citation sits
+        // inside. Raw nearest-distance got both wrong — it hung `NAMES` on `:62-104` six characters away across a
+        // comma, and `logoDataUri` on `:31`, inventing two document defects that do not exist. The rule is shared
+        // because lane 70's anchor checker asks the same question, and two answers to it is how one sentence ends
+        // up contradicting itself depending on which tool was run.
+        $bestKey = docxPairForSymbol($unit, $cites, $sStart, $sEnd);
+        if ($bestKey === null) {
             continue;
         }
+        $best = $cites[$bestKey];
 
         $path = $resolve($best['file']);
         if ($path === null) {

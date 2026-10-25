@@ -967,7 +967,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - Re-measuring only the files a batch touched is how the document accumulated wrong line numbers: 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that
   moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (725 citations over 154 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (726 citations over 154 files; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1050,7 +1050,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   *status* cell quoted its **enrollment-date** row, the slip's "date to be signed" and "per-approval date" quoted
   the student name and the course row, and the subject load's signature range opened on a blank line. Pass 199
   re-took all twelve cells — each new number asserted against the field it claims (29 such assertions gate the
-  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **725 citations over
+  write) — and wrote the file into the cell, so the existing sweep judges them from now on: **726 citations over
   154 files, 0 line problems, 135 bare continuations judged, blind queue down to 1.** Two instrument lessons in
   one session: a pattern written `(?<word>A|B|C|:NN)` puts *every* alternative inside `word`, so the classifier
   fired its first branch for each bare number and the tool reported a clean table it had never read; and a needle
@@ -1163,6 +1163,40 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   ("`Payments::held()` ( `PaymentPolicy.php:115` )") is accounted for on the line. It exits 0 by design — only
   NOT-IN-FILE is a statement the repository can falsify, and the queue verdicts are the human half — so it is an
   instrument, not a gate, until its precision is measured on more than one file.
+- **Citation attribution has ONE implementation now** (lane 70, 2026-10-25): `storage/app/scratch/docx-cite-attribution.php`
+  holds the bounds sweep's rule (a bare `:NN` belongs to the file named most recently *before* it on the same dump
+  line, within 160 characters), lane 32's rule (a name labels the range after it when the gap is short and clean or
+  it opens the parenthesis the range sits inside, otherwise it labels the range before it), the encloses rule (a
+  citation may point at a clause *inside* the construct the prose names), and the register-cell rule (a row's leading
+  column label is a cell, not a construct to find). `sweep-docx-citations.php`, `lane32-cite-meaning-sweep.php` and
+  `lane70-anchor-cites.php` all call it, because two answers to "which file owns this pointer" is how one sentence
+  ends up contradicting itself depending on the tool that was run. The refactors are proved by parity, not by hope:
+  both tools printed **byte-identical output** to `git show HEAD:` (726 citations / 154 files / 0 problems / 135
+  judged / 1 blind, and 131 pairs / 8 flags), and their harnesses pass — including lane 32's parenthesis leg, which
+  had silently decayed because it hardcoded `last clause ( :958-999` while the document now says `:959-1000`; the leg
+  reads its needle out of the dump and refuses the run when the phrase is gone. **A rewritten checker's complaint
+  count falling 47 → 9 is exactly what a broken reader looks like** (lane 46 cleared the whole tree because it read
+  the wrong construct; lane 50 passed every real call because it matched only the shape it had just learned), so
+  `php storage/app/scratch/mutate-lane70-anchor.php` (7 legs) plants both directions: moving a pairing the tool
+  calls correct onto a line that lacks its identifier must raise MOVED by one, repairing a row it calls wrong must
+  lower MOVED by one, a byte-identical copy must change no verdict, and a dump with nothing to judge must refuse —
+  proved by its own message, because `judges-nothing` and `missing-dump` both exit 1 and a leg that accepts either
+  passes on a broken instrument. `--show-ok` exists so the harness can find a live correct pairing instead of
+  remembering one. It is NOT a CI step (owner's ruling, same day): gate it only once MOVED is trustworthy, and
+  reading the 9 that remain shows why — they are still the tool's own limits, a prose-order gloss
+  (`:30 (PrintAssets::logoDataUri) and :31 (config(…)))`, where the second half names a call with arguments the
+  identifier pattern does not capture) and a register row's camelCase column label.
+  **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
+  notification row's `stepLabel (:45)` had been left behind when pass 219 moved the field beside it — line 45 is
+  `['completed' => true]`, the completion branch's payload, while the label is written at **:64** from the map read
+  at :31. And the WorkflowStepSigned row claimed **two** things of one range, `( :52-63 )` — "one row per signature"
+  *and* "plus one workflow_completed row when the last box closes" — while the signature notify is `:54-70` and the
+  completion notify is `:38-48`; the number named no file, so what the sweep had been "judging" was whichever
+  filename happened to sit nearest, `WorkflowService.php`, whose :52-63 is `stepsFor()`'s office-box list and writes
+  no notification at all. Pass 221 fixed both (`refresh-docx-pass221.php`, ten line assertions gate the write, the
+  `:52-63` needle unique in `document.xml` so it travels as a text edit rather than a cell rewrite that would
+  flatten the styled runs). The rule for anyone citing a register row: **one range cannot carry two claims, and a
+  pointer that names no file is judged by accident.**
 - **After any batch that changes `lane70-blind-sheet.php` or the shape of the sweep's UNATTRIBUTED line**, run
   `php storage/app/scratch/lane70-blind-sheet.php` and prove it with
   `php storage/app/scratch/mutate-lane70-blind-sheet.php` (10 legs). The sheet is the reader's only route to the

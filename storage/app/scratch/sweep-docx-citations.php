@@ -34,6 +34,7 @@ if (! is_file($flat) || filesize($flat) < 1000) {
     exit(1);
 }
 $text = file_get_contents($flat);
+require_once $root.'/storage/app/scratch/docx-cite-attribution.php';
 
 $cache = [];
 
@@ -85,56 +86,17 @@ $resolve = function (string $name) use (&$cache, $index): ?string {
     return $cache[$key] = $best;
 };
 
-// Hyphens belong in the name: `clearance-slip.blade.php:44` is ONE citation, and a pattern that stops at
-// the hyphen reports "slip.blade.php" as a missing file — a defect in this sweep, not in the document.
-// Both forms are found in ONE scan of the whole text. A second, per-line scan of the same alternation cost
-// five and a half minutes on a 2 MB dump, which is long enough that a caller starts skipping the sweep.
-$filename = '(?:(?:[A-Za-z0-9_.\-]+\/)*[A-Za-z0-9_.\-]+\.(?:php|jsx|js|json|neon|xml|md))';
-$pattern = '/(?<name>'.$filename.'):(?<from>\d+)(?:-(?<to>\d+))?'
-    .'|(?<fileonly>'.$filename.')(?![:\w])'
-    .'|(?<lead>[,(]|\bat|\band|\bto|\bis)[\s;]*:(?<bareFrom>\d+)(?:-(?<bareTo>\d+))?(?![\w\-])/';
-preg_match_all($pattern, $text, $all, PREG_SET_ORDER | PREG_UNMATCHED_AS_NULL | PREG_OFFSET_CAPTURE);
+// Tokenising and bare-pointer attribution live in docx-cite-attribution.php, because lane 32 and the anchor
+// checker ask the same two questions and a second definition of either is how two checkers end up disagreeing
+// about one sentence. ONE scan of the whole text: a second, per-line scan of the same alternation cost five and
+// a half minutes on a 2 MB dump, which is long enough that a caller starts skipping the sweep.
+$scan = docxScan($text);
+$named = $scan['named'];
+$bare = $scan['bare'];
+$anchors = $scan['anchors'];
 
-$named = [];
-$bare = [];
-// Anchors are the things a bare `:NN` can belong to: a full citation, or a file named on its own in the cell
-// before it — `( Students/Show.jsx ) | Name, School ID ( :152 )` names its file one cell earlier, and a
-// checker that only reads `File:NN` calls that pointer blind and passes it.
-$anchors = [];
-foreach ($all as $x) {
-    if (($x['name'][0] ?? null) !== null) {
-        $named[] = [$x['name'][0], (int) $x['from'][0], ($x['to'][0] ?? null) === null ? null : (int) $x['to'][0],
-            $x[0][1], $x[0][1] + strlen($x[0][0])];
-        $anchors[] = [$x[0][1], $x[0][1] + strlen($x[0][0]), $x['name'][0]];
-    } elseif (($x['fileonly'][0] ?? null) !== null) {
-        $anchors[] = [$x[0][1], $x[0][1] + strlen($x['fileonly'][0]), $x['fileonly'][0]];
-    } else {
-        $bare[] = [(int) $x['bareFrom'][0], ($x['bareTo'][0] ?? null) === null ? null : (int) $x['bareTo'][0], $x[0][1]];
-    }
-}
-
-// A bare `:NN` belongs to the line it is written on, so line starts are mapped once and both lists are
-// walked in offset order to find the line each token sits in.
-$lineStart = [0];
-$pos = 0;
-while (($nl = strpos($text, "\n", $pos)) !== false) {
-    $lineStart[] = $nl + 1;
-    $pos = $nl + 1;
-}
-$lineOf = function (int $offset) use ($lineStart): int {
-    $lo = 0;
-    $hi = count($lineStart) - 1;
-    while ($lo < $hi) {
-        $mid = intdiv($lo + $hi + 1, 2);
-        if ($lineStart[$mid] <= $offset) {
-            $lo = $mid;
-        } else {
-            $hi = $mid - 1;
-        }
-    }
-
-    return $lo;
-};
+$lineStart = docxLineStarts($text);
+$lineOf = static fn (int $offset): int => docxLineOf($offset, $lineStart);
 
 $problems = 0;
 $checked = 0;
@@ -179,22 +141,11 @@ $bareChecked = 0;
 $bareProblems = 0;
 $blind = [];
 
-$ai = 0;
-$current = null;
-$currentEnd = -1;
-$currentLine = -1;
-foreach ($bare as [$from, $to, $offset]) {
+$owners = docxBareOwners($bare, $anchors, $lineStart);
+foreach ($bare as $k => [$from, $to, $offset]) {
     $to = $to ?? $from;
-    $line = $lineOf($offset);
-    while ($ai < count($anchors) && $anchors[$ai][0] < $offset) {
-        if ($lineOf($anchors[$ai][0]) === $line) {
-            // only reached when the anchor is on this line; the loop keeps the last such name
-            $current = $anchors[$ai][2];
-            $currentEnd = $anchors[$ai][1];
-            $currentLine = $line;
-        }
-        $ai++;
-    }
+    $line = docxLineOf($offset, $lineStart);
+    $own = $owners[$k];
     if ($from < 1) {
         continue;
     }
@@ -208,7 +159,7 @@ foreach ($bare as [$from, $to, $offset]) {
 
         return trim(preg_replace('/ +/', ' ', mb_convert_encoding($window, 'UTF-8', 'UTF-8')) ?? '');
     };
-    if ($current === null || $currentLine !== $line || ($offset - $currentEnd) > 160) {
+    if ($own === null) {
         // One line per blind spot: the dump joins table cells with tabs and newlines, and a context string
         // that wraps turns the printed evidence into an unreadable block. The dump line is printed because a
         // reader cannot work from the token alone — the same number is a live citation somewhere else in the
@@ -217,7 +168,7 @@ foreach ($bare as [$from, $to, $offset]) {
 
         continue;
     }
-    $path = $resolve($current);
+    $path = $resolve($own['file']);
     if ($path === null) {
         continue;
     }
@@ -225,14 +176,14 @@ foreach ($bare as [$from, $to, $offset]) {
     $bareChecked++;
     if ($to > count($lines)) {
         printf("  PAST END   %-14s in %-42s cites %s in a %d-line file — read which file this really names\n",
-            '(bare)', $current, $token, count($lines));
+            '(bare)', $own['file'], $token, count($lines));
         $bareProblems++;
 
         continue;
     }
     if (trim($lines[$from - 1]) === '') {
         printf("  EMPTY LINE %-14s in %-42s cites a blank line %s — the sentence reads \"%s\"\n",
-            '(bare)', $current, $token, $context(60, 130));
+            '(bare)', $own['file'], $token, $context(60, 130));
         $bareProblems++;
     }
 }

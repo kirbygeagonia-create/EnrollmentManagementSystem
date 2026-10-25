@@ -11,7 +11,6 @@
  *
  * usage: php storage/app/scratch/mutate-lane32-sweep.php
  */
-
 $root = dirname(__DIR__, 3);
 $php = 'C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe';
 $tmp = $root.'/storage/app/scratch/mut-lane32';
@@ -19,6 +18,18 @@ $tmp = $root.'/storage/app/scratch/mut-lane32';
 
 $dump = file_get_contents($root.'/storage/app/scratch/docx-flat.txt');
 $sweep = $root.'/storage/app/scratch/lane32-cite-meaning-sweep.php';
+
+/**
+ * The parenthesis leg's range is READ out of the dump, not hardcoded. It decayed once already: the citation this
+ * sentence carried moved from `:958-999` to `:959-1000` in a later pass, the needle then matched nothing, and the
+ * leg reported a mutant that could not apply — a mutant anchored on a number is a mutant that sleeps. Read the
+ * number, then move it.
+ */
+if (preg_match('/last clause \( (:\d+-\d+)/', (string) $dump, $pm) !== 1) {
+    echo "REFUSED: the dump no longer holds the parenthetical citation this leg mutates.\n";
+    exit(1);
+}
+$parenFrom = 'last clause ( '.$pm[1];
 
 $run = function (string $label, string $text) use ($tmp, $php, $sweep): array {
     $file = $tmp.'/'.$label.'.txt';
@@ -51,7 +62,7 @@ $mutants = [
     // `confirmClearance() records … ( :958-999 , permission … )`. Move that range and the sweep must still
     // name the drift, which it could not see before the rule existed.
     'parenthetical-label-moved' => [
-        'last clause ( :958-999',
+        $parenFrom,
         'last clause ( :30-40',
         ['confirmClearance', 'EvaluationController.php:30-40'],
     ],
@@ -76,7 +87,7 @@ foreach ($mutants as $name => [$from, $to, $expect]) {
         continue;
     }
     $mutated = str_replace($from, $to, $dump);
-    [$out,] = $run($name, $mutated);
+    [$out] = $run($name, $mutated);
 
     $lines = explode("\n", $out);
     $hit = false;
