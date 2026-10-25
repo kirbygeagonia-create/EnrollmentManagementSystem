@@ -698,6 +698,22 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   worked-example step "Accounting | Open the queue" is an instruction to a desk, not an open finding.
   `php storage/app/scratch/lane69-open-inventory.php` is the read-only answer to "what is left": OPEN and OFFICE
   rows out of the registers, then the sheet item by item with its open count.
+  **An open word is a verdict only in a column that can hold one** (same lane, 2026-10-25). The inventory reported
+  `ROW 2432` and `ROW 2699` as owed work for passes on end, and both were labels: the first is cell 3 of the
+  walkthrough table headed `# | Desk | Action | What the record becomes` — "Open the queue" is a step a desk performs
+  — and the second is the §29.4 family label "Open decisions" in the column headed `Family`. The tool now reads the
+  heading its own cell sits under: a table in the flat dump is a maximal run of consecutive `ROW` lines and the run's
+  first line is the header, so the column name is a fact about the document, not a guess about the words. Measured
+  before writing the rule, over all 184 runs: those two are the ONLY rows anywhere with a cell leading an open word.
+  The list is inverted on purpose — an unknown column heading still counts OPEN, because an inventory that hides owed
+  work is worse than one that prints a label, and **a "leading cell must be a finding id" rule would have been the
+  worse bug**: §28.5's rows lead with the *question text*, so that rule would silently stop reporting every school
+  question that is genuinely open. A row whose cell count differs from its header's cannot be resolved at all, so it
+  is printed as UNRESOLVED rather than cleared. Today: **0 OPEN, 2 LABELS, 0 UNRESOLVED, 2 owed actors (C-5, G-13),
+  4 sheet items.** Prove any change to it with `php storage/app/scratch/mutate-lane69-open-labels.php` (9 legs: the
+  same words planted under `Verdict` must be OPEN and under `Action` must be a LABEL, a mis-aligned row must surface
+  as UNRESOLVED, a copy with one more verdict row must answer *more* — which is what proves `--dump=` reaches the
+  walk — a byte-identical copy must change no verdict, and the two refusals each name the path they were handed).
   **The same audit found the older sheet carrying the mirror defect:** `Registrar-Print-Decision-Sheet-2026-10-11.md`
   introduces its comparison table by promising the quoted wording "is what a PDF says today" — true when written,
   and the newer 2026-10-23 sheet closes by telling the Registrar that this one "still stands". Two of its cells
@@ -1001,8 +1017,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   had already cited that construct at `:72`. Five verdicts were read back against the code: **four were the
   instrument, one was the document**. So it prints, and exits 1 **loudly by design**, and is NOT a CI step; promoting
   a checker whose precision is one in five would teach everyone to ignore the red. **That sample is now a full read,
-  and the sample was optimistic: on 2026-10-25 all 47 MOVED rows were read back and none of them is a pointer the
-  build contradicts.** 8 name a file other than the one the sentence's own citation names — this tool takes the
+  and the sample was optimistic: on 2026-10-25 all 47 MOVED rows were read back and none of the 47 *pairings* is a
+  claim the build contradicts.** **A clean read of a pairing is not a clean read of the file it points at** — after
+  the attribution was unified and the ten surviving rows were opened one by one, ten further wrong targets came out
+  of those same files (passes 224-226, recorded below). 8 name a file other than the one the sentence's own citation names — this tool takes the
   first file on the dump row, where the bounds sweep takes the nearest one *before* the token; 6 quote a clause
   inside the construct they name (the verdict's last clause, the signature line, the cap), which lane 32's encloses
   rule permits and this tool never learned; the remaining 33 charge the sentence's **first** identifier to a range
@@ -1013,7 +1031,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the whole defect, and all three are already solved elsewhere: the sweep's nearest-preceding-name rule, lane 32's
   direction-plus-encloses rule. **Re-measure a precision claim before repeating it** — AGENTS.md asserted this
   tool "exits 0" while its own last line reads `exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0)`,
-  and the assertion was written from the tool's intention rather than its output. The one real defect it surfaced was fixed in
+  and the assertion was written from the tool's intention rather than its output. The first real defect it surfaced was fixed in
   pass 190: the settlement row quoted `( :195-215 )` for a balance formula, the number named no file so no
   instrument had ever read it, and the formula is `AssessmentController.php:256-272` — the grant insert and the
   balance update inside `applyScholarship()`, which the scholarship row had been citing correctly all along.
@@ -1176,8 +1194,39 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   which writes `applicantType` and never reads `appliesTo` — and the selection is `:225-238` (the `where`/`orWhere`
   at :226-227, the `Studentrequirementsubmissions::create()` loop at :231-237). Pass 223 moved both copies
   together (`AdmissionController.php:211-222` occurs exactly twice in `document.xml`, so `expect=2` and no
-  guessing at a third). **A checker whose summary does not add up is not reporting a clean document, and an
-  uncounted `continue` is how it looks clean.**
+  guessing at a third). **The queue is not drained by stopping at one find: opening the 10 rows that survived the
+  rewrite found ten more wrong targets** (passes 224, 225 and 226). §28's exam row cited `ExamController.php:311-314`
+  for the *departmental* paper while those lines are the head of the **general** upsert (`'examType' =>
+  ExamType::General` at :317) — the condition the aside describes is `recordCourseSpecific`'s own
+  `if ($course->requiresEntranceExam)` at :366, under the BR9/C-4/C-5 comment at :358, so the citation is now
+  `:358-366`. And §28's Accounting row made two claims about signatures that both landed on the wrong statement:
+  "a collected payment signs the same box at `:227`" points at `if ($newBalance > 0)` — the *installment* branch,
+  the opposite of the one that signs — while the payment's `signStepByOffice()` is **:243**; and "the signature at
+  `:274`" points at the refusal redirect for an account that still owes, while `settleNoBalance()` signs at
+  **:290**. The third find came from the row the anchor checker complains about loudest — a name the file never
+  contains — and opening that file turned one complaint into **thirteen pointers**: `approvalBlockers()` was
+  extracted out of `AdmissionPolicy::approve()`, and every number written against the old body kept its line.
+  `AdmissionPolicy.php:48-66` (twice) claimed `approve()` spans :48-66 while the method ends at :55 and :57-66 is
+  *the other method's docblock*; `approvalBlockers() at :67-136` (three times) stopped 16 lines short of its
+  `return $blockers;` at :151 — and §10.2's own condition-4 row cites `:108-149`, which falls **outside** the range
+  the same sentence calls the authoritative gate list; `:49` for "holds `admission.approve`" is the opening brace
+  (the test is :50); `:54-56` for "the application is still pending" is the blockers *call* (the pending check is
+  :71-75); `:58-67` three times for the BR32 document rule is a docblock plus a signature (the verification loop is
+  :77-89); `:69-81` for the general-exam gate is the `$blockers = []` line, the pending check and the **document**
+  query (the exam condition is :111-126); and `:39-47` twice for BR7 opens inside `update()` (:39-42), whose note is
+  :44-47. **A method pulled out of another one moves every pointer written against the old body, and each new number
+  still lands on a live line of the same file** — which is why the bounds sweep and lane 32 both agreed with it: the
+  prose names `approve`/`approvalBlockers`, and both names really do sit inside the quoted span.
+  **The ten rows that remain are the checker's own limits, and all ten have now been opened**: a name from another
+  clause of the same sentence (`endorse` charged to `decide()`'s :71, `stepOrder` charged to `stepLabel`'s :64,
+  `settleNoBalance` charged to the payment's `signStepByOffice()` at :243, `array_filter` charged to the `stepOrder`
+  write at :97), a register row's column label (`coverageType`, `maxStudents`, `totalAssessedAmount`), and a word the
+  cited file never contains (`decideStanding` on `BlockingController.php:116`, which is exactly
+  `->where('yearLevel', $block->yearLevel)`; `firstYear` on an `AdmissionPolicy` range). **A row that reads like
+  mis-attribution is still worth opening** — the AdmissionPolicy complaint was that shape, and it led to thirteen
+  false pointers. **A queue of "instrument-side" is a claim, not a measurement, until the rows have been opened; it
+  took opening them to find ten more real defects.**
+  **A checker whose summary does not add up is not reporting a clean document, and an uncounted `continue` is how it looks clean.**
 - **Citation attribution has ONE implementation now** (lane 70, 2026-10-25): `storage/app/scratch/docx-cite-attribution.php`
   holds the bounds sweep's rule (a bare `:NN` belongs to the file named most recently *before* it on the same dump
   line, within 160 characters), lane 32's rule (a name labels the range after it when the gap is short and clean or
@@ -1197,8 +1246,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   lower MOVED by one, a byte-identical copy must change no verdict, and a dump with nothing to judge must refuse —
   proved by its own message, because `judges-nothing` and `missing-dump` both exit 1 and a leg that accepts either
   passes on a broken instrument. `--show-ok` exists so the harness can find a live correct pairing instead of
-  remembering one. It is NOT a CI step (owner's ruling, same day): gate it only once MOVED is trustworthy, and
-  reading the 9 that remain shows why — they are still the tool's own limits, a prose-order gloss
+  remembering one. It is NOT a CI step — ruled again on 2026-10-25 after every numbered row in its queue had been
+  opened: the run judges 136 bare pointers and **110 of them are UNBOUND** because the sentence names no construct
+  at all, so a gate on this tool would demand red on rows that are legitimately a human read. Reading the rows that remain shows why the same
+  ruling held from the first day — they are still the tool's own limits, a prose-order gloss
   (`:30 (PrintAssets::logoDataUri) and :31 (config(…)))`, where the second half names a call with arguments the
   identifier pattern does not capture) and a register row's camelCase column label.
   **Two of the 47 were real, and they are the tenth and eleventh wrong targets the bounds sweep cannot see.** The
@@ -1303,8 +1354,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 908 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 115 finding rows with the section each physically sits
-  under); `lane37b-repo-citation-sweep.php` judges the 403 references PHP comments and the markdown files
-  point into the document, the acceptance script and the audit file — three separate numbering systems; and
+  under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
+  point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
+  states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
+  about the sweep adds a reference for the sweep to judge and invalidates the figure in the same edit (measured
+  twice on 2026-10-25 while recording pass 226: 403 → 405 → 406). Lane 58's rule for a revision row applies to a
+  tool's own census — name the surface or state no total, and the reading lives in `lane59-readings.json` instead; and
   `repo-file-line-citations.php` reads the `File.php:NN` citations in this file, DEPLOYMENT.md, the
   walkthrough, both demo guides, the two third-party assessments **and the three sheets an office actually
   holds** (the school decision sheet, the Registrar print sheet, the print-fidelity comparison), which is how

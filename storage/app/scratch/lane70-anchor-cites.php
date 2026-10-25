@@ -20,10 +20,14 @@
  * citation are decided by `docx-cite-attribution.php`, because the bounds sweep and the meaning sweep already
  * answer both, and a third answer would let two checkers disagree about one sentence. An earlier version of this
  * file did invent one: it took the FIRST file named anywhere on the dump row and the FIRST identifier in the
- * sentence. Measured in full on 2026-10-25, that produced 47 MOVED rows and **0 pointers the build contradicts** —
- * 8 rows named a file other than the citation's own, 6 quoted a clause inside the construct they named, and 33
- * charged a register row's column label or its first-mentioned name to a range some other construct owns. So a
- * MOVED row is a pairing to read; exit 1 means "these are worth opening", not "the document is wrong".
+ * sentence. Measured in full on 2026-10-25, that produced 47 MOVED rows, and reading those 47 *pairings* found no
+ * claim the build contradicts — 8 rows named a file other than the citation's own, 6 quoted a clause inside the
+ * construct they named, and 33 charged a register row's column label or its first-mentioned name to a range some
+ * other construct owns. So a MOVED row is a pairing to read; exit 1 means "these are worth opening", not "the
+ * document is wrong". **And "worth opening" is not "nothing is there": re-opening the ten rows that survived the
+ * attribution fix found ten further pointers that were live code describing something else (passes 224-226, one of
+ * them thirteen pointers inside one policy file). A clean read of a pairing is not a clean read of the file it
+ * points at.**
  *
  *   php storage/app/scratch/lane70-anchor-cites.php [--dump=path] [--all] [--limit=N]
  */

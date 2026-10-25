@@ -17,47 +17,115 @@
  * Read-only: it writes nothing and changes no state.
  */
 $root = dirname(__DIR__, 3);
-$dump = (string) file_get_contents($root.'/storage/app/scratch/docx-flat.txt');
+// `--dump=` exists so a mutant harness can plant a defect in a COPY. A flag a caller passes and the code ignores
+// makes a mutating run look like a clean one (lane 44's sleeping mutant), so the harness also proves this one is
+// read: byte-identical copy answers the same, a copy with an open verb planted in a verdict column answers more.
+$dumpPath = $root.'/storage/app/scratch/docx-flat.txt';
+foreach ($argv as $a) {
+    if (str_starts_with((string) $a, '--dump=')) {
+        $dumpPath = substr((string) $a, 7);
+    }
+}
+if (! is_file($dumpPath) || filesize($dumpPath) < 1000) {
+    printf("REFUSED: the dump %s is missing or too short to be the document — run dump-docx-flat.php first.\n", $dumpPath);
+    exit(1);
+}
+$dump = (string) file_get_contents($dumpPath);
+$lines = (array) file($dumpPath);
 
 // Rows in the dump are "ROW n: cell | cell | …" on one line, §-headed by the nearest preceding P marker.
 preg_match_all('/ROW (\d+): (.*)/u', $dump, $rows, PREG_SET_ORDER);
+if (count($rows) < 500) {
+    printf("REFUSED: only %d ROW line(s) parsed — the dump does not look like this document.\n", count($rows));
+    exit(1);
+}
 // Delimiter-free alternations: the first version embedded the slashes and then wrapped them again, so every
 // preg_match() warning-failed to a false and the OPEN count printed a trustworthy-looking zero.
 $openWords = '\b(Open[ed]?|still owed|Owed|waits? on|Waiting|To be (?:confirmed|decided|supplied|answered)|not yet (?:deployed|answered|ruled)|undecided|Ask the|Remains|outstanding|Provisional)\b';
 $closedWords = '\b(Closed|Answered|Ruled|Fixed|Resolved|Implemented|Done|Adopted|Retired|Documented)\b';
 
 $openRows = [];
-foreach ($rows as $r) {
-    $n = (int) $r[1];
-    $body = trim($r[2]);
-    $cells = array_map('trim', explode('|', $body));
-    $flat = preg_replace('/\s+/u', ' ', $body);
+$labelRows = [];
+$unknown = [];
 
-    // A gap's TITLE can begin "Open a second signature…", so a verdict is the cell that LEADS with the
-    // open verb — and when any cell also carries a date, that one is the verdict cell (lane 61's rule).
-    $leadsOpen = false;
-    foreach ($cells as $cell) {
+// A verdict is a cell in a column that can hold one. In the flat dump a table is a maximal run of consecutive
+// `ROW n:` lines and the run's first line is its header, so each cell's column heading is readable — which is how
+// `Open the queue` (a walkthrough's Action cell) and `Open decisions` (a family label in §29.4) stopped being
+// reported as owed work. Measured over the whole dump: 184 runs, and those two are the ONLY rows with a cell that
+// leads with an open word. The list below is what a column heading has to say for the cell NOT to be a verdict;
+// anything else — including a heading this tool has never seen — still counts as OPEN, because an inventory that
+// hides owed work is worse than one that prints a label.
+$runHeader = null;
+$runCells = 0;
+$prevLine = -2;
+$labelHeadings = '\b(Action|Step|Phase|Desk|Office|Family|Register|Question|Condition|Evidence|Example|Column|Point|Symbol|Legend|Note)\b';
+foreach ($lines as $lineNo => $raw) {
+    $s = trim((string) $raw);
+    if (preg_match('/^ROW (\d+): (.*)/u', $s, $m) !== 1) {
+        $runHeader = null;
+
+        continue;
+    }
+    if ($lineNo !== $prevLine + 1) {
+        $runHeader = null;
+    }
+    $prevLine = $lineNo;
+    $cells = array_map('trim', explode('|', trim($m[2])));
+    if ($runHeader === null) {
+        $runHeader = $cells;
+        $runCells = count($cells);
+
+        continue;   // the header row itself states no verdict
+    }
+
+    $n = (int) $m[1];
+    $flat = preg_replace('/\s+/u', ' ', trim($m[2]));
+    $leads = [];
+    foreach ($cells as $ci => $cell) {
         if (preg_match('/^\s*(?:'.$openWords.')/iu', $cell) && ! preg_match('/(?:'.$closedWords.')/iu', $cell)) {
-            $leadsOpen = true;
+            $leads[] = [$ci, mb_substr(preg_replace('/\s+/u', ' ', $cell), 0, 60)];
         }
     }
-    if ($leadsOpen && ! preg_match('/(?:'.$closedWords.')/iu', $body)) {
-        $openRows[] = [$n, mb_substr($flat, 0, 190)];
+    if ($leads === [] || preg_match('/(?:'.$closedWords.')/iu', $m[2])) {
+        continue;
     }
+    foreach ($leads as [$ci, $text]) {
+        if (count($cells) !== $runCells) {
+            // Mis-aligned with its own header row, so the column is unknowable. Printed as unresolved, never cleared.
+            $unknown[] = [$n, count($cells), $runCells, $flat];
 
-    // "Names an actor" is NOT asked here. An earlier version of this tool matched the office words against a row's
-    // LEADING cell, which for a §24 dictionary row is the table name — so `scholarshiptypes` was charged as work
-    // owed by the Scholarship office, a false row built out of a substring. `lane61-who-owes.php` reads the actual
-    // "Who must act" column, and its answer is quoted below instead of re-derived (one definition per word).
+            continue;
+        }
+        $heading = $runHeader[$ci] ?? '';
+        if (preg_match('/(?:'.$labelHeadings.')/iu', $heading)) {
+            $labelRows[] = [$n, $heading, $text, $flat];
+        } else {
+            $openRows[] = [$n, $heading, $text, $flat];
+        }
+    }
 }
 
 printf("%d rows parsed from the dump.\n\n", count($rows));
 
-echo "=== OPEN: register rows whose own verdict cell still leads with an open verb ===\n";
-foreach ($openRows as [$n, $t]) {
-    echo "  ROW {$n}: {$t}\n";
+echo "=== OPEN: a verdict column still leads with an open verb ===\n";
+foreach ($openRows as [$n, $heading, $text, $t]) {
+    echo "  ROW {$n} (column [".$heading."]): {$t}\n";
 }
 echo '  count: '.count($openRows)."\n\n";
+
+echo "=== LABELS: an open word in a column that states no verdict (Action, Family, …) ===\n";
+foreach ($labelRows as [$n, $heading, $text, $t]) {
+    echo "  ROW {$n} (column [".$heading."]): {$text}\n";
+}
+echo '  count: '.count($labelRows)."\n\n";
+
+if ($unknown !== []) {
+    echo "=== UNRESOLVED: the row has a different cell count than its header, so its column is unknowable ===\n";
+    foreach ($unknown as [$n, $rc, $hc, $t]) {
+        echo "  ROW {$n} ({$rc} cells against a {$hc}-cell header): ".mb_substr($t, 0, 120)."\n";
+    }
+    echo '  count: '.count($unknown)."\n\n";
+}
 
 // The owed-work half is read out of the instrument that owns it. If it answers nothing, this run refuses rather
 // than reporting an empty OFFICE list — a broken reader otherwise looks exactly like a clean register. `--owes=`
