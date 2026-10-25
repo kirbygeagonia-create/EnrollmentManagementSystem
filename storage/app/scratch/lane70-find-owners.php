@@ -28,6 +28,14 @@ $search = [
     'completed record corrected and reopened' => '/reopen/',
     'issue + signature dates on the form' => '/formIssuedDate/',
     'the class card is the exception' => '/class-card|classCard/',
+    'workflow rows and formSignedDate' => '/Enrollmentworkflow::(create|firstOrCreate|updateOrCreate)/',
+    'store rejects a differing courseId' => '/courseId/',
+    'settlement moves the enrollment to paid' => '/EnrollmentStatus::Paid/',
+    'eligibility filter on enrolled' => '/EnrollmentStatus::Enrolled/',
+    'next uncompleted box is Blocking' => '/OfficeId::Blocking/',
+    'lecture-and-lab single scheduleId' => '/scheduleId/',
+    'adminOverride excluded' => '/adminOverride/',
+    'Gate before super-role' => '/Gate::before/',
 ];
 
 $targets = [];
