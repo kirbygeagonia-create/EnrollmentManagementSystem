@@ -23,6 +23,20 @@
 $root = dirname(__DIR__, 3);
 $ci = in_array('--ci', $argv, true);
 
+// Flags the tool does not read are refused by name. An accepted-and-inert flag is how a mutating run looks clean:
+// the caller believes it scoped the walk, and the walk never saw the scope.
+$unknown = [];
+foreach (array_slice($argv, 1) as $arg) {
+    if (is_string($arg) && str_starts_with($arg, '--') && $arg !== '--ci' && ! str_starts_with($arg, '--file=')) {
+        $unknown[] = preg_replace('/=.*$/s', '=', $arg);
+    }
+}
+if ($unknown !== []) {
+    fwrite(STDERR, sprintf('REFUSED: %s %s not a flag this tool reads (known: --ci, --file=).\n',
+        implode(', ', array_unique($unknown)), count($unknown) === 1 ? 'is' : 'are'));
+    exit(1);
+}
+
 $only = null;
 foreach ($argv as $arg) {
     if (str_starts_with($arg, '--file=')) {
@@ -38,8 +52,16 @@ if ($only === null) {
 } else {
     $files = [is_file($only) ? $only : $root.'/'.$only];
     if (! is_file($files[0])) {
-        exit("REFUSED: --file= names no file I can read: {$files[0]}\n");
+        // A refusal must carry a status: `exit("text")` returns 0, so this refusal would have reported success to CI.
+        fwrite(STDERR, "REFUSED: --file= names no file I can read: {$files[0]}\n");
+        exit(1);
     }
+}
+
+if ($files === []) {
+    fwrite(STDERR, 'REFUSED: the walk found no PHP file at all, so a clean verdict here would be a measurement of '
+        ."nothing.\n");
+    exit(1);
 }
 
 sort($files);

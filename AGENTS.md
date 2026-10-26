@@ -500,6 +500,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   an **associative** array answered null for both halves, warned on every file it read, and still printed a clean
   verdict over 867 — caught only because the run was checked against a **positive control** (HEAD's copy of the
   broken file, which must come back named). A sweep with no planted positive is a sweep that can only say "clean".
+  **It caught a third victim the same day.** A batch that only meant to add a sentence to
+  `lane72-probe-school-day.php` ran Pint over it, Pint applied `fully_qualified_strict_types`, and the file fataled
+  "Class Kernel does not exist" on its next run — the class is not rare, it is recurring, so the sweep is now proved
+  rather than remembered: `php storage/app/scratch/mutate-lane73b-import-order.php` (7 legs) plants the late import in
+  a copy and requires `LATE-IMPORT` plus **exit 1 in `--ci` and exit 0 in hand mode** (the two modes are different
+  claims and a leg that accepted either would pass on a broken instrument), requires silence on the sweep's own two
+  first-draft errors — docblock prose and a closure's `use ($a, $b)` binding list — and refuses on a missing `--file=`.
+  **Two defects in the sweep came out of that harness, both this file has named before:** its `--file=` refusal used
+  `exit("REFUSED: …")`, which returns **status 0**, so CI would have read a refusal as a pass; and `--dir=` was
+  accepted and ignored — a flag that looks like it scopes the walk while the walk never sees it. The tool now refuses
+  any flag it does not read, by name. Third harness lesson: the copies live in `storage/app/scratch`, which is the
+  directory every later leg walks, so the clean control must run **before** anything is planted — a harness whose
+  planted defect poisons its own next measurement reported five failures before the ordering was fixed.
 - **After any batch that re-issues a sheet an office ticks, or touches the preflight's forwarded-scheme row,
   `config/trustedproxy.php`, or the board-program flags**, run
   `php storage/app/scratch/lane73-packet-evidence.php` and read every line, then
@@ -1112,6 +1125,33 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a half-hour zone both read true. `storage/app/scratch/mutate-lane54-host-zone.php` plants six ways the row
   could stop measuring — flip the comparison, call a refusal an agreement, answer when the source is silent,
   hard-code the gap, rename the refusal, resolve an unknown zone — and each is killed by the test that names it.
+- **A date in this repository is a BOX date: ask an outside host what UTC is before calling it the world's** (lane 74).
+  Measured 2026-10-26: PHP's `gmdate` read `2026-10-26 07:23`, MySQL's `UTC_TIMESTAMP()` read `2026-10-26 07:23:39`,
+  and the application's `now()` agreed — so the disagreement is the Windows clock, not one program. The same minute,
+  `https://api.github.com/meta` answered `date: Sun, 25 Oct 2026 12:26:48 GMT`, the probe's own run printed the host
+  clock as `2026-10-25 12:28:09` against the box's `2026-10-26 07:28:24`, and the Actions record for a push made
+  then read `created_at = 2026-10-25T12:12:46Z`: **the box is 19 h 00 m ahead**, which makes the real civil day in
+  Manila the day *before* the one written into every dated claim here — `SchoolTime::today()`, the packet filename,
+  §1.1's revision rows, the `DEMO-OR-TODAY-01` slip. Ruled by the owner 2026-10-26: **record it, leave the clock.**
+  So do not re-age anything (a batch consistently one day off beats a half re-aged batch, and commits already pushed
+  carry these dates) — say which clock you mean. No instrument could see it because the guard that asks "does the
+  dataset carry the school's current day" reads *both* sides from the same machine: it agrees with itself. That is
+  lane 54c's and lane 72's lesson one level up — after "check which server answered the probe" comes **check which
+  clock stamped the answer**. `php storage/app/scratch/lane74-probe-clock-skew.php` prints the box epoch, the host's,
+  the skew, and the school's civil day under each; it refuses (exit 1, cause named) when the host answered nothing,
+  when the HTTP status is 400+ (an error page is not an answer about time), and when no `date:` header arrived —
+  never an "agrees" bought by not asking. Prove it with `php storage/app/scratch/mutate-lane74-clock-skew.php`
+  (7 legs), one of which **plants the agreement** (`$before = $external`) because on a fast box the "same minute"
+  branch can otherwise never execute — an unreachable branch in a measuring tool is the same liability as an unread
+  surface. Five bugs came out of the probe's own first three runs, each a class this file already names: `use
+  DateTimeImmutable;` in a non-namespaced script warns "has no effect"; `date('@'.$epoch)->setTimezone()` fatals
+  because `date()` returns a string; **all four refusals exited 0** until they were moved to `fwrite(STDERR)` +
+  `exit(1)` (`exit("text")` is status 0, third time); GitHub **403s a HEAD with no `User-Agent`** and the 403 page
+  carries no `date:` header, so "the host sent no Date header" was a true sentence about a failed request printed as
+  if it were an answer; and `CURLOPT_TIMEOUT` casts a float to whole seconds, so `--timeout=0.05` became 0 = no
+  timeout and the refusal leg measured instead of refusing — an accepted-and-inert option, which is why the probe now
+  asks in milliseconds and prints the value it used. Run the argument-bearing legs from the harness, not from
+  Git-Bash, which rewrites `/this-path-404s` into a Windows path before PHP ever sees it.
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
