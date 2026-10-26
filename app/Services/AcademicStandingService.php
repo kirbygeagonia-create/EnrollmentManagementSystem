@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AcademicStanding;
+use App\Enums\Semester;
 use App\Models\Enrollments;
 use App\Models\Gradescale;
 use Illuminate\Support\Collection;
@@ -71,6 +72,142 @@ class AcademicStandingService
             'failedSubjects' => $failed->all(),
             'retakenSubjects' => $retakes->all(),
             'advisories' => $this->advisories($enrollment, $graded, $retakes),
+        ];
+    }
+
+    /**
+     * Every subject this student has ever been loaded for, with the grade on it
+     * and the term that recorded it, filterable by academic year and semester.
+     *
+     * Standing deliberately reads PRIOR terms only (see gradedPriorSubjects), because a
+     * standing is decided before the current term's grades exist. The Registrar's record
+     * review needs the opposite view: the whole trail, the enrollment being signed
+     * included, and a row nobody has graded yet. A missing grade comes back as null and
+     * the desk dashes it — an ungraded row is never a pass.
+     *
+     * The load status travels with every row so a subject still PROPOSED cannot be read
+     * as an official recorded grade.
+     *
+     * @return array{
+     *     rows: array<int, array<string, mixed>>,
+     *     academicYears: array<int, array{value: int, label: string}>,
+     *     semesters: array<int, array{value: string, label: string}>,
+     *     passingCeiling: float,
+     *     hasGradeScale: bool,
+     *     applied: array{academicYearId: ?int, semester: ?string},
+     *     counts: array{terms: int, subjects: int, graded: int, ungraded: int, passed: int, failed: int, units: float},
+     * }
+     */
+    public function gradeHistory(Enrollments $enrollment, ?int $academicYearId = null, ?string $semester = null): array
+    {
+        $ceiling = Gradescale::passingCeiling();
+
+        $rows = DB::table('enrolledsubjects as es')
+            ->join('enrollments as e', 'e.enrollmentId', '=', 'es.enrollmentId')
+            ->join('subjects as s', 's.subjectId', '=', 'es.subjectId')
+            ->join('academicterms as t', 't.termId', '=', 'e.termId')
+            ->leftJoin('academicyears as y', 'y.academicYearId', '=', 't.academicYearId')
+            ->where('e.studentId', $enrollment->studentId)
+            ->orderByDesc('t.endDate')
+            ->orderBy('s.subjectCode')
+            ->get([
+                'es.enrolledSubjectId',
+                'es.grade',
+                'es.status',
+                'es.attempt_number',
+                'es.enrollmentId',
+                's.subjectCode',
+                's.subjectName',
+                's.lectureUnits',
+                's.labUnits',
+                't.termId',
+                't.semester',
+                't.academicYearId',
+                't.startDate',
+                't.endDate',
+                'y.yearLabel',
+                'e.yearLevel',
+            ]);
+
+        // The choices offered are the ones this student's own records can answer, so a
+        // filter can never be set to a value that has no rows — the failure lane 46
+        // calls FICTION.
+        $academicYears = $rows
+            ->filter(fn ($row) => $row->academicYearId !== null)
+            ->groupBy('academicYearId')
+            // The label is the year's own yearLabel. A bare id is the fallback and can only appear if
+            // academicyears.yearLabel were null — this repository's vocabulary guard refuses any surface
+            // that spells a year level by hand, and it caught this line the first time it was written.
+            ->map(fn ($group) => [
+                'value' => (int) $group->first()->academicYearId,
+                'label' => (string) ($group->first()->yearLabel ?? $group->first()->academicYearId),
+            ])
+            ->values()
+            ->all();
+
+        // Semesters are offered in the institution's own order (1st, 2nd, Summer), not the
+        // order the rows arrived in — a filter list is vocabulary, and vocabulary has one
+        // spelling per enum.
+        $presentSemesters = $rows->pluck('semester')->filter()->unique()->all();
+        $semesters = array_values(array_map(
+            fn (Semester $case) => ['value' => $case->value, 'label' => $case->value],
+            array_filter(
+                Semester::cases(),
+                fn (Semester $case) => in_array($case->value, $presentSemesters, true)
+            ),
+        ));
+
+        $visible = $rows->filter(function ($row) use ($academicYearId, $semester) {
+            if ($academicYearId !== null && (int) $row->academicYearId !== $academicYearId) {
+                return false;
+            }
+
+            return $semester === null || (string) $row->semester === $semester;
+        });
+
+        $mapped = $visible->map(function ($row) use ($ceiling, $enrollment): array {
+            $isGraded = $row->grade !== null;
+
+            return [
+                'enrolledSubjectId' => (int) $row->enrolledSubjectId,
+                'subjectCode' => (string) $row->subjectCode,
+                'subjectName' => (string) $row->subjectName,
+                'lectureUnits' => (float) $row->lectureUnits,
+                'labUnits' => (float) $row->labUnits,
+                'totalUnits' => (float) $row->lectureUnits + (float) $row->labUnits,
+                'grade' => $isGraded ? (float) $row->grade : null,
+                'result' => $isGraded ? ((float) $row->grade <= $ceiling ? 'pass' : 'fail') : null,
+                'loadStatus' => (string) $row->status,
+                'attemptNumber' => (int) ($row->attempt_number ?? 1),
+                'academicYearId' => $row->academicYearId !== null ? (int) $row->academicYearId : null,
+                'yearLabel' => (string) ($row->yearLabel ?? '—'),
+                'semester' => (string) $row->semester,
+                'termLabel' => trim($row->semester.' '.($row->yearLabel ?? '')),
+                'termStart' => $row->startDate,
+                'termEnd' => $row->endDate,
+                'yearLevel' => (int) $row->yearLevel,
+                'isTermUnderReview' => (int) $row->enrollmentId === (int) $enrollment->enrollmentId,
+            ];
+        })->values()->all();
+
+        $graded = array_filter($mapped, fn (array $r) => $r['grade'] !== null);
+
+        return [
+            'rows' => $mapped,
+            'academicYears' => $academicYears,
+            'semesters' => $semesters,
+            'passingCeiling' => $ceiling,
+            'hasGradeScale' => Gradescale::isConfigured(),
+            'applied' => ['academicYearId' => $academicYearId, 'semester' => $semester],
+            'counts' => [
+                'terms' => count(array_unique(array_column($mapped, 'termLabel'))),
+                'subjects' => count($mapped),
+                'graded' => count($graded),
+                'ungraded' => count($mapped) - count($graded),
+                'passed' => count(array_filter($graded, fn (array $r) => $r['result'] === 'pass')),
+                'failed' => count(array_filter($graded, fn (array $r) => $r['result'] === 'fail')),
+                'units' => array_sum(array_column($mapped, 'totalUnits')),
+            ],
         ];
     }
 

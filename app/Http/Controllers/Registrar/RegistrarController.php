@@ -9,6 +9,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\OfficeId;
 use App\Enums\PaymentStatus;
+use App\Enums\Semester;
 use App\Enums\StudentType;
 use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
@@ -83,7 +84,7 @@ class RegistrarController extends Controller
     /**
      * Show enrollment for approval with validation checklist.
      */
-    public function show(Enrollments $enrollment): Response
+    public function show(Request $request, Enrollments $enrollment): Response
     {
         $this->authorize('view', $enrollment);
 
@@ -107,6 +108,16 @@ class RegistrarController extends Controller
 
         $allValid = collect($checklist)->every(fn ($v) => $v);
 
+        // The two grade-history filters are read and sanitised here — a value the term
+        // column cannot hold is dropped rather than trusted — and the value actually
+        // applied travels back inside the payload, so the control and the rows it
+        // produced can never disagree.
+        $historyYear = $request->filled('academicYearId') ? (int) $request->input('academicYearId') : null;
+        $semesterValues = array_map(fn (Semester $case) => $case->value, Semester::cases());
+        $historySemester = in_array($request->input('semester'), $semesterValues, true)
+            ? (string) $request->input('semester')
+            : null;
+
         return Inertia::render('Registrar/Show', [
             'enrollment' => $enrollment,
             'checklist' => $checklist,
@@ -119,6 +130,11 @@ class RegistrarController extends Controller
             // and whether the department agreed with it — rather than an empty
             // dropdown to guess at.
             'standingReport' => $this->standingService->derive($enrollment),
+            // …and the trail those grades were earned on: one row per subject this
+            // student has ever been loaded for, grouped by the academic year and semester
+            // that recorded it. Standing reads prior terms only on purpose; a signature
+            // on the record has to be able to see the whole record.
+            'gradeHistory' => $this->standingService->gradeHistory($enrollment, $historyYear, $historySemester),
         ]);
     }
 

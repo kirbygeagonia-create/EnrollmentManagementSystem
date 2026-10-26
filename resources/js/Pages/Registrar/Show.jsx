@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, formatYearLevel, registrarGateLabels } from '@/Components/ui';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, Select, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
@@ -10,7 +10,167 @@ const checklistSteps = Object.entries(registrarGateLabels).map(([key, label]) =>
 // Accounting or the Registrar's counter yet, so the department still owns the record.
 const DROPPABLE_STATUSES = ['assessed', 'paid', 'enrolled'];
 
-export default function Show({ enrollment, checklist, allValid, blockingReasons = {}, standingReport = null }) {
+/**
+ * Every subject this student has ever been loaded for, grouped by the academic year and
+ * semester that recorded it.
+ *
+ * The derived standing on this page deliberately reads PRIOR terms only — a standing is
+ * decided before the current term's grades exist — which is why the desk that signs the
+ * record could see the conclusion but never the evidence trail it came from, or the term
+ * a subject was actually earned in. A row nobody has graded dashes and is never counted a
+ * pass; the passing line is the server's grade scale, and this panel says so out loud when
+ * no scale is on file rather than implying a threshold.
+ */
+function GradeHistory({ enrollment, gradeHistory }) {
+    const applied = gradeHistory.applied || {};
+    const [year, setYear] = useState(applied.academicYearId ?? '');
+    const [semester, setSemester] = useState(applied.semester ?? '');
+
+    const apply = (nextYear, nextSemester) => {
+        setYear(nextYear);
+        setSemester(nextSemester);
+        router.get(
+            route('registrar.show', { enrollment: enrollment.enrollmentId }),
+            { academicYearId: nextYear || undefined, semester: nextSemester || undefined },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
+
+    const terms = [];
+    gradeHistory.rows.forEach((row) => {
+        const open = terms[terms.length - 1];
+        if (open && open.termLabel === row.termLabel) {
+            open.rows.push(row);
+        } else {
+            terms.push({ termLabel: row.termLabel, yearLabel: row.yearLabel, semester: row.semester, rows: [row] });
+        }
+    });
+
+    const { counts } = gradeHistory;
+
+    return (
+        <Card
+            title="Grade History by Academic Year and Semester"
+            subtitle={gradeHistory.hasGradeScale
+                ? `One row per subject this student has been loaded for. The passing line is ${gradeHistory.passingCeiling.toFixed(2)}, read from the grade scale on file.`
+                : `One row per subject this student has been loaded for. No official grade scale is on file, so the ${gradeHistory.passingCeiling.toFixed(2)} line below is assumed — confirm the institutional scale before reading a result.`}
+            className="mb-5"
+        >
+            <div className="flex flex-wrap items-end gap-3 mb-4">
+                <div className="w-44">
+                    <label
+                        htmlFor="grade-history-year"
+                        className="block text-2xs font-bold uppercase tracking-wide text-slate-500 mb-1"
+                    >
+                        Academic year
+                    </label>
+                    <Select
+                        id="grade-history-year"
+                        name="gradeHistoryYear"
+                        value={year}
+                        onChange={(value) => apply(value, semester)}
+                        options={[
+                            { value: '', label: `All years (${gradeHistory.academicYears.length})` },
+                            ...gradeHistory.academicYears,
+                        ]}
+                    />
+                </div>
+                <div className="w-36">
+                    <label
+                        htmlFor="grade-history-semester"
+                        className="block text-2xs font-bold uppercase tracking-wide text-slate-500 mb-1"
+                    >
+                        Semester
+                    </label>
+                    <Select
+                        id="grade-history-semester"
+                        name="gradeHistorySemester"
+                        value={semester}
+                        onChange={(value) => apply(year, value)}
+                        options={[
+                            { value: '', label: 'All semesters' },
+                            ...gradeHistory.semesters,
+                        ]}
+                    />
+                </div>
+                {(year !== '' || semester !== '') && (
+                    <button type="button" className="btn btn-ghost btn-sm mb-0.5" onClick={() => apply('', '')}>
+                        Clear filters
+                    </button>
+                )}
+                <p className="text-2xs text-slate-500 ml-auto">
+                    {`${counts.subjects} subject row(s) · ${counts.graded} graded · ${counts.ungraded} with no grade recorded · ${counts.passed} pass · ${counts.failed} fail · ${counts.units} units`}
+                </p>
+            </div>
+
+            {terms.length === 0 ? (
+                <p className="text-xs text-slate-500">
+                    This student has no subject record for the selection above. The filters only offer the years and
+                    semesters their own records can answer, so an empty list here means the trail genuinely is empty.
+                </p>
+            ) : (
+                <div className="space-y-4">
+                    {terms.map((term) => (
+                        <div key={term.termLabel}>
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-2">
+                                <h4 className="font-heading font-bold text-slate-900 text-xs">
+                                    {term.yearLabel} · {term.semester} semester
+                                </h4>
+                                <span className="text-2xs text-slate-500">{`${term.rows.length} subject(s)`}</span>
+                            </div>
+                            <table className="w-full text-2xs">
+                                <thead>
+                                    <tr className="text-left text-slate-500">
+                                        <th className="py-1 pr-2 font-bold">Subject</th>
+                                        <th className="py-1 pr-2 font-bold">Units</th>
+                                        <th className="py-1 pr-2 font-bold">Grade</th>
+                                        <th className="py-1 pr-2 font-bold">Result</th>
+                                        <th className="py-1 pr-2 font-bold">Attempt</th>
+                                        <th className="py-1 font-bold">Load status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {term.rows.map((row) => (
+                                        <tr key={row.enrolledSubjectId} className="border-t border-slate-50">
+                                            <td className="py-1.5 pr-2">
+                                                <span className="font-bold text-slate-800">{row.subjectCode}</span>
+                                                <span className="text-slate-500"> — {row.subjectName}</span>
+                                                {row.isTermUnderReview && (
+                                                    <span className="ml-1 text-brand-600 font-bold">(this term)</span>
+                                                )}
+                                            </td>
+                                            <td className="py-1.5 pr-2 text-slate-600">{row.totalUnits}</td>
+                                            <td className="py-1.5 pr-2 font-bold text-slate-800">
+                                                {row.grade === null ? '—' : row.grade.toFixed(2)}
+                                            </td>
+                                            <td className="py-1.5 pr-2">
+                                                {row.grade === null ? (
+                                                    <span className="text-slate-400">No grade recorded</span>
+                                                ) : (
+                                                    <span
+                                                        className={row.result === 'pass'
+                                                            ? 'font-bold text-emerald-700'
+                                                            : 'font-bold text-amber-700'}
+                                                    >
+                                                        {row.result === 'pass' ? 'Pass' : 'Fail'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-1.5 pr-2 text-slate-600">{row.attemptNumber}</td>
+                                            <td className="py-1.5 text-slate-600">{row.loadStatus}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </Card>
+    );
+}
+
+export default function Show({ enrollment, checklist, allValid, blockingReasons = {}, standingReport = null, gradeHistory }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [returnOpen, setReturnOpen] = useState(false);
     const [dropOpen, setDropOpen] = useState(false);
@@ -169,6 +329,9 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
             <Card title="Enrollment Workflow Progress" subtitle="Signed offices and pending steps per enrollment type" className="mb-5">
                 <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
             </Card>
+
+            {/* The trail the standing was derived from, one group per academic year and semester */}
+            <GradeHistory enrollment={enrollment} gradeHistory={gradeHistory} />
 
             {/* Split Screen Registrar Suite */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
