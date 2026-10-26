@@ -875,7 +875,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   exit code alone cannot say which verdict the run reached. After the watch, ask the run itself —
   `gh run view <id> --json status,conclusion`, then the per-job list — and quote that, never the watcher's status.
   Reporting a green pipeline as red costs the same trust as the reverse, and both are the same failure: quoting an
-  instrument's exit code as if it were the fact it observes.
+  instrument's exit code as if it were the fact it observes. **The opposite face was met on 2026-10-26:** on run
+  40195587267 the same watcher returned **0** while the MySQL job was still `in_progress` and the run's own
+  `updatedAt` was four seconds after `createdAt` — a read that early is not a verdict in either direction. So the
+  guard is not "trust a zero exit", it is **poll until `status == completed`** and only then quote `conclusion` and
+  the per-job list; run 40195587267 answered `completed / success` on all three jobs about eight minutes later.
 - **A verdict word must be read from where a verdict is WRITTEN, never from the block around it** (lane 69).
   Answering "is anything left?" found a committed sentence the register had already overtaken —
   `Documentation/School-Decision-Sheet-2026-10-23.md` introduced §25.4 as "the printed-paper items … three of
