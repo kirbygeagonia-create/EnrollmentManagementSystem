@@ -488,6 +488,59 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   sit above the bootstrap with a comment saying why, and the harness's rule that a red control refuses the whole
   run is what turned a silent breakage into an error message. Run the script, not just `pint --test`, after any
   formatting pass over a scratch file that boots the framework.
+- **After any batch that states or edits a row count in the documents** ("Live ems holds nine offices",
+  "the live directory holds 24 students", "42 assignments over 17 roles"), run
+  `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
+  `php storage/app/scratch/mutate-lane72-row-counts.php` (14 legs). Lane 60 deliberately only *names* row counts on
+  CI because they belong to the dataset that stated them; this is the hand command that weighs them on this box.
+  Measured 2026-10-25: **12 bound claims, every one equal to `COUNT(*)`, 0 stale** — and the queue the first run
+  printed was five rows, of which **all five were the instrument's own breadth**. That is why there are seven
+  buckets and not three: NARRATIVE (a singular instance — "seated a second active enrollment on *one student*" —
+  and any sentence naming no row-word at all: "One receipt number is *one payment*, never two" is a rule about
+  identity, not a census of `payments`), COMPARISON (one number repeated beside several tables — "They are two
+  stages, two offices, two permissions" counts the flows being compared, while `offices` answers 9), CODEISH (a
+  number on a class member: "the two `Enrollments::create` sites in app/" counts call sites, which a grep answers —
+  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:73`, so the sentence is true
+  and simply not this tool's question), and PER-RECORD (a *lone* number inside an enumeration of eleven table
+  names: §3's walkthrough trail "…payments, enrollmentstatushistory, 7 workflowsteps, clinicrecords, idrequests"
+  is one enrollment's own trail, not the 199 `workflowsteps` holds). **A census list and a trail list look alike and
+  are opposite** — "154 subjects, 16 curriculums, 9 clearance requirements and the seeded roles" is a real table
+  count, and the first draft of the enumeration rule swallowed it; the discriminator is whether the list's *other*
+  items carry numbers too. Three instrument bugs came out of the harness's first run, each of which had produced a
+  verdict that looked like a measurement: `$a[strlen('--dump=')]` is a **character offset**, so it returned the
+  single letter `s` and every mutant leg ran against the real document (an ignored flag is how a mutant run looks
+  clean — here it at least refused loudly); `mb_substr` fed a `strlen` offset reads the wrong pair in a document
+  full of em dashes, which is why the `::` test reported CODEISH 0 while a false call-site count sailed into a
+  table claim; and a "nothing to judge" fixture that struck a *remembered* list of seven table names left
+  `permissions` standing, so the run answered a genuine STALE where the leg wanted the refusal — strike every
+  lowercase plural, or the leg tests the fixture and not the tool. Two legs also had wrong premises, and their BAD
+  was the lesson rather than the checker's: re-spelling only one half of "two offices, two permissions" to eight
+  correctly produced a STALE, because COMPARISON keys on the repeated *shape*, not on the value. NOT a CI step,
+  for lane 60's reason; `--allow-schema=` is how another dataset is named, and `--limit=` prints an
+  `INCOMPLETE` notice because the queue is a queue.
+  **Its neighbour class was measured and deliberately not instrumented.** The figure pass 244 corrected — the ID
+  desk's Issued tab, "seven" where the controller's predicate answers nine — is not a table count, so `lane72`
+  cannot bind it; `storage/app/scratch/lane72-probe-screen-counts.php` sizes that family at **811 sentences**
+  carrying a number beside a screen word (`rows?|lists?|pages?|tabs?|desks?…`), and the overwhelming majority are
+  ordinary English or a citation ("29.2 row 6"), not a claim about a query. A checker for it would need to drive
+  the handler's predicate per sentence, which is lane 40's and lane 47's method applied to prose, so it is a reader
+  with a probe rather than a gate. What the probe did establish: **a sentence stating two counts must be measured on
+  both halves** — pass 244 re-certified "nine" from the server and left "against the two the queue holds" standing
+  because it had been written on 2026-10-17, so `lane72-probe-id-tabs.php` reproduces `IDController::index()`'s two
+  predicates and reads queue 2 / issued 9, i.e. both halves are true today, and the register row's "seven … against
+  the two still queued" stays as the dated record of the day it was ruled (a dated row is never re-aged).
+  **The lane 65 Pint trap bit this probe on its first formatting pass**, which is why the rule is a gate and not a
+  note: Pint shortened the bootstrap's `Illuminate\Contracts\Console\Kernel::class` to `Kernel::class`, filed its
+  own `use` *below* the call without importing the alias (fatal: "Class Kernel does not exist"), and after the
+  import was hoisted by hand the file carried **two** copies ("Cannot use … because the name is already in use").
+  `pint --test` called the file clean through every stage of it. Run the script, and read the import block, after
+  any format over a scratch file that boots the framework.
+  **Before reading a suite run as a defect, ask which school-day the dataset carries**:
+  `php storage/app/scratch/lane72-probe-school-day.php` prints the UTC instant, `SchoolTime::today()`, the date on
+  `DEMO-OR-TODAY-01`, and how many held receipts fall inside the school's current day, then says whether a run now
+  measures the build or a dataset one day behind it (lane 54's midnight trap, turned into a pre-check). Measured at
+  2026-10-25 22:45Z = **the school's 2026-10-26**: the slip carries 2026-10-26 and 5 held receipts sit inside that
+  day, so the whole suite could be read as a measurement — it answered 806 passed / 5,458 assertions.
 - **After any batch that changes a guard around a money or percent figure**, run
   `php storage/app/scratch/lane49-zero-shown-as-absence.php` and prove it with
   `php storage/app/scratch/mutate-lane49-checker.php`. Lane 48's mirror: `totalPaid > 0 ? ₱… : '—'` and
@@ -748,9 +801,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - `php artisan db:seed --class=RbacSeeder` prunes permissions the seeder no longer declares, so
   retiring a right is a seeder edit plus a reseed, not a migration.
 - RBAC pivots are renamed: `staff_roles`, `role_permissions` with columns `roleId` / `permissionId`;
-  there is **no** `model_has_roles`. `staff_roles.model_type` is stored double-escaped
-  (`App\\Models\\Staffusers`), so a single-backslash SQL literal matches nothing and every account
-  looks role-less.
+  there is **no** `model_has_roles`. `staff_roles.model_type` was measured on live `ems` (2026-10-25) as
+  `App\Models\Staffusers` — 21 characters, no doubled separator — so this file's earlier instruction that it is
+  "stored double-escaped, so a single-backslash SQL literal matches nothing" is false as written; it was a reading of
+  the PHP-source spelling, and a literal `where model_type = 'App\\\\Models\\\\Staffusers'` now matches nothing for the
+  opposite reason. The robust rule, which is what `lane34-probe-negative-hits.php` uses: match the class WORD
+  (`like '%Staffusers%'`) and print the distinct `model_type` values, so an empty answer can never be confused with a
+  filtered one. Same probe, same lesson: `staffusers`'s primary key is **`userId`**, not `id` — a join on `u.id`
+  dies mid-claim and proves nothing about the claim it was testing.
 - Never delete rows found during probing. Deleting probe residue is its own decision for the owner.
 - Scratch schemas accumulate one per rehearsal lane, and some are load-bearing: `mutate-lane54-report.php`
   refuses to run unless `DB_DATABASE` names `ems_l54_a` or `ems_l54_b`, and the lane 55/56/57 and lane 38/40
@@ -1321,6 +1379,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   pair-form, a bounds-clean document and a confident reader still cannot make an edit true. **When the claim is "this
   pointer is one line off", read it with a numbered reader** (`lane70-read-span.php` prints the number), never with a
   bare `sed -n 'Ap;Bp'`.
+  **Pass 244 worked a different figure family: a count over demo rows, written in the present tense.** §20's ID-desk
+  paragraph said the Issued tab holds "seven on this box against the two the queue holds". Replicating the controller's
+  own predicate (`IDController.php:68-73` — `enrolled` enrollments having a `completed` step for office 22) on live
+  `ems` answers **nine** (53, 92, 1063, 1064, 1065, 1066, 1067, 1284, 1285) while the second half is still exactly two
+  pending rows, so the count had drifted with the dataset and the sentence's structure was sound. The pass wrote
+  `nine` and left the number's twin alone: §28's register row that also reads "seven … against the two still queued"
+  **carries its own date, 2026-10-17**, and a dated row records the day it was written — re-aging it would state a
+  figure that was not true on that day (lane 60's rule, met from the other side). Two mechanics: the pass refuses to
+  write unless the server answers the number it is about to type, and its first draft was refused by the engine because
+  `$edits` was built as `[needle => replacement]` where `docxApply` takes a LIST of `[from, to, anchor?, expect?]` —
+  `[$from, $to] = $edit` over a string yields single characters, and the "replacement is identical to the needle"
+  guard is what stopped a corrupt write. My first measurement of the same claim counted **16**, because I asked
+  `signedBy is not null` across every workflow instead of the tab's `stepStatus = completed` + `enrolled` predicate:
+  a number that disagrees with a document is worth re-asking only after checking it was the same question.
+
   **A queue that has been read must say so, or the next session reads it again.**
   `storage/app/scratch/lane70-queue-reads.json` records the rows this lane has opened, keyed by
   `lane70-anchor-cites.php`'s OWN identity — the file its sentence names, the range, and a hash of the sentence; never
@@ -1688,6 +1761,44 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   queue — but its corpus-wide `substr_count` verdict probe is noise (it "refuted" `Clearanceperiods::accepting()` for
   existing, called `studentId` consistent because it occurs 926 times, and let a §1.1 history row into the NEG bucket).
   Each shape needs its own subject→predicate binding, the way lanes 46, 47, 50, 60, 64 and 71 each needed one.
+- **After any batch that edits an existential negative in the documents** ("there is no cancel action", "only allows
+  firstYear and transferee"), run `php storage/app/scratch/lane34-inventories.php` and then
+  `php storage/app/scratch/lane34-negative-claim-sweep.php`. The sweep existed since lane 34 but **nothing generated its
+  ground truth**: it read route, column and permission lists captured by hand on 2026-10-15 and never refreshed, so it
+  judged the document against a schema that had already moved (`extendedDeadline` was dropped 2026-10-23; the fresh
+  capture answers 451 columns where the stale file held 452). The generator now writes a capture stamp and the sweep
+  refuses a stamp older than the newest migration, or missing — an inventory with no date is indistinguishable from a
+  current one, which is how this ran for ten days without saying so. **The queue is read, and the answer was the
+  instrument, not the document:** all 14 hits are negation-attachment artifacts — the sentence denies a *role's*
+  permission set ("the Dean role does not hold `block.view`"), a rule about enum values ("no assignment beyond
+  `Blocks.maxStudents`"), or a table-vs-column distinction ("…is not a table"), never the existence of the identifier.
+  The two mechanically checkable claims were probed against live `ems` by
+  `lane34-probe-negative-hits.php` and both read **true**: `admissions.applicantType` is declared
+  `enum('firstYear','transferee')` and holds only those two, and no dean-shaped account holds `block.view` (6 roles do,
+  and the pivot's only `model_type` is `App\Models\Staffusers`). Reading the hits also disproved two standing
+  instructions in this file — see the RBAC-pivot bullet.
+  **The same defect was then searched for across every scratch tool, and lane 34 is the only real case.** A walk of
+  every tracked PHP that reads a `.json/.txt/.csv/.sql` artifact, asking whether any tracked file writes it, answered 3
+  orphans on its first run and 11 on its calibrated one — and every one of the eleven was traced to an explanation
+  rather than left as a hit: `lane60-readings.json` is written by `lane60-probe-ratios.php --write-readings=…` invoked
+  *indirectly*, and `lane60-ratio-claims.php` refuses when the probe does not report writing it; the
+  `laneNN-suite*.txt` files are the logs that frozen `refresh-docx-passNNN` scripts consumed, which is provenance, not
+  a live check; only `routes.txt` (14 days) and `routes.json` (25 days) are genuinely unmaintained snapshots, and the
+  two files that read them — `probe-walkthrough-routes.php`, `route_coverage.php` — are one-off probes that nothing
+  instructs anyone to re-run. **Both readers now ask the running application, so those two snapshots are retired rather than maintained:**
+  `route_coverage` reports 0 of 90 mutating named routes unreached by a test against today's table, and the walkthrough
+  probe reports 32 routes claimed / 0 not found while still catching a planted typo (2 MISS). Its first version did not:
+  handing it bare `$r['uri']` values made every lookup miss and reported **31 of 32 walkthrough routes missing** — a
+  fake finding about the guide of exactly the kind lanes 46 and 50 produced by reading the wrong construct. The walk
+  parses `METHOD uri` pairs and `route:list` answers `GET|HEAD` as one method string, so each verb has to be emitted on
+  its own line; sitting with a large bad number long enough to check what the instrument was handed is the whole
+  discipline in one sentence. **The walk itself was wrong twice before it was right**: it required the artifact name to
+  sit inside the write call (generators assign a variable first), and it matched only bare basenames, so
+  `dump-docx-flat.php` — which quotes a whole path — was invisible and reported its own output as an orphan. A positive
+  control (assert that `docx-flat.txt` and `lane34-routes.json` ARE attributed) is what caught both, and it is why the
+  probe was deleted rather than kept: an instrument whose false positives are this cheap to produce must not be cited
+  as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
+  per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
   `storage/app/scratch/lane37-section-reference-sweep.php` judges the 911 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits

@@ -15,8 +15,12 @@
  * checkable against a named route, column or permission.
  *
  * usage: php storage/app/scratch/lane34-negative-claim-sweep.php [dump] [--verbose]
+ *
+ * Exit status is the number of hits to read, not a pass/fail flag: this is a queue (a hit is a question about what a
+ * negation attached to, and reading showed all fourteen of 2026-10-25 were the sweep's own artifact, not a document
+ * defect). It is deliberately not a CI step — a gate that reports fourteen greens as red teaches everyone to ignore
+ * the red, and its own inventories now carry a capture stamp it refuses when stale.
  */
-
 $root = dirname(__DIR__, 3);
 $verbose = in_array('--verbose', $argv, true);
 $dump = $root.'/storage/app/scratch/docx-flat.txt';
@@ -26,6 +30,35 @@ foreach (array_slice($argv, 1) as $a) {
     }
 }
 is_file($dump) || exit("no dump at {$dump} — run dump-docx-flat.php first\n");
+
+// The three inventories were hand-captured on 2026-10-15 and nothing rebuilt them, while the schema has moved since
+// (`studentclearances.extendedDeadline` was dropped on 2026-10-23, and this run's capture answers 451 columns where
+// the old file held 452). A negative claim judged against a stale inventory is a claim about an older build, so the
+// sweep now refuses one: the generator writes a capture stamp, and a stamp older than the newest migration means the
+// inventories cannot describe the schema they are checking.
+$metaPath = $root.'/storage/app/scratch/lane34-inventory-meta.json';
+if (! is_file($metaPath)) {
+    exit("REFUSED: no lane34-inventory-meta.json — run lane34-inventories.php. Inventories with no capture stamp are\n"
+        ."        indistinguishable from inventories that are current, which is how this sweep ran on a ten-day-old\n"
+        ."        schema without saying so.\n");
+}
+$meta = json_decode((string) file_get_contents($metaPath), true);
+if (! is_array($meta) || ! isset($meta['generated_at'], $meta['columns'], $meta['routes'], $meta['permissions'])) {
+    exit("REFUSED: the inventory meta is unreadable, so the capture cannot be aged.\n");
+}
+$newest = 0;
+foreach ((array) glob($root.'/database/migrations/*.php') as $mig) {
+    $newest = max($newest, (int) filemtime($mig));
+}
+$captured = strtotime((string) $meta['generated_at'].' UTC');
+if ($captured !== false && $newest > 0 && $captured < $newest) {
+    printf("REFUSED: the inventories were captured %s, before the newest migration (%s). Re-run lane34-inventories.php.\n",
+        (string) $meta['generated_at'], gmdate('Y-m-d H:i:s\Z', $newest));
+    exit(1);
+}
+printf("inventories: %d route(s), %d column(s), %d permission(s), captured %s against schema %s\n",
+    (int) $meta['routes'], (int) $meta['columns'], (int) $meta['permissions'], (string) $meta['generated_at'],
+    (string) ($meta['schema'] ?? '?'));
 
 // --- inventories -------------------------------------------------------------
 $routes = json_decode(file_get_contents($root.'/storage/app/scratch/lane34-routes.json'), true) ?: [];

@@ -8,12 +8,37 @@
  * table, with `{parameter}` names normalised away — the script writes {payment} where the route
  * may bind {paymentId}, and that difference is not a defect.
  */
-
 $root = dirname(__DIR__, 3);
 // An optional argument lets a mutant copy of the script be measured, so a clean sweep can be proved
 // to fire on a planted route rather than trusted because it was quiet.
 $md = file($argv[1] ?? $root.'/Documentation/Per-Office-UAT-Walkthrough.md');
-$routes = array_filter(explode("\n", file_get_contents(__DIR__.'/routes.txt')));
+// URIs come from the running application, not from `routes.txt` — a hand-saved list from 2026-10-15 that nothing
+// rebuilt, so a route renamed after that day would have been reported missing, and one deleted after it reported
+// present. Asking the app makes the question and the answer about the same build.
+$uriOut = (string) shell_exec('cd '.escapeshellarg($root).' && '.escapeshellarg(PHP_BINARY).' artisan route:list --json 2>&1');
+$table = json_decode($uriOut, true);
+$routes = [];
+foreach (is_array($table) ? $table : [] as $r) {
+    if (! isset($r['uri'], $r['method']) || ! is_string($r['uri'])) {
+        continue;
+    }
+    // The walk reads "METHOD uri" pairs and `route:list` reports `GET|HEAD` as one method string, so each verb gets
+    // its own line exactly as the replaced snapshot had it. Handing the walk a bare URI makes every lookup miss, and
+    // a first draft of this change did exactly that: it reported 31 of 32 walkthrough routes missing, which was the
+    // probe's shape, not the guide's.
+    foreach (explode('|', (string) $r['method']) as $verb) {
+        $verb = trim($verb);
+        if ($verb !== '') {
+            $routes[] = $verb.' '.ltrim($r['uri'], '/');
+        }
+    }
+}
+if ($routes === []) {
+    printf("REFUSED: `artisan route:list --json` answered no uris (%s) — a probe with no route table cannot\n"
+        ."        find a missing one, and its silence would read as a clean walkthrough.\n",
+        substr(str_replace("\n", ' ', $uriOut), 0, 160));
+    exit(1);
+}
 
 $norm = function (string $p): string {
     $p = preg_replace('/\{[^}]+\}/', '{}', $p);

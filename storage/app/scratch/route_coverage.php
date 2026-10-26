@@ -5,7 +5,17 @@
 // literal URI the test posts to ('/x').
 
 $repo = dirname(__DIR__, 3);
-$routes = json_decode(file_get_contents($repo.'/storage/app/scratch/routes.json'), true);
+// The route table is asked of the running application, not read from `routes.json`: that snapshot was hand-saved on
+// 2026-10-15 and nothing rebuilt it, so this audit was matching test coverage against an older build's routes — the
+// same defect lane 34 was found carrying. A tool that shells out to `artisan` must run from the project directory.
+$routesJson = (string) shell_exec('cd '.escapeshellarg($repo).' && '.escapeshellarg(PHP_BINARY).' artisan route:list --json 2>&1');
+$routes = json_decode($routesJson, true);
+if (! is_array($routes) || $routes === []) {
+    printf("REFUSED: `artisan route:list --json` answered no routes (%s) — an empty route table would clear every\n"
+        ."        mutating route as covered, which is the failure this audit exists to catch.\n",
+        substr(str_replace("\n", ' ', $routesJson), 0, 160));
+    exit(1);
+}
 
 $hay = '';
 $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($repo.'/tests'));
@@ -49,4 +59,4 @@ foreach ($routes as $r) {
     }
 }
 
-echo implode("\n", $missing)."\n\n".count($missing)." of ".$total." app mutating named routes never reached by a test\n";
+echo implode("\n", $missing)."\n\n".count($missing).' of '.$total." app mutating named routes never reached by a test\n";
