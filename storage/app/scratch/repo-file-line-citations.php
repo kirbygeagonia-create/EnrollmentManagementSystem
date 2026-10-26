@@ -34,6 +34,7 @@ $targets = $args !== [] ? $args : [
     'Documentation/School-Decision-Sheet-2026-10-23.md',
     'Documentation/Registrar-Print-Decision-Sheet-2026-10-11.md',
     'Documentation/Print-Fidelity-Comparison-2026-10-10.md',
+    'Documentation/Registrar-Window-Packet-2026-10-26.md',
 ];
 
 $index = null;
