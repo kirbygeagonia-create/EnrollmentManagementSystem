@@ -18,6 +18,15 @@ scratch/*
 !scratch/*.php
 !scratch/*.ps1
 !scratch/*.mjs
+# A HEAD export is a second copy of an already-tracked file, taken with `git show HEAD:<path> > scratch/laneNN-head-<name>.php`
+# so a harness can run the pre-fix bytes beside the working ones and prove that *this batch* changed the verdict. Reproducible
+# from the repository by definition, so tracking it would put a whole second copy of a controller — or of the 174 KB demo
+# pipeline — on the remote under a name that says "tool". Each harness prints the export command and refuses (exit 1) when its
+# copy is missing or byte-identical to the working file, so an ignored export can never read as a green run. The one literal
+# below is lane 54's export written before the `laneNN-head-` convention existed. Consequence for whoever names a new file
+# here: a real *tool* must not be named `lane*-head-*`, or this rule hides it.
+scratch/lane*-head-*.php
+scratch/lane54-pipeline-no-year-widening.php
 # One data file is tracked, deliberately: the record of which queue rows a human has already opened is the point
 # of that instrument, and it is worth nothing if it lives on only the machine that made it. It holds file paths,
 # line ranges, a sentence hash and a reason per row — no institutional data, nothing a public remote must not see.

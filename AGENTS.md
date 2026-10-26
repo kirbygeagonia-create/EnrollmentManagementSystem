@@ -1002,6 +1002,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   It ran on 2026-10-24 and dropped seven schemas while live `ems` was verified unchanged before and after —
   that before/after comparison is why the tool does not assert a frozen count like its predecessor
   `drop-scratch-databases.php`, whose expected figures were the 2026-10-14 reading and are now marked as such.
+- **A HEAD export is an artefact, and is now ignored.** The lane 53/55/56/57 harnesses swap a pre-fix copy of a file over
+  the working one to prove *this batch* changed the verdict, and because `shell_exec` cannot reach `git` from PHP on this
+  box the copy is taken by hand — `git show HEAD:<path> > storage/app/scratch/laneNN-head-<name>.php` — which left a
+  second copy of a controller, of an audit command, and a 174 KB copy of the demo pipeline sitting permanently untracked in
+  `git status`. `storage/app/.gitignore` re-includes `scratch/` **by extension**, so only a rule written *after*
+  `!scratch/*.php` hides them again: eleven matched the `lane*-head-*.php` wildcard and one needed its own literal
+  (`lane54-pipeline-no-year-widening.php`, written before the naming convention), measured 2026-10-26 with
+  `git check-ignore -v` — the same command is the negative control, because every live tool still resolves to the
+  re-include and `git ls-files -i -c --exclude-standard` answers empty, so nothing tracked became invisible. Ignoring is
+  safe here for the reason the dump rule above is not: each harness prints its own export command and **refuses with exit 1
+  when the copy is missing or byte-identical to the working file** (`mutate-lane55-conflicts.php:29-33`), so an absent
+  export is a loud refusal and never a green run. The cost is a naming rule: a real *tool* must never be called
+  `lane*-head-*`, or this pattern hides it from the remote.
 
 ## Facts new code must respect
 
