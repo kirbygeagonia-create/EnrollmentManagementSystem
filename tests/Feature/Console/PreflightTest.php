@@ -427,6 +427,43 @@ class PreflightTest extends TestCase
     }
 
     #[Test]
+    public function the_forwarded_scheme_row_decides_the_proxy_question_instead_of_asking_the_installer_to_remember_it(): void
+    {
+        // G-13 is the register's one item that waits on a server nobody has built yet. The row cannot see a proxy
+        // that does not exist, so it judges the two states it CAN see: an APP_URL that claims HTTPS while nothing
+        // is trusted (the header would silently never reach a desk), and a wildcard, which is the one-line "fix"
+        // that forges both the scheme and the client address.
+        $row = fn (string $out): string => (string) (collect(explode("\n", $out))
+            ->first(fn (string $l): bool => str_contains($l, 'Forwarded scheme')));
+
+        config()->set('trustedproxy.proxies', null);
+        config()->set('app.url', 'http://localhost:8080');
+        $this->assertSame(0, $this->callPreflight());
+        $line = $row($this->commandOutput());
+        $this->assertNotSame('', $line, 'the report printed no Forwarded scheme row');
+        $this->assertStringNotContainsString('FAIL', $line);
+        $this->assertStringContainsString('DEPLOYMENT.md', $line, 'the answered-as-nothing state still names the instruction');
+
+        config()->set('app.url', 'https://ems.example.edu.ph');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line, 'an https URL with no trusted proxy is the silent-HSTS shape');
+        $this->assertStringContainsString('no proxy is trusted', $line);
+
+        config()->set('trustedproxy.proxies', ['10.0.0.5']);
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('OK', $line);
+        $this->assertStringContainsString('1 proxy address(es) trusted', $line);
+
+        config()->set('trustedproxy.proxies', ['*']);
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line, 'the wildcard must never read as the answered state');
+        $this->assertStringContainsString('forge', $line);
+    }
+
+    #[Test]
     public function the_application_zone_is_still_utc_so_wiring_the_env_var_changed_nothing(): void
     {
         // DEPLOYMENT.md names APP_TIMEZONE as the knob; until now config/app.php ignored it. Reading the

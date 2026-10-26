@@ -103,6 +103,15 @@ source address, and things keyed on the address follow it: the login throttle bu
 `$this->ip()` (`app/Http/Requests/Auth/LoginRequest.php:97`) and every audit row stores `Request::ip()`
 (`app/Observers/AuditLogObserver.php:102`) into `auditlogs.ipAddress`.
 
+**This paragraph is now a command, not only an instruction** (added 2026-10-26, the install-time half of the
+register's G-13): `php artisan ems:preflight` prints a `Forwarded scheme` row. It answers OK while nothing is
+trusted and `APP_URL` is plain http — the correct state for this host — and **WARNs when an `https` `APP_URL`
+sits beside no trusted address**, which is exactly the shape above: the desk sees HTTPS while the application
+never does, so the header is silently absent. Naming an address turns it to OK and prints the count. A wildcard
+also WARNs, because `at: '*'` is the one-line change that makes the header appear *and* lets any client forge
+both its scheme and its source address. It is WARN, never FAIL: a preflight cannot see a proxy that has not been
+built, and nothing stored moves either way.
+
 **Time zone: two processes write into these tables.** `config/app.php` resolves
 `'timezone' => env('APP_TIMEZONE', 'UTC')` and nothing in `.env` or `.env.example` sets that variable, so the
 application runs in UTC while the school keeps Manila time (UTC+8) — a record made before 08:00 local is

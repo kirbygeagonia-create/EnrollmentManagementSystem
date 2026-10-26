@@ -99,7 +99,50 @@ class Preflight extends Command
             $this->printFolderArrives(),
             $this->browserForPdfs(),
             $this->queueConnection(),
+            $this->forwardedSchemeIsDecided(),
         ];
+    }
+
+    /**
+     * Whether this install can be told which scheme the desk arrived over.
+     *
+     * `SecurityHeaders` sends `Strict-Transport-Security` only when `$request->isSecure()`, and a TLS-terminating
+     * proxy makes that question answerable only if the proxy's address is trusted — otherwise
+     * `Illuminate\Http\Middleware\TrustProxies` discards `X-Forwarded-Proto` and the header never appears. This is
+     * the install-time half of §28.2's G-13, which the registers could only record as "not yet deployed": a
+     * preflight cannot see a proxy that has not been built yet, but it can refuse to let an `https` APP_URL sit
+     * beside no trusted address, and it can refuse to call a wildcard "named".
+     *
+     * The wildcard is the branch that has to say something, because `trustProxies(at: '*')` is the one-line fix
+     * that makes the header appear and lets any client forge its own scheme and address — and
+     * `LoginRequest::throttleKey()` and `auditlogs.ipAddress` both read `$request->ip()`.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function forwardedSchemeIsDecided(): array
+    {
+        $configured = config('trustedproxy.proxies');
+        $proxies = is_array($configured) ? array_values(array_filter($configured, static fn ($p): bool => (string) $p !== '')) : [];
+        $url = (string) config('app.url');
+        $expectsHttps = str_starts_with($url, 'https://');
+
+        if (in_array('*', $proxies, true) || in_array('**', $proxies, true)) {
+            return ['Forwarded scheme', 'WARN', 'every address is trusted, so any client can forge its scheme and its IP — '
+                .'name the proxy instead: throttling and auditlogs.ipAddress both read $request->ip()'];
+        }
+
+        if ($proxies !== []) {
+            return ['Forwarded scheme', 'OK', count($proxies).' proxy address(es) trusted, so X-Forwarded-Proto is honoured '
+                .'and HSTS can reach a desk that arrived through a TLS terminator'];
+        }
+
+        if ($expectsHttps) {
+            return ['Forwarded scheme', 'WARN', $url.' is https but no proxy is trusted, so behind a TLS terminator the '
+                .'header never appears — name its address in bootstrap/app.php (never `*`); DEPLOYMENT.md §2, G-13'];
+        }
+
+        return ['Forwarded scheme', 'OK', 'nothing is trusted, which is right while this host speaks HTTP itself; '
+            .'if a TLS terminator is ever put in front, name its address (DEPLOYMENT.md §2, G-13)'];
     }
 
     /**
