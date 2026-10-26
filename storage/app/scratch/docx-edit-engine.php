@@ -21,10 +21,9 @@
  * containers do not move, the document parses, and every stale needle is GONE while every
  * replacement is present.
  */
-
 function docxApply(string $src, string $tmpBackup, array $textEdits, array $cellEdits, bool $apply, array $paraEdits = [], array $inserts = []): void
 {
-    $zip = new ZipArchive();
+    $zip = new ZipArchive;
     if ($zip->open($src) !== true) {
         fwrite(STDERR, "cannot open docx\n");
         exit(1);
@@ -61,6 +60,20 @@ function docxApply(string $src, string $tmpBackup, array $textEdits, array $cell
             continue;
         }
         $after = $edit[2] ?? null;
+        // Slot 3 is the ANCHOR and slot 4 is the expected count. A caller who writes `[from, to, 2]` meaning "there
+        // are two copies" instead hands the positional resolver the string "2", which it then searches for literally —
+        // and because document.xml is full of the character 2, it lands on one occurrence and reports
+        // "1 target resolved uniquely" as if that were the whole job. Measured 2026-10-26 against a sentence the
+        // document holds twice: slot 3 = 2 resolved one target, slot 4 = 2 resolved both. So refuse the shape loudly
+        // rather than half-applying a pass in silence.
+        if ($after !== null && ! is_string($after)) {
+            echo sprintf('FAIL text %d: slot 3 is the anchor and must be a string or null; got %s. '
+                ."To correct N copies pass [from, to, null, %d] — slot 4 is the count.\n", $i,
+                get_debug_type($after), (int) $after);
+            $failures++;
+
+            continue;
+        }
         // An identical sentence that appears in two different tables (§26 and §28.5 ask the
         // same institutional question) can be corrected in both at once — but only when the
         // caller states how many copies it expects to find.
@@ -400,7 +413,7 @@ function docxApply(string $src, string $tmpBackup, array $textEdits, array $cell
 
     $tmp = sys_get_temp_dir().'/ems-docx-'.uniqid().'.docx';
     copy($src, $tmp);
-    $z2 = new ZipArchive();
+    $z2 = new ZipArchive;
     $z2->open($tmp);
     $z2->addFromString('word/document.xml', $xml);
     $z2->close();
@@ -413,7 +426,7 @@ function docxApply(string $src, string $tmpBackup, array $textEdits, array $cell
     }
 
     // Verify after the write: read the part back from disk, not from memory.
-    $z3 = new ZipArchive();
+    $z3 = new ZipArchive;
     if ($z3->open($src) !== true) {
         fwrite(STDERR, "REFUSE: the file cannot be re-opened after the write\n");
         exit(1);

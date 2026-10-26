@@ -621,8 +621,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
   `php storage/app/scratch/mutate-lane72-row-counts.php` (14 legs). Lane 60 deliberately only *names* row counts on
   CI because they belong to the dataset that stated them; this is the hand command that weighs them on this box.
-  Measured 2026-10-26 (re-run after pass 247 wrote the four ruled rows into the document): **12 bound claims, every
-  one equal to `COUNT(*)`, 0 stale, over 3,159 number-and-noun pairs** — and the queue the first run
+  Measured 2026-10-26 (re-run after pass 248 wrote the clock convention into §1.2): **12 bound claims, every
+  one equal to `COUNT(*)`, 0 stale, over 3,167 number-and-noun pairs** — and the queue the first run
   printed was five rows, of which **all five were the instrument's own breadth**. That is why there are seven
   buckets and not three: NARRATIVE (a singular instance — "seated a second active enrollment on *one student*" —
   and any sentence naming no row-word at all: "One receipt number is *one payment*, never two" is a rule about
@@ -856,6 +856,22 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   counted numbers; diffing those two files between HEAD's docx and the working one is what turns "the document lost a
   pointer" into one named sentence. Export the old copy first: `git show HEAD:"Documentation/EMS Complete
   Documentation.docx" > %TEMP%/head-ems.docx` — `shell_exec` cannot reach `git` from PHP on this box.
+  **Pass 248 showed the same mechanism in the other direction:** it added a `§1.2` reference to the living §1.1 row,
+  the raw tokens went 1,038 → 1,039, and the sweep still printed 910 — that row's block already carries finding ids, so
+  its bare tokens are not counted either. A figure that does *not* move when a pointer is added is the same warning as
+  one that moves when no pointer was lost: both mean the number describes the classifier.
+- **A docx edit's third slot is the ANCHOR and its fourth is the copy count — put an integer in slot three and the
+  engine silently resolves one target** (found 2026-10-26). `docxApply`'s text edits are `[from, to, anchor, expect]`.
+  Pass 247 wrote `[from, to, 2]` four times meaning "this sentence lives in §25.11 and again in §28.5", and the
+  positional resolver read the int as the anchor string `"2"` — a character `document.xml` is full of — so it landed on
+  one occurrence and printed `1 target resolved uniquely`. A half-applied register is the worst docx defect: one
+  section states the ruling while its twin still asks the question, both sentences are live prose, and no checker is
+  dissatisfied. The engine now refuses a non-string slot three outright (`FAIL text N: slot 3 is the anchor…`), and
+  `php storage/app/scratch/lane74-probe-engine-slot3.php --case=3` proves that refusal while `--case=4` proves the
+  correct shape resolves both copies — a dry run against a throwaway copy, never the real file. Two facts the probe
+  settled on the way: pass 247 did reach both copies (measured — each new phrase twice, each old needle zero times),
+  and **the engine ends a failed pass by exiting the process, so a caller's `finally` does not run**; clean temporary
+  docx copies up with `register_shutdown_function`, not `try/finally`.
 - **A commit is not the working tree: list what you staged, against what was dirty.** Lane 69 staged
   `resources/js` and `tests` but never `resources/views`, so CI ran the tests asserting the new year-level
   spelling against six print blades still building `'Year '.$level` — three failures on a tree that had
