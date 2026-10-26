@@ -15,15 +15,19 @@
  *
  *   php storage/app/scratch/lane73-packet-evidence.php
  */
-require __DIR__.'/../../../vendor/autoload.php';
-$app = require_once __DIR__.'/../../../bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
-
+// The imports sit ABOVE the bootstrap on purpose: `pint --test` passes this file either way, but a `use` filed
+// below `$app->make(Kernel::class)` does not apply to that call, and the script fatals at runtime with
+// "Target class [Kernel] does not exist" — the lane 65 trap, found here on 2026-10-26 by running the command this
+// file's own gate bullet tells an operator to run. Run the script, never only the formatter.
 use App\Models\Clearancerequirements;
 use App\Models\Courses;
 use App\Models\Feetypes;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
+
+require __DIR__.'/../../../vendor/autoload.php';
+$app = require_once __DIR__.'/../../../bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
 
 $fails = 0;
 $cols = static function (string $table): array {
@@ -72,17 +76,24 @@ echo "   SEAIT_Official_Information.md §2 marks exactly two programs as board c
 
 // --- G-13: what an install would have to name ----------------------------------------------------------------
 $boot = (string) file_get_contents(dirname(__DIR__, 3).'/bootstrap/app.php');
-printf("\n== G-13 proxy state on this build\n   config('trustedproxy.proxies') = %s\n   bootstrap/app.php calls trustProxies(): %s\n"
-    ."   so HSTS appears only when the app itself sees HTTPS; an install behind a TLS-terminating proxy must name\n"
-    ."   that proxy's address, never `*`, because login throttling and the audit log both read the client address.\n",
+printf("\n== G-13 proxy state on this build\n   config('trustedproxy.proxies') = %s   (that is TRUSTED_PROXIES, read by config/trustedproxy.php)\n"
+    ."   bootstrap/app.php calls trustProxies(): %s\n"
+    ."   so HSTS appears only when the app itself sees HTTPS. An install behind a TLS-terminating proxy names that\n"
+    ."   proxy's address in TRUSTED_PROXIES — never `*`, and not a range keyword: login throttling and the audit log\n"
+    ."   both read the client address. php artisan ems:preflight reports which state this install is in.\n",
     json_encode(config('trustedproxy.proxies')), str_contains($boot, 'trustProxies') ? 'yes' : 'no');
 
 // --- the sheets this packet has to age -----------------------------------------------------------------------
+// The verdict is read from where it is WRITTEN: the tick box, not the prose. A case-insensitive count of the word
+// "answered" would charge every sentence that merely reports another row's ruling (lane 69's defect class), which is
+// what this line did until 2026-10-26 — it looked for the sheet's own upper-case marker and answered 0 for a file
+// whose rows were marked `Answered 2026-10-11 by the owner`.
 foreach (['Print-Fidelity-Comparison-2026-10-10.md', 'Registrar-Print-Decision-Sheet-2026-10-11.md',
     'School-Decision-Sheet-2026-10-23.md'] as $s) {
     $path = dirname(__DIR__, 3).'/Documentation/'.$s;
-    printf("\n== %s\n   unticked boxes: %d   answered markers: %d\n", $s,
-        substr_count((string) file_get_contents($path), '☐'), substr_count((string) file_get_contents($path), 'ANSWERED'));
+    $src = (string) file_get_contents($path);
+    printf("\n== %s\n   unticked boxes (☐): %d   checked boxes (☑): %d\n", $s,
+        substr_count($src, '☐'), substr_count($src, '☑'));
 }
 
 printf("\nlive ems on %s: %d audit row(s), %d enrollment(s), %d course(s) — the papers this packet renders are dated\n"

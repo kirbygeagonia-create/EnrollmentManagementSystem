@@ -92,25 +92,37 @@ Force HTTPS in the entry point (reverse proxy `X-Forwarded-Proto`, or
 `URL::forceScheme('https')` in `AppServiceProvider::boot` when
 `app()->isProduction()`).
 
-**One caveat measured 2026-10-17, and pinned by `tests/Feature/SecurityHeadersTest.php`:** this build does
-not trust any proxy — `bootstrap/app.php` never calls `trustProxies()` and `config('trustedproxy.proxies')`
-is unset, so `Illuminate\Http\Middleware\TrustProxies` holds `$proxies = null` and Symfony discards
-`X-Forwarded-Proto`. A forwarded header therefore changes nothing on its own: `app('request')->isSecure()`
+**One caveat measured 2026-10-17, and pinned both ways by `tests/Feature/SecurityHeadersTest.php`:** this build
+trusts no proxy — `bootstrap/app.php` never calls `trustProxies()`, so `Illuminate\Http\Middleware\TrustProxies`
+falls back to `config('trustedproxy.proxies')`, which `config/trustedproxy.php` has answered from the
+`TRUSTED_PROXIES` env var since 2026-10-26 and which names nothing on an install that has not set it — and Symfony
+therefore discards `X-Forwarded-Proto`. A forwarded header therefore changes nothing on its own: `app('request')->isSecure()`
 stays false, and `SecurityHeaders` skips `Strict-Transport-Security` on every response even though browsers
 see HTTPS. If TLS terminates at a proxy, either terminate it in the app or name that proxy's address in
-`trustProxies(at: …)`. Do **not** answer this with `at: '*'` — that lets any client forge its own scheme and
+`TRUSTED_PROXIES` — one line in `.env`, no PHP edit, and nothing else to remember. Do **not** answer this with `*`
+— that lets any client forge its own scheme and
 source address, and things keyed on the address follow it: the login throttle builds its key from
 `$this->ip()` (`app/Http/Requests/Auth/LoginRequest.php:97`) and every audit row stores `Request::ip()`
 (`app/Observers/AuditLogObserver.php:102`) into `auditlogs.ipAddress`.
 
 **This paragraph is now a command, not only an instruction** (added 2026-10-26, the install-time half of the
-register's G-13): `php artisan ems:preflight` prints a `Forwarded scheme` row. It answers OK while nothing is
+register's G-13): `php artisan ems:preflight` prints a `Forwarded scheme` row. It reads the same value the
+middleware does, so it reports the install rather than the intention. It answers OK while nothing is
 trusted and `APP_URL` is plain http — the correct state for this host — and **WARNs when an `https` `APP_URL`
 sits beside no trusted address**, which is exactly the shape above: the desk sees HTTPS while the application
-never does, so the header is silently absent. Naming an address turns it to OK and prints the count. A wildcard
-also WARNs, because `at: '*'` is the one-line change that makes the header appear *and* lets any client forge
-both its scheme and its source address. It is WARN, never FAIL: a preflight cannot see a proxy that has not been
-built, and nothing stored moves either way.
+never does, so the header is silently absent. Naming an address turns it to OK and prints the count:
+`TRUSTED_PROXIES=10.0.0.5`, or several separated by a comma, which is how the framework's own proxy middleware
+splits it. A blank `TRUSTED_PROXIES=` is the same as leaving it out,
+measured — it arrives as `''`, and `config/trustedproxy.php` answers null for it rather than handing Symfony an
+empty pattern. Four spellings that *look* filled in and install nothing are refused by name: `*` (the catchall, so
+any client may forge), a `*` inside a list and a hostname (Symfony is handed them as patterns, validates nothing at
+set time and matches no address, so the header stays discarded in silence), a CIDR mask past its family, and the
+range keywords `PRIVATE_SUBNETS` and `REMOTE_ADDR`, which trust every machine that fits them instead of one. Every
+one of those verdicts was measured through the real middleware before this paragraph described it —
+`php storage/app/scratch/lane73b-probe-proxy-shapes.php` prints the effect and the promise side by side, and refuses
+its own run if the named address does not reach the request. The row is WARN, never FAIL: a preflight cannot see a proxy that has not been
+built, and nothing stored moves either way. On a server that has cached its config the value in `.env` is not read
+at all, so set it and re-run `php artisan config:cache` before believing the row.
 
 **Time zone: two processes write into these tables.** `config/app.php` resolves
 `'timezone' => env('APP_TIMEZONE', 'UTC')` and nothing in `.env` or `.env.example` sets that variable, so the

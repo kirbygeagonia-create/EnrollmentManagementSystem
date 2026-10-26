@@ -94,9 +94,23 @@ list. Ruled 2026-10-11: the `Time` box prints the ranges only (`08:00-09:30`, `1
 the `Day` box keeps the weekdays, matching the form, which prints the day once. Pinned by
 `PrintControllerTest::the_class_card_prints_the_meeting_day_once_not_in_both_boxes()`, which
 renders the card from a two-meeting schedule and asserts the weekday appears in `Day` and in no
-other box. The rows still open are the shape questions 2.1–2.5 and 2.7–2.9 — including whether
-the `Day` box should list one weekday per line as it does today or carry `MON, TUE` on one line
-as the paper does, which is a 2.2 shape question and has not been changed.
+other box. **On 2026-10-26 the owner ruled the eight shape rows of this section — 2.1–2.5 and 2.7–2.9 — as the
+system prints them.** A4 landscape; the name as three `Label: value` rows rather than three boxed cells; the course
+line carrying the major and the level together; the subject block as three rows under a `Description` label; `Units`
+holding the lecture/lab split; the instructor line pre-filled from the schedule; one `Date` box plus the footer's
+`Date:`; and the semester line with its comma instead of the paper's pipe. Answered is not the same as adopted: the
+cells above still record what the 2026-10-10 build printed, and those readings are deliberately **not re-aged** — the
+card has since grown the ordinal year level (2.3's own note), which is what "as it prints" now fixes. Two
+consequences worth naming, because a later reader will otherwise re-open them: **the year level stays inside the
+course line rather than in a field of its own** (the paper gives it `Course & Year` and `Year Level` separately, and
+this ruling keeps the system's single line), and **the `Day` box keeps listing one weekday per line**
+(`resources/views/prints/class-card.blade.php:96-101`, one value per meeting) rather than the paper's `MON, TUE, SAT`
+on one line. Both halves were re-read against the template on 2026-10-26 rather than copied from the column above:
+the name really is three `Label:` rows, the subject block really is labelled `Description:`, `Units` really carries
+the `(Lec: …, Lab: …)` split, the instructor box really is pre-filled, and the semester line really is a comma.
+Nothing in this section is owed any more. What remains open in this
+document is the content half: 3.3's student-type word, 3.4–3.6's extra columns, totals row and signing actors,
+3.7's copy marker and stamp, 4.1's weekly grid, and §5's certificate photograph.
 
 The card's React screen (`resources/js/Pages/Registrar/PrintClassCards.jsx:148`) is untouched:
 it has one `Schedule` field and no `Day` field, so its `Monday 08:00–09:30` is the only place
@@ -163,7 +177,7 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 | --- | --- | --- | --- |
 | 1.6 | Is the per-office requirement checklist on the same sheet as the student's copy, or a separate document? | | ☐ |
 | 1.1–1.5 | Do the slip's labels follow the paper (`Full Name`, `Date`, `Registrar In-charge (Signature over Printed Name) & Date`, semester-in-title, `2nd Year`) or does the paper follow the system? | | ☐ |
-| 2.1–2.9 | Same question for the card, including whether it is a portrait card at all | | ☐ |
+| 2.1–2.9 | ~~Same question for the card, including whether it is a portrait card at all~~ **Answered 2026-10-26 by the owner: the card is kept as it prints** — A4 landscape, three labelled name rows, the course line carrying the major and the ordinal level, the subject block labelled `Description:`, `Units` holding the lecture/lab split, the instructor box pre-filled, one `Date` box plus the footer line, and the comma in the semester line | as the system prints | ☑ |
 | 2.6 | ~~The day prints twice on our card — drop it from the `Time` box, or drop the `Day` box?~~ **Answered 2026-10-11 by the owner: the day was dropped from the `Time` box, the `Day` box stays.** Not a question for the office any more | done | ☑ |
 | 3.6 | Is the subject load signed by Student / Class Adviser / Registrar, or by Evaluated by / Processed by as the paper shows? | | ☐ |
 | 3.3 | Is the student-type word on the paper ("Old") the one to print, or is the system's ("Continuing") correct? | | ☐ |
@@ -172,9 +186,11 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 | 4.1 | Does the block schedule need to be a weekly grid, or is the meeting list the document the office files? | | ☐ |
 | §5 | Provide a blank photograph of the enrollment certificate and the enrollment form so those two can be compared too | | ☐ |
 
-One row of this file has been acted on: **2.6**, the doubled weekday, which the owner ruled on
-2026-10-11 and the card template now prints once. It was the only row that was a defect rather
-than a preference, so it did not need the office's hand. Every other row above is still a paper
+Two rows of this file have been acted on. **2.6**, the doubled weekday, which the owner ruled on
+2026-10-11 and the card template now prints once — it was the only row that was a defect rather
+than a preference, so it did not need the office's hand. And **2.1–2.9**, the whole class-card shape
+question, which the owner ruled on 2026-10-26 *as the system prints* (§2 above records what that keeps
+and what it therefore does not adopt from the paper). Every remaining row above is still a paper
 decision first and a code change second, and the code follows the ruling — not the other way
 round.
 

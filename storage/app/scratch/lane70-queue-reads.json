@@ -202,25 +202,25 @@
             "verdict": "true",
             "by": "lane70-read-span: :305-327 is the two box rules (the straddle IS the claim) and the run prints 19 rules"
         },
-        "Preflight.php:121-136#eedb2a6d": {
-            "read": "2026-10-25",
+        "Preflight.php:228-243#636f8e39": {
+            "read": "2026-10-26",
             "verdict": "true",
-            "by": "lane70-read-span: the four spans are applicationKeyIsReal, servedFolderStaysPrivate, uploadDiskIsPrivate, hostZoneMatchesTheSchools"
+            "by": "pass 246 re-took these four spans by reading each method’s declaration and closing brace in the working file after 64 lines were inserted above them: applicationKeyIsReal :228-243, servedFolderStaysPrivate :258-285, uploadDiskIsPrivate :605-628, the host-zone family :408-484, and the new forwardedSchemeIsDecided :133-188"
         },
-        "Preflight.php:151-178#eedb2a6d": {
-            "read": "2026-10-25",
+        "Preflight.php:258-285#636f8e39": {
+            "read": "2026-10-26",
             "verdict": "true",
-            "by": "lane70-read-span: the four spans are applicationKeyIsReal, servedFolderStaysPrivate, uploadDiskIsPrivate, hostZoneMatchesTheSchools"
+            "by": "pass 246 re-took these four spans by reading each method’s declaration and closing brace in the working file after 64 lines were inserted above them: applicationKeyIsReal :228-243, servedFolderStaysPrivate :258-285, uploadDiskIsPrivate :605-628, the host-zone family :408-484, and the new forwardedSchemeIsDecided :133-188"
         },
-        "Preflight.php:498-521#eedb2a6d": {
-            "read": "2026-10-25",
+        "Preflight.php:605-628#636f8e39": {
+            "read": "2026-10-26",
             "verdict": "true",
-            "by": "lane70-read-span: the four spans are applicationKeyIsReal, servedFolderStaysPrivate, uploadDiskIsPrivate, hostZoneMatchesTheSchools"
+            "by": "pass 246 re-took these four spans by reading each method’s declaration and closing brace in the working file after 64 lines were inserted above them: applicationKeyIsReal :228-243, servedFolderStaysPrivate :258-285, uploadDiskIsPrivate :605-628, the host-zone family :408-484, and the new forwardedSchemeIsDecided :133-188"
         },
-        "Preflight.php:301-422#eedb2a6d": {
-            "read": "2026-10-25",
+        "Preflight.php:408-484#636f8e39": {
+            "read": "2026-10-26",
             "verdict": "true",
-            "by": "lane70-read-span: the four spans are applicationKeyIsReal, servedFolderStaysPrivate, uploadDiskIsPrivate, hostZoneMatchesTheSchools"
+            "by": "pass 246 re-took these four spans by reading each method’s declaration and closing brace in the working file after 64 lines were inserted above them: applicationKeyIsReal :228-243, servedFolderStaysPrivate :258-285, uploadDiskIsPrivate :605-628, the host-zone family :408-484, and the new forwardedSchemeIsDecided :133-188"
         },
         "AssertNoSilentSkips.php:39-57#ce8c4e8f": {
             "read": "2026-10-25",

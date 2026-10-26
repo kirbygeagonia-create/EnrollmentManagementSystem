@@ -35,6 +35,9 @@ $targets = $args !== [] ? $args : [
     'Documentation/Registrar-Print-Decision-Sheet-2026-10-11.md',
     'Documentation/Print-Fidelity-Comparison-2026-10-10.md',
     'Documentation/Registrar-Window-Packet-2026-10-26.md',
+    // The department half of C-5, issued 2026-10-26: it quotes the two lines that make the flag bite, so a method
+    // moved in AdmissionPolicy or the reference-data controller silently breaks an ask a department is answering.
+    'Documentation/Department-Board-Exam-Confirmation-2026-10-26.md',
 ];
 
 $index = null;

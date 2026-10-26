@@ -1,9 +1,16 @@
 <?php
 
+// The imports sit above the bootstrap: PHP resolves an unqualified name at compile time in statement order,
+// so `DB::purge()` written before its import reads global \DB and dies. Found on 2026-10-26 by
+// storage/app/scratch/lane73b-probe-import-order.php — this file had been broken since the day it was written.
+use App\Models\Curriculums;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
+
 require __DIR__.'/../../../vendor/autoload.php';
 
 $app = require __DIR__.'/../../../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 config([
     'database.default' => 'mysql',
@@ -15,12 +22,9 @@ config([
 ]);
 DB::purge('mysql');
 
-use App\Models\Curriculums;
-use Illuminate\Support\Facades\DB;
-
 foreach ([3, 5, 1] as $courseId) {
     $cur = Curriculums::currentFor($courseId);
-    echo "=== course {$courseId} -> curriculum ".($cur?->curriculumId ?? 'null')." (effectiveYear ".($cur?->effectiveYear ?? '-').")\n";
+    echo "=== course {$courseId} -> curriculum ".($cur?->curriculumId ?? 'null').' (effectiveYear '.($cur?->effectiveYear ?? '-').")\n";
     if (! $cur) {
         continue;
     }
@@ -40,7 +44,7 @@ foreach ([3, 5, 1] as $courseId) {
         $elec = array_values(array_filter($set, fn ($s) => (bool) $s->is_elective));
         echo "  y{$key}: mandatory(".count($mand).')=['.implode(',', array_column($mand, 'subjectId')).']';
         if ($elec !== []) {
-            echo ' elective=['.implode(',', array_map(fn ($s) => $s->subjectId.':'.$s->elective_group. '(min '.$s->elective_min_choices.')', $elec)).']';
+            echo ' elective=['.implode(',', array_map(fn ($s) => $s->subjectId.':'.$s->elective_group.'(min '.$s->elective_min_choices.')', $elec)).']';
         }
         $prereq = array_values(array_filter($set, fn ($s) => $s->prerequisiteSubjectId !== null));
         if ($prereq !== []) {

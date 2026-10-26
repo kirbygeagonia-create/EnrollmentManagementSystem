@@ -34,6 +34,9 @@ if ($keys === []) {
 }
 
 $READ = '2026-10-25';
+
+// A value is either the verdict text (recorded under `$READ`) or `['read' => …, 'by' => …]` when that reading was
+// done on another day. The set accumulates, so one date for everything would re-stamp rows that were not re-read.
 $byFile = [
     // The keys carry the file EXACTLY as the document spells it, so these prefixes are spelled that way too: the
     // attribution hands back `Preflight.php` for a sentence that named no directory, and
@@ -41,7 +44,16 @@ $byFile = [
     'RegistrarController.php' => 'all 15 rows opened one by one earlier in the lane; each cites the action whose line it is',
     'EvaluationController.php' => 'read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes',
     'BlockingController.php' => 'read this session: :616 is downloadBlockSchedule\'s signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230',
-    'Preflight.php' => 'lane70-read-span: the four spans are applicationKeyIsReal, servedFolderStaysPrivate, uploadDiskIsPrivate, hostZoneMatchesTheSchools',
+    // Pass 246 rewrote §18's sentence and re-took these four spans against the working file, which orphaned the keys
+    // the 2026-10-25 reading had recorded (the key carries a hash of the sentence, so a re-worded row must be re-read
+    // — that is the mechanism working, not a defect). Its own date, because the other records were not re-read today.
+    'Preflight.php' => [
+        'read' => '2026-10-26',
+        'by' => 'pass 246 re-took these four spans by reading each method’s declaration and closing brace in the '
+            .'working file after 64 lines were inserted above them: applicationKeyIsReal :228-243, '
+            .'servedFolderStaysPrivate :258-285, uploadDiskIsPrivate :605-628, the host-zone family :408-484, '
+            .'and the new forwardedSchemeIsDecided :133-188',
+    ],
     'NotificationController.php' => 'direct read: :20-21 the reader query, :33-34 the unread count, :51 the ownership test, :65-66 and :65-68 the bulk mark-read',
     'AssessmentController.php' => 'direct read: :152-158 the BR19 note and the zeroes, :160-168 the stored balance, :180 the commented-out auto-transition, :432-443 finalize',
     'PrintService.php' => 'lane70-read-span: :49 setChromePath, :115 recordIssue signature, :254 printClassCard signature',
@@ -109,7 +121,10 @@ foreach ($keys as $k) {
         }
     }
     if ($why !== null) {
-        $records[$k] = ['read' => $READ, 'verdict' => 'true', 'by' => $why];
+        // A record may carry its own date: the set accumulates across sessions, and re-stamping every row with
+        // today's date would claim a re-read that did not happen.
+        $when = is_array($why) ? ($why['read'] ?? $READ) : $READ;
+        $records[$k] = ['read' => $when, 'verdict' => 'true', 'by' => is_array($why) ? $why['by'] : $why];
     }
 }
 printf("%d of %d queue key(s) carry a recorded read.\n", count($records), count($keys));

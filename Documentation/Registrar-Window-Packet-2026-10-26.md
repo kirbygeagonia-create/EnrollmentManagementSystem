@@ -161,20 +161,22 @@ These are the same physical papers `Documentation/Registrar-Print-Decision-Sheet
 tick here answers that sheet's matching question too — one answer, both records. That older sheet's dated readings
 are **not** re-aged: they say what the build printed on the day it was read, and its own supersession note stands.
 
-`Documentation/Print-Fidelity-Comparison-2026-10-10.md` §6 asks nine things. **One is closed outright — 2.6, the
-duplicated weekday, ruled and pinned on 2026-10-11 — and three more are partly answered by later rulings (1.1–1.5,
-3.7 and §5)**, so the Registrar's eye is spent only on what is genuinely owed. The dated cells in the older sheet
-are **not** re-aged — they record the day they were read; where the build has since moved (2.3, 3.2), this page
-says so beside the row rather than rewriting that sheet.
+`Documentation/Print-Fidelity-Comparison-2026-10-10.md` §6 carries ten rows: the nine questions it put to the office
+on 2026-10-11, plus 2.6, ruled that day. **Two of the ten are now answered outright — 2.6 (the doubled weekday,
+2026-10-11) and 2.1–2.9 (the card's whole shape, ruled as the system prints on 2026-10-26) — and three more are
+partly answered by later rulings (1.1–1.5, 3.7 and §5)**, so the Registrar's eye is spent only on what is genuinely
+owed. Measured rather than kept track of: `lane73-packet-evidence.php` counts that sheet at **8 unticked boxes and 2
+checked ones**. The dated cells in the older sheet are **not** re-aged — they record the day they were read; where
+the build has since moved (2.3, 3.2), this page says so beside the row rather than rewriting that sheet.
 
 | box | what it asks | state before this packet | what is still owed |
 |---|---|---|---|
 | 1.6 | Is the per-office checklist on the same sheet as the student's copy, or separate? | open | **open** — this is item 1 above |
 | 1.1–1.5 | Do the slip's labels follow the paper, or the paper the system? | partly ruled: the copy designation and `(BSIT) … - 2nd Year` are built (P-19, 2026-10-23; level spelling 2026-10-24) | **open** for `Full Name` vs `Student Name`, the bare `Date` row, the "Registrar In-charge (Signature over Printed Name) & Date" caption, semester-in-title — this is item 2 above |
-| 2.1–2.5 | The card's shape: portrait vs A4 landscape, the three boxed name cells, the subject block as a row, `Units` holding one number | open | **open** — 2.3's wording has moved since the sheet was written (below) |
+| 2.1–2.5 | The card's shape: portrait vs A4 landscape, the three boxed name cells, the subject block as a row, `Units` holding one number | open | **ANSWERED 2026-10-26 — as the system prints.** The card stays A4 landscape with labelled name rows, `Description:` and the `(Lec: …, Lab: …)` units split; re-read off `resources/views/prints/class-card.blade.php` the same day rather than copied from the 2026-10-10 column |
 | 2.6 | The weekday printed in both the `Time` and `Day` boxes | **CLOSED 2026-10-11** — ruled that the `Time` box prints ranges only and `Day` keeps the weekdays | nothing owed; pinned by `PrintControllerTest::the_class_card_prints_the_meeting_day_once_not_in_both_boxes()` |
-| 2.7–2.9 | The instructor signature line, the two `Date:` fields, the semester line's punctuation | open | **open** |
-| 2.3 / 3.2 | The year level as the paper spells it | **overtaken on the system side** — both views now print `App\Support\YearLevel::format()`, so the card reads `- 1st Year` and the load `- 3rd Year`, not the `- Year 1` / `- Year 3` the 2026-10-10 sheet recorded | the ordinal ruling of 2026-10-24 answers the *spelling*; whether the level belongs in its own field (as the paper puts `Year Level: 3rd`) is still the Registrar's, and the older sheet is left as it was read |
+| 2.7–2.9 | The instructor signature line, the two `Date:` fields, the semester line's punctuation | open | **ANSWERED 2026-10-26 — as the system prints.** The instructor box stays pre-filled from the schedule, the one `Date` box plus the footer line stays, and the semester line keeps its comma |
+| 2.3 / 3.2 | The year level as the paper spells it | **overtaken on the system side** — both views now print `App\Support\YearLevel::format()`, so the card reads `- 1st Year` and the load `- 3rd Year`, not the `- Year 1` / `- Year 3` the 2026-10-10 sheet recorded | **answered with 2.1–2.5**: the level stays inside the course line rather than in a field of its own; the older sheet's reading is left as it was taken |
 | 3.3 | Is the student-type word on the paper ("Old") the one to print, or the system's ("Continuing")? | open | **open** |
 | 3.4–3.5 | May the Subject Load print the three extra columns and the totals row the paper has none of? | open | **open** |
 | 3.6 | Signed by Student / Class Adviser / Registrar, or by Evaluated by / Processed by as the paper shows? | open | **open** |
@@ -186,29 +188,39 @@ says so beside the row rather than rewriting that sheet.
 
 ---
 
-## D. G-13 — closed as a fact, and now checkable rather than remembered
+## D. G-13 — closed as a fact, and now a line in `.env` rather than a paragraph
 
 `Strict-Transport-Security` is emitted only when the application itself sees HTTPS, and this build
 trusts no proxy. Measured today by `lane73-packet-evidence.php`: `config('trustedproxy.proxies')` is
 **null** and `bootstrap/app.php` does **not** call `trustProxies()`. The answer recorded on 2026-10-23
-stands — *not yet deployed* — and the row now has a check instead of a paragraph:
+stands — *not yet deployed* — and the owner ruled on 2026-10-26 that the remaining half is a **setting,
+not a code edit**: `config/trustedproxy.php` reads `TRUSTED_PROXIES`, so whoever provisions the server
+types one value in `.env` and touches no PHP file. The row now has a check instead of a paragraph:
 
 ```
 php artisan ems:preflight        # prints "Forwarded scheme" as its own row
 ```
 
 - Nothing trusted and `APP_URL` is http → **OK**, and the row names `DEPLOYMENT.md §2` so the installer is pointed at the instruction.
-- `APP_URL` says https while no proxy is trusted → **WARN**: behind a TLS terminator the header never appears.
-- A proxy address named → **OK**, count printed.
-- `trustProxies(at: '*')` → **WARN**, because the wildcard is the one-line "fix" that lets any client forge its own scheme and address — and login throttling and `auditlogs.ipAddress` both read `$request->ip()`.
+- `APP_URL` says https while no proxy is trusted → **WARN**: behind a TLS terminator the header never appears. The row adds the second half of the act: set `TRUSTED_PROXIES`, then re-run `php artisan config:cache` if the config is cached, because a cached install does not read `.env` at all.
+- A proxy address named → **OK**, count printed. Several addresses separated by a comma are the same one line.
+- A blank `TRUSTED_PROXIES=` → the same as leaving it out, measured: it arrives as `''` and the config file answers null rather than handing Symfony an empty pattern.
+- `*` → **WARN**, because the wildcard is the one-line "fix" that lets any client forge its own scheme and address — and login throttling and `auditlogs.ipAddress` both read `$request->ip()`.
+- A `*` inside a list, or a hostname, or a CIDR mask past its family → **WARN**, and these are the quiet ones: `Request::setTrustedProxies` validates nothing, so the value is accepted, matches no client address, and the header stays discarded while the setting looks filled in. `storage/app/scratch/lane73b-probe-proxy-shapes.php` prints that effect next to the row's own promise, for twelve spellings, and refuses its run if a named address does not actually reach the request.
+- `PRIVATE_SUBNETS` or `REMOTE_ADDR` → **WARN**, because a range is not one machine; every address that fits it may forge.
 
 It is WARN, never FAIL: nothing stored moves, and a preflight cannot see a proxy that has not been built.
-Pinned by `tests/Feature/Console/PreflightTest.php` and proved by
-`storage/app/scratch/mutate-lane73-preflight-proxy.php` (seven legs; every branch of the row is
-load-bearing, and the working file is restored byte-for-byte in a `finally`).
+Pinned by `tests/Feature/Console/PreflightTest.php` and by the two directions now in
+`tests/Feature/SecurityHeadersTest.php` (naming the peer address makes the header appear; naming a
+different address does not), and proved by
+`storage/app/scratch/mutate-lane73-preflight-proxy.php`, which plants a defect in every branch of the
+row and in both lines of the config file and requires the case that owns each one to go red, restoring
+both files byte-for-byte in a `finally`.
 
-**Rollback for this whole section:** one commit touching one command file and one test.
-`git revert <sha>` returns the preflight to the report that printed twelve rows.
+**Rollback for this whole section:** the preflight row was one commit; the setting is another, touching
+one new config file, `.env.example`, and the row. `git revert <sha>` on the setting's commit leaves the
+report printing the same fourteen rows it prints today — this batch adds no check — and only takes the
+env var away, so the instruction returns to being a paragraph in `DEPLOYMENT.md §2`.
 
 ---
 

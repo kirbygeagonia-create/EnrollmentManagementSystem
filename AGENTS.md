@@ -488,12 +488,25 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   sit above the bootstrap with a comment saying why, and the harness's rule that a red control refuses the whole
   run is what turned a silent breakage into an error message. Run the script, not just `pint --test`, after any
   formatting pass over a scratch file that boots the framework.
-- **After any batch that re-issues a sheet an office ticks, or touches the preflight's forwarded-scheme row**, run
+- **That trap is now swept, not remembered.** `php storage/app/scratch/lane73b-probe-import-order.php` walks every
+  file under `storage/app/scratch` and `tools` with `token_get_all` and names each one whose import sits **below** the
+  first line of code that uses its short name — the shape Pint's `fully_qualified_strict_types` creates, because PHP
+  resolves an unqualified name at compile time, in statement order. Two tracked files were dying and nothing knew:
+  `lane73-packet-evidence.php` (it is named in a gate bullet below, so it had been *formatted* since it broke but not
+  *run*) and `curriculum_facts.php`, broken the day it was written; `probe-use-ordering.php` is the file that
+  established the rule and places an alias late on purpose, so the sweep prints it in its own `BY-DESIGN` bucket
+  rather than skipping it silently. Its first two drafts are recorded in its header, and both are this file's known
+  class: a raw-line grep answered 16 files, fifteen of them **prose in a docblock**; and `[$a, $b] = $sweep(…)` over
+  an **associative** array answered null for both halves, warned on every file it read, and still printed a clean
+  verdict over 867 — caught only because the run was checked against a **positive control** (HEAD's copy of the
+  broken file, which must come back named). A sweep with no planted positive is a sweep that can only say "clean".
+- **After any batch that re-issues a sheet an office ticks, or touches the preflight's forwarded-scheme row,
+  `config/trustedproxy.php`, or the board-program flags**, run
   `php storage/app/scratch/lane73-packet-evidence.php` and read every line, then
-  `php storage/app/scratch/mutate-lane73-preflight-proxy.php` (7 legs). Lane 73 is the lane that finishes the items
+  `php storage/app/scratch/mutate-lane73-preflight-proxy.php` (14 legs). Lane 73 is the lane that finishes the items
   the registers cannot: `Documentation/Registrar-Window-Packet-2026-10-26.md` gathers decision-sheet items 1, 2, 4, 5,
-  the department half of C-5, the install-time half of G-13, and the nine never-answered boxes of the 2026-10-10
-  fidelity sheet, **each with what the answer costs and how it comes back off** — office lines, board flags and fee
+  the department half of C-5, the install-time half of G-13, and the fidelity sheet's unticked boxes, **each with what
+  the answer costs and how it comes back off** — office lines, board flags and fee
   amounts are Reference Data on the desk screens (the undo is the same click), a wording change is one template file
   in its own commit (`git revert`), and nothing in the packet asks for a schema change. Three rules it had to honour.
   *The packet quotes a command, never the previous sheet* — a packet that re-copies itself is how an answered question
@@ -502,19 +515,46 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `lane73-packet-evidence.php`, whose column names come from `information_schema` rather than from memory, and which
   **refuses the run when a surface answers nothing**. *A new sheet is unjudged until a checker is told it exists*:
   `repo-file-line-citations.php` reads an explicit list of the markdown files an office holds, so the packet's four
-  `File.php:NN` pointers sat outside every gate until it was added (now 98 citations over 11 files, 0 problems).
-  *G-13 gets a check, not a paragraph*: `ems:preflight` prints a `Forwarded scheme` row that says OK when nothing is
+  `File.php:NN` pointers sat outside every gate until it was added; the C-5 department page added on 2026-10-26 is in
+  that list too, and this file states no citation total for it because the tool reads this file.
+  *G-13 got a check, then got a setting*: `ems:preflight` prints a `Forwarded scheme` row that says OK when nothing is
   trusted and `APP_URL` is http, **WARN when an https `APP_URL` sits beside no trusted address** (that is the silent
-  HSTS shape), OK with a count when an address is named, and **WARN for `trustProxies(at: '*')`** — the one-line
-  "fix" that lets any client forge its scheme and address while `LoginRequest::throttleKey()` and
-  `auditlogs.ipAddress` read `$request->ip()`. It is WARN, never FAIL: a preflight cannot see a proxy that has not
+  HSTS shape, and its sentence now carries the second half of the act — set the value, then re-run
+  `php artisan config:cache`, because a cached install never reads `.env`), OK with a count when addresses are named,
+  and WARN for the five spellings that look filled in and install nothing. Ruled 2026-10-26 by the owner — *an env
+  setting, not a code edit*: `config/trustedproxy.php` answers `env('TRUSTED_PROXIES') ?: null`, and no
+  `bootstrap/app.php` change is needed, because `Illuminate\Http\Middleware\TrustProxies` is already in the global
+  stack (`vendor/laravel/framework/src/Illuminate/Foundation/Configuration/Middleware.php:457`) and falls back to that
+  key at request time (`vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php:69`), splitting a
+  comma string at `vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php:87-88`. The row normalises the value the
+  way the middleware does — reading only an array called a correct one-line `TRUSTED_PROXIES=10.0.0.5` "nothing is
+  trusted" — and refuses `*` (the catchall, so any client forges its scheme and address while
+  `LoginRequest::throttleKey()` and `auditlogs.ipAddress` read `$request->ip()`), a `*` inside a list, a hostname, a
+  CIDR mask past its family, and the range keywords `PRIVATE_SUBNETS` / `REMOTE_ADDR`. **Every one of those verdicts
+  was measured through the real middleware before the row was written to describe it**
+  (`php storage/app/scratch/lane73b-probe-proxy-shapes.php`, which prints effect and promise side by side for twelve
+  spellings and refuses its own run if a named address does not reach the request). Two findings it produced: a blank
+  `TRUSTED_PROXIES=` arrives as `''`, not null (so the config file's `?: null` is load-bearing), and Symfony's
+  `PRIVATE_SUBNETS` list includes the three documentation ranges, so a probe must use a genuinely public address as
+  its stranger or the instrument hides the defect. It is WARN, never FAIL: a preflight cannot see a proxy that has not
   been built, and nothing stored moves. Pinned by `tests/Feature/Console/PreflightTest.php`
-  (`the_forwarded_scheme_row_decides_the_proxy_question_instead_of_asking_the_installer_to_remember_it`, 10 assertions)
-  and proved by the harness, which plants the five ways the row could stop measuring — silence the https branch, read
-  the wildcard as named, rename the row, drop the instruction pointer, never print it — restores the command file by
-  sha1 in a `finally`, and **reports BAD rather than passing when a planted needle matches nothing**: that is exactly
-  what two of its first legs were, because `\\$proxies` inside a double-quoted needle is a literal backslash plus
-  `$proxies`, which no byte of the target contains.
+  (`the_forwarded_scheme_row_decides_the_proxy_question_instead_of_asking_the_installer_to_remember_it`, 23 assertions,
+  plus `the_trusted_proxy_config_file_answers_the_env_var_and_a_blank_one_means_no_proxy`, which re-reads the shipped
+  file the way the zone case does) and by the pair now in `tests/Feature/SecurityHeadersTest.php` — naming the peer
+  address makes HSTS appear, naming a different address does not, which is what turns the older
+  "a proxy forwarding https does not by itself enable HSTS" case from an absence into a measurement. Proved by the
+  harness, which plants eleven ways the setting could stop meaning anything — a comma string no longer read, a bare
+  star counted as an address, an unmatchable value counted, a range keyword believed, any CIDR mask accepted, the
+  cached-config sentence dropped, the env var named nowhere, the row renamed, the row never printed, the file reading
+  a differently-named variable, and a blank becoming the empty pattern — restores **both** files by hash in a
+  `finally`, requires the case that owns each defect to print `1 failed` rather than merely "not passed" (a mutant
+  that does not compile is not a killed defect), and **reports BAD rather than passing when a planted needle matches
+  nothing**: that is what two of its first legs were in the previous version, because `\\$proxies` inside a
+  double-quoted needle is a literal backslash plus `$proxies`, which no byte of the target contains. Two harness
+  lessons from rebuilding it: `--filter` cannot carry a `|` alternation through cmd.exe (the run answered nothing and
+  the tool read that as a failed control), and Pest writes ANSI colour codes into captured output, which breaks the
+  tally regex and any needle spanning a styled word — strip `/\e\[[0-9;]*m/` before matching, or the harness's verdict
+  depends on whether the caller's shell had a `TERM`.
   **The packet's own numbers need a guard, because a dated page rots silently.**
   `php storage/app/scratch/lane73-packet-claims.php` binds all **23** claims on the page to live `ems` — the four
   course counts, each board row's two flags, every office line's exact `requirementName`, the fee's amount, each
@@ -555,7 +595,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
   `php storage/app/scratch/mutate-lane72-row-counts.php` (14 legs). Lane 60 deliberately only *names* row counts on
   CI because they belong to the dataset that stated them; this is the hand command that weighs them on this box.
-  Measured 2026-10-25: **12 bound claims, every one equal to `COUNT(*)`, 0 stale** — and the queue the first run
+  Measured 2026-10-26 (re-run after pass 246 wrote into the document): **12 bound claims, every one equal to
+  `COUNT(*)`, 0 stale, over 3,132 number-and-noun pairs** — and the queue the first run
   printed was five rows, of which **all five were the instrument's own breadth**. That is why there are seven
   buckets and not three: NARRATIVE (a singular instance — "seated a second active enrollment on *one student*" —
   and any sentence naming no row-word at all: "One receipt number is *one payment*, never two" is a rule about
@@ -1102,7 +1143,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (736 citations over 158 files; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (738 citations over 159 files as of pass 246d; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1947,14 +1988,24 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   uses them. Never add `'visibility' => 'public'` to a served disk (that switches the check off, measured) and
   never deploy with `APP_KEY=` blank (the empty secret signs a write that `storage/app/private` accepts — and
   `local` and `documents` share that root). `ems:preflight` fails both, `ServedUploadPathTest` pins the gate.
-- **HSTS is emitted only when this app sees HTTPS itself.** `SecurityHeaders` gates the header on
-  `$request->isSecure()`, and because `bootstrap/app.php` never calls `trustProxies()` and
-  `config('trustedproxy.proxies')` is unset, `Illuminate\Http\Middleware\TrustProxies` keeps `$proxies` null,
-  trusts no address, and discards `X-Forwarded-Proto` — measured 2026-10-17, pinned by
-  `tests/Feature/SecurityHeadersTest.php`. Behind a proxy that terminates TLS, an operator must trust it
-  explicitly or the header never appears. Do not "fix" this by trusting `*`: that lets any client forge its
-  own scheme and address, and `LoginRequest::throttleKey()` and `auditlogs.ipAddress` both read `$request->ip()`.
-  Ruled 2026-10-17 — code unchanged, `DEPLOYMENT.md` §2 carries the instruction.
+- **HSTS is emitted only when this app sees HTTPS itself, and the address it will believe is a setting.**
+  `SecurityHeaders` gates the header on `$request->isSecure()`; `bootstrap/app.php` never calls `trustProxies()`, so
+  `Illuminate\Http\Middleware\TrustProxies` — which is already in the global stack — falls back to
+  `config('trustedproxy.proxies')`, and since 2026-10-26 that key is answered by `config/trustedproxy.php` reading
+  `TRUSTED_PROXIES`. With nothing named it is null, no address is trusted and `X-Forwarded-Proto` is discarded —
+  measured 2026-10-17, pinned both ways since 2026-10-26 by `tests/Feature/SecurityHeadersTest.php`, where naming the
+  peer address makes the header appear and naming another does not. Behind a proxy that terminates TLS, the operator
+  sets one line in `.env` (and re-runs `php artisan config:cache` if the config is cached, because a cached install
+  does not read `.env` at all). Do not "fix" this by trusting `*`: that lets any client forge its own scheme and
+  address, and `LoginRequest::throttleKey()` and `auditlogs.ipAddress` both read `$request->ip()`. A `*` *inside* a
+  list, or a hostname, is the quieter failure — Symfony validates nothing and matches nothing, so the setting looks
+  filled in and the header still never appears; `ems:preflight`'s Forwarded scheme row refuses both.
+  Ruled 2026-10-17 (the wildcard refused) and 2026-10-26 (the answer becomes `TRUSTED_PROXIES`), `DEPLOYMENT.md` §2
+  carries the instruction and `php storage/app/scratch/lane73b-probe-proxy-shapes.php` is the measurement behind it.
+- **Probe through the HTTP stack, not around it, and beware state that sticks.** `Request::create()` + a
+  manual middleware call is not the kernel; and inside one test, an https request leaves `$_SERVER['HTTPS']='on'`
+  for every later request in that same test — so three HSTS cases written in one method pass the third on the
+  second case's leftover state and prove nothing. One method per case.
 - **Probe through the HTTP stack, not around it, and beware state that sticks.** `Request::create()` + a
   manual middleware call is not the kernel; and inside one test, an https request leaves `$_SERVER['HTTPS']='on'`
   for every later request in that same test — so three HSTS cases written in one method pass the third on the
