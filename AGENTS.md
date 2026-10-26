@@ -488,6 +488,68 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   sit above the bootstrap with a comment saying why, and the harness's rule that a red control refuses the whole
   run is what turned a silent breakage into an error message. Run the script, not just `pint --test`, after any
   formatting pass over a scratch file that boots the framework.
+- **After any batch that re-issues a sheet an office ticks, or touches the preflight's forwarded-scheme row**, run
+  `php storage/app/scratch/lane73-packet-evidence.php` and read every line, then
+  `php storage/app/scratch/mutate-lane73-preflight-proxy.php` (7 legs). Lane 73 is the lane that finishes the items
+  the registers cannot: `Documentation/Registrar-Window-Packet-2026-10-26.md` gathers decision-sheet items 1, 2, 4, 5,
+  the department half of C-5, the install-time half of G-13, and the nine never-answered boxes of the 2026-10-10
+  fidelity sheet, **each with what the answer costs and how it comes back off** — office lines, board flags and fee
+  amounts are Reference Data on the desk screens (the undo is the same click), a wording change is one template file
+  in its own commit (`git revert`), and nothing in the packet asks for a schema change. Three rules it had to honour.
+  *The packet quotes a command, never the previous sheet* — a packet that re-copies itself is how an answered question
+  gets asked again, so it prints `9 clearancerequirements lines`, `16 courses / 5 flagged / 2 entrance / 0 exempting`,
+  `Clearance Slip Replacement ₱100.00 flat (feeTypeId 5)` and `trustedproxy.proxies = null`, all from
+  `lane73-packet-evidence.php`, whose column names come from `information_schema` rather than from memory, and which
+  **refuses the run when a surface answers nothing**. *A new sheet is unjudged until a checker is told it exists*:
+  `repo-file-line-citations.php` reads an explicit list of the markdown files an office holds, so the packet's four
+  `File.php:NN` pointers sat outside every gate until it was added (now 98 citations over 11 files, 0 problems).
+  *G-13 gets a check, not a paragraph*: `ems:preflight` prints a `Forwarded scheme` row that says OK when nothing is
+  trusted and `APP_URL` is http, **WARN when an https `APP_URL` sits beside no trusted address** (that is the silent
+  HSTS shape), OK with a count when an address is named, and **WARN for `trustProxies(at: '*')`** — the one-line
+  "fix" that lets any client forge its scheme and address while `LoginRequest::throttleKey()` and
+  `auditlogs.ipAddress` read `$request->ip()`. It is WARN, never FAIL: a preflight cannot see a proxy that has not
+  been built, and nothing stored moves. Pinned by `tests/Feature/Console/PreflightTest.php`
+  (`the_forwarded_scheme_row_decides_the_proxy_question_instead_of_asking_the_installer_to_remember_it`, 10 assertions)
+  and proved by the harness, which plants the five ways the row could stop measuring — silence the https branch, read
+  the wildcard as named, rename the row, drop the instruction pointer, never print it — restores the command file by
+  sha1 in a `finally`, and **reports BAD rather than passing when a planted needle matches nothing**: that is exactly
+  what two of its first legs were, because `\\$proxies` inside a double-quoted needle is a literal backslash plus
+  `$proxies`, which no byte of the target contains.
+  **The packet's own numbers need a guard, because a dated page rots silently.**
+  `php storage/app/scratch/lane73-packet-claims.php` binds all **23** claims on the page to live `ems` — the four
+  course counts, each board row's two flags, every office line's exact `requirementName`, the fee's amount, each
+  `(columns \`…\`)` list against its own table, and the proxy state — and
+  `php storage/app/scratch/mutate-lane73-packet-claims.php` (15 legs) plants one defect per family. Three of its own
+  bugs came out of that harness, each of them a class this file already names: `(int) $r[2] === 'yes'` is **always
+  false** (the cast happens first, so `0 === 'yes'`), which reported three true board rows as stale claims; a
+  `columns \`…\`` pattern with no table anchor grabbed the **first** list on the page and judged the clearance
+  columns against `feetypes` — the wrong-target defect reached from my own instrument, now fixed by binding each
+  list to the table named before it and asserting the stale line names that table; and a shape the parser could no
+  longer read printed a `STALE` row, which let the run reach a verdict while having read nothing and made the
+  "judged nothing" refusal unreachable — an unreadable page is now a **REFUSED**, never a claim. The guard is not a
+  CI step for lane 60's reason: those figures belong to the dataset the packet was read against. If it goes red,
+  re-issue the packet from `lane73-packet-evidence.php`; do not retype figures by hand.
+  **Writing the packet found a wrong statement in the packet, from the two classes this file already names.** The
+  fidelity sheet asks nine boxes and one of them is `2.1–2.9` — a *group*, whose row 2.6 (the weekday printed in
+  both boxes) was ruled and pinned on 2026-10-11. Copying the group forward therefore presented a closed row as
+  owed work, which is lane 64's membership defect in a new document; the packet now splits it (2.1–2.5, 2.6 CLOSED,
+  2.7–2.9) and says so in its own header. And two cells of that 2026-10-10 sheet state the system's wording the
+  build has since moved — the card and the load both print `App\Support\YearLevel::format()` now, so they read
+  `- 1st Year` / `- 3rd Year` where the sheet recorded `- Year 1` / `- Year 3`. The sheet is **not** re-aged; the
+  packet states today's wording beside the row. So: when a dated document is used as a checklist, read its rows
+  against the build first, and split every grouped row — a range in a tick box is a membership claim.
+  **Adding a test method above another one can steal that test's `#[Test]` attribute, and the suite stays green while
+  a pinned case stops running.** Pass 245's new `PreflightTest` case was inserted by anchoring on the *declaration
+  line* of the method below it — which in this file is preceded by `#[Test]`, so the attribute ended up on the new
+  method and `the_application_zone_is_still_utc…` became invisible. The whole suite then printed **806 passed**
+  exactly as it had before the edit, with 8 more assertions, and that reading is what exposed it: `artisan
+  test --list-tests` counted 806 while the class declares 26 test methods, and after restoring the attribute the
+  discovery count is **807** and the class runs 26/103. So after any batch that adds or moves a test method,
+  compare the discovery count before and after (`artisan test --list-tests | grep -c "Tests\\"`) with the run's own
+  `Tests:` tally, and grep the attribute count (`grep -c '#\[Test\]' <file>`) against `git show HEAD:<file>`; insert
+  anchored on the *attribute and declaration together*, never on the declaration alone. A green suite that lost a
+  test is the same failure as a checker that read the wrong construct — it reports success about a thing it stopped
+  looking at.
 - **After any batch that states or edits a row count in the documents** ("Live ems holds nine offices",
   "the live directory holds 24 students", "42 assignments over 17 roles"), run
   `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
