@@ -957,6 +957,29 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   And after any clone, verify counts **in the target**, then confirm the source still exists.
 - Dump before every live write: `mysqldump -u root ems > C:\Users\ADMIN\ems-backups\ems-pre-<what>-<date>.sql`,
   then verify the file landed and contains the table you are about to change.
+- **A database dump never goes in the repository — `C:\Users\ADMIN\ems-backups\` is its only home.** Found
+  2026-10-26 while answering two unrelated questions: `Documentation/ems-demo-backup.sql` — a mysqldump whose header
+  says `Database: ems` — had been tracked on a **public** remote since `5a733bd` (2026-09-12) and re-committed twice
+  since, carrying `INSERT`s for `students`, `staffusers`, `studentids`, `studenteducationalbackgrounds`, `payments`
+  and `password_reset_tokens` (live `ems`: 24 students, 21 staff, 4 admissions, 37 enrollments). The owner confirmed
+  those rows are the **synthetic demo cast**, so this was hygiene and not a disclosure — which is exactly why it sat
+  unnoticed for six weeks: nothing in the tree distinguishes a synthetic snapshot from a real one, so the rule has to
+  be positional. It is now untracked, `.gitignore` carries `/Documentation/*.sql` with the reason in its own comment,
+  and the file stays on this box so the demo-day fallback still works here. Three places had told a person to load
+  it and were re-pointed the same batch — `Demo-Day-Guide.md` §5, `Offline-Presentation-Guide.md` "If the demo data
+  gets lost", and the `SCOPE` banner in `tools/seed_full_demo_pipeline.php` — because untracking without that would
+  have left a documented procedure asking for a file a clone cannot have. Nothing read it at run time: the CI step
+  and `DemoDatasetRecordStatesTest` mention it only in comments, so no gate depends on it, and `lane39-dump-contents.php`
+  and `lane39-guide-preconditions.php` still re-measure it when a local copy exists.
+  **History is the part a new commit cannot undo.** The rewrite below is planned and deliberately **not executed**
+  (owner's word, 2026-10-26; not needed while the rows are synthetic): keep a reference clone
+  (`git clone <url> reference-clone && cp -r reference-clone reference-backup`), install `git filter-repo`, run
+  `git filter-repo --invert-paths --path Documentation/ems-demo-backup.sql` on a fresh mirror clone, then
+  `git push --force-with-lease` — and say out loud that the old objects remain reachable on GitHub until the GC and any
+  fork or mirror is gone, which is why "make the repository private" is the containment step if the data ever stops
+  being synthetic and the rewrite is the repair. Every collaborator must re-clone afterwards; a rework of history
+  invalidates their existing checkouts silently, which is the same class of half-applied state this file keeps
+  refusing elsewhere.
 - `php artisan db:seed --class=RbacSeeder` prunes permissions the seeder no longer declares, so
   retiring a right is a seeder edit plus a reseed, not a migration.
 - RBAC pivots are renamed: `staff_roles`, `role_permissions` with columns `roleId` / `permissionId`;

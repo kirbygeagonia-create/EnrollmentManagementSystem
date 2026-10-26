@@ -17,6 +17,11 @@
 # Both folders hold them — the scans moved from Documentation/Images to the repository root.
 /Documentation/Images/
 /Images/
+# A mysqldump of a working database is machine state, not source. `Documentation/ems-demo-backup.sql`
+# was tracked this way from 2026-09-12 to 2026-10-26 (its rows are the synthetic demo cast, so this is
+# hygiene rather than exposure — but history is why the rule is *never*, not *carefully*). Take dumps to
+# C:\Users\ADMIN\ems-backups\, which is where AGENTS.md already sends them.
+/Documentation/*.sql
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json

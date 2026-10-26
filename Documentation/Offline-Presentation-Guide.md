@@ -72,8 +72,12 @@ Run through this ~10 minutes before presenting:
 
 ## If the demo data gets lost
 
-**Restore a dump you took of the current `ems`, not the one in `Documentation/`.**
-`Documentation/ems-demo-backup.sql` is a **2026-09-20** snapshot, and loading it is
+**Restore a dump you took of the current `ems` — no snapshot ships with the code.**
+`Documentation/ems-demo-backup.sql` was taken out of the repository on 2026-10-26
+because a dump of a working database is machine state, the same reason the signed
+reference scans are excluded; its rows are synthetic demo data, so this is hygiene,
+not exposure, and a clone has never had a copy to load. If you still hold the file
+locally it is a **2026-09-20** snapshot, and loading it is
 one of five commands, not the whole recovery — `Documentation/Demo-Day-Guide.md` §5
 carries the order and, row by row, what the snapshot puts back (10 of its 11
 enrollments come back on the retired term 18, its schema predates 20 migrations and

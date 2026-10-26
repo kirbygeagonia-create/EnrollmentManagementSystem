@@ -316,7 +316,16 @@ re-dated to the morning you are presenting, which is the line §1's sanity sweep
 Afterwards the box walks the same **18 of 19** records this machine does and
 `ems:audit:record-states` reports the one ruled note, not a fault.
 
-### If there is no fresh dump: `Documentation/ems-demo-backup.sql`
+### If there is no fresh dump: a `2026-09-20` snapshot, kept outside the repository
+
+**No database snapshot ships with the code.** `Documentation/ems-demo-backup.sql`
+was one, and on 2026-10-26 it was taken out of tracking for the same reason the
+signed reference scans and `lane59-readings.json` are: a dump of a working database
+is machine state, not source. Its rows are synthetic demo data, so this is hygiene
+rather than exposure — but the copies in the remote's older commits are why the rule
+now says *never*, and the file itself is still on this box, which is what the
+commands below assume. No copy, no clone: take a fresh one the night before (§5's
+first block), which is also the better dataset because it carries every ruling since.
 
 One command is **not** enough with that file. It is a **2026-09-20** snapshot —
 its newest applied migration is `2026_09_20_1000000000_add_schedule_status_to_blocks_table`
