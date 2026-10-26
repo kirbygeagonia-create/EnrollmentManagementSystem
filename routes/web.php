@@ -93,6 +93,11 @@ Route::middleware('auth')->group(function () {
     Route::put('/evaluation/{enrollment}/standing', [EvaluationController::class, 'decideStanding'])->name('evaluation.standing.decide');
     Route::post('/evaluation/{enrollment}/subjects', [EvaluationController::class, 'proposeSubjects'])->name('evaluation.subjects.propose');
     Route::post('/evaluation/{enrollment}/credits', [EvaluationController::class, 'processCredits'])->name('evaluation.credits.process');
+    // G-3 (prompt §7.3): the equivalency is decided row by row, and the decision is gated by
+    // the same right that records a credit — ruled 2026-10-26 that the department that owns
+    // the judgement is the desk that already holds it, so no new permission and no second
+    // signature. Only an approved row covers a subject.
+    Route::put('/evaluation/credit/{creditedSubject}/decision', [EvaluationController::class, 'decideCredits'])->name('evaluation.credits.decide');
     // Ruling 5: the department that takes the student confirms the clearance pass slip.
     Route::post('/evaluation/{enrollment}/clearance/confirm', [EvaluationController::class, 'confirmClearance'])->name('evaluation.clearance.confirm');
     Route::post('/evaluation/{enrollment}/sign', [EvaluationController::class, 'sign'])->name('evaluation.sign');

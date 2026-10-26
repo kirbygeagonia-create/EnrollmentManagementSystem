@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Evaluation;
 
 use App\Enums\AcademicStanding;
 use App\Enums\ClearanceOverallStatus;
+use App\Enums\CreditDecision;
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
@@ -42,6 +43,7 @@ use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
 use App\Support\CollegeScope;
+use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use App\Support\YearLevel;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -173,8 +175,12 @@ class EvaluationController extends Controller
             'admission',
             'clearanceConfirmedByUser',
             'enrolledSubjects.subject',
-            // Item 6: the credit-transfer panel renders existing credited subjects.
+            // Item 6: the credit-transfer panel renders existing credited subjects —
+            // each one with the SEAIT subject it was mapped to, the hand that decided
+            // it, and the prior record the evidence sits on.
             'creditedsubjects.creditedToSubject',
+            'creditedsubjects.decidedByUser',
+            'creditedsubjects.transferRecord',
             // The desk signs the first box of the workflow form, so it shows the
             // boxes its own signature opens.
             'enrollmentworkflow.workflowsteps.office',
@@ -225,6 +231,9 @@ class EvaluationController extends Controller
             // the desk sees the evidence and the recommendation it is based on,
             // not just a dropdown.
             'standingReport' => $this->standingService->derive($enrollment),
+            // §7.3: the panel states what its rows add up to, counted on the server over
+            // every row of this enrollment — not over the rows the screen happens to show.
+            'creditTotals' => $this->creditTotals($enrollment),
             'retentionExam' => $retentionResult ? [
                 'examId' => $retentionResult->examId,
                 'examResult' => $retentionResult->examResult->value,
@@ -236,6 +245,10 @@ class EvaluationController extends Controller
                 'captureProfile' => $request->user()->can('captureProfile', $enrollment),
                 // Ruling 5: only the desks that may confirm a pass slip see the control.
                 'confirmClearance' => $request->user()->can('confirmClearance', $enrollment),
+                // G-3: deciding one equivalency is the same departmental act as recording
+                // one, so it is gated by the same right — ruled 2026-10-26 that no new
+                // permission and no second signature are needed.
+                'decideCredits' => $request->user()->can('processCredits', $enrollment),
             ],
             // BR32: the checklist the desk has to clear before it can sign, and
             // the same list sign() refuses on. One definition, two readers. Keyed
@@ -309,7 +322,7 @@ class EvaluationController extends Controller
      * Subject ids whose prerequisites the student has already satisfied:
      * passed (best grade within the passing band — PH scale, lower is
      * better; Gradescale rows win over the 3.00 fallback) or credited
-     * through transfer.
+     * through transfer with the department's approval on that row.
      *
      * @return int[]
      */
@@ -331,12 +344,45 @@ class EvaluationController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $credited = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+        // Only a credit the department has approved covers a subject. A row filed and
+        // then declined stays on the record without satisfying anything (G-3).
+        $credited = Creditedsubjects::approved()
+            ->where('enrollmentId', $enrollment->enrollmentId)
             ->pluck('creditedToSubjectId')
             ->map(fn ($id) => (int) $id)
             ->all();
 
         return array_values(array_unique(array_merge($passed, $credited)));
+    }
+
+    /**
+     * What this enrollment's crediting rows add up to (prompt §7.3 asks the review to total
+     * the requested, approved and declined units).
+     *
+     * `recorded` is every row the department has filed, decision or no decision; `approved`
+     * is the subset that covers a subject; `rejected` is the remainder, which stays on the
+     * record without counting. Units follow the same split so the desk can see how much of
+     * the load a refusal puts back on the student. Counted on the server over the whole set,
+     * never reduced over the rows a page happens to render.
+     *
+     * @return array{recorded: int, approved: int, rejected: int, recordedUnits: float, approvedUnits: float, rejectedUnits: float}
+     */
+    private function creditTotals(Enrollments $enrollment): array
+    {
+        $rows = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+            ->get(['creditedId', 'creditDecision', 'creditedUnits']);
+
+        $approved = $rows->where('creditDecision', CreditDecision::Approved);
+        $approvedUnits = round((float) $approved->sum('creditedUnits'), 2);
+
+        return [
+            'recorded' => $rows->count(),
+            'approved' => $approved->count(),
+            'rejected' => $rows->count() - $approved->count(),
+            'recordedUnits' => round((float) $rows->sum('creditedUnits'), 2),
+            'approvedUnits' => $approvedUnits,
+            'rejectedUnits' => round((float) $rows->sum('creditedUnits') - $approvedUnits, 2),
+        ];
     }
 
     /**
@@ -617,10 +663,12 @@ class EvaluationController extends Controller
         }
 
         // Mandatory subjects validation (non-elective curriculum subjects must be proposed)
-        // Subtract subjects already credited (transferee/shifter credit transfers)
+        // Subtract subjects already credited by an APPROVED transfer row. A row the
+        // department declined does not exempt its subject (G-3, prompt §7.3).
         $mandatorySubjectIds = $curriculumSubjects->where('is_elective', false)->pluck('subjectId')->toArray();
 
-        $creditedSubjectIds = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+        $creditedSubjectIds = Creditedsubjects::approved()
+            ->where('enrollmentId', $enrollment->enrollmentId)
             ->pluck('creditedToSubjectId')
             ->toArray();
         $mandatorySubjectIds = array_diff($mandatorySubjectIds, $creditedSubjectIds);
@@ -709,6 +757,9 @@ class EvaluationController extends Controller
         $validated = $request->validate([
             'credits' => 'required|array',
             'credits.*.previousSubjectName' => 'required|string|max:150',
+            'credits.*.previousSubjectCode' => 'nullable|string|max:50',
+            'credits.*.termTaken' => 'nullable|string|max:100',
+            'credits.*.syllabusReference' => 'nullable|string|max:255',
             'credits.*.creditedToSubjectId' => 'required|exists:subjects,subjectId',
             'credits.*.creditedUnits' => 'required|numeric|min:0|max:9.9',
             'credits.*.institutionName' => 'required|string|max:150',
@@ -723,11 +774,16 @@ class EvaluationController extends Controller
         // cannot be assumed. A credit is what subtracts a mandatory subject from
         // the load and satisfies a prerequisite, so writing every transfer row as
         // "passed" exempted subjects the student had actually failed elsewhere.
+        //
+        // Passing is the necessary half, not the sufficient one: §7.3 forbids crediting
+        // a course on a matching title alone, so the row is filed as the department's own
+        // APPROVED decision, signed and dated here, and can be declined later on the panel.
+        // The reason column stays empty on an approval — it is the reason for a refusal.
         $ceiling = Gradescale::passingCeiling();
         $credited = 0;
         $retained = 0;
 
-        DB::transaction(function () use ($enrollment, $validated, $ceiling, &$credited, &$retained) {
+        DB::transaction(function () use ($request, $enrollment, $validated, $ceiling, &$credited, &$retained) {
             foreach ($validated['credits'] as $credit) {
                 $institution = Educationalinstitutions::firstOrCreate(
                     ['institutionName' => $credit['institutionName']],
@@ -745,6 +801,9 @@ class EvaluationController extends Controller
                     'studentId' => $enrollment->studentId,
                     'institutionId' => $institution->institutionId,
                     'subjectNameAtOldSchool' => $credit['previousSubjectName'],
+                    'previousSubjectCode' => $credit['previousSubjectCode'] ?? null,
+                    'termTaken' => $credit['termTaken'] ?? null,
+                    'syllabusReference' => $credit['syllabusReference'] ?? null,
                     'unitsAtOldSchool' => $credit['creditedUnits'],
                     'gradeAtOldSchool' => $credit['grade'],
                     'passResult' => ($passed ? PassResult::Passed : PassResult::Failed)->value,
@@ -763,6 +822,9 @@ class EvaluationController extends Controller
                     'creditedToSubjectId' => $credit['creditedToSubjectId'],
                     'creditedUnits' => $credit['creditedUnits'],
                     'remarks' => $credit['remarks'] ?? '',
+                    'creditDecision' => CreditDecision::Approved->value,
+                    'decidedBy' => $request->user()->userId,
+                    'decidedDate' => SchoolTime::today(),
                 ]);
 
                 $credited++;
@@ -772,6 +834,46 @@ class EvaluationController extends Controller
         return back()->with('success', $retained > 0
             ? "Credits processed: {$credited} credited, {$retained} kept on the record but not credited — the grade is beyond the {$ceiling} passing line."
             : 'Credits processed successfully.');
+    }
+
+    /**
+     * Record the department's decision on one transferred-subject equivalency (G-3).
+     *
+     * Ruled 2026-10-26: the account that decides is the desk that already records credits, so
+     * this act is gated by `evaluation.credits.process` and asks for no new permission and no
+     * second signature. What it must carry is the three things §7.3 asks a review to leave
+     * behind: the decision, the hand, and the day — plus a reason whenever the answer is no.
+     *
+     * A declined row stays on the file. The prior subject and its grade belong to
+     * `transferacademicrecords` and the study load already proposed under the old decision is
+     * not rewritten here; what changes is every later validation, because `approved()` is the
+     * only set that subtracts a mandatory subject or satisfies a prerequisite.
+     */
+    public function decideCredits(Request $request, Creditedsubjects $creditedSubject): RedirectResponse
+    {
+        $this->authorize('processCredits', $creditedSubject->enrollment);
+
+        $validated = $request->validate([
+            'creditDecision' => ['required', Rule::enum(CreditDecision::class)],
+            'decisionReason' => 'required_if:creditDecision,rejected|nullable|string|max:500',
+        ]);
+
+        $decision = CreditDecision::from($validated['creditDecision']);
+
+        $creditedSubject->update([
+            'creditDecision' => $decision->value,
+            // Stamped on every decision, including a re-decision: the row has to say which
+            // hand left it in the state a later reader will find it in.
+            'decidedBy' => $request->user()->userId,
+            'decidedDate' => SchoolTime::today(),
+            // The reason belongs to a refusal. Clearing it on an approval keeps one column
+            // from holding the text of the opposite decision.
+            'decisionReason' => $decision === CreditDecision::Rejected ? $validated['decisionReason'] : null,
+        ]);
+
+        return back()->with('success', $decision === CreditDecision::Approved
+            ? $creditedSubject->previousSubjectName.' is credited: it now counts against the study load.'
+            : $creditedSubject->previousSubjectName.' is not credited — '.$validated['decisionReason'].'.');
     }
 
     /**

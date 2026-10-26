@@ -15,7 +15,7 @@ class Transferacademicrecords extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['studentId', 'institutionId', 'subjectNameAtOldSchool', 'unitsAtOldSchool', 'gradeAtOldSchool', 'passResult'];
+    protected $fillable = ['studentId', 'institutionId', 'subjectNameAtOldSchool', 'previousSubjectCode', 'termTaken', 'syllabusReference', 'unitsAtOldSchool', 'gradeAtOldSchool', 'passResult'];
 
     protected function casts(): array
     {

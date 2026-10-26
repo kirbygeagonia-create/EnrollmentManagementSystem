@@ -415,7 +415,10 @@ class EnrollmentWalkthroughTest extends TestCase
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $credited = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+        // The same line the controller draws: only an approved equivalency removes a
+        // mandatory subject from what this walk has to propose.
+        $credited = Creditedsubjects::approved()
+            ->where('enrollmentId', $enrollment->enrollmentId)
             ->pluck('creditedToSubjectId')
             ->map(fn ($id) => (int) $id)
             ->all();

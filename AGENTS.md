@@ -69,7 +69,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   mutation leaves the dump byte-identical, which is proved by running a variant whose anchor cannot match.
 - **After any batch that adds a table with foreign keys, or touches a delete path**, run
   `php storage/app/scratch/lane43-delete-guards.php` and prove it with
-  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 100 foreign keys: only four
+  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 101 foreign keys: only four
   cascade (the RBAC pivots `RbacSeeder`'s prune relies on), one is RESTRICT (`shiftingrequests.requestedBy`),
   and 70 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
   — `blockedDeletionMessage()`, a `->exists()` chain, a private helper, or a relation check — and a list that omits
@@ -299,7 +299,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   not the counts a tool prints (lane 59), but "62 tables (54 EMS domain + 8 framework), 418 columns, 86 foreign-key
   constraints, 175 indexes" — a 2026-10-04 reading restated as the present schema while §23.8's own cross-check on the same
   subject said 63, and **one of its numbers never named what it counted**: 175 is `information_schema.TABLE_CONSTRAINTS`, the
-  schema holds 129 indexes. Live `ems` today answers 63 tables (55 domain + 8 framework from the bundled `0001_` migrations),
+  schema holds 129 indexes. Live `ems` answered this on 2026-10-26, before the G-3 crediting columns were added: 63 tables (55 domain + 8 framework from the bundled `0001_` migrations),
   452 columns, 100 foreign keys, 4 CASCADE / 26 SET NULL / 1 RESTRICT / 69 NO ACTION, and §24's 63 per-table "N columns"
   headings all agree with the server column for column. Two rules the measurement taught. *Derive the partition, never
   recall it*: a hardcoded list of eight framework tables answered "54", while the eight the server holds are the seven
@@ -739,7 +739,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 339 lines where
+  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 342 lines where
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
@@ -1270,6 +1270,64 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   timeout and the refusal leg measured instead of refusing — an accepted-and-inert option, which is why the probe now
   asks in milliseconds and prints the value it used. Run the argument-bearing legs from the harness, not from
   Git-Bash, which rewrites `/this-path-404s` into a Windows path before PHP ever sees it.
+- **A credit counts only when its own row says so, and one scope answers that question** (lane 76, prompt §7.3).
+  Ruled by the owner 2026-10-26: **the department decides** — the account that records a credit already holds
+  `evaluation.credits.process`, so deciding it needs no new permission and no second signature; and the three
+  evidence columns join the batch as **nullable**, because a school that has not produced the paper must not be
+  made to invent one. `creditedsubjects` therefore grew `creditDecision` (approved | rejected, defaulting to
+  approved so a row filed before the column keeps its effect), `decidedBy`, `decidedDate` (written with
+  `SchoolTime::today()`, never `now()`), and `decisionReason` (required on a refusal, **cleared** on an approval —
+  a reason beside `approved` reads as a refusal nobody withdrew). Four rules came out of building it. *One
+  definition of "counts"*: `Creditedsubjects::approved()` is read by the prerequisite gate, the mandatory-block
+  diff and `EnrollmentReadiness::satisfiedSubjectIds()` — three readers that must not disagree — while
+  `ReferenceDataController::destroySubject()`'s guard deliberately counts **every** row: a declined equivalency
+  still names the subject, so narrowing the census there would let a delete orphan a decision (pinned as its own
+  case, and killed by a mutant that adds the filter). *A screen may not promise what the server now refuses*: two
+  Evaluation banners said credited subjects are exempt, which stopped being true on arrival until the row is
+  approved. *Some rules are unreachable by a desk act*: the mandatory-block exemption only bites on a regular
+  student, while `processCredits` allows only transferee and shifter records — so that case plants the row and
+  says why, and a first-draft of it "passed" because a policy **403** satisfies `assertSessionHasNoErrors()` just
+  as a green run does. *MySQL resolves `AFTER` in a multi-add ALTER against the column list as the statement
+  began*: the three evidence columns landed in the reverse of the declaration order, measured — so §24 lists the
+  server's order and the migration says so instead of claiming what was intended. The instruments:
+  `php artisan test tests/Feature/Evaluation/CreditEquivalencyDecisionTest.php` and
+  `php storage/app/scratch/mutate-g3-crediting-decision-tests.php`, which plants one defect per promise across five
+  files and requires the named case to report `1 failed`; its no-op guard had to be narrowed from "the replacement
+  text is already in the file" to "the needle and its replacement are the same text", because a **shrink** mutation
+  (dropping three names from a `$fillable`) necessarily leaves a remainder that already occurs — the byte-hash
+  after writing is the precise falsification.
+- **A moved file's citations are shifted by bytes or not at all** (lane 76). G-3 grew
+  `EvaluationController.php` by 102 lines and `routes/web.php` by 5, and the shift tool rewrote **79** citation
+  tokens in the authority docx — 60 in the controller, 18 in the routes, 1 in the Evaluation panel; a fourth run,
+  over `EnrollmentReadiness.php`, re-emitted 12 tokens with every number unchanged, which is what a clean no-move
+  looks like and is worth printing rather than assuming. The line deltas and the token counts are what the tool
+  printed, not arithmetic. And the shift is one regex pass, never a needle
+  list: `php
+  storage/app/scratch/lane76-shift-cites.php --token=<cited spelling> --head=<HEAD export> --live=<file> [--apply]`
+  locates every cited window in the working copy, accepts only a unique match, rewrites by absolute offset with
+  `(?![\d-])` so `:844` cannot eat `:844-898`, and attributes a bare `:NNN` only when the module's own rule claims
+  it for that file *and* the 160 bytes before it in `document.xml` hold no other filename. It refuses — writing
+  nothing — on GONE (the construct was edited, so a human must re-read it), AMBIGUOUS, a mapped token with zero XML
+  occurrences, a `--skip=` naming nothing it collected, and an unknown flag; six ranges needed `--map=OLD=NEW`
+  after reading, and two of those were **false by meaning before the batch touched the file** (the BR32 row quoted
+  the class brace and a ternary arm; a bare continuation offered `confirmClearance()` while its lines sit in two
+  other methods). Two traps in the tool itself: repeated `--map=` flags were first overwritten so only the last
+  applied — a dropped flag makes a partial cascade look complete, the fourth time this file has said that — and a
+  token that is half a comma list (`:58,190`) must be `--skip`ped and rewritten as one token, because shifting only
+  its head produces a number that now looks valid.
+- **Docx rows are cloned by row prefix and written by cell offset** (lane 76). Twelve new rows (dictionary
+  columns, the new foreign key, the SET NULL list, the enum inventory, §13.1's fifth action, §1.1's record) came out
+  of `refresh-docx-pass251b.php`, and three of its guards were bought by failures: anchor on the row's WHOLE
+  flattened prefix, not a cell value — `remarks` is a column of four tables and
+  `creditedsubjects.transferRecordId` opens a row in two inventories; join cells with a separator when flattening a
+  row, because runs concatenate directly; and replace cells by **offset**, because `str_replace()` writes every
+  identical copy and the foreign-key rows repeat `NO ACTION` twice in one row. A §1.1 cell can also carry a trailing
+  *empty* paragraph (a previous clone's leftover) — dropped only when it holds no text, refused otherwise. Then
+  `refresh-docx-pass251.php` and its three sequels did the sentences: **a record row that quotes a citation shape
+  invents a citation** — the new §1.1 row named `:58,190` and `:959-1000` while describing them, which made pass
+  251's own needles ambiguous and is why that prose is spelled in words now; and `lane59-instrument-counts.php`
+  caught a figure this batch moved without anyone asking it to (lane 49's blind-spot count went 339 → 342 because
+  the new JSX added lines of the shape it counts).
 - In a feature test, an Inertia screen's props come from `->viewData('page')['props']`, not
   `->json('props.x')`: the route answers with HTML until `X-Inertia` is sent, so the second form reports
   "Invalid JSON was returned from the route". Endpoints that return real JSON (`students.quick-search`,
@@ -1324,7 +1382,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (740 citations over 161 files as of docx pass 250; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (741 citations over 161 files as of docx pass 251; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1798,11 +1856,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   pointer (`:261-272 (order check)`) was correct. Sixth wrong target of this lane. (c) §13's "One workflow form per
   enrollment" row said `createWorkflow()` "is called once, from the Evaluation signature", and §18.6's workflow row said
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
-  one caller", citing `EvaluationController.php:532-535 (the only createWorkflow call)`. A call-site census of `app/`
+  one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
   answers **two**: `EnrollmentIssuer.php:75`, inside `issue()` directly after `Enrollments::create` at :73, and
   `EvaluationController.php:803`, behind `if (! $enrollment->enrollmentworkflow)` at :802. So the one-form rule is held
   by that existence check, not by a single call site — the row's conclusion stands, its stated reason does not — and
-  neither cited span contained the call at all (`:532-535` is `decideStanding()`'s validation, `:466-485` is
+  neither cited span contained the call at all (those 532-to-535 lines are `decideStanding()`'s validation, and 466 to 485 is
   `captureProfile()`'s address loop). **When a register row explains a rule by a count, measure the count**: the script
   refuses unless `app/` answers exactly the number the new sentence asserts.
   **Then my own repair made a blind spot, and only the sweep's blind list saw it.** Lengthening §13's step-row sentence
@@ -1945,7 +2003,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   exited 1 before the checker ran and the *control* failed. Compare bytes, not sizes; `2>&1`, never a
   POSIX device.
 - `storage/app/scratch/lane32-cite-meaning-sweep.php` automates the first pass of that reading (~2 s over the
-  131 symbol/range pairs it checks, 8 pairs flagged for reading across 5 distinct constructs). It takes the
+  135 symbol/range pairs it checks, 12 pairs flagged for reading across 9 distinct constructs). It takes the
   construct the prose *names* and asks whether
   that name lives in the cited span or encloses it. It found the five drifted citations pass 117 fixed, and
   then found six more problems that the line sweep had cleared: five stale claims in §18.6 "Verification
@@ -2096,7 +2154,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 913 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 915 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

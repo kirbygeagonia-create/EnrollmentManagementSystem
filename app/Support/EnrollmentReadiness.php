@@ -169,7 +169,8 @@ final class EnrollmentReadiness
     /**
      * Subjects the student has passed or been credited for. A grade counts as
      * passing against the maintained scale (PH convention: lower is better), and a
-     * transfer credit counts without a grade.
+     * transfer credit counts without a grade only while the department's decision on
+     * that row is approval.
      *
      * @return list<int>
      */
@@ -189,7 +190,10 @@ final class EnrollmentReadiness
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $credited = Creditedsubjects::where('enrollmentId', $enrollment->enrollmentId)
+        // Approved credits only — the same line the Evaluation desk's own readers draw, so
+        // readiness can never count a subject the department has declined (G-3).
+        $credited = Creditedsubjects::approved()
+            ->where('enrollmentId', $enrollment->enrollmentId)
             ->pluck('creditedToSubjectId')
             ->map(fn ($id) => (int) $id)
             ->all();

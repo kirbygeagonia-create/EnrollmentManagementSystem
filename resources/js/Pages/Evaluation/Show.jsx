@@ -7,7 +7,7 @@ import { collegeLogoFor } from '@/officeBranding';
 import { calendarYear, formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 
-export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
+export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, creditTotals, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [profileOpenRequest, setProfileOpenRequest] = useState(0);
@@ -29,6 +29,10 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
     // Ruling 5: the pass slip is confirmed here, at the desk the student hands it to.
     // Only a returning type owes a clearance, so only their record shows the control.
     const canConfirmClearance = can.confirmClearance ?? false;
+    // G-3: deciding one equivalency is gated by the same right as recording one, so the
+    // desk that recorded the row is the desk that can flip it — and no other desk is
+    // offered the control.
+    const canDecideCredits = can.decideCredits ?? false;
     const owesClearance = ['continuing', 'shifter'].includes(enrollment.studentType?.value || enrollment.studentType);
     const passSlipConfirmedBy = enrollment.clearanceConfirmedByUser || null;
     const passSlipConfirmedAt = enrollment.clearanceConfirmedAt || null;
@@ -63,6 +67,9 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
     // Item 6: credit-transfer intake for transferee/shifter students.
     const creditForm = useForm({
         previousSubjectName: '',
+        previousSubjectCode: '',
+        termTaken: '',
+        syllabusReference: '',
         creditedToSubjectId: '',
         creditedUnits: 3,
         institutionName: '',
@@ -80,6 +87,27 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
         creditForm.transform((data) => ({ credits: [data] })).post(
             route('evaluation.credits.process', { enrollment: enrollment.enrollmentId }),
             { onSuccess: () => creditForm.reset() },
+        );
+    };
+
+    // G-3 (prompt §7.3): the equivalency is decided row by row, and a refusal has to say
+    // why. One row's reason box is open at a time, and it opens only for a decline —
+    // approving needs no explanation because it is the act the intake form already argued
+    // for when it recorded the row.
+    const [decliningFor, setDecliningFor] = useState(null);
+    const [declineReason, setDeclineReason] = useState('');
+
+    const decideCredit = (creditedSubject, creditDecision) => {
+        router.put(
+            route('evaluation.credits.decide', { creditedSubject: creditedSubject.creditedId }),
+            creditDecision === 'rejected' ? { creditDecision, decisionReason: declineReason } : { creditDecision },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setDecliningFor(null);
+                    setDeclineReason('');
+                },
+            },
         );
     };
 
@@ -317,7 +345,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 {enrollment.studentType === 'transferee' ? 'Transferee Flow' : 'Shifter Flow'} — Credit Transfer First
                             </h3>
                             <p className="text-xs text-indigo-800 mt-0.5 leading-relaxed">
-                                Record academic credits from the previous institution below before finalizing the study load — credited subjects are exempt from the mandatory-block requirement and prerequisite checks.
+                                Record academic credits from the previous institution below before finalizing the study load — a subject this desk approves as credited is exempt from the mandatory-block requirement and prerequisite checks, and one it declines is not.
                             </p>
                         </div>
                     </div>
@@ -928,24 +956,113 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
                                 Credit Transfer from Previous Institution
                             </h3>
-                            <p className="text-xs text-slate-400 mt-0.5">Credited subjects are exempt from the mandatory block and prerequisite checks</p>
+                            <p className="text-xs text-slate-400 mt-0.5">Only a subject this desk has approved is exempt from the mandatory block and prerequisite checks</p>
+                            {creditTotals.rejected > 0 && (
+                                <p className="text-xs text-amber-700 mt-1">
+                                    {creditTotals.rejected} declined — its {creditTotals.rejectedUnits} units stay inside the load it was declined for.
+                                </p>
+                            )}
                         </div>
                         <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
-                            {(enrollment.creditedsubjects || []).length} Credited
+                            {creditTotals.approved} of {creditTotals.recorded} credited · {creditTotals.approvedUnits} units
                         </span>
                     </div>
 
                     {(enrollment.creditedsubjects || []).length > 0 && (
                         <div className="space-y-2 mb-4">
                             {enrollment.creditedsubjects.map((cs) => (
-                                <div key={cs.creditedId} className="flex items-center justify-between p-3 rounded-xl bg-indigo-50/60 border border-indigo-200">
-                                    <div className="min-w-0">
-                                        <span className="font-bold text-xs text-slate-900">{cs.previousSubjectName}</span>
-                                        <span className="text-2xs text-slate-500 block">→ credited to {cs.creditedToSubject?.subjectCode || cs.creditedToSubjectId}</span>
+                                <div key={cs.creditedId} className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-200">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <span className="font-bold text-xs text-slate-900">{cs.previousSubjectName}</span>
+                                            {cs.transferRecord?.previousSubjectCode && (
+                                                <span className="text-2xs text-slate-500 font-mono ml-1">({cs.transferRecord.previousSubjectCode})</span>
+                                            )}
+                                            <span className="text-2xs text-slate-500 block">
+                                                → proposed for {cs.creditedToSubject?.subjectCode || cs.creditedToSubjectId}
+                                                {cs.transferRecord?.termTaken ? ` · taken ${cs.transferRecord.termTaken}` : ''}
+                                            </span>
+                                            {cs.remarks && <span className="text-2xs text-slate-500 block">rationale: {cs.remarks}</span>}
+                                            {cs.creditDecision === 'approved'
+                                                ? (cs.decidedByUser || cs.decidedDate ? (
+                                                    <span className="text-2xs text-slate-500 block">
+                                                        approved by {cs.decidedByUser ? `${cs.decidedByUser.firstName} ${cs.decidedByUser.lastName}` : 'a desk no longer on the roster'}
+                                                        {cs.decidedDate ? ` on ${formatCalendarDay(cs.decidedDate)}` : ''}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-2xs text-slate-400 italic block">
+                                                        counted before this desk kept a decision on each row
+                                                    </span>
+                                                ))
+                                                : (
+                                                    <span className="text-2xs text-red-700 block">
+                                                        declined by {cs.decidedByUser ? `${cs.decidedByUser.firstName} ${cs.decidedByUser.lastName}` : 'a desk no longer on the roster'}
+                                                        {cs.decidedDate ? ` on ${formatCalendarDay(cs.decidedDate)}` : ''} — {cs.decisionReason}
+                                                    </span>
+                                                )}
+                                            {cs.transferRecord?.syllabusReference && (
+                                                <span className="text-2xs text-slate-500 block">syllabus evidence: {cs.transferRecord.syllabusReference}</span>
+                                            )}
+                                        </div>
+                                        <div className="text-right text-xs shrink-0">
+                                            <div className="font-mono font-bold text-indigo-700">{Number(cs.creditedUnits || 0)} units</div>
+                                            <Badge tone={cs.creditDecision === 'approved' ? 'approved' : 'rejected'} className="mt-1">
+                                                {cs.creditDecision === 'approved' ? 'Counting' : 'Declined'}
+                                            </Badge>
+                                        </div>
                                     </div>
-                                    <div className="text-right text-xs">
-                                        <span className="font-mono font-bold text-indigo-700">{Number(cs.creditedUnits || 0)} units</span>
-                                    </div>
+
+                                    {canDecideCredits && (
+                                        <div className="mt-2 pt-2 border-t border-indigo-100">
+                                            {cs.creditDecision === 'approved' ? (
+                                                decliningFor === cs.creditedId ? (
+                                                    <div className="space-y-2">
+                                                        <textarea
+                                                            value={declineReason}
+                                                            onChange={(e) => setDeclineReason(e.target.value)}
+                                                            rows="2"
+                                                            placeholder="Why is this equivalency declined? The desk that reads this row has to be told."
+                                                            className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                                        />
+                                                        {pageErrors.decisionReason && <p className="text-xs text-red-600">{pageErrors.decisionReason}</p>}
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => decideCredit(cs, 'rejected')}
+                                                                disabled={!declineReason.trim()}
+                                                                className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-3xs font-bold uppercase tracking-wider disabled:opacity-50"
+                                                            >
+                                                                Confirm decline
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setDecliningFor(null); setDeclineReason(''); }}
+                                                                className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-3xs font-bold uppercase tracking-wider"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setDecliningFor(cs.creditedId); setDeclineReason(''); }}
+                                                        className="text-3xs font-bold uppercase tracking-wider text-red-700"
+                                                    >
+                                                        Decline this equivalency
+                                                    </button>
+                                                )
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => decideCredit(cs, 'approved')}
+                                                    className="text-3xs font-bold uppercase tracking-wider text-indigo-700"
+                                                >
+                                                    Credit it after all
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -962,6 +1079,20 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
                             />
                             {creditForm.errors['credits.0.previousSubjectName'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.previousSubjectName']}</p>}
+                        </div>
+                        <div>
+                            {/* §7.3 asks the review to carry the evidence the equivalency was
+                                argued from. Optional on purpose: a school that has not produced
+                                the paper is not made to invent one, and a blank field says so. */}
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Previous Subject Code</label>
+                            <input
+                                type="text"
+                                value={creditForm.data.previousSubjectCode}
+                                onChange={(e) => creditForm.setData('previousSubjectCode', e.target.value)}
+                                placeholder="e.g., DS-101"
+                                className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            {creditForm.errors['credits.0.previousSubjectCode'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.previousSubjectCode']}</p>}
                         </div>
                         <div>
                             <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Credited To Subject *</label>
@@ -1050,6 +1181,28 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
                             />
                             {creditForm.errors['credits.0.grade'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.grade']}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Term / Year Taken</label>
+                            <input
+                                type="text"
+                                value={creditForm.data.termTaken}
+                                onChange={(e) => creditForm.setData('termTaken', e.target.value)}
+                                placeholder="e.g., 2nd year, 1st semester"
+                                className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            {creditForm.errors['credits.0.termTaken'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.termTaken']}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-3xs font-bold text-slate-600 uppercase tracking-wider mb-1">Course Description / Syllabus Reference</label>
+                            <input
+                                type="text"
+                                value={creditForm.data.syllabusReference}
+                                onChange={(e) => creditForm.setData('syllabusReference', e.target.value)}
+                                placeholder="e.g., Annex B of the transcript of records"
+                                className="w-full text-sm rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            {creditForm.errors['credits.0.syllabusReference'] && <p className="text-xs text-red-600 mt-1">{creditForm.errors['credits.0.syllabusReference']}</p>}
                         </div>
                     </div>
 
