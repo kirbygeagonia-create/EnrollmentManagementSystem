@@ -1,11 +1,15 @@
-# Registrar window packet — the six items still owed, issued 2026-10-26
+# Registrar window packet — the six items put in front of people, issued 2026-10-26
 
 **Who signs what, what the window accepts, whose paper it is, what a lost slip costs, which programs
 carry a board examination, and what an installer must name.**
 
 This is not a new set of questions. It is the four rows the decision sheet of 2026-10-23 left open
-(items 1, 2, 4, 5), the department half of C-5, the install-time half of G-13, and the nine boxes the
-fidelity sheet of 2026-10-10 has never been answered on — gathered onto pages a person can tick while
+(items 1, 2, 4, 5 — **all four ruled the day this packet was issued, in §A below**), the department half
+of C-5, the install-time half of G-13, and the boxes the fidelity sheet of 2026-10-10 had never been
+answered on — **three of those nine came back the same day (2.1–2.9, 1.6 and 1.1–1.5) and six remain
+open (3.3, 3.4–3.5, 3.6, 3.7, 4.1 and §5); the sheet's own tally reads ☐6 / ☑4 because row 2.6, ruled on
+2026-10-11, is ticked too** — gathered onto
+pages a person can tick while
 looking at today's build, with what each answer costs and how it comes back off again.
 
 **Every figure on this page was read from a command, not from the previous sheet**, because a packet
@@ -44,9 +48,9 @@ desk-side value can be tried, filed, and reversed by the office that owns it.
 
 ---
 
-## A. The four rows decision-sheet items 1, 2, 4, 5 still ask
+## A. The four rows decision-sheet items 1, 2, 4, 5 asked — all four ruled 2026-10-26
 
-### 1. Where does each of the nine offices actually sign? `[§28.5 · sheet item 1]`
+### 1. Where does each of the nine offices actually sign? `[§28.5 · sheet item 1 — ANSWERED 2026-10-26]`
 
 Today's nine lines, read from `clearancerequirements` (columns `clearanceRequirementId, officeId,
 requirementName`) — the wording is the developer's placeholder; the list, the order and the sentences
@@ -68,15 +72,15 @@ The school's own student copy carries **no table at all** and names **one** sign
 In-charge (Signature over Printed Name) & Date"), so the question is not whether the wording is right —
 it is where the other eight desks sign.
 
-- ☐ These nine lines and this order are the school's — the table stays on the student's page.
-- ☐ The table belongs on an **internal** copy; the student's page keeps one signature line (name the offices that still print: .............).
-- ☐ Amended on the attached page ☐ Other: .............  Initial: ..........
+- ~~☐ These nine lines and this order are the school's — the table stays on the student's page.~~ **ANSWERED: this one.** The nine lines stay, in this order, on the copy the student holds, so the office that signs each line is visible on the paper.
+- ~~☐ The table belongs on an **internal** copy; the student's page keeps one signature line.~~ Not chosen.
+- ~~☐ Amended on the attached page ☐ Other~~ None. Initial: the owner, in conversation, 2026-10-26
 
 *Cost:* the office list and the sentences are rows in `clearancerequirements`, edited on Reference Data →
 Clearance Requirements. Adding or removing an office is that screen plus `OfficeId`; no schema change.
 *Undo:* the same screen.
 
-### 2. What must the printed slip contain to be accepted at the window? `[§28.5 · P-8 · P-10 · sheet item 2]`
+### 2. What must the printed slip contain to be accepted at the window? `[§28.5 · P-8 · P-10 · sheet item 2 — ANSWERED 2026-10-26]`
 
 The desk paper prints eight identity rows over the nine-line table and a signature block: Document No.,
 Semester, Academic Year, Student Name, Student ID, Overall Status, Course & Year, Date to be Signed —
@@ -85,7 +89,7 @@ spelled `2nd Year` per the ruling of 2026-10-24. The school's paper carries four
 Course, Full Name, Date, Received by. No number, no status word, no "date to be signed", no document
 number, no fee line.
 
-- ☐ As printed — the window accepts all eight rows.
+- ~~☐ As printed — the window accepts all eight rows.~~ **ANSWERED: this one.** Eight identity rows, the nine-line table and the signature block, as the desk prints them.
 - ☐ Match the student copy: take the Student ID, the Overall Status word, the "Date to be Signed" and the Document No. off the **student's** page (they stay on the internal/file copy).
 - ☐ Wording amended ☐ Order amended — on the attached page.  Initial: ..........
 
@@ -95,7 +99,7 @@ in one commit; the cases that pin today's face are `ClearanceSlipCopyDesignation
 *Undo:* `git revert`. The document number stays in `documentprintlog` either way — it is minted before
 the render, so removing it from the paper does not remove the record.
 
-### 4. Is the generated PDF or the desk screen the paper a window accepts? `[§28.5 · P-19 · sheet item 4]`
+### 4. Is the generated PDF or the desk screen the paper a window accepts? `[§28.5 · P-19 · sheet item 4 — ANSWERED 2026-10-26]`
 
 Both are reachable. The enrollment form is PDF-only (`print.enrollmentForm`); every other paper can be
 printed from the desk page or generated. The two paths are **not** the same render: the desk mints and
@@ -106,14 +110,14 @@ seven — Semester, Academic Year, Student Name, Student ID, Overall Status, Cou
 under `CLEARANCE SLIP (STUDENT'S COPY)` and `(BSIT) Bachelor of Science in Information Technology - 2nd Year`,
 and no `Document No.` row appears at all, which is the visible half of the difference.
 
-- ☐ The desk print is the paper. ☐ The generated PDF is the paper.
+- ~~☐ The desk print is the paper.~~ **ANSWERED: the desk print** — it mints its Document No. before the render and writes its own `documentprintlog` row, so paper and log match. ☐ The generated PDF is the paper. Not chosen; it stays the inspection render.
 - ☐ Either; the PDF is the record kept.
 - ☐ A second copy exists and is the one filed — name it and say what marks it: .............  Initial: ..........
 
 *Cost:* none for "as it stands". Naming a second copy is one template parameter and one label, in its own
 commit. *Undo:* `git revert`.
 
-### 5. Must every lost slip be paid for before it is replaced? `[§28.5 · P-12 · sheet item 5]`
+### 5. Must every lost slip be paid for before it is replaced? `[§28.5 · P-12 · sheet item 5 — ANSWERED 2026-10-26]`
 
 Two acts are already two rules: a second copy while the row is `incomplete` is free; a **lost** slip goes
 through the paid route and reads its amount from the fee type the catalogue holds today —
@@ -122,7 +126,7 @@ through the paid route and reads its amount from the fee type the catalogue hold
 rather than inventing an amount. The student's copy carries no fee line, so the charge is made at
 Accounting and never stated on the slip.
 
-- ☐ As built — a lost slip is paid, at the amount Reference Data carries.
+- ~~☐ As built — a lost slip is paid, at the amount Reference Data carries.~~ **ANSWERED: this one.** A lost slip is paid before it is replaced; the free copy stays the not-yet-complete case, and no free-reissue condition was added.
 - ☐ A free reissue is allowed when: ............. (e.g. same day, or once per period)
 - ☐ The amount changes: .............  Initial: ..........
 
@@ -165,14 +169,13 @@ are **not** re-aged: they say what the build printed on the day it was read, and
 on 2026-10-11, plus 2.6, ruled that day. **Two of the ten are now answered outright — 2.6 (the doubled weekday,
 2026-10-11) and 2.1–2.9 (the card's whole shape, ruled as the system prints on 2026-10-26) — and three more are
 partly answered by later rulings (1.1–1.5, 3.7 and §5)**, so the Registrar's eye is spent only on what is genuinely
-owed. Measured rather than kept track of: `lane73-packet-evidence.php` counts that sheet at **8 unticked boxes and 2
-checked ones**. The dated cells in the older sheet are **not** re-aged — they record the day they were read; where
+owed. Measured rather than kept track of: `lane73-packet-evidence.php` counts that sheet at **6 unticked boxes and 4\nchecked ones**. The dated cells in the older sheet are **not** re-aged — they record the day they were read; where
 the build has since moved (2.3, 3.2), this page says so beside the row rather than rewriting that sheet.
 
 | box | what it asks | state before this packet | what is still owed |
 |---|---|---|---|
-| 1.6 | Is the per-office checklist on the same sheet as the student's copy, or separate? | open | **open** — this is item 1 above |
-| 1.1–1.5 | Do the slip's labels follow the paper, or the paper the system? | partly ruled: the copy designation and `(BSIT) … - 2nd Year` are built (P-19, 2026-10-23; level spelling 2026-10-24) | **open** for `Full Name` vs `Student Name`, the bare `Date` row, the "Registrar In-charge (Signature over Printed Name) & Date" caption, semester-in-title — this is item 2 above |
+| 1.6 | Is the per-office checklist on the same sheet as the student's copy, or separate? | **ANSWERED 2026-10-26** | nothing owed — the table stays on the student's page, ruled as item 1 below |
+| 1.1–1.5 | Do the slip's labels follow the paper, or the paper the system? | partly ruled: the copy designation and `(BSIT) … - 2nd Year` are built (P-19, 2026-10-23; level spelling 2026-10-24) | **ANSWERED 2026-10-26** — the rest is accepted as printed, ruled as item 2 below; the labels remain editable without a release |
 | 2.1–2.5 | The card's shape: portrait vs A4 landscape, the three boxed name cells, the subject block as a row, `Units` holding one number | open | **ANSWERED 2026-10-26 — as the system prints.** The card stays A4 landscape with labelled name rows, `Description:` and the `(Lec: …, Lab: …)` units split; re-read off `resources/views/prints/class-card.blade.php` the same day rather than copied from the 2026-10-10 column |
 | 2.6 | The weekday printed in both the `Time` and `Day` boxes | **CLOSED 2026-10-11** — ruled that the `Time` box prints ranges only and `Day` keeps the weekdays | nothing owed; pinned by `PrintControllerTest::the_class_card_prints_the_meeting_day_once_not_in_both_boxes()` |
 | 2.7–2.9 | The instructor signature line, the two `Date:` fields, the semester line's punctuation | open | **ANSWERED 2026-10-26 — as the system prints.** The instructor box stays pre-filled from the schedule, the one `Date` box plus the footer line stays, and the semester line keeps its comma |

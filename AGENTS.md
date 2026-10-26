@@ -578,6 +578,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `- 1st Year` / `- 3rd Year` where the sheet recorded `- Year 1` / `- Year 3`. The sheet is **not** re-aged; the
   packet states today's wording beside the row. So: when a dated document is used as a checklist, read its rows
   against the build first, and split every grouped row — a range in a tick box is a membership claim.
+  **Ruling the four rows left one false sentence behind, and it was the sheet's claim about itself.** The answers came
+  back on 2026-10-26 (item 1: all nine lines stay on the student's page; 2: the slip is accepted exactly as it prints;
+  4: the desk print is the paper, because it is the render that mints its Document No. and writes its own
+  `documentprintlog` row; 5: as built — a lost slip is paid, at the `feetypes` amount). Every item heading gained its
+  `ANSWERED` marker and each struck-through tick line records the answer, but the header still read
+  `twelve answered, four left for the Registrar's window` — and `lane69-open-inventory.php`'s own cross-check refused:
+  `open on the sheet: 0` against a header claiming four. That header is the sentence a reader takes to the meeting, and
+  the classifier had already learned to read it (`0 OPEN` is what it prints) while the prose had not followed. It now
+  reads `16 answered, 0 left`, and the cross-check says AGREES. Two rules from the same cascade: *a ruling word must
+  reach the document's own tally, not only the row it decides* (lane 61's register-row lesson, met one document
+  sideways), and *the sheet's header must be spelled so the classifier can read it* — the tool maps words
+  (`twelve`, `four`) and digits alike, so `sixteen answered, none left` would have silently switched the cross-check
+  off, which is the lane 50 defect: an instrument that stops judging looks like the cleanest line in the report.
   **Adding a test method above another one can steal that test's `#[Test]` attribute, and the suite stays green while
   a pinned case stops running.** Pass 245's new `PreflightTest` case was inserted by anchoring on the *declaration
   line* of the method below it — which in this file is preceded by `#[Test]`, so the attribute ended up on the new
@@ -595,8 +608,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
   `php storage/app/scratch/mutate-lane72-row-counts.php` (14 legs). Lane 60 deliberately only *names* row counts on
   CI because they belong to the dataset that stated them; this is the hand command that weighs them on this box.
-  Measured 2026-10-26 (re-run after pass 246 wrote into the document): **12 bound claims, every one equal to
-  `COUNT(*)`, 0 stale, over 3,132 number-and-noun pairs** — and the queue the first run
+  Measured 2026-10-26 (re-run after pass 247 wrote the four ruled rows into the document): **12 bound claims, every
+  one equal to `COUNT(*)`, 0 stale, over 3,159 number-and-noun pairs** — and the queue the first run
   printed was five rows, of which **all five were the instrument's own breadth**. That is why there are seven
   buckets and not three: NARRATIVE (a singular instance — "seated a second active enrollment on *one student*" —
   and any sentence naming no row-word at all: "One receipt number is *one payment*, never two" is a rule about
@@ -820,6 +833,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   re-classified one" is to count both. Neither number is wrong; AGENTS.md now says what the tool resolves
   rather than what the document holds. **Do not chase such a delta as a document defect until the raw count
   has been read off both versions.**
+  **The same figure moved the other way on 2026-10-26, and this time the mechanism is named.** `lane37` went
+  911 → 910 while the raw `§` multiset of the two versions went **1,031 → 1,038** — seven pointers added, none lost.
+  The sweep has two counting paths: in a block where no finding id sits beside a `§NN` it counts every bare token, and
+  in a block where one does it counts **only** the id-bearing matches. Pass 247 rewrote one §28.5 row so that its new
+  `§25.4 P-19` clause moved that whole block onto the second path, and the two bare `§25.1` / `§25.11` tokens in the
+  same block stopped being counted. `storage/app/scratch/lane73b-measure-sectionrefs.php <head.docx>` prints the raw
+  multisets of two versions and `storage/app/scratch/lane73b-dump-blockrefs.php <docx>` prints each block's bare / id /
+  counted numbers; diffing those two files between HEAD's docx and the working one is what turns "the document lost a
+  pointer" into one named sentence. Export the old copy first: `git show HEAD:"Documentation/EMS Complete
+  Documentation.docx" > %TEMP%/head-ems.docx` — `shell_exec` cannot reach `git` from PHP on this box.
 - **A commit is not the working tree: list what you staged, against what was dirty.** Lane 69 staged
   `resources/js` and `tests` but never `resources/views`, so CI ran the tests asserting the new year-level
   spelling against six print blades still building `'Year '.$level` — three failures on a tree that had
@@ -866,7 +889,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   worse bug**: §28.5's rows lead with the *question text*, so that rule would silently stop reporting every school
   question that is genuinely open. A row whose cell count differs from its header's cannot be resolved at all, so it
   is printed as UNRESOLVED rather than cleared. Today: **0 OPEN, 2 LABELS, 0 UNRESOLVED, 2 owed actors (C-5, G-13),
-  4 sheet items.** Prove any change to it with `php storage/app/scratch/mutate-lane69-open-labels.php` (9 legs: the
+  0 sheet items.** Prove any change to it with `php storage/app/scratch/mutate-lane69-open-labels.php` (9 legs: the
   same words planted under `Verdict` must be OPEN and under `Action` must be a LABEL, a mis-aligned row must surface
   as UNRESOLVED, a copy with one more verdict row must answer *more* — which is what proves `--dump=` reaches the
   walk — a byte-identical copy must change no verdict, and the two refusals each name the path they were handed).
@@ -1506,7 +1529,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   written in two places in the document is ONE read covering TWO rows — and every row of the queue has been opened
   once (every record names its own evidence). A record whose key has
   gone is printed as **STALE**, not dropped: the two ways a key disappears are "a pass fixed the row" and "a pass
-  re-pointed the pointer", and the second means the saved verdict says nothing about the new citation. Nothing is
+  re-pointed the pointer", and the second means the saved verdict says nothing about the new citation. **A third way
+  was measured on 2026-10-26, and it is neither: the pointer and the file both stayed put and the sentence around them
+  was lengthened.** Pass 246 added a clause to §18's `ems:preflight` sentence, the key's sentence-hash moved
+  `636f8e39` → `31ade585`, and four `Preflight.php` records went STALE at once (103 of 107). The ranges were untouched
+  and still true — each was re-read with `lane70-read-span.php` and starts and ends inside the construct its own clause
+  names: `Preflight.php:228-243` is `applicationKeyIsReal`, `Preflight.php:258-285` is `servedFolderStaysPrivate`,
+  `Preflight.php:605-628` is `uploadDiskIsPrivate`, and `Preflight.php:408-484` is the host-zone family — the file
+  having grown by exactly 64 lines above them, measured against the same commit's copy of the file. So the fix was to
+  re-read, then regenerate with `lane70-make-reads.php`, never to re-key by hand. **Re-read before you re-record: a
+  STALE row asks *why* the key moved, and only one of the three answers means the verdict still holds.** Nothing is
   recorded that was not opened. **What a record does not claim:** it says *this span carried this sentence's claim on
   this date* — a later code move leaves the key untouched, so a record is no substitute for re-running
   `probe-moved-cites.php` or lane 51's reconcile after editing a cited file, and the same pointer can be keyed under
@@ -1903,7 +1935,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 911 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 910 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

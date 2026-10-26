@@ -175,8 +175,8 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 
 | Row | Question | Answer | Initial |
 | --- | --- | --- | --- |
-| 1.6 | Is the per-office requirement checklist on the same sheet as the student's copy, or a separate document? | | ☐ |
-| 1.1–1.5 | Do the slip's labels follow the paper (`Full Name`, `Date`, `Registrar In-charge (Signature over Printed Name) & Date`, semester-in-title, `2nd Year`) or does the paper follow the system? | | ☐ |
+| 1.6 | Is the per-office requirement checklist on the same sheet as the student's copy, or a separate document? | **Answered 2026-10-26 by the owner: the same sheet.** The nine lines stay on the student's page, so the office that signs each one is visible on the copy the student carries — decision-sheet item 1 | ☑ |
+| 1.1–1.5 | Do the slip's labels follow the paper (`Full Name`, `Date`, `Registrar In-charge (Signature over Printed Name) & Date`, semester-in-title, `2nd Year`) or does the paper follow the system? | **Answered 2026-10-26 by the owner: the system's, as printed** — the eight identity rows, the nine-line table and the signature block are what the window accepts; the copy designation and the course-code wording were already built (P-19, 2026-10-23) and the level spelling was ruled 2026-10-24 | ☑ |
 | 2.1–2.9 | ~~Same question for the card, including whether it is a portrait card at all~~ **Answered 2026-10-26 by the owner: the card is kept as it prints** — A4 landscape, three labelled name rows, the course line carrying the major and the ordinal level, the subject block labelled `Description:`, `Units` holding the lecture/lab split, the instructor box pre-filled, one `Date` box plus the footer line, and the comma in the semester line | as the system prints | ☑ |
 | 2.6 | ~~The day prints twice on our card — drop it from the `Time` box, or drop the `Day` box?~~ **Answered 2026-10-11 by the owner: the day was dropped from the `Time` box, the `Day` box stays.** Not a question for the office any more | done | ☑ |
 | 3.6 | Is the subject load signed by Student / Class Adviser / Registrar, or by Evaluated by / Processed by as the paper shows? | | ☐ |
@@ -186,12 +186,13 @@ photographed at the Registrar's desk, is what would let the same comparison run 
 | 4.1 | Does the block schedule need to be a weekly grid, or is the meeting list the document the office files? | | ☐ |
 | §5 | Provide a blank photograph of the enrollment certificate and the enrollment form so those two can be compared too | | ☐ |
 
-Two rows of this file have been acted on. **2.6**, the doubled weekday, which the owner ruled on
+Four rows of this file have been acted on. **2.6**, the doubled weekday, which the owner ruled on
 2026-10-11 and the card template now prints once — it was the only row that was a defect rather
-than a preference, so it did not need the office's hand. And **2.1–2.9**, the whole class-card shape
-question, which the owner ruled on 2026-10-26 *as the system prints* (§2 above records what that keeps
-and what it therefore does not adopt from the paper). Every remaining row above is still a paper
-decision first and a code change second, and the code follows the ruling — not the other way
+than a preference, so it did not need the office's hand. And three ruled on 2026-10-26: **2.1–2.9**, the
+whole class-card shape question, *as the system prints* (§2 above records what that keeps and what it
+therefore does not adopt from the paper); **1.6**, the per-office table, which stays on the student's page;
+and **1.1–1.5**, the slip's labels, which the window accepts as printed. Every remaining row above is still
+a paper decision first and a code change second, and the code follows the ruling — not the other way
 round.
 
 **The nine open rows were put to the office on 2026-10-11 as

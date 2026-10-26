@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-23 · sixteen items · twelve answered, four left for the Registrar's window**
+**Issued 2026-10-23 · sixteen items · 16 answered, 0 left for the Registrar's window**
 
 Every item here is a question the build cannot answer for itself. They are gathered from the
 authority document's own registers — §28.2/§28.3 (the rows whose "Who must act" column still names
@@ -20,7 +20,7 @@ Five rows came back on 2026-10-23, answered by the project owner in conversation
 paper: items **12**, **13** and **14** — the three printed-paper questions — item **16**, which arrived
 after the sheet was issued, and the first half of item **15**. Each is marked **ANSWERED** where it was
 asked, with what the build now does, so the sheet reads as the packet was answered rather than as a list
-still outstanding. **Item 16 was then answered a second time, on 2026-10-24:** the build had kept its own
+still outstanding. **The last four came back on 2026-10-26** — items **1**, **2**, **4** and **5**, each ruled *as it stands*, which is why not one of the sixteen answers has ever needed a release. **Item 16 was then answered a second time, on 2026-10-24:** the build had kept its own
 spelling of the year level — "Year 2" where the school's slip writes "2nd Year" — and the owner ruled that
 "the proper format is 2nd year", so that one deferred wording is now the school's on every surface too.
 
@@ -48,12 +48,15 @@ worker therefore exists in this system for one purpose: delivering the desk's be
 stays, and the `database` default in `.env.example` keeps `DEPLOYMENT.md` §5's worker as the instruction
 for whoever provisions a real server.
 
-**Four rows are left, and all four ask the same thing of the Registrar's window rather than of the
-software:** items **1** (where each of the nine offices actually signs, since the student's copy names
-one signatory and no requirements table at all), **2** (what a printed slip must contain to be accepted
-at the window), **4** (whether the generated PDF or the desk screen is that paper), and **5** (whether
-every lost slip is paid for before replacement, when the school's copy carries no fee line). Each is
-already read against the real slip, so an answer can be given at the meeting without opening a file.
+**Four rows were left when this sheet was read on 2026-10-24, and all four asked the same thing of the
+Registrar's window rather than of the software:** items **1** (where each of the nine offices actually
+signs, since the student's copy names one signatory and no requirements table at all), **2** (what a
+printed slip must contain to be accepted at the window), **4** (whether the generated PDF or the desk
+screen is that paper), and **5** (whether every lost slip is paid for before replacement, when the
+school's copy carries no fee line). Each is read against the real slip in its own row above, and each
+came back **ruled as it stands on 2026-10-26**: the nine lines and the whole printed shape are the
+school's, the desk print is the paper, and a lost slip is paid. That closes every row of this sheet —
+no template edit and no migration followed from any of the sixteen answers.
 One row is owed somewhere else: item **9** was ruled on 2026-10-23 to leave all five board-program flags
 standing, but the owning departments have not yet confirmed or cleared them, so §28.8 still charges that
 one to a department, and its "add / remove" line is open. Together those two — C-5 and the install-time
@@ -66,7 +69,7 @@ that is a decision and it closes the row.
 
 ## A. Registrar, with the departments
 
-**1. Which offices must sign a clearance slip, and what does each one clear?** `[§28.5]`
+**1. Which offices must sign a clearance slip, and what does each one clear?** `[§28.5 — ANSWERED 2026-10-26]`
 Nine offices carry a requirement line today, and each line states its own obligation
 (`clearancerequirements.requirementName`, §12.1). The wording in the seeder is the developer's
 placeholder; the list of offices, their order, and the sentence each line prints are the school's.
@@ -75,10 +78,9 @@ signatory — "Received by: **Registrar In-charge (Signature over Printed Name) 
 printed name — and carries **no requirements table at all**. So the eight other desks either sign a
 different sheet or not at all, and the question this row asks is now sharper than "is the wording
 right": it is *where does each office actually sign*.
-- Answer: the nine lines are correct ☐ / amended on the attached page ☐ / **the table belongs on an internal copy, not the student's (name it) ☐** / other: .............
-  Initial: ..........
+- ~~Answer: the nine lines are correct ☐ / amended on the attached page ☐ / the table belongs on an internal copy, not the student's ☐ / other~~ — answered **2026-10-26: the nine lines are correct, in that order, and the table stays on the student's page**, so the office that signs each line is visible on the copy the student carries. The sentences remain a Reference Data edit on Reference Data → Clearance Requirements, which is a desk action and not an open question. Initial: ..........
 
-**2. What must a printed slip contain to be accepted at the Registrar's window?** `[§28.5, P-8, P-10, P-19]`
+**2. What must a printed slip contain to be accepted at the Registrar's window?** `[§28.5, P-8, P-10, P-19 — ANSWERED 2026-10-26]`
 The field list in §15 of the revision brief is the project's requirement, not a documented school
 rule. Two gaps that list assumed are already closed — each requirement line carries its own text, and
 the slip reads the enrollment of its own term. **The school's own student copy now supplies the list:**
@@ -90,7 +92,7 @@ no overall status word, no "date to be signed", no document number, no fee line.
 those, and since the ruling recorded under item **16** its heading names the copy too — the shape of the
 name is recorded here rather than the name itself, because this sheet is committed and the reference
 scans, which carry it, are deliberately not.
-- Answer: as printed ☐ / **match the student copy: take the number, the status word, the "date to be signed" and the document number off the student's page ☐** (the copy designation and the course code are already built, ruled 2026-10-23) / wording amended ☐ / order amended ☐ Initial: ..........
+- ~~Answer: as printed ☐ / match the student copy ☐ / wording amended ☐ / order amended ☐~~ — answered **2026-10-26: as printed.** The eight identity rows, the nine-line table and the signature block are what the window accepts, so the field list is settled and what is left is wording — a Reference Data edit on the requirement lines, or a template edit on the labels, one file and one commit if either is ever asked for. Initial: ..........
 
 **3. In what words does the enrollment certificate state student type and enrollment type?** `[§28.5, P-13 — ANSWERED 2026-10-24]`
 The certificate prints both, the student type in its own words and the enrollment kind separately, so
@@ -100,7 +102,7 @@ supplied, so nothing in the repository can settle the words.
 - ~~Answer: as printed ☐ / replacement wording attached ☐~~ — answered 2026-10-24:
   **as printed.** The certificate states student type in its own words and enrollment type separately, and those sentences\n  stand as the school's. §25 keeps them recorded as the build's wording now ruled in, and P-13 closes on that. Initial: ..........
 
-**4. Is the generated PDF, or the desk screen, the paper a window accepts?** `[§28.5, P-19]`
+**4. Is the generated PDF, or the desk screen, the paper a window accepts?** `[§28.5, P-19 — ANSWERED 2026-10-26]`
 Both paths are reachable: the enrollment form is issued only as a PDF download (`print.enrollmentForm`),
 every other paper can reach either the desk page or a generated PDF, and `php artisan ems:print-fidelity`
 renders either for inspection. **The school's paper answers one half of this, and the build now agrees:**
@@ -109,9 +111,9 @@ and since the ruling under item **16** both surfaces say so on the face — `cle
 titles the paper *Clearance Slip (Student's Copy)* and `PrintSlip.jsx:27` gives the desk screen the same
 title. Which copy the window keeps, which copy the file holds, and whether the nine-office table belongs
 on the student's page at all is still the Registrar's.
-- Answer: desk print ☐ / generated PDF ☐ / either, PDF is the record ☐ / **a second copy exists; name it: ................................ ☐** Initial: ..........
+- ~~Answer: desk print ☐ / generated PDF ☐ / either ☐ / a second copy exists ☐~~ — answered **2026-10-26: the desk print is the paper.** It is the render that mints its Document No. before the sheet is drawn and writes its own `documentprintlog` row, so the paper and the log match; `ems:print-fidelity` passes no number and stays an inspection render, which is why its slip shows seven identity rows where the desk's shows eight. No second copy was named. Initial: ..........
 
-**5. Must every lost clearance slip be paid for before it is replaced?** `[§28.5, P-12]`
+**5. Must every lost clearance slip be paid for before it is replaced?** `[§28.5, P-12 — ANSWERED 2026-10-26]`
 Two acts are now two rules: a second **free** slip is allowed only while the row is `incomplete`;
 a **lost** slip goes through the paid route, reads its amount from the Reference Data fee type
 *Clearance Slip Replacement*, and refuses outright when no such fee is on file
@@ -119,7 +121,7 @@ a **lost** slip goes through the paid route, reads its amount from the Reference
 line and no amount**, so the charge — if the school charges one — is made at the Accounting window and
 not stated on the slip. Whether every replacement is paid for, and whether a `pending` slip may be
 reissued free, is still the school's.
-- Answer: as built ☐ / free reissue allowed when: ............. Initial: ..........
+- ~~Answer: as built ☐ / free reissue allowed when: .............~~ — answered **2026-10-26: as built.** A lost slip is paid before it is replaced, at the amount the fee catalogue holds (₱100.00 today, a `feetypes` row), and the free copy stays what it is today — a second print while the row is still `incomplete`. No free-reissue condition was added, and changing the amount stays a Fee Types edit rather than a release. Initial: ..........
 
 **6. Which programs waive the General Entrance Examination for a transferee who arrives with credit?** `[C-4 — ANSWERED 2026-10-24]`
 Built per-program, default off: `courses.entranceExamExemptsTransferee` waives the General
