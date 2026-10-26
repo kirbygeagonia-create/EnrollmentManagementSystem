@@ -88,10 +88,72 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   that is how `graduated`/`dropped` were found on `students.status`, which is `enum('active','inactive')`), and
   NO-ROUTE for any claim it cannot bind. **Its first version judged 27 bindings and cleared the tree because it
   read only `route('x', {…})` link objects and never `router.get(route('x'), {…})`** — the shape where a desk's
-  own filters actually live, so every filter submit in the repository was invisible; the corrected run judges 55.
+  own filters actually live, so every filter submit in the repository was invisible; the corrected run judges 56
+  bindings, measured 2026-10-26 — the set grew by one when the Registrar's record page gained its history filters, and
+  the sentence states only the number the tool answers today, because two figures for one instrument in one sentence is
+  how lane 58's multi-total defect is born.
   A checker pointed at the wrong construct is worse than one that reads nothing, because it prints a pass. Its
   scope is a flag (`EMS_LANE46_PAGES`), so the harness proves the flag changes what is scanned and that an empty
   scope *refuses* rather than reporting clean.
+  **A harness run concurrently with the suite is not a harness run.** The first run of that pair, launched in the same
+  message as `artisan test`, reported `1 case(s) failed`; run on its own afterwards it answered 8 legs `ok` and exit 0.
+  That is the no-concurrent-mutating-runs rule biting an *instrument* instead of a suite: the bad verdict was fake, and
+  a fake red is as costly as a fake green. Never launch a harness beside a suite run, and re-run any harness that
+  reports badly while something else is writing.
+- **A development-prompt requirement the build never covered is a finding, not a defect** (lane 75). The master prompt
+  (`EnrollmentManagementSystem_Optimized_AI_Development_Prompt.md`, found in `Downloads/` and never in the tree) was
+  audited requirement by requirement against this checkout and the result is
+  `Documentation/Prompt-Requirement-Matrix-2026-10-26.md`: ~forty requirements verified **Working** with file-level
+  evidence read that day, and ten gaps G-1 … G-10 with their phase, risk and whether they wait on an owner ruling.
+  G-1 (§7.4 — the Registrar must read grade records **by academic year and semester**, not only the current term) is
+  built: `AcademicStandingService::gradeHistory()` re-reads the same rows the standing derivation reads, deliberately
+  *including* the term under review and any ungraded row, and answers null for a grade nobody entered so the desk dashes
+  it instead of counting a pass; the passing line comes from `gradescale` and the page names it when the table is empty
+  rather than implying the assumed 3.00 is the school's. Pinned by `tests/Feature/Registrar/RegistrarGradeHistoryTest.php`
+  and proved by `php storage/app/scratch/mutate-g1-grade-history-tests.php` (a green control counted out of the test
+  file's own `#[Test]` markers, then the filter ignored, a null grade called a pass, and the passing line forged to a
+  constant — each must make the named case print `1 failed`, and the control must return to green afterwards).
+  **The vocabulary guard caught my own new line**: a fallback written `'Year '.$id` turned
+  `YearLevelVocabularyTest > no surface spells a year level by hand` red on the first whole-suite run, even though the
+  new file's own seven cases were green — a guard that fires on code that passed its own tests is the guard earning
+  its keep. A label for a level goes through `formatYearLevel()` or says nothing at all.
+  Two measurement lessons from the same batch. **`array_unique()` keeps the original keys**, so reading `$unique[0]`
+  off an array keyed by citation tokens answered null and a docx pass silently shifted every pointer by *nothing*;
+  use `array_values()`/`reset()` and refuse unless the delta is a positive whole number. And a probe that locates a
+  moved window with `strpos("\n".$needle."\n")` then counts newlines **reports every delta one row too high** —
+  `lane75-probe-moved-cites.php` now compares whole arrays of lines. The pass itself refused to write until both were
+  fixed, because its stage 2 re-reads every shifted window in *both* versions of the file and requires the same bytes:
+  a shift may not be verified by arithmetic from the bug that produced it.
+- **G-2 (§7.1, §14 — incomplete intake saved as a Draft and resumed without re-entering data) is built**, and five
+  rules came out of it that new code must respect. **A driver guard that widens only MySQL leaves the suite unable
+  to write the new value**: `SQLiteGrammar::typeEnum` compiles `enum()` to `varchar CHECK ("admissionStatus" in
+  ('pending',…))`, so the constraint travels with the table — the branch for the other driver is
+  `$table->enum(…)->change()`, the way `payments.paymentStatus` gained `refunded`. **A draft still has to name the
+  person** (`students.schoolIdNumber` … `passwordHash` are NOT NULL without a default, and a placeholder would be
+  invented data — in the password case an invented credential); what it defers is the address, guardian and
+  educational-background sections. **Relaxing a section to `nullable|array` is not enough**, because the wizard
+  pre-selects its pickers, pre-fills the country and posts every row it was given: an untouched row still arrives and
+  its own `barangay`/`cityMunicipality`/`province` rules refuse the very draft whose purpose is to defer them, so
+  `store()` drops a row only when every field the desk has to *type* is blank — a half-written address is kept, so
+  validation names the desk's work instead of discarding it. **Requirement rows exist from the draft**, because
+  `Admission/Show.jsx` renders the requirement *catalogue* and looks its submission up: a case with no rows still
+  offers an attach button, and `submitRequirement()` answers that with a 404 at `firstOrFail()` — and the seeding
+  helper is idempotent, measured on live `ems`, because `studentrequirementsubmissions` carries no unique key on
+  (admissionId, requirementId). **A screen may not decide an act from a status word**: `show()` now answers
+  `deskActions` from the same policy the routes ask, which retired a standing defect — Verify painted on a draft
+  *and* on an approved case, offering work the save refused. Pinned by
+  `tests/Feature/Admission/DraftIntakeTest.php` (11 cases, 63 assertions) and proved by
+  `php storage/app/scratch/mutate-g2-draft-intake-tests.php` (12 legs; one plants the missing SQLite widen, which
+  is the defect the batch actually met, and each requires its own named case to print `1 failed`).
+  Three prose lessons from the docx side (passes 250 and 250b). **A one-shot pass script is an artefact of its own
+  run**: pass 250's body was overwritten later in the same session by a mis-pathed Write, so its file now records
+  what it did and where its verification lives rather than pretending to be the script that ran. **Collapsing a
+  multi-run paragraph into one run keeps the FIRST run's spacing** — §24's headings came out `admissions  —2
+  columns`, and the chapter turned out to hold two spacing families (47 `name  —  N columns`, 9 `name — N columns`),
+  measured before the repair rather than assumed. **A historical `File.php:NN-NN` literal in this file is still a
+  citation to the checker**, which flagged this file's two citations of `AdmissionController.php` lines 211 to 222 as
+  empty lines long after the constructs moved: a record of a past layout spells its numbers as prose, and only the
+  live pointer keeps the colon form.
 - **After any batch that adds or edits a summary tile, a `stats` prop, or a filter pick-list**, run
   `php storage/app/scratch/lane47-tile-scope.php` and prove it with `php storage/app/scratch/mutate-lane47-tile-scope.php`
   (the checker) **and** `php storage/app/scratch/mutate-lane47-tests.php` (the tests, which revert one desk each
@@ -1262,7 +1324,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (738 citations over 159 files as of pass 246d; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (740 citations over 161 files as of docx pass 250; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1322,7 +1384,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (C-5 with the departments, G-13 at install time), and the read-only queue is the one unattributed pointer, quoted as an example on purpose
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
-  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 134 ranges and flags 10 pairings across seven distinct
+  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 135 ranges and flags 12 pairings across nine distinct
   constructs — each pairing re-read this session and every one the
   documented attribution noise, not a claim the build contradicts: a vendor path the basename index cannot see
   (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208` really is `forPage()`), a `recordIssue()` landing on the block-schedule print action while
@@ -1475,14 +1537,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   identifier patterns were widened to the two shapes that were being discarded — a class member with no call
   (`Str::headline`, `ClinicRecordStatus::Completed`, `ApplicantType::class`) and a property written as an
   assignment (`appliesTo = firstYear | transferee | all`). The reconciled tally is **11 = 10 OK + 0 not-in-file +
-  0 queue + 1 dropped**, and the one honest drop is `routes/web.php:266-268`'s column list, which is a schema
+  0 queue + 1 dropped**, and the one honest drop is `routes/web.php:269-271`'s column list, which is a schema
   description rather than a call. The reconciliation is what found the **twelfth wrong target**: §6 and the
-  requirement row both cite `AdmissionController.php:211-222` for "only rows whose `appliesTo` equals the chosen
-  `applicantType` or `all` receive a submission row", but those lines are the `Admissions::create([...])` array —
-  which writes `applicantType` and never reads `appliesTo` — and the selection is `:225-238` (the `where`/`orWhere`
+  requirement row both cited `AdmissionController.php` lines 211 to 222 for "only rows whose `appliesTo` equals the chosen
+  `applicantType` or `all` receive a submission row", but those lines were the `Admissions::create([...])` array —
+  which writes `applicantType` and never reads `appliesTo` — and the selection was `:225-238` (the `where`/`orWhere`
   at :226-227, the `Studentrequirementsubmissions::create()` loop at :231-237). Pass 223 moved both copies
-  together (`AdmissionController.php:211-222` occurs exactly twice in `document.xml`, so `expect=2` and no
-  guessing at a third). **The queue is not drained by stopping at one find: opening the 10 rows that survived the
+  together (`AdmissionController.php` lines 211 to 222 occurred exactly twice in `document.xml`, so `expect=2` and no
+  guessing at a third). **Those five numbers are the layout of 2026-10-24, and G-2's draft branch moved the file by
+  143 net lines:** the create array is `AdmissionController.php:265-274`, the selection is `:305-322` (the
+  `where`/`orWhere` at :305-307, the insert loop at :314-322), and pass 250 re-pointed the document's two copies to
+  `:305-322` — still exactly twice, which is what made `expect=2` the right instruction then and now. **The queue is not drained by stopping at one find: opening the 10 rows that survived the
   rewrite found ten more wrong targets** (passes 224, 225 and 226). §28's exam row cited `ExamController.php:311-314`
   for the *departmental* paper while those lines are the head of the **general** upsert (`'examType' =>
   ExamType::General` at :317) — the condition the aside describes is `recordCourseSpecific`'s own
@@ -2031,7 +2096,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 910 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 913 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

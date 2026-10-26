@@ -38,6 +38,10 @@ $targets = $args !== [] ? $args : [
     // The department half of C-5, issued 2026-10-26: it quotes the two lines that make the flag bite, so a method
     // moved in AdmissionPolicy or the reference-data controller silently breaks an ask a department is answering.
     'Documentation/Department-Board-Exam-Confirmation-2026-10-26.md',
+    // The requirement-to-code matrix for the master development prompt, issued 2026-10-26. It names the line that
+    // carries each behaviour it classifies, so it is a document an owner is sent — and a pointer that lands on a
+    // live line belonging to something else is exactly what this sweep exists to refuse.
+    'Documentation/Prompt-Requirement-Matrix-2026-10-26.md',
 ];
 
 $index = null;

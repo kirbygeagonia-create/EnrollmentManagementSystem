@@ -6,6 +6,7 @@ import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
+    { value: 'draft', label: 'Draft' },
     { value: 'pending', label: 'Pending' },
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
@@ -39,7 +40,10 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                 {formatStatusLabel(row.admissionStatus)}
             </Badge>
         )},
-        { key: 'created_at', label: 'Submitted', render: (row) => row.created_at ? formatSchoolDay(row.created_at) : '—' },
+        // The record's own filing instant, which is true for a parked draft as well as for a submitted
+        // case — "Submitted" was the label before §7.1's draft existed, and a draft has never been
+        // submitted by anything.
+        { key: 'created_at', label: 'On file', render: (row) => row.created_at ? formatSchoolDay(row.created_at) : '—' },
     ], []);
 
     const handleFilter = (e) => {
@@ -99,7 +103,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
             <Head title="Admissions" />
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
                 <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                     <StatCard
                         compact
@@ -116,6 +120,19 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                 <div className="animate-slide-up" style={{ animationDelay: '60ms' }}>
                     <StatCard
                         compact
+                        label="Saved as Draft"
+                        value={stats.draft}
+                        iconBg="brand"
+                        icon={
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        }
+                    />
+                </div>
+                <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                    <StatCard
+                        compact
                         label="Pending Review"
                         value={stats.pending}
                         iconBg="warning"
@@ -126,7 +143,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                         }
                     />
                 </div>
-                <div className="animate-slide-up" style={{ animationDelay: '120ms' }}>
+                <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
                     <StatCard
                         compact
                         label="Approved"
@@ -139,7 +156,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                         }
                     />
                 </div>
-                <div className="animate-slide-up" style={{ animationDelay: '180ms' }}>
+                <div className="animate-slide-up" style={{ animationDelay: '240ms' }}>
                     <StatCard
                         compact
                         label="Rejected"

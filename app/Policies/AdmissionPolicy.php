@@ -174,11 +174,17 @@ class AdmissionPolicy
 
     /**
      * Determine whether the user can submit requirements.
+     *
+     * A draft is included on purpose: §7.1's resumable intake exists for the applicant who arrives next week
+     * with the paper they did not have, and the desk must be able to take that document without first pushing
+     * an incomplete case into a queue it can only reject. The checklist rows exist from the moment the draft
+     * is saved, so there is something for the file to attach to. Verification stays a Pending-only act —
+     * deciding that a document satisfies a requirement is a review of a submitted case, not of a parked one.
      */
     public function submitRequirements(Staffusers $user, Admissions $admission): bool
     {
         return $user->hasPermissionTo('admission.requirements.submit')
-            && $admission->admissionStatus === AdmissionStatus::Pending;
+            && in_array($admission->admissionStatus, [AdmissionStatus::Draft, AdmissionStatus::Pending], true);
     }
 
     /**

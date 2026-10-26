@@ -139,10 +139,12 @@ export default function Create({ courses, terms, religions }) {
         setEducationalBackgrounds(educationalBackgrounds.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e, intakeAction = 'submit') => {
         e.preventDefault();
         const formData = new FormData();
-        
+
+        formData.append('intakeAction', intakeAction);
+
         Object.entries(form.data()).forEach(([key, value]) => {
             formData.append(key, value);
         });
@@ -817,13 +819,24 @@ export default function Create({ courses, terms, religions }) {
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     <button
                         type="button"
                         onClick={() => router.get(route('admission.index'))}
                         className="btn btn-secondary"
                     >
                         Cancel
+                    </button>
+                    {/* §7.1 resumable intake: the identity and program half still has to be complete, because a
+                        student row cannot exist without it; what a draft defers is the address, guardian and
+                        background sections the applicant has not brought yet. */}
+                    <button
+                        type="button"
+                        disabled={form.processing}
+                        onClick={(e) => handleSubmit(e, 'draft')}
+                        className="btn btn-secondary"
+                    >
+                        Save as draft
                     </button>
                     <button
                         type="submit"

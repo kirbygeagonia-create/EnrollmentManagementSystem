@@ -27,6 +27,7 @@ use App\Models\Students;
 use App\Policies\AdmissionPolicy;
 use App\Services\EnrollmentIssuer;
 use App\Support\CollegeScope;
+use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -44,7 +45,7 @@ class AdmissionController extends Controller
     use AuthorizesRequests;
 
     /**
-     * Display applicant queue (pending/approved).
+     * Display applicant queue — submitted cases and the saved drafts, counted over whatever the desk filtered to.
      */
     public function index(Request $request): Response
     {
@@ -80,6 +81,7 @@ class AdmissionController extends Controller
             'filters' => $request->only(['status', 'search']),
             'stats' => [
                 'total' => (int) $statusCounts->sum(),
+                'draft' => (int) ($statusCounts[AdmissionStatus::Draft->value] ?? 0),
                 'pending' => (int) ($statusCounts[AdmissionStatus::Pending->value] ?? 0),
                 'approved' => (int) ($statusCounts[AdmissionStatus::Approved->value] ?? 0),
                 'rejected' => (int) ($statusCounts[AdmissionStatus::Rejected->value] ?? 0),
@@ -108,7 +110,18 @@ class AdmissionController extends Controller
     {
         $this->authorize('create', Admissions::class);
 
-        $validated = $request->validate([
+        // §7.1 of the development prompt: "Incomplete intake can be saved as a Draft / Incomplete record and
+        // resumed later without re-entering all data." The desk chooses which of the two it is doing, on the
+        // same form.
+        //
+        // A draft still has to name the person, because students.schoolIdNumber, lastName, firstName,
+        // middleName, suffix, gender, birthdate, birthplace, citizenship, contactNumber, email, username and
+        // passwordHash are NOT NULL without a default — a placeholder would be invented data, and in the
+        // password case an invented credential. What a draft defers is the sections a returning applicant
+        // brings to the counter later: addresses, guardians, and the educational background.
+        $asDraft = $request->input('intakeAction') === 'draft';
+
+        $rules = [
             'schoolIdNumber' => 'required|string|max:50|unique:students,schoolIdNumber',
             'lastName' => 'required|string|max:100',
             'firstName' => 'required|string|max:100',
@@ -159,9 +172,44 @@ class AdmissionController extends Controller
             // studenteducationalbackgrounds.yearCompleted is a NOT NULL date.
             'educationalBackgrounds.*.yearCompleted' => 'required_with:educationalBackgrounds|date',
             'educationalBackgrounds.*.honorsCertifications' => 'nullable|string|max:500',
-        ]);
+        ];
 
-        DB::transaction(function () use ($validated) {
+        if ($asDraft) {
+            $rules['addresses'] = 'nullable|array';
+            $rules['guardians'] = 'nullable|array';
+
+            // The wizard seeds one row per section so the desk has something to type into, pre-selects the
+            // picker (addressType home, relationship mother) and pre-fills the country — and posts every row
+            // it was given. So relaxing the section alone is not enough: the untouched row still arrives and
+            // its own barangay/city/province rules refuse the very draft whose purpose is to defer them.
+            //
+            // A row is untouched when every field the desk has to type is blank. Anything else is kept, so a
+            // half-written address is still named rather than silently discarded.
+            $typed = [
+                'addresses' => ['barangay', 'cityMunicipality', 'province'],
+                'guardians' => ['fullName', 'contactNumber'],
+            ];
+
+            foreach ($typed as $section => $fields) {
+                $rows = array_values(array_filter(
+                    (array) $request->input($section, []),
+                    function ($row) use ($fields): bool {
+                        return is_array($row) && collect($fields)->contains(fn (string $field): bool => filled($row[$field] ?? null));
+                    }
+                ));
+
+                $request->merge([$section => $rows === [] ? null : $rows]);
+            }
+        }
+
+        $validated = $request->validate($rules);
+
+        // The two loops below run for both paths, so an absent section has to read as an empty one rather
+        // than as an undefined index.
+        $validated['addresses'] ??= [];
+        $validated['guardians'] ??= [];
+
+        $admission = DB::transaction(function () use ($validated, $asDraft) {
             $student = Students::create(StudentRecordDefaults::person([
                 'schoolIdNumber' => $validated['schoolIdNumber'],
                 'lastName' => $validated['lastName'],
@@ -219,32 +267,118 @@ class AdmissionController extends Controller
                 'courseId' => $validated['courseId'],
                 'termId' => $validated['termId'],
                 'applicantType' => $validated['applicantType'],
-                'admissionStatus' => AdmissionStatus::Pending->value,
+                'admissionStatus' => $asDraft ? AdmissionStatus::Draft->value : AdmissionStatus::Pending->value,
+                // The school's civil day, not the daemon's: a desk orders the resumable cases by this date
+                // (lane 51's rule — never compare now() to a DATE column).
+                'draftedDate' => $asDraft ? SchoolTime::today() : null,
             ]);
 
-            // Create requirement submissions
-            $requirements = Admissionrequirements::where('appliesTo', $validated['applicantType'])
-                ->orWhere('appliesTo', 'all')
-                ->get();
+            // The checklist is seeded for a draft too. Admission/Show.jsx renders the requirement *catalogue*
+            // and looks its submission up, so a case with no rows still offers an attach button, and
+            // submitRequirement() answers that with a 404 on firstOrFail(). Seeding here is what makes
+            // §7.1's "resumed later" the useful act: the applicant who arrives next week with the missing
+            // paper is met at the same counter, without the case being pushed into a desk queue it is not
+            // ready for.
+            $this->seedRequirementSubmissions($admission);
 
-            foreach ($requirements as $req) {
-                Studentrequirementsubmissions::create([
-                    'admissionId' => $admission->admissionId,
-                    'requirementId' => $req->requirementId,
-                    'submissionStatus' => 'pending',
-                    'submittedDate' => now(),
-                    'remarks' => '',
-                ]);
-            }
+            return $admission;
         });
 
-        return redirect()->route('admission.index')->with('success', 'Applicant registered successfully.');
+        return $asDraft
+            ? redirect()->route('admission.show', $admission)->with('success', 'Intake saved as a draft — the applicant is not in any desk queue yet.')
+            : redirect()->route('admission.index')->with('success', 'Applicant registered successfully.');
+    }
+
+    /**
+     * One submission row per requirement this applicant's own type is asked for.
+     *
+     * Called by both paths of store() and again by submitDraft(), so the set of rows a case carries can never
+     * depend on which button the desk pressed first. It is idempotent because the table has no unique key on
+     * (admissionId, requirementId) — measured on live `ems` — so nothing else stops a second row for the same
+     * requirement, and a requirement added to the catalogue while a case sat as a draft has to be picked up
+     * when that case is resumed.
+     *
+     * @return int how many rows were created
+     */
+    private function seedRequirementSubmissions(Admissions $admission): int
+    {
+        $requirements = Admissionrequirements::where('appliesTo', $admission->applicantType->value)
+            ->orWhere('appliesTo', 'all')
+            ->get()
+            ->reject(function (Admissionrequirements $req) use ($admission): bool {
+                return Studentrequirementsubmissions::where('admissionId', $admission->admissionId)
+                    ->where('requirementId', $req->requirementId)
+                    ->exists();
+            });
+
+        foreach ($requirements as $req) {
+            Studentrequirementsubmissions::create([
+                'admissionId' => $admission->admissionId,
+                'requirementId' => $req->requirementId,
+                'submissionStatus' => 'pending',
+                'submittedDate' => now(),
+                'remarks' => '',
+            ]);
+        }
+
+        return $requirements->count();
+    }
+
+    /**
+     * Move a draft into the queue (§7.1's "resumed later", and §14's acceptance case).
+     *
+     * AdmissionPolicy::update() is the right it asks for — it is the permission-only method on that policy,
+     * which is what makes a status transition the natural use of it. The refusal below is the part that must
+     * not be inferred: a draft with no address and no guardian is not a complete intake, and pushing it into
+     * the queue would hand the next desk a record it can only reject.
+     */
+    public function submitDraft(Request $request, Admissions $admission): RedirectResponse
+    {
+        $this->authorize('update', $admission);
+
+        if ($admission->admissionStatus !== AdmissionStatus::Draft) {
+            return back()->withErrors([
+                'admissionStatus' => 'Only a saved draft can be submitted; this record is '.$admission->admissionStatus->value.'.',
+            ]);
+        }
+
+        $admission->loadMissing(['student.addresses', 'student.guardians']);
+
+        // A case whose student row is gone holds no address either, so the same answer is given for both
+        // halves rather than letting a missing relation read as "nothing is missing".
+        $student = $admission->student;
+        $missing = [];
+
+        if ($student === null || $student->addresses->isEmpty()) {
+            $missing[] = 'an address';
+        }
+
+        if ($student === null || $student->guardians->isEmpty()) {
+            $missing[] = 'a guardian or emergency contact';
+        }
+
+        if ($missing !== []) {
+            return back()->withErrors([
+                'intake' => 'This draft cannot be submitted yet — the record still needs '.implode(' and ', $missing).'.',
+            ]);
+        }
+
+        DB::transaction(function () use ($admission) {
+            $admission->update(['admissionStatus' => AdmissionStatus::Pending->value]);
+
+            // Idempotent: the draft already carries a row per requirement, and this picks up any requirement
+            // the catalogue gained while the case was parked.
+            $this->seedRequirementSubmissions($admission);
+        });
+
+        return redirect()->route('admission.show', $admission)
+            ->with('success', 'Intake submitted — the applicant is now in the Admission queue.');
     }
 
     /**
      * Show admission details with requirements.
      */
-    public function show(Admissions $admission, AdmissionPolicy $admissionPolicy): Response
+    public function show(Request $request, Admissions $admission, AdmissionPolicy $admissionPolicy): Response
     {
         $this->authorize('view', $admission);
 
@@ -269,6 +403,15 @@ class AdmissionController extends Controller
             // empty, and the desk prints these reasons rather than letting the
             // officer discover them by clicking into a 403.
             'approvalBlockers' => $admissionPolicy->approvalBlockers($admission),
+            // Which acts this record actually allows, asked of the same policy the routes ask. The page used
+            // to decide by the submission's own status word, so it offered Verify on a draft — and on an
+            // approved case — where verifyRequirements() answers 403: work the save refuses.
+            'deskActions' => [
+                'submitRequirements' => $request->user()->can('submitRequirements', $admission),
+                'verifyRequirements' => $request->user()->can('verifyRequirements', $admission),
+                'submitDraft' => $admission->admissionStatus === AdmissionStatus::Draft
+                    && $request->user()->can('update', $admission),
+            ],
         ]);
     }
 

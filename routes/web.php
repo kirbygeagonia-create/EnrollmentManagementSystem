@@ -56,6 +56,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/admission/{admission}', [AdmissionController::class, 'show'])->name('admission.show');
     Route::post('/admission/{admission}/requirements/{requirement}/submit', [AdmissionController::class, 'submitRequirement'])->name('admission.requirements.submit');
     Route::post('/admission/{admission}/requirements/{requirement}/verify', [AdmissionController::class, 'verifyRequirement'])->name('admission.requirements.verify');
+    // Draft intake (prompt §7.1, §14): the case leaves the parking lot here and only here, so the desk has one
+    // act to perform and the queues have one thing to filter on.
+    Route::post('/admission/{admission}/submit-draft', [AdmissionController::class, 'submitDraft'])->name('admission.submit-draft');
     Route::post('/admission/{admission}/approve', [AdmissionController::class, 'approve'])->name('admission.approve');
     Route::post('/admission/{admission}/reject', [AdmissionController::class, 'reject'])->name('admission.reject');
 

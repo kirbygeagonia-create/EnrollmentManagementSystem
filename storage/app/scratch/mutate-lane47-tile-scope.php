@@ -155,8 +155,11 @@ $case('filter options built from rows', $pages.'/Admin/UserManagement/AuditLogs.
     'DEAD-OPTION');
 
 // A tile the checker cannot trace must refuse the run rather than read as a checked claim.
+// Re-anchored 2026-10-26: this leg pointed at `value={stats.pending ?? 0}` until lane 48 removed every
+// numeric tile default, so the needle matched nothing and the leg reported BAD — a sleeping mutant, and
+// the refusal that names it is the only reason it was not read as a clean run.
 $case('an untraceable tile', $pages.'/ID/Index.jsx',
-    'value={stats.pending ?? 0}',
+    'value={stats.pending}',
     'value={nobodyDefinesThis}',
     'UNBOUND');
 

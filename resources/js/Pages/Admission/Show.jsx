@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLabel, statusToneFor, studentTypeTone } from '@/Components/ui';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -26,6 +26,12 @@ const documentKindLabel = (mime) => ({
 
 // Status banner styling per admission status
 const statusBannerMap = {
+    draft: {
+        wrap: 'bg-slate-50 border-slate-200',
+        chip: 'bg-slate-100 text-slate-700',
+        title: 'Saved as Draft',
+        desc: 'Intake is incomplete and this case sits in no desk queue yet. A document can be received here, but nothing is verified or approved until the draft is submitted.',
+    },
     pending: {
         wrap: 'bg-warning-50 border-warning-200',
         chip: 'bg-warning-100 text-warning-800',
@@ -46,7 +52,7 @@ const statusBannerMap = {
     },
 };
 
-export default function Show({ admission, requirements, approvalBlockers = [] }) {
+export default function Show({ admission, requirements, approvalBlockers = [], deskActions = {} }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [rejectReqModal, setRejectReqModal] = useState({ open: false, requirementId: null, remarks: '' });
@@ -57,6 +63,11 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
     const addresses = student?.addresses || [];
     const guardians = student?.guardians || [];
     const requirementSubmissions = admission.requirementSubmissions || [];
+
+    // Inertia's own middleware shares the session's validation bags here, which is the only surface a
+    // back()->withErrors() refusal has on this page — nothing on it uses useForm.
+    const errors = usePage().props.errors || {};
+    const draftRefusal = errors.intake || errors.admissionStatus || null;
 
     const getAddress = (type) => addresses.find(a => a.addressType === type);
     const homeAddress = getAddress('home');
@@ -119,6 +130,16 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
 
     const handleApprove = () => {
         setShowConfirmApprove(true);
+    };
+
+    // §7.1: the draft leaves the parking lot through this act alone. The server refuses an intake that is
+    // still missing a section and names what is missing, so the button is not a promise the save can break.
+    const handleSubmitDraft = () => {
+        setIsSubmitting(true);
+        router.post(route('admission.submit-draft', { admission: admission.admissionId }), {}, {
+            onSuccess: () => setIsSubmitting(false),
+            onError: () => setIsSubmitting(false),
+        });
     };
 
     const confirmApprove = () => {
@@ -192,10 +213,28 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                 </ul>
                             </div>
                         )}
+                        {draftRefusal && (
+                            <p className="mt-3 rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-900">
+                                {draftRefusal}
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
+                    {deskActions.submitDraft && (
+                        <button
+                            type="button"
+                            onClick={handleSubmitDraft}
+                            disabled={isSubmitting}
+                            className="btn btn-primary btn-sm flex items-center gap-1.5 shadow-sm"
+                        >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            {isSubmitting ? 'Submitting...' : 'Submit this draft'}
+                        </button>
+                    )}
                     {admission.admissionStatus === 'pending' && (
                         <>
                             <button
@@ -394,7 +433,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                                 )}
 
                                                 <div className="flex items-center gap-1.5">
-                                                    {status === 'pending' && (
+                                                    {status === 'pending' && deskActions.submitRequirements && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleSubmitRequirement(req.requirementId)}
@@ -404,7 +443,7 @@ export default function Show({ admission, requirements, approvalBlockers = [] })
                                                             Upload File
                                                         </button>
                                                     )}
-                                                    {(status === 'submitted' || status === 'incomplete') && (
+                                                    {deskActions.verifyRequirements && (status === 'submitted' || status === 'incomplete') && (
                                                         <>
                                                             <button
                                                                 type="button"
