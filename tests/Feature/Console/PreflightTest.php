@@ -430,9 +430,11 @@ class PreflightTest extends TestCase
     public function the_forwarded_scheme_row_decides_the_proxy_question_instead_of_asking_the_installer_to_remember_it(): void
     {
         // G-13 is the register's one item that waits on a server nobody has built yet. The row cannot see a proxy
-        // that does not exist, so it judges the two states it CAN see: an APP_URL that claims HTTPS while nothing
-        // is trusted (the header would silently never reach a desk), and a wildcard, which is the one-line "fix"
-        // that forges both the scheme and the client address.
+        // that does not exist, so it judges the states it CAN see: an APP_URL that claims HTTPS while nothing is
+        // trusted (the header would silently never reach a desk), an address named — which is the answered state —
+        // and the spellings that look answered and are not. Those last two are why this case drives five shapes:
+        // every verdict here was measured through the real middleware first, in
+        // storage/app/scratch/lane73b-probe-proxy-shapes.php, so the sentence and the effect are known to agree.
         $row = fn (string $out): string => (string) (collect(explode("\n", $out))
             ->first(fn (string $l): bool => str_contains($l, 'Forwarded scheme')));
 
@@ -443,12 +445,16 @@ class PreflightTest extends TestCase
         $this->assertNotSame('', $line, 'the report printed no Forwarded scheme row');
         $this->assertStringNotContainsString('FAIL', $line);
         $this->assertStringContainsString('DEPLOYMENT.md', $line, 'the answered-as-nothing state still names the instruction');
+        $this->assertStringContainsString('TRUSTED_PROXIES', $line,
+            'the row must name the setting the installer has to touch, not the file they used to have to edit');
 
         config()->set('app.url', 'https://ems.example.edu.ph');
         $this->callPreflight();
         $line = $row($this->commandOutput());
         $this->assertStringContainsString('WARN', $line, 'an https URL with no trusted proxy is the silent-HSTS shape');
         $this->assertStringContainsString('no proxy is trusted', $line);
+        $this->assertStringContainsString('config:cache', $line,
+            'setting .env on a cached install does nothing until the cache is rebuilt, and the installer would otherwise blame the setting');
 
         config()->set('trustedproxy.proxies', ['10.0.0.5']);
         $this->callPreflight();
@@ -456,11 +462,85 @@ class PreflightTest extends TestCase
         $this->assertStringContainsString('OK', $line);
         $this->assertStringContainsString('1 proxy address(es) trusted', $line);
 
-        config()->set('trustedproxy.proxies', ['*']);
+        // The shape `.env` actually produces: one string, and a comma splits it inside the middleware
+        // (vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php:87-88). Reading only an array
+        // here used to call a correct one-line TRUSTED_PROXIES setting "nothing is trusted".
+        config()->set('trustedproxy.proxies', '10.0.0.5, 10.0.0.6');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('OK', $line, 'a comma-separated string is the documented way to set this');
+        $this->assertStringContainsString('2 proxy address(es) trusted', $line);
+
+        // A block is as valid as a single address — measured through the middleware in the same probe, a proxy on
+        // a redundant pair of addresses is written one CIDR. This line is what makes the /33 refusal below mean
+        // "that mask is out of range" rather than "blocks are not allowed".
+        config()->set('trustedproxy.proxies', '10.0.0.0/29');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('OK', $line, 'a CIDR block is a legitimate way to name a proxy');
+
+        // A star written on its own is the catchall and must be refused as the forge.
+        config()->set('trustedproxy.proxies', '*');
         $this->callPreflight();
         $line = $row($this->commandOutput());
         $this->assertStringContainsString('WARN', $line, 'the wildcard must never read as the answered state');
         $this->assertStringContainsString('forge', $line);
+
+        // A star inside a list, and a hostname, are the other two ways to install nothing: Symfony is handed them
+        // as patterns, validates nothing, and matches no address — so the header stays discarded while the setting
+        // looks filled in. Both must refuse rather than count as an address.
+        config()->set('trustedproxy.proxies', 'proxy-server');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line, 'a name is not an address, and silently trusts nobody');
+        $this->assertStringContainsString('match no client address', $line);
+
+        // A CIDR mask outside its family's range is the same silent shape: `checkIp4` returns false for a mask over
+        // 32 rather than complaining, so a typo'd block installs nothing.
+        config()->set('trustedproxy.proxies', '10.0.0.5/33');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line, 'a /33 v4 block matches no address');
+        $this->assertStringContainsString('match no client address', $line);
+
+        config()->set('trustedproxy.proxies', ['*']);
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line);
+        $this->assertStringContainsString('match no client address', $line,
+            'an array star is the silent shape, not the forge — measured, it matches nothing');
+
+        config()->set('trustedproxy.proxies', 'PRIVATE_SUBNETS');
+        $this->callPreflight();
+        $line = $row($this->commandOutput());
+        $this->assertStringContainsString('WARN', $line, 'a range keyword is not one machine');
+        $this->assertStringContainsString('instead of one machine', $line);
+
+        config()->set('trustedproxy.proxies', null);
+        config()->set('app.url', 'http://localhost:8080');
+    }
+
+    #[Test]
+    public function the_trusted_proxy_config_file_answers_the_env_var_and_a_blank_one_means_no_proxy(): void
+    {
+        // The middleware reads config('trustedproxy.proxies'), which the row above can only be handed by hand. This
+        // is the other half: the shipped file has to read the NAME the installer is told to set, and a blank value
+        // must mean "no proxy" rather than the empty-string pattern. Measured with
+        // storage/app/scratch/lane73b-probe-proxy-shapes.php: `TRUSTED_PROXIES=` arrives as '' — not null — and
+        // Symfony stores '' without complaint and matches nothing, so '' and null have to be the same answer here.
+        $file = fn (): array => (array) require base_path('config/trustedproxy.php');
+
+        putenv('TRUSTED_PROXIES');
+        $this->assertNull($file()['proxies'], 'nothing set must mean nothing trusted');
+
+        putenv('TRUSTED_PROXIES=');
+        $this->assertNull($file()['proxies'], 'a blank TRUSTED_PROXIES must not become the empty-string pattern');
+
+        putenv('TRUSTED_PROXIES=10.0.0.5');
+        $this->assertSame('10.0.0.5', $file()['proxies'], 'the value the installer types is the value the middleware gets');
+
+        // Leave the environment exactly as found, or a later test in this process runs behind a proxy.
+        putenv('TRUSTED_PROXIES');
     }
 
     #[Test]

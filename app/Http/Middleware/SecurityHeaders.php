@@ -10,9 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
  * Audit §4.2: baseline security headers for every response.
  *
  * Laravel does not send any of these by default. HSTS is emitted only when this application itself
- * sees the request as HTTPS: bootstrap/app.php never calls trustProxies() and no trustedproxy config
- * exists, so X-Forwarded-Proto from a terminating proxy is discarded and the header is not sent.
- * Measured 2026-10-17 and pinned by tests/Feature/SecurityHeadersTest.php.
+ * sees the request as HTTPS. `Illuminate\Http\Middleware\TrustProxies` is in the global stack and takes the
+ * forwarded scheme only from an address it trusts, and since 2026-10-26 that address is a setting:
+ * `config/trustedproxy.php` answers `TRUSTED_PROXIES` (§28.2 G-13, DEPLOYMENT.md §2). With nothing named — the
+ * state of this repository and of every install that has not put a TLS terminator in front — `X-Forwarded-Proto`
+ * is discarded and the header is not sent. Measured 2026-10-17, and pinned both ways by
+ * tests/Feature/SecurityHeadersTest.php.
  */
 class SecurityHeaders
 {

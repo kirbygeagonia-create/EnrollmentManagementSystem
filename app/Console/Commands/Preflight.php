@@ -113,36 +113,100 @@ class Preflight extends Command
      * preflight cannot see a proxy that has not been built yet, but it can refuse to let an `https` APP_URL sit
      * beside no trusted address, and it can refuse to call a wildcard "named".
      *
-     * The wildcard is the branch that has to say something, because `trustProxies(at: '*')` is the one-line fix
-     * that makes the header appear and lets any client forge its own scheme and address — and
-     * `LoginRequest::throttleKey()` and `auditlogs.ipAddress` both read `$request->ip()`.
+     * Ruled 2026-10-26 (lane 73b): the answer is a setting, not a patch. That middleware is already in the global
+     * stack (`vendor/laravel/framework/src/Illuminate/Foundation/Configuration/Middleware.php:457`) and reads
+     * `config('trustedproxy.proxies')` at request time (`vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php:69`),
+     * so `config/trustedproxy.php` answering `TRUSTED_PROXIES` is the whole install step and this row reads what the
+     * installer actually typed.
+     *
+     * The value is normalised the way the framework normalises it — `:87-88` splits a comma string and trims each
+     * part — because reading only an array would report a correct one-line `.env` setting as "nothing is trusted".
+     * Measured with `storage/app/scratch/lane73b-probe-proxy-shapes.php`: a bare `*` becomes the catchalls
+     * `0.0.0.0/0` and `::/0` at `:122`, a `*` sitting *inside* a list is handed to Symfony as a literal pattern that
+     * matches no address, and so does a hostname — Symfony validates nothing at set time (`IpUtils::checkIp` simply
+     * never matches), so a value that cannot match is silent rather than broken. Those states are told apart here
+     * instead of being counted as addresses, because a row that reads OK on a setting that trusts nothing is the
+     * same instrument defect wearing a different name.
      *
      * @return array{0: string, 1: string, 2: string}
      */
     private function forwardedSchemeIsDecided(): array
     {
         $configured = config('trustedproxy.proxies');
-        $proxies = is_array($configured) ? array_values(array_filter($configured, static fn ($p): bool => (string) $p !== '')) : [];
         $url = (string) config('app.url');
         $expectsHttps = str_starts_with($url, 'https://');
 
-        if (in_array('*', $proxies, true) || in_array('**', $proxies, true)) {
-            return ['Forwarded scheme', 'WARN', 'every address is trusted, so any client can forge its scheme and its IP — '
-                .'name the proxy instead: throttling and auditlogs.ipAddress both read $request->ip()'];
+        $entries = match (true) {
+            is_array($configured) => array_map(static fn ($p): string => trim((string) $p), $configured),
+            is_string($configured) && trim($configured) !== '' => array_map('trim', explode(',', $configured)),
+            default => [],
+        };
+
+        $entries = array_values(array_filter($entries, static fn (string $p): bool => $p !== ''));
+
+        if ($entries === []) {
+            if ($expectsHttps) {
+                return ['Forwarded scheme', 'WARN', $url.' is https but no proxy is trusted, so behind a TLS terminator '
+                    .'the header never appears — set TRUSTED_PROXIES to that machine\'s address in .env, never `*`, '
+                    .'then php artisan config:cache if §3 cached the config; DEPLOYMENT.md §2, G-13'];
+            }
+
+            return ['Forwarded scheme', 'OK', 'nothing is trusted, which is right while this host speaks HTTP itself; '
+                .'if a TLS terminator is ever put in front, name its address in TRUSTED_PROXIES '
+                .'(DEPLOYMENT.md §2, G-13)'];
         }
 
-        if ($proxies !== []) {
-            return ['Forwarded scheme', 'OK', count($proxies).' proxy address(es) trusted, so X-Forwarded-Proto is honoured '
-                .'and HSTS can reach a desk that arrived through a TLS terminator'];
+        if ($configured === '*' || $configured === '**') {
+            return ['Forwarded scheme', 'WARN', 'TRUSTED_PROXIES='.json_encode($configured).' is not a proxy, it is every '
+                .'client: the framework turns a bare star into the catchalls 0.0.0.0/0 and ::/0, so anyone can forge '
+                .'both the scheme and the source address — the login throttle and auditlogs.ipAddress both read '
+                .'$request->ip(). Name the one address (DEPLOYMENT.md §2, G-13)'];
         }
 
-        if ($expectsHttps) {
-            return ['Forwarded scheme', 'WARN', $url.' is https but no proxy is trusted, so behind a TLS terminator the '
-                .'header never appears — name its address in bootstrap/app.php (never `*`); DEPLOYMENT.md §2, G-13'];
+        foreach (['PRIVATE_SUBNETS', 'private_ranges', 'REMOTE_ADDR'] as $loose) {
+            if (in_array($loose, $entries, true)) {
+                return ['Forwarded scheme', 'WARN', 'TRUSTED_PROXIES names the range '.$loose.' instead of one machine, '
+                    .'so every address that fits it may forge the scheme and the source IP — the login throttle and '
+                    .'auditlogs.ipAddress both read $request->ip(). Name the proxy\'s own address '
+                    .'(DEPLOYMENT.md §2, G-13)'];
+            }
         }
 
-        return ['Forwarded scheme', 'OK', 'nothing is trusted, which is right while this host speaks HTTP itself; '
-            .'if a TLS terminator is ever put in front, name its address (DEPLOYMENT.md §2, G-13)'];
+        $addresses = array_values(array_filter($entries, fn (string $e): bool => $this->isMatchableAddress($e)));
+        $unmatchable = array_values(array_diff($entries, $addresses));
+
+        if ($unmatchable !== []) {
+            return ['Forwarded scheme', 'WARN', count($unmatchable).' of '.count($entries).' TRUSTED_PROXIES value(s) '
+                .'('.implode(', ', $unmatchable).') match no client address — Symfony is handed them as patterns and '
+                .'never matches, so X-Forwarded-Proto stays discarded and the header still never reaches a desk. '
+                .'Write the proxy\'s IP or CIDR (DEPLOYMENT.md §2, G-13)'];
+        }
+
+        return ['Forwarded scheme', 'OK', count($addresses).' proxy address(es) trusted from '
+            .'config/trustedproxy.php (env TRUSTED_PROXIES), so X-Forwarded-Proto is honoured '
+            .'and HSTS can reach a desk that arrived through a TLS terminator'];
+    }
+
+    /**
+     * Whether one TRUSTED_PROXIES entry can actually match a client: a literal IPv4/IPv6 address, or a CIDR block.
+     * Measured — an entry that is neither is accepted without complaint and matches nothing.
+     */
+    private function isMatchableAddress(string $entry): bool
+    {
+        if (filter_var($entry, FILTER_VALIDATE_IP) !== false) {
+            return true;
+        }
+
+        $parts = explode('/', $entry, 2);
+
+        if (count($parts) !== 2 || ! ctype_digit($parts[1])) {
+            return false;
+        }
+
+        $isV4 = filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+        $isV6 = filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+
+        return ($isV4 && (int) $parts[1] <= 32) || ($isV6 && (int) $parts[1] <= 128);
     }
 
     /**
