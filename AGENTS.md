@@ -947,6 +947,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   watch was `gh run watch … > log 2>&1; echo "EXIT=$?" >> log`, so the command's own status was the
   trailing `echo`'s — success — while the run was red, and I reported the jobs as if they had passed. The
   exit code must be the last thing the pipeline evaluates; capture it in its own file if it must be kept.
+- **`gh run list` has no `--sha` flag, and `2>/dev/null` turned that into "CI has not started."** On
+  2026-10-27 a poll began `RUN=$(gh run list --sha "$SHA" … 2>/dev/null)`, which answered
+  `unknown flag: --sha` on stderr; the discard hid it, the substitution came back empty, `&&`
+  short-circuited, and the loop printed its own honest refusal — "no Actions run appeared for this SHA
+  within three minutes" — about a run that had existed the whole time. A refusal is only as good as the
+  question it was asked with. Filter a run by `gh run list --branch master --json headSha,databaseId`
+  and match the SHA client-side, and never send a command's stderr into the void when its silence is
+  being read as a measurement; this is the accepted-but-inert flag defect arriving in a shell wrapper
+  rather than in a PHP tool.
 - **The mirror defect: a watcher's non-zero exit is not a red run.** On 2026-10-25 `gh run watch <id> --exit-status`
   returned 1 while its own final poll showed one job still `in_progress` with an empty conclusion, and the run the
   API reports now is `completed / success` on all three jobs. A watcher can terminate on a partial read, so the
