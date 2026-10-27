@@ -16,6 +16,7 @@ use App\Models\Subjects;
 use App\Support\TimetableConflicts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -51,6 +52,21 @@ class TimetableImportTest extends TestCase
     private int $blockB;
 
     private int $courseId;
+
+    /**
+     * Resolved, never literal. MySQL does not rewind an AUTO_INCREMENT counter when a test transaction
+     * rolls back, so by the third test class in the run `CS101` is no longer subjectId 1 and `Room 101`
+     * is no longer roomId 1 — which is why three cases here passed on the SQLite suite and failed on
+     * CI's MySQL job: the proposed schedule was addressed to a room nothing was booked in, so the room
+     * conflict it exists to prove could not be seen by either driver.
+     */
+    private int $subjectA;
+
+    private int $subjectB;
+
+    private int $room101;
+
+    private int $room9;
 
     /** What the two timetable tables hold before the case runs, so fixtures do not look like writes. */
     private array $expect = [0, 0];
@@ -103,17 +119,23 @@ class TimetableImportTest extends TestCase
         ])->termId;
 
         foreach (['CS101' => 'Introduction to Programming', 'CS102' => 'Data Structures'] as $code => $name) {
-            Subjects::create([
+            $subject = Subjects::create([
                 'subjectCode' => $code,
                 'subjectName' => $name,
                 'lectureUnits' => 3,
                 'labUnits' => 0,
                 'subjectType' => 'lecture',
             ]);
+
+            if ($code === 'CS101') {
+                $this->subjectA = $subject->subjectId;
+            } else {
+                $this->subjectB = $subject->subjectId;
+            }
         }
 
-        Rooms::create(['roomName' => 'Room 101', 'capacity' => 40, 'building' => 'Main']);
-        Rooms::create(['roomName' => 'Room 9', 'capacity' => 10, 'building' => 'Annex']);
+        $this->room101 = Rooms::create(['roomName' => 'Room 101', 'capacity' => 40, 'building' => 'Main'])->roomId;
+        $this->room9 = Rooms::create(['roomName' => 'Room 9', 'capacity' => 10, 'building' => 'Annex'])->roomId;
 
         $this->staff('Juan', 'Salazar', 'instr.salazar');
         $this->staff('Maria', 'Salazar', 'instr.mendoza');
@@ -186,14 +208,30 @@ class TimetableImportTest extends TestCase
         $rows = $this->scheduleRows();
         $this->assertCount(1, $rows, 'Two rows sharing block, subject, instructor and room are one schedule with two meetings, not two schedules.');
         $this->assertSame([$this->blockA], array_column($rows, 'blockId'));
-        $this->assertSame([1], array_column($rows, 'subjectId'));
+        $this->assertSame([$this->subjectA], array_column($rows, 'subjectId'));
 
         $meetings = Schedulemeetings::orderBy('meetingId')->get();
-        // `8:00` is accepted and stored padded: the shared comparison is byte order, and an un-padded
-        // value in this column would sort against the file's own rows the wrong way.
+        // The claim is that the importer stored ONE clock for both rows, the second having arrived as
+        // un-padded `8:00`. Minutes are what both drivers can show; the widening to `HH:MM:SS` is a
+        // MySQL `TIME` behaviour and SQLite stores the text it was given, so that half is asserted only
+        // where it is observable — the same driver-conditional shape `PreflightTest` uses for the host zone.
         $this->assertSame(['Monday', 'Tuesday'], $meetings->pluck('dayOfWeek')->map(fn ($d): string => $d->value)->all());
-        $this->assertSame(['08:00', '08:00'], $meetings->pluck('startTime')->all());
-        $this->assertSame(['09:30', '09:30'], $meetings->pluck('endTime')->all());
+        $this->assertSame(
+            ['08:00', '08:00'],
+            array_map(fn ($t): string => substr((string) $t, 0, 5), $meetings->pluck('startTime')->all())
+        );
+        $this->assertSame(
+            ['09:30', '09:30'],
+            array_map(fn ($t): string => substr((string) $t, 0, 5), $meetings->pluck('endTime')->all())
+        );
+
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $this->assertSame(
+                ['08:00:00', '08:00:00'],
+                $meetings->pluck('startTime')->all(),
+                'A `time` column widens the `8:00` the sheet gave to `08:00:00`; the shared comparison is byte order, so an un-padded value in this column would sort against the rows of the same file the wrong way.'
+            );
+        }
     }
 
     #[Test]
@@ -206,7 +244,7 @@ class TimetableImportTest extends TestCase
 
         $rows = $this->scheduleRows();
         $this->assertCount(2, $rows);
-        $this->assertSame([1, 2], array_column($rows, 'subjectId'));
+        $this->assertSame([$this->subjectA, $this->subjectB], array_column($rows, 'subjectId'));
         $this->assertSame(2, Schedulemeetings::count());
     }
 
@@ -545,7 +583,7 @@ class TimetableImportTest extends TestCase
         $this->onFile($this->blockA, 'CS101', 'instr.salazar', 'Room 101', 'Monday', $stored, $this->shift($stored, 90, $stored));
 
         $other = (int) Staffusers::where('username', 'instr.mendoza')->value('userId');
-        $schedule = new Schedules(['blockId' => $this->blockB, 'subjectId' => 2, 'instructorId' => $other, 'roomId' => 1]);
+        $schedule = new Schedules(['blockId' => $this->blockB, 'subjectId' => $this->subjectB, 'instructorId' => $other, 'roomId' => $this->room101]);
         $schedule->setRelation('block', Blocks::find($this->blockB));
         $schedule->setRelation('meetings', collect([
             new Schedulemeetings(['dayOfWeek' => 'Monday', 'startTime' => '09:30', 'endTime' => '11:00']),
