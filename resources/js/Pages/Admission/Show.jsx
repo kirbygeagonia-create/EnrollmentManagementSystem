@@ -4,6 +4,8 @@ import { PageHeader, Card, Badge, FormSection, CauseEffectModal, formatStatusLab
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import ReturnRecordModal from '@/Components/ReturnRecordModal';
+import ReturnNotice from '@/Components/ReturnNotice';
 
 
 
@@ -52,8 +54,11 @@ const statusBannerMap = {
     },
 };
 
-export default function Show({ admission, requirements, approvalBlockers = [], deskActions = {} }) {
+export default function Show({ admission, requirements, approvalBlockers = [], deskActions = {}, returnTarget = null }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
+    // §6.4 (gap G-10): Admission returns the record its approval issued. The target and the
+    // destinations it allows are resolved server-side, because this page is about an application.
+    const [returnOpen, setReturnOpen] = useState(false);
     const [showConfirmReject, setShowConfirmReject] = useState(false);
     const [rejectReqModal, setRejectReqModal] = useState({ open: false, requirementId: null, remarks: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -296,6 +301,38 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                             Addresses & Guardians
                         </button>
                     </div>
+
+                    {/* §6.4 (gap G-10): this desk is a destination as well as an origin. The record
+                        another office sent back parks here with the application flipped to pending, so
+                        the desk reads what it owes before it can act — and it reads that whether or not
+                        this account is allowed to send records anywhere. */}
+                    <ReturnNotice
+                        openReturn={returnTarget?.openReturn ?? null}
+                        nextStep="Correct the application, then approve it again: the enrollment keeps its seat in the term, so re-approving is the correction rather than a second issue."
+                    />
+
+                    {/* §6.4 (gap G-10): the act exists only where the server says there is a record
+                        to send, a desk that can take it, and an account allowed to make the move —
+                        this page is about the application, so all three are answered by the controller. */}
+                    {(returnTarget?.options?.destinations?.length ?? 0) > 0 && (
+                        <>
+                            <div className="mb-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setReturnOpen(true)}
+                                    className="btn btn-ghost btn-sm"
+                                >
+                                    Return the enrolled record
+                                </button>
+                            </div>
+                            <ReturnRecordModal
+                                enrollmentId={returnTarget.enrollmentId}
+                                options={returnTarget.options}
+                                open={returnOpen}
+                                onClose={() => setReturnOpen(false)}
+                            />
+                        </>
+                    )}
 
                     {infoTab === 'demographics' && (
                         <Card title="Candidate Academic & Personal Profile" subtitle="Intake registration details on file">

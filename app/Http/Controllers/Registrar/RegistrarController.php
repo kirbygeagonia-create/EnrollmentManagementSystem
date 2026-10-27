@@ -20,6 +20,7 @@ use App\Models\Subjects;
 use App\Services\AcademicStandingService;
 use App\Services\EnrollmentStateMachine;
 use App\Services\PrintService;
+use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\EnrollmentReadiness;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -135,6 +136,19 @@ class RegistrarController extends Controller
             // that recorded it. Standing reads prior terms only on purpose; a signature
             // on the record has to be able to see the whole record.
             'gradeHistory' => $this->standingService->gradeHistory($enrollment, $historyYear, $historySemester),
+            // §6.4 (gap G-10): the choices the shared return act may offer for THIS record, asked of
+            // the same predicates the save applies — the policy for who may return this record's
+            // college, and the recorder for what this record's state allows. Null means the page
+            // shows no button at all, which is the point: the desk is not invited to discover the
+            // refusal by clicking into it.
+            'returnOptions' => $request->user()->can('enrollment.returnRecord', $enrollment)
+                ? ReturnRecorder::optionsFor($enrollment)
+                : null,
+            // …and the return this record is sitting under, whichever desk sent it. The page's hold
+            // banner used to name the Registrar as the sender in prose, because the Registrar was the
+            // only desk that could return anything (ruling 14); with one act at three desks, the
+            // origin has to be read from the trail row rather than assumed.
+            'openReturn' => ReturnRecorder::openReturn($enrollment),
         ]);
     }
 
@@ -295,37 +309,13 @@ class RegistrarController extends Controller
         return redirect()->route('registrar.index')->with('success', 'Enrollment approved successfully.');
     }
 
-    /**
-     * Return the paid enrollment back to Department Evaluation (item 8).
-     * The registrar must state why — the reason rides on the enrollment
-     * (shown to the evaluating department) and mirrors into
-     * enrollmentstatushistory via the state machine's remarks.
-     */
-    public function returnToEvaluation(Request $request, Enrollments $enrollment): RedirectResponse
-    {
-        $this->authorize('registrar.approve', $enrollment);
-
-        $validated = $request->validate([
-            'returnReason' => 'required|string|min:10|max:500',
-        ]);
-
-        if ($enrollment->enrollmentStatus !== EnrollmentStatus::Paid) {
-            return back()->withErrors(['validation' => 'Only paid enrollments can be returned to Department Evaluation.']);
-        }
-
-        DB::transaction(function () use ($enrollment, $validated) {
-            $this->stateMachine->transition(
-                $enrollment,
-                EnrollmentStatus::ReturnedToEvaluation,
-                Auth::user(),
-                'Returned to Department Evaluation: '.$validated['returnReason']
-            );
-
-            $enrollment->update(['returnReason' => $validated['returnReason']]);
-        });
-
-        return redirect()->route('registrar.index')->with('success', 'Enrollment returned to Department Evaluation.');
-    }
+    // Ruling 14's `returnToEvaluation` action lived here until the one return mechanism development
+    // prompt §6.4 asks for replaced it (gap G-10, ruled 2026-10-26). The act is now
+    // `enrollment.return`, handled by ReturnRecorder through a single controller any desk holding the
+    // right reaches, and it records a destination, a reason category and the correction owed rather
+    // than one free-text reason. A Registrar-only version kept beside that would be two answers to
+    // "was this record sent back, and why" — the shape this file has refused elsewhere by deleting
+    // the older route rather than leaving it working.
 
     /**
      * Drop an enrollment, with the reason the record has to carry (ruling 17).

@@ -47,7 +47,11 @@ foreach ($rowsById as $id => $hits) {
     }
 }
 
-$otherDocCues = ['walkthrough', 'acceptance script', 'storyboard', 'use-case', 'deployment'];
+// The development prompt is the third document this repository cites §-numbers from — its gap register is
+// keyed to prompt §6.4, §7.3, §7.9 — and the collision is real: prompt §6.4 and the document's own §6.4
+// both exist, so a bare "§6.4" beside the word `prompt` resolves to the wrong book and still reads as a
+// match. Qualifying the reference is the fix; this list is what lets the checker honour the qualification.
+$otherDocCues = ['walkthrough', 'acceptance script', 'storyboard', 'use-case', 'deployment', 'prompt'];
 
 /** A §num that is not in this document is only a defect when the sentence does not name another document. */
 $namesAnotherDocument = function (string $text) use ($otherDocCues): bool {

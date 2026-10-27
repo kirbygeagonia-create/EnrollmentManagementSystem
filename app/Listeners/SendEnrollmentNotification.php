@@ -29,8 +29,11 @@ class SendEnrollmentNotification implements ShouldQueue
             'paid' => 'payment settled — the Registrar approves next',
             'enrolled' => 'approved and enrolled — Section Blocking picks the cohort up',
             'dropped' => 'enrollment dropped',
-            'returnedToEvaluation' => 'the Registrar returned this record to Department Evaluation'
-                .($event->remarks ? ": {$event->remarks}" : '.'),
+            'returnedToEvaluation' => $this->returnLead($event, 'Department Evaluation'),
+            // §6.4 (gap G-10): the second destination the owner ruled. It used to fall through to the
+            // default sentence, which said only that a status moved — while the desk that owed the
+            // correction is Admission, and `nextOffice()` now answers that desk for this state.
+            'returnedToAdmission' => $this->returnLead($event, 'Admission'),
             default => "status moved from {$event->fromStatus} to {$event->toStatus}",
         };
 
@@ -64,5 +67,19 @@ class SendEnrollmentNotification implements ShouldQueue
                 'data' => $data,
             ]);
         }
+    }
+
+    /**
+     * The bell's sentence for a return. It used to name the Registrar as the sender in prose, which
+     * was a fact only while one desk could send anything back; since the one return act (development
+     * prompt §6.4, gap G-10) is held by three desks, the sender is read from the act itself.
+     */
+    private function returnLead(EnrollmentStatusChanged $event, string $destination): string
+    {
+        $sender = $event->changedBy === null
+            ? 'an account with no name on this record'
+            : $event->changedBy->name;
+
+        return "{$sender} returned this record to {$destination}".($event->remarks ? ": {$event->remarks}" : '.');
     }
 }

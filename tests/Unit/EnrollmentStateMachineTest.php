@@ -246,15 +246,18 @@ class EnrollmentStateMachineTest extends TestCase
     #[Test]
     public function it_returns_allowed_transitions(): void
     {
+        // §6.4 (gap G-10): a return is legal from every state a record can be answerable for, so the
+        // forward moves are joined by the two destinations. Nothing here is forward: the machine still
+        // refuses to move a parked record anywhere but onward through its own queue.
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);
-        $this->assertEquals(['evaluated'], $allowed);
+        $this->assertEquals(['evaluated', 'returnedToEvaluation', 'returnedToAdmission'], $allowed);
 
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Enrolled]);
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);
         // Rulings 14 and 15 reach past the Registrar's approval: a refunded receipt or a
         // withdrawn grant leaves an enrolled record owing again, and a record that owes has
         // to sit where Accounting can see it. A drop is still terminal.
-        $this->assertEquals(['dropped', 'assessed'], $allowed);
+        $this->assertEquals(['dropped', 'assessed', 'returnedToEvaluation', 'returnedToAdmission'], $allowed);
 
         $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
         $allowed = $this->stateMachine->allowedTransitions($this->enrollment);
@@ -302,15 +305,52 @@ class EnrollmentStateMachineTest extends TestCase
     }
 
     #[Test]
-    public function it_throws_exception_for_pending_to_returned_to_evaluation(): void
+    public function it_throws_exception_for_pending_to_enrolled(): void
     {
         $this->expectException(InvalidStateTransitionException::class);
 
         $this->stateMachine->transition(
             $this->enrollment,
-            EnrollmentStatus::ReturnedToEvaluation,
+            EnrollmentStatus::Enrolled,
             $this->staff,
-            'Only paid enrollments may be returned'
+            'A pending record cannot skip to the Registrar’s signature'
         );
+    }
+
+    #[Test]
+    public function a_return_never_moves_a_record_forward_and_a_drop_never_returns(): void
+    {
+        // This file used to pin `pending → returnedToEvaluation` as the refusal, under a comment
+        // reading "only paid enrollments may be returned". Development prompt §6.4 (gap G-10, ruled
+        // 2026-10-26) made every non-terminal state returnable, so that pair is now legal and the
+        // promise worth pinning is the one the ruling kept: a return goes backward or nowhere.
+        foreach ([
+            [EnrollmentStatus::ReturnedToEvaluation, EnrollmentStatus::Paid],
+            [EnrollmentStatus::ReturnedToEvaluation, EnrollmentStatus::Enrolled],
+            [EnrollmentStatus::ReturnedToEvaluation, EnrollmentStatus::Assessed],
+            [EnrollmentStatus::ReturnedToAdmission, EnrollmentStatus::Evaluated],
+            [EnrollmentStatus::ReturnedToAdmission, EnrollmentStatus::Paid],
+            [EnrollmentStatus::ReturnedToAdmission, EnrollmentStatus::ReturnedToEvaluation],
+        ] as [$from, $to]) {
+            $this->enrollment->update(['enrollmentStatus' => $from]);
+            $this->assertFalse(
+                $this->stateMachine->canTransition($this->enrollment->fresh(), $to),
+                "{$from->value} must not move to {$to->value}: a returned record re-enters through its own desk, never ahead of it."
+            );
+        }
+
+        // The two edges the ruling does allow, stated because the refusal list above is meaningless
+        // without them: the department re-signs into `evaluated`, and an application re-approved at
+        // Admission puts the record back at the head of the pipeline as `pending`.
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::ReturnedToEvaluation]);
+        $this->assertTrue($this->stateMachine->canTransition($this->enrollment->fresh(), EnrollmentStatus::Evaluated));
+
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::ReturnedToAdmission]);
+        $this->assertTrue($this->stateMachine->canTransition($this->enrollment->fresh(), EnrollmentStatus::Pending));
+
+        // A drop stays terminal for the same reason it was ruled so: the student comes back on a new
+        // record whose seat this one released, rather than this row being un-dropped.
+        $this->enrollment->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
+        $this->assertSame([], $this->stateMachine->allowedTransitions($this->enrollment->fresh()));
     }
 }

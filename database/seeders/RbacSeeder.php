@@ -154,10 +154,16 @@ class RbacSeeder extends Seeder
                 'refdata.clearanceRequirements.manage',
             ],
 
-            // Enrollment/Registrar module (7)
+            // Enrollment/Registrar module (8)
             'enrollment' => [
                 'enrollment.approve',
                 'enrollment.drop',
+                // §6.4 (gap G-10), ruled 2026-10-26: the one return right. It is a single name held
+                // by three desks rather than one right per desk, because the ruled mechanism is one
+                // act whose destination the acting desk chooses — Admission or Department Evaluation
+                // — and a `registrar.return` beside an `admission.return` would make the routing a
+                // question of which screen you opened.
+                'enrollment.return',
                 'print.certificate',
                 'print.classCard',
                 'print.subjectLoad',
@@ -258,6 +264,12 @@ class RbacSeeder extends Seeder
         $admissionOfficer->syncPermissions([
             'admission.view', 'admission.create', 'admission.update', 'admission.approve', 'admission.reject',
             'admission.requirements.submit', 'admission.requirements.verify', 'user.view',
+            // §6.4 (gap G-10): Admission is a destination as well as an origin — it returns records
+            // it cannot correct from the paper in front of it, and receives the ones other desks
+            // send back to it. No view right is added beside this one: the desk already opens the
+            // record from its own queue, and a right to act on a page it cannot reach was the
+            // `exam.verify.general` defect, which this file retired on 2026-10-08.
+            'enrollment.return',
             'students.view',
         ]);
 
@@ -287,6 +299,11 @@ class RbacSeeder extends Seeder
             'evaluation.view', 'evaluation.create', 'evaluation.profile.capture', 'evaluation.profile.capture.any',
             'evaluation.subjects.propose', 'evaluation.subjects.propose.any', 'evaluation.credits.process',
             'evaluation.sign', 'exam.view', 'exam.record.courseSpecific', 'exam.record.retention',
+            // §6.4 (gap G-10): the department is the desk that finds a paper is missing or an exam
+            // result is what stops the load, so it returns as well as signs. This is the same
+            // `enrollment.return` the Registrar and Admission hold — the destination the desk names
+            // is what separates the three acts, not three different rights.
+            'enrollment.return',
             // Ruling 5: the desk that takes the student is the desk that sees the pass slip.
             'evaluation.clearance.confirm',
             // Ruling 11: the shift paper is filed at this desk.
@@ -377,6 +394,12 @@ class RbacSeeder extends Seeder
         );
         $registrarApprover->syncPermissions([
             'enrollment.approve', 'print.certificate', 'print.classCard', 'print.subjectLoad', 'print.enrollmentForm', 'enrollment.studentdata.record',
+            // §6.4 (gap G-10): the Registrar returns a record it has already approved — the ruled
+            // mechanism is one act held by three desks, so this line and the two in AdmissionOfficer
+            // and DeptEvaluator name the same permission. It is *not* given to `OfficeHead`: a head
+            // of any office sending records backwards would make the routing a question of job title
+            // rather than of custody, which is what ruling 7 removed for the signature acts.
+            'enrollment.return',
             // Ruling 17: dropping is the Registrar's alone. It erases what the other
             // desks signed, so the desk that holds the final signature is the one that
             // answers for it — and OfficeHead is deliberately not in this list.

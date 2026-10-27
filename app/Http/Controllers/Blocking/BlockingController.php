@@ -21,6 +21,7 @@ use App\Models\Staffusers;
 use App\Models\Subjects;
 use App\Services\PrintService;
 use App\Services\WorkflowService;
+use App\Support\TimetableConflicts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -406,62 +407,16 @@ class BlockingController extends Controller
 
     /**
      * Detect schedule conflicts: an officer, a room, or the block itself double-booked at one hour.
-     * Two meetings overlap if same dayOfWeek AND startTime < other.endTime AND endTime > other.startTime.
      *
-     * Three questions, because the desk's own route invites three collisions. `storeSchedule` is addressed to a
-     * block (`/blocking/{block}/schedules`), so adding a second subject to a block that already meets at that
-     * hour is the ordinary action, not an edge case — and only the block branch can see it, because a different
-     * room and a different officer leave the other two silent.
-     *
-     * All three are scoped to the term the schedule's own block belongs to. `schedules` carries no term — it
-     * lives on the block — so an unscoped query reads a meeting from a retired term as a conflict for the term
-     * being built now, and rooms and officers are reused every year on purpose. A schedule with no block has no
-     * term to scope by, and the query then widens rather than answering "no conflict" from a filter it could not
-     * apply.
-     *
-     * The edited schedule is excluded by its own id when one exists: `updateSchedule` replaces its meetings, so
-     * they must not be read against the proposal. There is deliberately no `meetingId` clause here — on the
-     * create path the proposed meetings are unsaved models, and Laravel turns a null comparison into
-     * `IS NOT NULL`, so that clause passes today by an accident of the query builder rather than by intent.
+     * The rule lives in `App\Support\TimetableConflicts` because a second surface now asks the same
+     * three questions — `ems:import:timetable` must name a collision before it publishes a sheet, and
+     * a preview that disagreed with this desk about what a collision is would be the worse promise.
+     * Why each branch exists (the term scope, the block branch, the deliberately absent `meetingId`
+     * clause) is recorded with the rule rather than duplicated here.
      */
     private function detectConflicts(Schedules $schedule, ?int $exceptScheduleId = null)
     {
-        $meetings = $schedule->meetings;
-        $conflicts = collect();
-        $termId = $schedule->block?->termId;
-
-        foreach ($meetings as $meeting) {
-            // One builder, so the day, the overlap and both exclusions cannot drift between the three questions.
-            $overlapping = fn () => Schedulemeetings::query()
-                ->where('dayOfWeek', $meeting->dayOfWeek)
-                ->where(function ($q) use ($meeting) {
-                    $q->where('startTime', '<', $meeting->endTime)
-                        ->where('endTime', '>', $meeting->startTime);
-                })
-                ->when($exceptScheduleId !== null, fn ($q) => $q->where('scheduleId', '!=', $exceptScheduleId))
-                ->when($termId !== null, fn ($q) => $q->whereHas('schedule.block', fn ($b) => $b->where('termId', $termId)));
-
-            $shared = fn (string $column, int|string $value): bool => $overlapping()
-                ->whereHas('schedule', fn ($q) => $q->where($column, $value))
-                ->exists();
-
-            // Instructor conflict.
-            if ($shared('instructorId', $schedule->instructorId)) {
-                $conflicts->push("Instructor conflict on {$meeting->dayOfWeek->value} {$meeting->startTime}-{$meeting->endTime}");
-            }
-
-            // Room conflict.
-            if ($shared('roomId', $schedule->roomId)) {
-                $conflicts->push("Room conflict on {$meeting->dayOfWeek->value} {$meeting->startTime}-{$meeting->endTime}");
-            }
-
-            // The block's own hour: one group cannot be in two rooms at once.
-            if ($shared('blockId', $schedule->blockId)) {
-                $conflicts->push("Block conflict on {$meeting->dayOfWeek->value} {$meeting->startTime}-{$meeting->endTime} — this block already meets at that hour");
-            }
-        }
-
-        return $conflicts;
+        return TimetableConflicts::againstDatabase($schedule, $exceptScheduleId);
     }
 
     /**

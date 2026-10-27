@@ -191,6 +191,16 @@ $case('own-migrations-row-drift',
     'a date belonging to a TABLE ("came 2026-10-03") must not make the sentence unreadable as history — that misfire '
         .'once left two living claims unjudged');
 
+// The §30.1 title states the census IN WORDS. Its needle used to hard-code the two words of one day's
+// wording, so when pass 259 re-spelled the title the claim went UNBOUND — an unread sentence that looks like
+// a checker with nothing to say. Both halves are proved here: a spelled figure is JUDGED, and a changed one
+// is STALE rather than silently unread.
+$case('s301-title-spelled-numbers',
+    "P 3: 30.1 Fifty-five, and the sixty-three tables in the database\n",
+    "P 3: 30.1 Fifty-six, and the sixty-four tables in the database\n",
+    ['s301-title'], 0, 1, ['STALE', 'domainTables', 'answers 55'], ['UNBOUND'],
+    'a spelled census figure is derived, not enumerated — a title re-worded away from the pattern must not drop out of judgement');
+
 // ------------------------------------------------------------------ the expectations that must stay CLEAN
 
 $case('dated-sentence-left-alone', $counts,

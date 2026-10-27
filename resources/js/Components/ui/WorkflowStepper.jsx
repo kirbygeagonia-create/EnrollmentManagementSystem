@@ -41,6 +41,7 @@ export default function WorkflowStepper({ workflow, enrollment }) {
 
     const byOffice = new Map(stored.map((step) => [Number(step.officeId), step]));
     const isReturned = statusValue(enrollment?.enrollmentStatus) === 'returnedToEvaluation';
+    const isReturnedToAdmission = statusValue(enrollment?.enrollmentStatus) === 'returnedToAdmission';
     const currentStepOrder = stored.find((step) => step.stepStatus === 'pending')?.stepOrder;
 
     const steps = Object.entries(workflowPhases).map(([officeIdKey, label], index) => {
@@ -62,9 +63,14 @@ export default function WorkflowStepper({ workflow, enrollment }) {
     const current = steps.find((s) => s.status === 'current') || steps.find((s) => s.status === 'returned');
     const doneCount = boxes.filter((s) => s.status === 'completed').length;
 
-    const summary = isReturned && current
-        ? `Returned to ${current.label}${enrollment?.returnReason ? ` — ${enrollment.returnReason}` : ''}.`
-        : boxes.length > 0 && doneCount === boxes.length
+    const summary = isReturnedToAdmission
+        // §6.4 (gap G-10): Admission holds no box on this form, so the tracker has nothing to mark as
+        // returned — and "Phase 1 of 7" would be a true reading of the boxes and a false one of the
+        // record. The work restarts here only after that desk approves the application again.
+        ? 'Returned to Admission — the application is back with that desk, and every box on this form restarts once it approves again.'
+        : isReturned && current
+            ? `Returned to ${current.label}${enrollment?.returnReason ? ` — ${enrollment.returnReason}` : ''}.`
+            : boxes.length > 0 && doneCount === boxes.length
             ? 'Every phase on this enrollment form is signed.'
             : current
                 ? `Phase ${boxes.findIndex((s) => s.officeId === current.officeId) + 1} of ${boxes.length} — ${current.label}.`

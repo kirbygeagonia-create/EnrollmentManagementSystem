@@ -157,6 +157,13 @@ $mayPrint = static function () use (&$printed, &$withheld, $limit): bool {
 $readings = [];
 foreach ($lines as $i => $raw) {
     $line = html_entity_decode((string) $raw, ENT_QUOTES, 'UTF-8');
+    // A §1.1 revision row whose FIRST cell is a bare date is that day's record, which is lane 60's rule and the
+    // document's own instruction (§22.3's row: "Earlier counts of 95 and 94 permissions in this document are
+    // dated records of the days their rulings landed, and are left as written"). Met here by "Measured before it
+    // was written: live ems held … 94 permissions", a sentence true on 2026-10-26 that a row-count checker must
+    // not re-age. The living row reads `(this issue)`, so it stays judged.
+    $rowIsDatedRecord = preg_match('/^(?:ROW \d+: )?20\d\d-\d\d-\d\d(?:[–\x2D]\d{1,2}(?:-\d{1,2})?)? \| /u', $line) === 1
+        && ! str_contains($line, '(this issue)');
     // Sentences, split on the terminal marks this document actually uses. Rows are one flat line each.
     foreach (preg_split('/(?<=[.;]) (?=[A-Z(“"§])| \| /u', $line) ?: [] as $sent) {
         if (! preg_match_all($claimRe, $sent, $ms, PREG_SET_ORDER)) {
@@ -179,8 +186,9 @@ foreach ($lines as $i => $raw) {
             if ($value === null || $noun === '') {
                 continue;
             }
-            // HISTORY: a sentence that names its own day, or sits under a heading that does, is a record.
-            if (preg_match('/\b(20\d\d-\d\d-\d\d|as of \w+ \d{1,2}, 20\d\d|Closed \d|on 20\d\d)\b/u', $sent) === 1) {
+            // HISTORY: a sentence that names its own day, sits under a heading that does, or sits in a dated §1.1
+            // row, is a record of the day it was written and is judged by nothing.
+            if ($rowIsDatedRecord || preg_match('/\b(20\d\d-\d\d-\d\d|as of \w+ \d{1,2}, 20\d\d|Closed \d|on 20\d\d)\b/u', $sent) === 1) {
                 $counts['HISTORY']++;
 
                 continue;

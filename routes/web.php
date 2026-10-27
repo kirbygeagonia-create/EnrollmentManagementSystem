@@ -9,6 +9,7 @@ use App\Http\Controllers\Blocking\BlockingController;
 use App\Http\Controllers\Clearance\ClearanceController;
 use App\Http\Controllers\Clinic\ClinicController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Enrollment\ReturnController;
 use App\Http\Controllers\Evaluation\EvaluationController;
 use App\Http\Controllers\Evaluation\ShiftRequestController;
 use App\Http\Controllers\Exam\ExamController;
@@ -161,7 +162,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/registrar', [RegistrarController::class, 'index'])->name('registrar.index');
     Route::get('/registrar/{enrollment}', [RegistrarController::class, 'show'])->name('registrar.show');
     Route::post('/registrar/{enrollment}/approve', [RegistrarController::class, 'approve'])->name('registrar.approve');
-    Route::post('/registrar/{enrollment}/return', [RegistrarController::class, 'returnToEvaluation'])->name('registrar.return');
+    // §6.4 (gap G-10), ruled 2026-10-26: one return act behind one right, reachable from any desk
+    // that holds it. The Registrar's private `returnToEvaluation` route is gone — a record sent back
+    // now names a destination and a category wherever the act was made, and a second route for the
+    // same act would be a second answer to "who owes what on this record".
+    Route::post('/enrollment/{enrollment}/return', [ReturnController::class, 'store'])->name('enrollment.return');
     Route::post('/registrar/{enrollment}/drop', [RegistrarController::class, 'drop'])->name('registrar.drop');
     Route::get('/registrar/{enrollment}/print/certificate', [RegistrarController::class, 'printCertificate'])->name('registrar.print-certificate');
     Route::get('/registrar/{enrollment}/print/certificate/pdf', [RegistrarController::class, 'downloadCertificate'])->name('registrar.download-certificate');

@@ -32,6 +32,7 @@ $targets = $args !== [] ? $args : [
     // reference into a template. No instrument read them until 2026-10-24, which is why three of the
     // 2026-10-11 sheet's pointers had drifted onto another block when the ruling above them was built.
     'Documentation/School-Decision-Sheet-2026-10-23.md',
+    'Documentation/School-Decision-Sheet-2026-10-27.md',
     'Documentation/Registrar-Print-Decision-Sheet-2026-10-11.md',
     'Documentation/Print-Fidelity-Comparison-2026-10-10.md',
     'Documentation/Registrar-Window-Packet-2026-10-26.md',
@@ -81,6 +82,23 @@ $resolve = function (string $name) use ($root, $buildIndex): array {
         return [is_file($root.'/'.ltrim($name, '/')) ? $name : null, []];
     }
     $hits = $buildIndex()[basename($name)] ?? [];
+
+    // A HEAD export copied under `storage/app/scratch/` (the lane 51/53/55/56/57/79 harnesses take them by
+    // hand because `shell_exec` cannot reach git from PHP here, and `storage/app/.gitignore` hides them from
+    // the remote on purpose) is not a second file prose could mean. When the index holds a real path and a
+    // scratch copy of the same basename, the ambiguity belongs to the export, so the copy is dropped rather
+    // than reported as a defect in the citation — and a basename whose ONLY hits are scratch copies is still
+    // reported, because then the prose genuinely names nothing the tree resolves.
+    if (count($hits) > 1) {
+        $real = array_values(array_filter(
+            $hits,
+            static fn (string $h): bool => ! str_contains(str_replace('\\', '/', $h), 'storage/app/scratch/')
+        ));
+
+        if ($real !== []) {
+            $hits = $real;
+        }
+    }
     if (count($hits) === 1) {
         return [$hits[0], $hits];
     }

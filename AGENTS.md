@@ -69,9 +69,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   mutation leaves the dump byte-identical, which is proved by running a variant whose anchor cannot match.
 - **After any batch that adds a table with foreign keys, or touches a delete path**, run
   `php storage/app/scratch/lane43-delete-guards.php` and prove it with
-  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 102 foreign keys: only four
+  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 105 foreign keys: only four
   cascade (the RBAC pivots `RbacSeeder`'s prune relies on), one is RESTRICT (`shiftingrequests.requestedBy`),
-  and 70 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
+  and 72 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
   — `blockedDeletionMessage()`, a `->exists()` chain, a private helper, or a relation check — and a list that omits
   one does not produce a 500: `bootstrap/app.php:140` renders the `QueryException` as a generic "conflicts with
   information already on file… reload and retry", which names no record and tells the desk to repeat something
@@ -681,8 +681,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - **After any batch that states or edits a row count in the documents** ("Live ems holds nine offices",
   "the live directory holds 24 students", "42 assignments over 17 roles"), run
   `php storage/app/scratch/lane72-row-count-claims.php --verify` against live `ems` and prove it with
-  `php storage/app/scratch/mutate-lane72-row-counts.php` (14 legs). Lane 60 deliberately only *names* row counts on
+  `php storage/app/scratch/mutate-lane72-row-counts.php` (its summary prints its own verdict and no leg total, so
+  this file states none). Lane 60 deliberately only *names* row counts on
   CI because they belong to the dataset that stated them; this is the hand command that weighs them on this box.
+  **It carries lane 60's dated-row rule since 2026-10-27**: a §1.1 revision row whose first cell is a bare date is
+  that day's record, so the row that opens "Measured before it was written" and states the permission count as it
+  stood then is HISTORY rather than a stale figure — the document's own §22.3 row says the earlier permission
+  counts are dated records and are left as written, and re-typing them would state a figure that was not true on
+  their own day. The exemption is proved by falsification and not by the clean run: re-spelling that row's leading
+  date as `(this issue)` through `--dump=` makes the same claim fire STALE again, which is what shows the rule is
+  read rather than accepted.
   Measured 2026-10-26 (re-run after pass 248 wrote the clock convention into §1.2): **12 bound claims, every
   one equal to `COUNT(*)`, 0 stale, over 3,167 number-and-noun pairs** — and the queue the first run
   printed was five rows, of which **all five were the instrument's own breadth**. That is why there are seven
@@ -739,7 +747,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 342 lines where
+  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 345 lines where
   the operand is a name, code, date or error string); its harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
@@ -827,7 +835,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   restored), and read back off the re-rendered PDF: the title now prints CLEARANCE SLIP (STUDENT'S COPY) and
   the program reads `(BSIT) Bachelor of Science in Information Technology - Year 2`. **One half of the school's
   paper was deliberately not adopted and the register says so:** it writes the level "2nd Year", and
-  `statusLabel.js:50-56` records that six pages once printed four vocabularies for one number, so the build
+  `statusLabel.js:55-58` records that six pages once printed four vocabularies for one number, so the build
   kept "Year 2" rather than restart that. Adding six and eight lines to the two files invalidated four
   pointers into them. The line sweep caught one (it landed on a blank line); **reading caught a second the
   sweep could never see** — §25.4 P-10 cited `clearance-slip.blade.php:38-55` for "the enrollment that matches
@@ -1351,6 +1359,54 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   Course-Specific examination refusal" while that line sits inside `entranceApplicants()`, and §26's repeat-proofing
   row cited `:242` — `AdmissionStatus::Approved->value,` in the transferee filter — for a promise the `firstOrNew`
   upsert keeps. Pass 252e re-pointed both, each asserted against the line it now names before the write.
+- **A return is one act at three desks, and its notice must be addressed from the destination** (lane 78, prompt
+  §6.4, gap G-10). Ruled by the owner 2026-10-26 and built 2026-10-27: one permission (`enrollment.return`,
+  seated with `RegistrarApprover`, `AdmissionOfficer` and `DeptEvaluator` and deliberately **not** with
+  `OfficeHead` — ruling 7's reason), one route (`enrollment.return` → `ReturnController::store`), one service
+  (`App\Services\ReturnRecorder`) as the only statement of what a return does, and an `enrollmentreturns` row that
+  stores all six §6.4 facts in columns instead of prose. Ruling 14's `RegistrarController::returnToEvaluation()` was
+  deleted rather than left beside it, and `tests/Feature/Registrar/RegistrarReturnTest.php` went with it (its five
+  cases are ported into `tests/Feature/Enrollment/EnrollmentReturnTest.php`, 25 cases). Five rules came out of it.
+  *A permission is not an authorization*: `authorize('enrollment.return')` checked only the right, so a
+  college-bound department could have returned another college's record — the ability is
+  `enrollment.returnRecord` (a name no permission may take, per the `Gate::before` collision rule) and it asks
+  `CollegeScope` too, with the refusal sentence passed to `abort_unless` so the 403 page says which rule answered.
+  *An affordance must be decided by the predicate that decides the act*: the Evaluation page first guarded its
+  button on `can.enrollmentReturn`, but that page's `can` prop is the controller's record-scoped map and answers no
+  such key — the control could never paint. The offer is now `returnOptions` (null when the policy or the record's
+  state refuses), the global flag was deleted rather than left half-wired, and the destination desk still reads the
+  notice through `ReturnRecorder::openReturn()`, because `expectedCorrection` is otherwise write-only data.
+  *A notice addressed from a form that has not been updated yet goes to the wrong desk*: the recorder re-opens
+  boxes **after** `transition()` fires the event, so `WorkflowInbox::nextOffice()` read the pre-return box list and
+  sent a return-to-Evaluation bell to office 3 (Assessment), which has no active account on the demo dataset — the
+  record came back and rang nobody. One `RETURNED_HANDOFF` map answers both return states before the boxes are
+  consulted, and the two return entries were removed from `STATUS_HANDOFF` rather than left as a second answer.
+  *Check the nullability of the source column before writing NOT NULL from the model*: `originOfficeId` was NOT NULL
+  while `staffusers.officeId` is nullable on the server (measured `IS_NULLABLE = YES`), so a desk-less
+  administrator met the generic "conflicts with information already on file" page; the column is nullable and the
+  desk reading it is told the return came from an account with no office of its own. *Two destinations are not two
+  desks with a box*: Admission holds none, so `returnedToAdmission` is its own enrollment state, the application it
+  re-opens flips to `pending`, every box re-opens, and `WorkflowInbox::nextOffice()` must answer Admission rather
+  than the freshly-pending department. Instruments:
+  `php artisan test tests/Feature/Enrollment/EnrollmentReturnTest.php` and
+  `php storage/app/scratch/mutate-g10-return-tests.php` (one leg per promise over thirteen files, plus a green
+  control of each test file before and after — the run prints its own leg total, and this file states none, because
+  lane 58's rule for a revision row applies to a tool's own census; the `enrollment.returnRecord` ability is also
+  pinned by `AbilityNameCollisionTest`). **That harness now refuses at the door when a target file already
+  carries one of its own mutant shapes**, because two copies of it overlapped on 2026-10-27: the second
+  snapshotted `ReturnRecorder.php` while the first had `if (false)` planted, called those bytes its "original",
+  and its shutdown restore wrote the dead refusal back permanently — into a file the repository does not track,
+  so no `git checkout` could have undone it and only the next run's control going red said so. A log with no
+  final footer line is a job still running; relaunching the same mutating harness to confirm a partial reading
+  is what creates the overlap. Live `ems` after the reseed: 95 permissions, 305 grants, 17 roles,
+  64 tables, 105 foreign keys — 71 NO ACTION / 29 SET NULL / 4 CASCADE / 1 RESTRICT — and `enrollmentreturns`
+  empty, which makes it a new member of §24.17's domain-empty set that
+  `lane64-empty-table-inventory.php --verify` will refuse until the listing says so. Naming trap for anyone citing
+  the authority docx: **§28.3's own `G-10` is a different, closed finding** (a validated ID request unreachable from
+  the desk that validated it), so the return is registered as **G-32** and "gap G-10" is only ever written beside
+  "prompt §6.4". Two of the four §6.4 vocabulary questions are on `Documentation/School-Decision-Sheet-2026-10-27.md`
+  (the reason-category list, and whether a department may write to Admission), and the §27.2 E-4 register row —
+  "a returned record cannot get back to `paid`" — is re-stated only after the round trip is driven, not re-worded.
 - **A moved file's citations are shifted by bytes or not at all** (lane 76). G-3 grew
   `EvaluationController.php` by 102 lines and `routes/web.php` by 5, and the shift tool rewrote **79** citation
   tokens in the authority docx — 60 in the controller, 18 in the routes, 1 in the Evaluation panel; a fourth run,
@@ -1437,7 +1493,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 161 files as of docx pass 254; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 269; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1497,7 +1553,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (C-5 with the departments, G-13 at install time), and the read-only queue is the one unattributed pointer, quoted as an example on purpose
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
-  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 135 ranges and flags 12 pairings across nine distinct
+  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 130 ranges and flags 21 pairings across seventeen distinct
   constructs — each pairing re-read this session and every one the
   documented attribution noise, not a claim the build contradicts: a vendor path the basename index cannot see
   (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208` really is `forPage()`), a `recordIssue()` landing on the block-schedule print action while
@@ -1658,7 +1714,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   at :226-227, the `Studentrequirementsubmissions::create()` loop at :231-237). Pass 223 moved both copies
   together (`AdmissionController.php` lines 211 to 222 occurred exactly twice in `document.xml`, so `expect=2` and no
   guessing at a third). **Those five numbers are the layout of 2026-10-24, and G-2's draft branch moved the file by
-  143 net lines:** the create array is `AdmissionController.php:265-274`, the selection is `:305-322` (the
+  143 net lines:** the create array is AdmissionController.php lines 266 to 275 as the file stood that day, the selection is `:305-322` (the
   `where`/`orWhere` at :305-307, the insert loop at :314-322), and pass 250 re-pointed the document's two copies to
   `:305-322` — still exactly twice, which is what made `expect=2` the right instruction then and now. **The queue is not drained by stopping at one find: opening the 10 rows that survived the
   rewrite found ten more wrong targets** (passes 224, 225 and 226). §28's exam row cited `ExamController.php:311-314`
@@ -1883,12 +1939,12 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   anchor's UNBOUND queue down from 110 to 108.
   **The next row read was the twenty-fifth wrong target, and it took two passes because one sentence is spelled two
   ways.** §26's room-capacity row says "Filing or editing a schedule that names a room too small for the block warns
-  and proceeds (`BlockingController.php:264-271`, `:311-317`)" and then quotes both warning strings. The filing half
+  and proceeds (BlockingController.php lines 264 to 271 and 311 to 317, as the file stood on 2026-10-25 — after this batch moved the conflict rule into `App\Support\TimetableConflicts`, the same two warnings are at lines 270 to 272 and 331 to 333)" and then quotes both warning strings. The filing half
   was right — :264-271 is `storeSchedule()`'s warning block (`maxStudents > $room->capacity` at :269, "Schedule was
   still added" at :270). The editing half was not: `:311-317` is `updateSchedule()`'s *temp-schedule build for
   conflict detection* (`$schedule->replicate()` at :310, `->fill(` at :311), while the capacity warning whose words
   the same sentence quotes is **:327-333** (condition :330, "Schedule was still updated" at :331, returned
-  warn-and-proceed at :345-347). `:311-317` occurs 3× in `document.xml` and `BlockingController.php:264-271` 4×, so
+  warn-and-proceed at :345-347). the range 311 to 317 then occurred three times in `document.xml` and 264 to 271 four times, so
   neither is a usable needle alone; the *pairs* are, and there are two spellings — wide comma (1 copy, pass 229) and
   tight comma (2 copies, pass 230 with `expect=2`). **A first draft of pass 229 refused its own correct edit** because
   its post-condition asserted the bare number had vanished document-wide; two of the three copies belong to other
@@ -2161,7 +2217,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   began writing `Staffusers::class`. §24's model row is the one member of that class narrow enough to answer without a
   judgement call: it states `$primaryKey = 'someId'` and `$timestamps = true|false`, and the class either declares those
   properties or takes Laravel's defaults, so the probe is a comparison, not an interpretation. Measured:
-  `lane71-model-decls` answers **54 claims read = 54 judged**, none of them wrong — and 54 is also what `app/Models`
+  `lane71-model-decls` answers **55 claims read = 55 judged**, none of them wrong — and 55 is also what `app/Models`
   holds, which is the agreement that makes the zero mean something. The harness plants a wrong primary key and a wrong timestamps flag (each must raise exactly one named
   complaint and no other row may move), a path that is not in the repository, a byte-identical control that must change
   no verdict, and the three refusals are told apart **by their own messages** (judged-nothing, missing dump, unknown
@@ -2214,8 +2270,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 917 references it resolves against
-  `lane37-docx-inventory.php` (196 numbered headings, 116 finding rows with the section each physically sits
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 936 references it resolves against
+  `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
@@ -2235,7 +2291,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   where the row lives, "(§12.5, G-3)" is the behaviour-then-finding convention and may cross chapters, and
   §19.3 is titled after its own finding. All three were proved by planted mutants — `mutate-lane37-sweep.php`
   on a scratch copy, `mutate-lane37b-sweep.php` which plants defects in the real tree and restores it
-  byte-for-byte — before their silence was believed. What none of them can check is whether a citation is
+  byte-for-byte — before their silence was believed. **The sweep's other-document cue list gained `prompt` on
+  2026-10-27**, because the gap register cites the development prompt's §6.4 and §7.9 and this document has its
+  own §6.4: a collision that resolves as a *match* for any checker that only asks whether a §-number exists.
+  The harness proves that qualification is honoured rather than tolerated with two legs on one paragraph —
+  a section neither book holds stays silent while the word `prompt` sits in the block, and the same bytes with
+  the word removed must charge it. The harness reads the cue list out of the sweep's own source, because a
+  harness carrying its own copy of a checker's vocabulary drifts from it and then judges a rule that no longer
+  exists; and it separates `BAD` from `SURVIVED`, since a needle that cannot land is the harness's age, not a
+  rule that does not fire. Its titled-escape leg went unbuilt-able for a batch for the known reason: the §19.3
+  heading's whole sentence occurs 0 times in `document.xml` while the flat dump reads it continuously, so the
+  needle is a run tail. What none of them can check is whether a citation is
   about the right *subject*: §28 G-9 and §25 P-14 both exist and both resolve, and only reading caught the
   mix-up. So: a pointer into another document names that document ("§14R.2 of the acceptance script"), and a
   citation whose subject is a finding you have not opened in the register is worth reading once, not trusting.

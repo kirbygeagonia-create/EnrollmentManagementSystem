@@ -42,6 +42,7 @@ use App\Services\AcademicStandingService;
 use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentService;
 use App\Services\EnrollmentStateMachine;
+use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\CollegeScope;
 use App\Support\SchoolTime;
@@ -223,6 +224,20 @@ class EvaluationController extends Controller
             // Ruling 5: the desk is told whether there is an approved slip on file to
             // confirm, so it is never offered a button that only comes back as a refusal.
             'passSlipOnFile' => $this->approvedPassSlip($enrollment) !== null,
+            // §6.4 (gap G-10): the department both returns and is returned to, so it gets the same
+            // offered-destinations rule the save applies — here that usually means Admission, since
+            // Department Evaluation is the desk the record is waiting on. Null when the policy says
+            // this record is another college's, which is what keeps the button from appearing on a
+            // record this desk may only look at.
+            'returnOptions' => $request->user()->can('enrollment.returnRecord', $enrollment)
+                ? ReturnRecorder::optionsFor($enrollment)
+                : null,
+            // What this desk owes, in the sender's own words: the category, the note, and the
+            // correction expected. The banner below it used to print `enrollments.returnReason` and
+            // say "Returned by the Registrar" in prose, which was true only while one desk could
+            // return at all — this reads the trail row, so a record the Admission office sent back
+            // arrives here named as Admission's.
+            'openReturn' => ReturnRecorder::openReturn($enrollment),
             'curriculumSubjects' => $curriculumSubjects,
             'curriculum' => $curriculum?->only(['curriculumId', 'curriculumName', 'effectiveYear']),
             'unmetPrerequisiteSubjectIds' => $unmetPrerequisiteSubjectIds,

@@ -201,21 +201,31 @@ class WorkflowPhaseIndicatorTest extends TestCase
     public function a_returned_enrollment_reaches_the_desk_flagged_for_the_department_evaluation_box(): void
     {
         $enrollment = $this->makeEnrollment();
-        (new WorkflowService)->createWorkflow($enrollment);
+        $workflow = (new WorkflowService)->createWorkflow($enrollment);
 
-        // Ruling 7: the return reuses the Registrar's approval right, so the hand that
-        // flags the evaluation box is the Registrar desk role, not any office head.
+        // The one return act development prompt §6.4 asks for (gap G-10) refuses a destination that
+        // has not acted yet, so the box the record is sent back to has to hold a signature first.
+        $workflow->workflowsteps()->where('officeId', 4)->update([
+            'stepStatus' => 'completed',
+            'signedDate' => now(),
+        ]);
+
+        // Ruling 7: the return is the Registrar desk's own right (`enrollment.return`, seated with
+        // RegistrarApprover), not a reuse of the approval right and not any office head's.
         $registrar = $this->staffForOffice(1, 'RegistrarApprover', 'staff');
 
         $this->actingAs($registrar)
-            ->post(route('registrar.return', $enrollment), [
-                'returnReason' => 'Proposed load lists a subject whose prerequisite is not on file.',
+            ->post(route('enrollment.return', $enrollment), [
+                'destination' => 'departmentEvaluation',
+                'returnCategory' => 'curriculumSectionMismatch',
+                'returnNote' => 'Proposed load lists a subject whose prerequisite is not on file.',
+                'expectedCorrection' => 'Re-propose the load without that subject, then sign again.',
             ])
             ->assertSessionHasNoErrors();
 
-        // These three props are what the stepper turns into a red "Returned"
-        // box: the status says a return is open, the reason says why, and the
-        // step list still carries the Department Evaluation box to put it on.
+        // These props are what the stepper turns into a red "Returned" box: the status says a return
+        // is open, the reason says why, and the step list still carries the Department Evaluation box
+        // to put it on.
         $this->actingAs($registrar)
             ->get(route('registrar.show', $enrollment))
             ->assertInertia(fn ($page) => $page
@@ -223,7 +233,10 @@ class WorkflowPhaseIndicatorTest extends TestCase
                 ->where('enrollment.returnReason', 'Proposed load lists a subject whose prerequisite is not on file.')
                 ->where('enrollment.enrollmentworkflow.workflowsteps.0.officeId', 4)
                 ->where('workflowReturnOfficeId', 4)
-            );
+                // …and since §6.4 the notice also names the desk that sent it, which is no longer a
+                // fact the page may infer from its own office number.
+                ->where('openReturn.originOfficeName', 'Registrar')
+                ->where('openReturn.destinationLabel', 'Department Evaluation'));
     }
 
     #[Test]

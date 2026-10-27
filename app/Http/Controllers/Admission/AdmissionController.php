@@ -26,6 +26,8 @@ use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
 use App\Policies\AdmissionPolicy;
 use App\Services\EnrollmentIssuer;
+use App\Services\EnrollmentStateMachine;
+use App\Services\ReturnRecorder;
 use App\Support\CollegeScope;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
@@ -403,6 +405,11 @@ class AdmissionController extends Controller
             // empty, and the desk prints these reasons rather than letting the
             // officer discover them by clicking into a 403.
             'approvalBlockers' => $admissionPolicy->approvalBlockers($admission),
+            // §6.4 (gap G-10): Admission returns the record its approval issued. Its page is about
+            // the application, so the target — the record, the destinations it allows, and whether
+            // this account may return it at all — is resolved server-side here rather than guessed at
+            // by the screen; null means there is nothing for THIS desk to send anywhere.
+            'returnTarget' => ReturnRecorder::admissionTarget($admission, $request->user()),
             // Which acts this record actually allows, asked of the same policy the routes ask. The page used
             // to decide by the submission's own status word, so it offered Verify on a draft — and on an
             // approved case — where verifyRequirements() answers 403: work the save refuses.
@@ -524,6 +531,21 @@ class AdmissionController extends Controller
             $standing = EnrollmentIssuer::seatHolder((int) $admission->studentId, (int) $admission->termId);
 
             if ($standing !== null) {
+                // The desk re-approving an application whose student already holds the seat resumes that
+                // record when — and only when — the seat-holder is sitting in `returnedToAdmission`, the
+                // status G-10's own return act writes for this destination. Nothing else in the
+                // application reaches it: the machine declares `returnedToAdmission => ['pending']` and no
+                // other call site takes that edge, so without this branch a record the Admission desk sent
+                // back can be approved again and still never re-enter the pipeline.
+                if ($standing->enrollmentStatus === EnrollmentStatus::ReturnedToAdmission) {
+                    app(EnrollmentStateMachine::class)->transition(
+                        $standing,
+                        EnrollmentStatus::Pending,
+                        Auth::user(),
+                        'Admission approved again after the record was returned to Admission (prompt §6.4, gap G-10)'
+                    );
+                }
+
                 return $standing;
             }
 

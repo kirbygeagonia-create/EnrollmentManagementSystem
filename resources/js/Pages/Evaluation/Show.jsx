@@ -2,15 +2,24 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, usePage, useForm } from '@inertiajs/react';
 import { PageHeader, Badge, Card, CauseEffectModal, WorkflowStepper, formatStatusLabel, enrollmentStatusTone, formatYearLevel, studentTypeTone } from '@/Components/ui';
 import EnrollmentProfileForm from '@/Components/EnrollmentProfileForm';
+import ReturnRecordModal from '@/Components/ReturnRecordModal';
+import ReturnNotice from '@/Components/ReturnNotice';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 import { calendarYear, formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
 
 
-export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, creditTotals, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {} }) {
+export default function Show({ enrollment, curriculumSubjects, curriculum, unmetPrerequisiteSubjectIds = [], retentionExam = null, passSlipOnFile = false, standingReport = null, creditTotals, religions = [], academicStandings = [], profileGaps = [], signBlockers = {}, can = {}, returnOptions = null, openReturn = null }) {
     const [showConfirmSign, setShowConfirmSign] = useState(false);
+    // §6.4 (gap G-10): this desk both returns records and is returned to, so it carries the same
+    // shared act the Registrar and Admission pages use.
+    const [returnOpen, setReturnOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [profileOpenRequest, setProfileOpenRequest] = useState(0);
+
+    // The status word is read once, in both spellings an Inertia payload arrives with.
+    const statusValue = enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus;
+    const isReturnedHere = statusValue === 'returnedToEvaluation';
 
     // BR32 and concern #14: the form cannot be forwarded while a required
     // demographic field is missing, or while a returning student in a program
@@ -311,25 +320,15 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 </div>
             </div>
 
-            {/* Registrar Return Notice (Item 8) */}
-            {(enrollment.enrollmentStatus === 'returnedToEvaluation' || enrollment.enrollmentStatus?.value === 'returnedToEvaluation') && enrollment.returnReason && (
-                <div className="mb-6 bg-amber-50 border border-amber-300 rounded-2xl p-5 flex items-start gap-3 shadow-xs">
-                    <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 className="font-heading font-bold text-amber-900 text-sm">Returned by the Registrar for Re-Evaluation</h3>
-                        <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                            <span className="font-bold">Reason:</span> {enrollment.returnReason}
-                        </p>
-                        <p className="text-2xs text-amber-700 mt-1.5">
-                            Adjust the subject load below and sign again — the record re-enters Assessment automatically after re-evaluation.
-                        </p>
-                    </div>
-                </div>
-            )}
+            {/* The return this desk is answering (Item 8, and §6.4's one return act). It used to read
+                "Returned by the Registrar" in prose, which was true only while the Registrar was the
+                one desk that could return; the record now names the office that actually sent it, the
+                category, and the correction that office is waiting on. */}
+            <ReturnNotice
+                openReturn={openReturn}
+                fallbackReason={isReturnedHere ? (enrollment.returnReason || null) : null}
+                nextStep="Adjust the subject load below and sign again — the record re-enters Assessment automatically after re-evaluation."
+            />
 
             {/* Student-Type Flow Banner (Item 6) */}
             <div className="mb-6">
@@ -401,7 +400,28 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     subtitle="Every office the record still has to pass, with the signature already on each step"
                     className="mb-8"
                 >
+                    {/* §6.4 (gap G-10): offered only when the server says this desk may return this
+                        record and a destination exists for it — a desk is never invited to click into
+                        a refusal. The page's own `can` map carries record-scoped acts and answers no
+                        return flag, which is why the offer comes from `returnOptions` alone. */}
+                    {(returnOptions?.destinations?.length ?? 0) > 0 && (
+                        <div className="mb-3">
+                            <button
+                                type="button"
+                                onClick={() => setReturnOpen(true)}
+                                className="btn btn-ghost btn-sm"
+                            >
+                                Return this record
+                            </button>
+                        </div>
+                    )}
                     <WorkflowStepper workflow={enrollment.enrollmentworkflow} enrollment={enrollment} />
+                    <ReturnRecordModal
+                        enrollmentId={enrollment.enrollmentId}
+                        options={returnOptions}
+                        open={returnOpen}
+                        onClose={() => setReturnOpen(false)}
+                    />
                 </Card>
             )}
 

@@ -3,6 +3,8 @@ import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, Select, formatYearLevel, registrarGateLabels } from '@/Components/ui';
 import { useState } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
+import ReturnRecordModal from '@/Components/ReturnRecordModal';
+import ReturnNotice from '@/Components/ReturnNotice';
 
 const checklistSteps = Object.entries(registrarGateLabels).map(([key, label]) => ({ key, label }));
 
@@ -170,7 +172,7 @@ function GradeHistory({ enrollment, gradeHistory }) {
     );
 }
 
-export default function Show({ enrollment, checklist, allValid, blockingReasons = {}, standingReport = null, gradeHistory }) {
+export default function Show({ enrollment, checklist, allValid, blockingReasons = {}, standingReport = null, gradeHistory, returnOptions = null, openReturn = null }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [returnOpen, setReturnOpen] = useState(false);
     const [dropOpen, setDropOpen] = useState(false);
@@ -186,11 +188,10 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
         academicStanding: enrollment.academicStanding || standingReport?.derived || '',
     });
 
-    // Item 8: registrar hold — return a paid enrollment to Department
-    // Evaluation with a mandatory reason.
-    const returnForm = useForm({
-        returnReason: '',
-    });
+    // §6.4 (gap G-10): the return act is shared with the other two desks. The modal owns the form and
+    // the server owns the whole decision — who may return this record and what its state allows — so
+    // this page asks nothing of a permission and decides only whether to offer the button at all.
+    const returnDestinations = returnOptions?.destinations || [];
 
     const handleApprove = () => {
         setConfirmOpen(true);
@@ -200,15 +201,6 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
         form.post(route('registrar.approve', { enrollment: enrollment.enrollmentId }), {
             onSuccess: () => setConfirmOpen(false),
             onError: () => setConfirmOpen(false),
-        });
-    };
-
-    const confirmReturn = () => {
-        returnForm.post(route('registrar.return', { enrollment: enrollment.enrollmentId }), {
-            onSuccess: () => {
-                setReturnOpen(false);
-                returnForm.reset();
-            },
         });
     };
 
@@ -236,7 +228,6 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
         : '—';
 
     const isEnrolled = enrollment.enrollmentStatus === 'enrolled' || enrollment.enrollmentStatus?.value === 'enrolled';
-    const isPaid = enrollment.enrollmentStatus === 'paid' || enrollment.enrollmentStatus?.value === 'paid';
     const isReturned = enrollment.enrollmentStatus === 'returnedToEvaluation' || enrollment.enrollmentStatus?.value === 'returnedToEvaluation';
     const statusValue = enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus;
     const isDropped = statusValue === 'dropped';
@@ -267,15 +258,15 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
         >
             <Head title={`Registrar — ${studentName}`} />
 
-            {/* Item 8: the hold must be visible on the Registrar's own page,
-                not just in the queue badge and the evaluator's banner. */}
-            {isReturned && (
-                <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    <span className="font-bold">Returned by the Registrar for Re-Evaluation.</span>{' '}
-                    {enrollment.returnReason || 'No reason recorded.'} The evaluator adjusts the load and resubmits —
-                    approval unlocks once the evaluation is back to Evaluated.
-                </div>
-            )}
+            {/* Item 8: the hold must be visible on the Registrar's own page, not just in the queue
+                badge and the evaluator's banner — and since one return act is held by three desks
+                (§6.4, gap G-10), who sent it and what they asked for are read from the trail row
+                instead of named from this desk's own guess. */}
+            <ReturnNotice
+                openReturn={openReturn}
+                fallbackReason={isReturned ? (enrollment.returnReason || 'No reason recorded.') : null}
+                nextStep="The record re-enters the pipeline through a fresh evaluation sign-off; approval unlocks once it is back to Evaluated."
+            />
 
             {/* Quick Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -473,17 +464,16 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                         </svg>
                                         {form.processing ? 'Finalizing Enrollment...' : 'Official Registrar Approval & Certification'}
                                     </button>
-                                    {isPaid && (
+                                    {returnDestinations.length > 0 && (
                                         <button
                                             type="button"
                                             onClick={() => setReturnOpen(true)}
-                                            disabled={returnForm.processing}
                                             className="w-full mt-2.5 py-3 px-4 rounded-xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-heading font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                             </svg>
-                                            Return to Department Evaluation
+                                            Return this record
                                         </button>
                                     )}
                                     {droppable && (
@@ -512,6 +502,19 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                                             className="ml-2 py-1 px-2.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 font-bold text-3xs uppercase tracking-wide transition-colors"
                                         >
                                             Drop
+                                        </button>
+                                    )}
+                                    {/* An approved record is still returnable: ruling 14's hold and
+                                        §6.4's one return act both reach past the Registrar's own
+                                        signature, so the desk that approved it is the desk that can
+                                        send it back — the act would be unreachable here otherwise. */}
+                                    {returnDestinations.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReturnOpen(true)}
+                                            className="ml-2 py-1 px-2.5 rounded-lg border border-amber-300 bg-white text-amber-700 hover:bg-amber-50 font-bold text-3xs uppercase tracking-wide transition-colors"
+                                        >
+                                            Return
                                         </button>
                                     )}
                                 </div>
@@ -692,62 +695,15 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                 loading={form.processing}
             />
 
-            {/* Return to Department Evaluation — Required Reason Modal (Item 8).
-                Shared Modal: Escape, click-outside, and focus trap for free. */}
-            <Modal
-                show={returnOpen}
-                onClose={() => {
-                    setReturnOpen(false);
-                    returnForm.reset();
-                }}
-                title="Return to Department Evaluation"
-                subtitle={`${studentName} re-enters the Department Evaluation queue for correction`}
-                size="sm"
-                footer={
-                    <div className="flex items-center justify-end gap-2.5">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setReturnOpen(false);
-                                returnForm.reset();
-                            }}
-                            className="btn btn-ghost btn-sm"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={confirmReturn}
-                            disabled={returnForm.processing || returnForm.data.returnReason.trim().length < 10}
-                            title={returnForm.data.returnReason.trim().length < 10 ? 'Return reason must be at least 10 characters' : undefined}
-                            className="btn btn-primary btn-sm disabled:opacity-50"
-                        >
-                            {returnForm.processing ? 'Returning…' : 'Confirm Return'}
-                        </button>
-                    </div>
-                }
-            >
-                <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Return Reason <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        rows={3}
-                        value={returnForm.data.returnReason}
-                        onChange={(e) => returnForm.setData('returnReason', e.target.value)}
-                        placeholder="e.g., Subject load conflicts with the student's advising plan — re-evaluate units."
-                        className="w-full text-sm rounded-xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
-                    />
-                    {returnForm.errors.returnReason && (
-                        <p className="form-error mt-1">{returnForm.errors.returnReason}</p>
-                    )}
-                    {returnForm.data.returnReason.trim().length > 0 && returnForm.data.returnReason.trim().length < 10 && (
-                        <p className="text-xs text-slate-500 mt-1">
-                            Minimum 10 characters — {10 - returnForm.data.returnReason.trim().length} more needed.
-                        </p>
-                    )}
-                </div>
-            </Modal>
+            {/* §6.4 (gap G-10): the shared return modal — one act, one set of fields, at every desk
+                that holds the right. Its choices come from the server, so a destination the save would
+                refuse is never offered here. */}
+            <ReturnRecordModal
+                enrollmentId={enrollment.enrollmentId}
+                options={returnOptions}
+                open={returnOpen}
+                onClose={() => setReturnOpen(false)}
+            />
             {/* Drop Enrollment — Required Reason Modal (ruling 17).
                 The reason is mandatory on the server too; this only stops an
                 obviously empty one from reaching it. */}

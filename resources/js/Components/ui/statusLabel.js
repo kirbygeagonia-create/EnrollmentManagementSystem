@@ -16,6 +16,11 @@ export const enrollmentStatusTone = {
     assessed: 'assessed',
     paid: 'paid',
     returnedToEvaluation: 'warning',
+    // §6.4 (gap G-10): a record parked at Admission is on hold in the same way, but it is not the
+    // department's hold — a queue that painted both with the same word would tell a desk to expect a
+    // re-evaluation that is not what owes the paper. `formatStatusLabel` already spells it
+    // "Returned To Admission" from the camel-case value, so only the tone is decided here.
+    returnedToAdmission: 'warning',
     enrolled: 'enrolled',
     dropped: 'dropped',
 };

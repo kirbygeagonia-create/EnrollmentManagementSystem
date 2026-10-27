@@ -128,7 +128,24 @@ function valueOf(string $t, array $words): ?int
         return (int) $digits;
     }
 
-    return $words[$t] ?? null;
+    if (isset($words[$t])) {
+        return $words[$t];
+    }
+
+    // A spelled figure the enumeration has never seen is DERIVED, not reported unread. The list above is
+    // only the irregulars; when §30.1's title was re-worded from "sixty-three" to "sixty-four" the map had
+    // no entry, the claim went UNBOUND, and an unread sentence looked like a checker with nothing to say —
+    // lane 61's lesson that a rewritten anchor unschedules a claim, arrived at from the parser side.
+    if (preg_match('/^(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:-(one|two|three|four|five|six|seven|eight|nine))?$/u', $t, $q) === 1) {
+        $tens = ['twenty' => 20, 'thirty' => 30, 'forty' => 40, 'fifty' => 50, 'sixty' => 60, 'seventy' => 70, 'eighty' => 80, 'ninety' => 90];
+        $units = ['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5, 'six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9];
+
+        $unit = $q[2] ?? '';
+
+        return $tens[$q[1]] + ($unit === '' ? 0 : ($units[$unit] ?? 0));
+    }
+
+    return null;
 }
 
 function dig(array $R, string $path): ?int
@@ -205,7 +222,10 @@ $CLAIMS = [
         're' => '/the table is populated — (\d[\d,]*) rows, one of them the name/s',
         'paths' => ['rows.settingsRows']],
     ['doc' => $DOCX, 'cls' => 'schema', 'id' => 's301-title',
-        're' => '/(Fifty-five), and the (sixty-three) tables in the database/i',
+        // Any spelled fifty-something and sixty-something, so a re-worded title stays JUDGED. The old
+        // pattern hard-coded the two words of one day's wording and went UNBOUND the moment pass 259
+        // re-spelled them.
+        're' => '/\b(fifty-[a-z]+|fifty), and the (sixty-[a-z]+|sixty) tables in the database/i',
         'paths' => ['domainTables', 'tables']],
     // The §1.1 row for 2026-10-21 restates the census inside a revision record. A revision row whose first cell is
     // a bare date is that day's record, but this one reads "(this issue)", so its figures are living claims and

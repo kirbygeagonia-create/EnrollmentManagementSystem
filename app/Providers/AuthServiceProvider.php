@@ -40,6 +40,7 @@ use App\Policies\AssessmentPolicy;
 use App\Policies\BlockingPolicy;
 use App\Policies\ClearancePolicy;
 use App\Policies\ClinicPolicy;
+use App\Policies\EnrollmentReturnPolicy;
 use App\Policies\EvaluationPolicy;
 use App\Policies\ExamPolicy;
 use App\Policies\IDPolicy;
@@ -117,6 +118,13 @@ class AuthServiceProvider extends ServiceProvider
         });
         Gate::define('registrar.drop', function ($user, $enrollment) {
             return app(RegistrarPolicy::class)->drop($user, $enrollment);
+        });
+        // The return act (development prompt §6.4, gap G-10) is named `enrollment.returnRecord`,
+        // not `enrollment.return`: the latter is the permission, and Spatie's Gate::before would
+        // answer from the permission alone (see clinic.recordAssessment above), skipping the
+        // college boundary in the policy body.
+        Gate::define('enrollment.returnRecord', function ($user, $enrollment) {
+            return app(EnrollmentReturnPolicy::class)->returnRecord($user, $enrollment);
         });
         Gate::define('blocking.manageBlocks', function ($user) {
             return app(BlockingPolicy::class)->manageBlocks($user);

@@ -202,7 +202,7 @@ class ImportStudents extends Command
 
             $rows[] = $row;
 
-            if ($max !== null && count($rows) > $max + 1) {
+            if ($max !== null && count($rows) >= $max + 1) {
                 break;
             }
         }

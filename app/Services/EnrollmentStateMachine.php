@@ -19,24 +19,32 @@ class EnrollmentStateMachine
      * Key = current status, value = allowed next statuses.
      */
     private const TRANSITIONS = [
-        'pending' => ['evaluated'],
-        'evaluated' => ['assessed'],
+        // A return is legal from every state a record can be answerable for (development prompt
+        // §6.4, gap G-10): one `enrollment.return` right stands in front of every desk, and the
+        // current state decides what re-opens — a box on this record's workflow form, or the
+        // application that issued it. No return ever moves a record forward.
+        'pending' => ['evaluated', 'returnedToEvaluation', 'returnedToAdmission'],
+        'evaluated' => ['assessed', 'returnedToEvaluation', 'returnedToAdmission'],
         // Ruling 17: the Registrar can drop a record from the point it is answerable
         // for — the assessed load, the paid one, and the enrolled one. Each of those
         // has signatures behind it, which is exactly why the act needs a reason and
         // this desk rather than the one that signed.
-        'assessed' => ['paid', 'dropped'],
+        'assessed' => ['paid', 'dropped', 'returnedToEvaluation', 'returnedToAdmission'],
         // Registrar hold (item 8): a paid enrollment can be returned to
         // Department Evaluation with a required reason, and re-enters the
         // pipeline through a fresh evaluation sign-off.
-        'paid' => ['enrolled', 'assessed', 'returnedToEvaluation', 'dropped'],
-        'returnedToEvaluation' => ['evaluated'],
+        'paid' => ['enrolled', 'assessed', 'returnedToEvaluation', 'returnedToAdmission', 'dropped'],
+        // A record already at one desk can be sent on to the other: the department that re-evaluates
+        // a load may find the paper itself is what is wrong.
+        'returnedToEvaluation' => ['evaluated', 'returnedToAdmission'],
+        // Admission corrects the application, and the record resumes where it was issued.
+        'returnedToAdmission' => ['pending'],
         // Rulings 14 and 15 reach past the Registrar's own signature: a refunded receipt or
         // a withdrawn grant can leave an approved enrollment owing again, and a record that
         // owes has to sit where Accounting can see it — `assessed`. Signatures already given
         // are history and are not un-signed by the reversal, the same rule the payment void
         // follows, so an undo never erases who did what.
-        'enrolled' => ['dropped', 'assessed'],
+        'enrolled' => ['dropped', 'assessed', 'returnedToEvaluation', 'returnedToAdmission'],
         // A drop is terminal. The student re-enrolls — a new record in the same term,
         // whose seat this one released — rather than this row being un-dropped.
         'dropped' => [],

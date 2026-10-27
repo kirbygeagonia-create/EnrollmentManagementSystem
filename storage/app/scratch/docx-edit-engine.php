@@ -395,7 +395,8 @@ function docxApply(string $src, string $tmpBackup, array $textEdits, array $cell
     }
     echo 'guard  containers unmoved except the '.($expectedParaDelta * 2)." inserted paragraph tags\n";
 
-    foreach ([['<w:r ', '<w:r>', '</w:r>'], ['<w:t ', '<w:t>', '</w:t>'], ['<w:p ', '<w:p>', '</w:p>']] as [$o1, $o2, $c]) {
+    foreach ([['<w:r ', '<w:r>', '</w:r>'], ['<w:t ', '<w:t>', '</w:t>'], ['<w:p ', '<w:p>', '</w:p>'],
+        ['<w:tc ', '<w:tc>', '</w:tc>'], ['<w:tr ', '<w:tr>', '</w:tr>'], ['<w:tbl ', '<w:tbl>', '</w:tbl>']] as [$o1, $o2, $c]) {
         $open = preg_match_all('/'.preg_quote($o1, '/').'/', $xml) + preg_match_all('/'.preg_quote($o2, '/').'/', $xml);
         $close = preg_match_all('/'.preg_quote($c, '/').'/', $xml);
         if ($open !== $close) {
@@ -405,6 +406,10 @@ function docxApply(string $src, string $tmpBackup, array $textEdits, array $cell
     }
     echo "guard  run, text and paragraph tags balance\n";
 
+    // This refused a write on 2026-10-27 and `LIBXML_PARSEHUGE` was tried, then reverted: it changed
+    // nothing. `pass254-backup` parses at 6,067,394 bytes and the working file fails at 6,067,387 — one
+    // `</w:tc>` short, at byte 1,442,319, which `lane79-probe-table-depth.php` names. The guard is the
+    // instrument that worked; Word opening the file is the artefact hiding the defect.
     if (simplexml_load_string($xml) === false) {
         fwrite(STDERR, "REFUSED WRITE: document.xml no longer parses\n");
         exit(1);

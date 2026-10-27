@@ -31,10 +31,23 @@ final class WorkflowInbox
         'assessed' => OfficeId::Accounting,
         'paid' => OfficeId::Registrar,
         'enrolled' => OfficeId::Blocking,
-        'returnedToEvaluation' => OfficeId::Guidance,
-        // A drop has no next desk, but it does have a custodian: the Registrar
+        // The two return states are deliberately NOT here: `RETURNED_HANDOFF` below is the one place
+        // that answers them, and a second map naming the same desks is how two answers to "whose turn
+        // is it" get written. A drop has no next desk, but it does have a custodian: the Registrar
         // keeps the record.
         'dropped' => OfficeId::Registrar,
+    ];
+
+    /**
+     * The two states that mean "a desk sent this record back", and the desk that owes the answer.
+     *
+     * Not the same question as `STATUS_HANDOFF`, which is where the record goes *onward* to: a return
+     * is read from its destination because the boxes are re-opened after the event fires, so the form
+     * still shows the pre-return shape while the notice is being addressed.
+     */
+    private const RETURNED_HANDOFF = [
+        'returnedToEvaluation' => OfficeId::Guidance,
+        'returnedToAdmission' => OfficeId::Admission,
     ];
 
     /**
@@ -61,6 +74,19 @@ final class WorkflowInbox
      */
     public static function nextOffice(?Enrollmentworkflow $workflow, ?string $status = null): ?int
     {
+        // A returned record is answered by its destination, not by the box list. Both listeners run
+        // inside the act's own transaction, and `ReturnRecorder` re-opens the boxes only *after* the
+        // status transition fires the event — so at that moment the destination's box still reads
+        // `completed` and the first pending box is the desk that would have been next had the record
+        // moved FORWARD. Measured: a return to Department Evaluation addressed office 3, which on the
+        // demo dataset holds no active account, so the record came back and rang nobody. The two
+        // return states are the only ones whose notice must beat the boxes.
+        $returned = self::RETURNED_HANDOFF[$status] ?? null;
+
+        if ($returned !== null) {
+            return $returned->value;
+        }
+
         $box = self::nextBox($workflow);
 
         if ($box) {
