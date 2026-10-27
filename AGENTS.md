@@ -1486,6 +1486,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   step runs *before* the seeders and every rolled-back test insert still spends its id. When a rehearsal is
   meant to prove a path CI will take, reproduce CI's order (suite → migrate → seed → the thing under test) —
   MySQL 8 will not show a spent counter on an empty table, so bumping `AUTO_INCREMENT` is not a substitute.
+  **The same assumption in a test fixture is invisible locally and red on CI.** `TimetableImportTest` asserted
+  literal subject and room ids; on SQLite a rolled-back transaction rewinds the counter so those numbers were
+  right, and on CI's MySQL job they had been spent, so one case that exists to prove a room collision answered
+  "no conflict" — it was addressing a room nothing was booked in. A test that passes against a fixture id
+  rather than the id the fixture created is true for the wrong reason. Resolve every such id from the model you
+  just created, and to see the shape, run that one file against a scratch MySQL schema once: the spending
+  happens *inside* a single run, as each test's rolled-back transaction leaves its ids behind, so the first
+  MySQL run on a brand-new schema already failed three cases while every one of them is green on SQLite, where
+  the rollback does rewind.
 - Nothing *analyses* `tools/`: `phpstan.neon` covers `app` only and `pint.json` excludes `tools`, so a defect
   there is invisible to the static gates — those files are proven by running them and reading their output.
   Since 2026-10-16 `tools/seed_full_demo_pipeline.php` is also *executed* by CI (the MySQL job's step between
