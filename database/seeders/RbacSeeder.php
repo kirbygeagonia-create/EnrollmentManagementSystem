@@ -100,12 +100,19 @@ class RbacSeeder extends Seeder
                 'shift.grant',
             ],
 
-            // Exam module (4). exam.verify.general was retired 2026-10-08: the only
+            // Exam module (5). exam.verify.general was retired 2026-10-08: the only
             // reader was ExamPolicy::verifyGeneralExam, which nothing ever called, so
             // the right granted a check no route performed — the Stage 1 prerequisite
             // is enforced once, in ExamController::recordCourseSpecific.
+            //
+            // `exam.verify` is a different thing and shares only a prefix with that
+            // retired key: it is the Registrar's confirmation of a recorded result
+            // (§7.2, ruled 2026-10-26), and `ExamPolicy::verify` is called by the route
+            // that performs the act. A view right is listed with it on purpose — the
+            // confirmation is refused to a desk that cannot read the rows it confirms.
             'exam' => [
                 'exam.view',
+                'exam.verify',
                 'exam.record.general',
                 'exam.record.courseSpecific',
                 'exam.record.retention',
@@ -375,6 +382,14 @@ class RbacSeeder extends Seeder
             // answers for it — and OfficeHead is deliberately not in this list.
             'enrollment.drop',
             'clearance.view', 'payment.view', 'evaluation.view', 'assessment.view', 'user.view',
+            // §7.2, ruled 2026-10-26: the Registrar confirms a recorded examination result
+            // official, so the desk that signs it is also the desk that reads it. `exam.view`
+            // is granted here only because a confirmation refused to a desk that cannot see
+            // the rows is the "#47 dead right" defect wearing a different name. `OfficeHead`
+            // deliberately stays out — recording is Guidance/department-only and this is a
+            // named officer's signature, not any head's, on the same reasoning as
+            // `enrollment.drop` above.
+            'exam.view', 'exam.verify',
             'students.view',
             // The Registrar finalizes academic standing, so the grade scale those
             // standings are derived against is maintained here rather than by a

@@ -10,6 +10,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Enums\InstitutionType;
 use App\Enums\OfficeId;
@@ -236,8 +237,15 @@ class EvaluationController extends Controller
             'creditTotals' => $this->creditTotals($enrollment),
             'retentionExam' => $retentionResult ? [
                 'examId' => $retentionResult->examId,
-                'examResult' => $retentionResult->examResult->value,
+                'examResult' => $retentionResult->examResult?->value,
                 'examDate' => $retentionResult->examDate,
+                // §7.2: forwarding is refused on an unadopted row, so the panel that reads
+                // that refusal has to say which state the row is in. `examResult` is answered
+                // null-safely for the same reason: a paper nobody marked is a legal row, and
+                // this page used to fatal on it while trying to name the mark.
+                'resultStatus' => $retentionResult->resultStatus->value,
+                'verifiedDate' => $retentionResult->verifiedDate,
+                'verifiedByName' => $retentionResult->verifiedByUser?->name,
             ] : null,
             'can' => [
                 'recordRetention' => $request->user()->can('recordRetention', $enrollment),
@@ -976,8 +984,15 @@ class EvaluationController extends Controller
             return 'No retention examination recorded for this term — a returning student in a program that examines retention must pass it before the form is forwarded.';
         }
 
+        // §7.2, ruled 2026-10-26: the gate asks the confirmed result. A row the Registrar has
+        // not adopted is stated as its own condition, because the act that clears it is a
+        // signature at the Registrar's desk and not another examination.
+        if (! $retention->isOfficial()) {
+            return 'The retention examination on file is provisional; the Registrar has not confirmed it official, and this desk may not forward a form on an unadopted result.';
+        }
+
         if ($retention->examResult !== ExamResult::Pass) {
-            return 'The retention examination on file reads '.$retention->examResult->value.', not pass.';
+            return 'The retention examination on file reads '.$retention->examResult?->value.', not pass.';
         }
 
         return null;
@@ -1173,6 +1188,12 @@ class EvaluationController extends Controller
         $retention->examType = ExamType::CourseSpecific;
         $retention->examResult = $validated['examResult'];
         $retention->examDate = $validated['examDate'];
+        // §7.2: the department's mark is provisional until the Registrar adopts it, and a
+        // re-recorded row loses the signature that covered the figure before it — the same
+        // rule the two entrance paths follow.
+        $retention->resultStatus = ExamStatus::Provisional;
+        $retention->verifiedBy = null;
+        $retention->verifiedDate = null;
         $retention->save();
 
         return redirect()->route('evaluation.show', $enrollment->enrollmentId)

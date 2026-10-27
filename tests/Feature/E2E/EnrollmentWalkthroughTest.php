@@ -4,6 +4,7 @@ namespace Tests\Feature\E2E;
 
 use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
+use App\Enums\ExamStatus;
 use App\Enums\WorkflowStatus;
 use App\Models\Admissions;
 use App\Models\Clearanceperiods;
@@ -12,6 +13,7 @@ use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
+use App\Models\Examresults;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Studentrequirementsubmissions;
@@ -129,6 +131,26 @@ class EnrollmentWalkthroughTest extends TestCase
         // The trait's transaction began on the ORIGINAL default connection;
         // re-begin it on the real MySQL connection so tests roll back cleanly.
         $this->beginDatabaseTransaction();
+    }
+
+    /**
+     * §7.2, ruled 2026-10-26: the Registrar confirms a recorded result official, and until
+     * that act the score decides nothing. Each walkthrough performs it the way the desk does —
+     * a PUT as office 1's RegistrarApprover — so the legs demonstrate the confirmation instead
+     * of assuming it. Only rows still provisional are sent, which makes the helper safe to
+     * call after every stage.
+     */
+    private function confirmResultsFor(int $studentId): void
+    {
+        $registrar = $this->staffForOffice(1, 'RegistrarApprover');
+
+        Examresults::where('studentId', $studentId)
+            ->where('resultStatus', ExamStatus::Provisional->value)
+            ->get()
+            ->each(fn (Examresults $row) => $this->actingAs($registrar)
+                ->put(route('exam.verify', $row))
+                ->assertRedirect()
+                ->assertSessionHasNoErrors());
     }
 
     /**
@@ -605,6 +627,11 @@ class EnrollmentWalkthroughTest extends TestCase
             ->assertRedirect(route('exam.index'))
             ->assertSessionHasNoErrors();
 
+        // §7.2: the Registrar adopts Stage 1 before the department may score against it —
+        // the prerequisite asks the confirmed pass, so the confirmation sits between the two
+        // stages, not after them.
+        $this->confirmResultsFor($admission->studentId);
+
         // Stage 2: Course-specific entrance exam (owning department = office 7
         // per the OfficeId enum, carrying DeptEvaluator). The department records
         // its result and stops — deciding the application is the Admission office's
@@ -623,6 +650,11 @@ class EnrollmentWalkthroughTest extends TestCase
         $admission->refresh();
         $this->assertEquals('pending', $admission->admissionStatus->value, 'An exam result must not decide the application');
         $this->assertSame(0, Enrollments::where('admissionId', $admission->admissionId)->count(), 'No enrollment before the Admission office acts');
+
+        // §7.2: the Registrar adopts both papers before the application can be approved.
+        // Skipping this is the state the walk used to be in — a score counted the moment it
+        // was typed — so the leg performs the act rather than pre-setting the column.
+        $this->confirmResultsFor($admission->studentId);
 
         // --- Admission approval (office 6), the only path that opens the pipeline ---
         $this->actingAs($this->staffForOffice(6, 'AdmissionOfficer'))
@@ -753,7 +785,13 @@ class EnrollmentWalkthroughTest extends TestCase
             'courseId' => 5,
             'examStage' => 'retention',
             'examResult' => 'pass',
+            // The department's own mark arrives provisional (§7.2).
+            'resultStatus' => ExamStatus::Provisional->value,
         ]);
+
+        // ...and the Registrar adopts it, or the Evaluation signature this walk needs next
+        // is refused for a reason that has nothing to do with the grades on file.
+        $this->confirmResultsFor($student->studentId);
 
         // --- Clearance (mandatory for continuing) ---
         $period = Clearanceperiods::where('periodStatus', 'open')->first();

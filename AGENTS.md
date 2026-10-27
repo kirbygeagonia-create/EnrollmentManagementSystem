@@ -69,7 +69,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   mutation leaves the dump byte-identical, which is proved by running a variant whose anchor cannot match.
 - **After any batch that adds a table with foreign keys, or touches a delete path**, run
   `php storage/app/scratch/lane43-delete-guards.php` and prove it with
-  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 101 foreign keys: only four
+  `php storage/app/scratch/mutate-lane43-delete-guards.php`. Live `ems` carries 102 foreign keys: only four
   cascade (the RBAC pivots `RbacSeeder`'s prune relies on), one is RESTRICT (`shiftingrequests.requestedBy`),
   and 70 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
   — `blockedDeletionMessage()`, a `->exists()` chain, a private helper, or a relation check — and a list that omits
@@ -1296,6 +1296,52 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   text is already in the file" to "the needle and its replacement are the same text", because a **shrink** mutation
   (dropping three names from a `$fillable`) necessarily leaves a remainder that already occurs — the byte-hash
   after writing is the precise falsification.
+- **An examination result is the recording office's claim until the Registrar adopts it** (lane 77, prompt §7.2).
+  Ruled by the owner 2026-10-26: the desk that marks a paper does not make it official. `examresults` therefore grew
+  `resultStatus` (`provisional | official`, defaulting to `provisional`, because that is what a counter entry *is*),
+  `verifiedBy` (FK to `staffusers`, `SET NULL`) and `verifiedDate` (written with `SchoolTime::today()`, never `now()`).
+  Four rules came out of building it. *The adoption is a separate column from the mark*: `examResult` is already
+  nullable, and "nobody scored this paper" and "somebody scored it and the Registrar has not adopted the score" are
+  two states a desk must be able to tell apart — so a confirmation is never inferred from a non-null mark. *One
+  definition of "official"*: `Examresults::isOfficial()`, a method and not a query scope, because every reader holds
+  the loaded row — the two Admission approval blockers, the Evaluation retention blocker, the departmental-exam
+  prerequisite, and the three screens that paint the state. *A signature may not survive the result it was given*:
+  re-recording a mark resets the row to `provisional` and clears `verifiedBy` and `verifiedDate` in the same write,
+  and confirming refuses an unmarked paper because there is nothing yet to adopt. *A new right must be reachable*:
+  `exam.verify` was added to the Exam module (4 permissions → 5, the catalogue 93 → 94) and seated with
+  `RegistrarApprover`, which also needed `exam.view` — a confirming right on a screen the account cannot open is the
+  retired `exam.verify.general` defect reborn, and `PermissionMatrixTest` now mutates the route both ways.
+  The migration **backfills the rows already on file to `official` with `verifiedBy` left null**, which is a decision
+  about what null means: the papers were recorded before the column existed, so the null verifier marks the backfill
+  and the Exam screen says "adopted before this desk signed each row" rather than naming a person who never acted.
+  Without that, an applicant already approved would wake up unexamined, and approval is refused on a provisional
+  result. The demo generator writes the confirmation itself — `resultStatus` official and the Registrar desk signer
+  from `desk_signer_for()`, only when a retention seat exists — because the departmental prerequisite now asks the
+  *confirmed* pass, and in the E2E walkthrough the confirmation therefore sits **between** the two exam stages, not
+  after them. The instruments: `php artisan test tests/Feature/Exam/ExamResultVerificationTest.php` (13 cases) and
+  `php storage/app/scratch/mutate-g4-exam-verification-tests.php` (17 legs over seven files). Two defects came out of
+  that harness and both are this file's own classes. **A mutant that cannot fail sleeps**: the page-tile leg first
+  planted `->limit(20)` on a `SELECT count(*)`, which is a SQL no-op — the bytes changed, the verdict did not — and had
+  to be re-planted as `->forPage(2, 20)` before it proved anything, so byte-identity is necessary and not sufficient.
+  **And a pipe swallows the exit code you are watching**: the first harness run was read through `tail`, so 23 failed
+  legs reported status 0 and the shell claimed the run clean (the third time in this project). Three smaller readings:
+  the compact `StatCard` has no `title` in its signature, so a `title` written on one is an attribute the component
+  never reads; `Staffusers` displays `name`, not `fullName`; and `assertSessionHasNoErrors()` cannot tell a policy 403
+  from a green save, so the "the scoring desk may not confirm" case asserts `assertForbidden()`. **The whole-suite
+  run caught a seventh fixture the narrow ones could not**: `HiddenBugsRemediationTest::fix1` sits at `tests/Feature/`
+  root, creates an `Examresults` row with no `resultStatus` (so the schema hands it `provisional`) and asserts the
+  policy approves — which is precisely what the new blocker now refuses. The repair was the fixture's state, not the
+  gate's rule, exactly as with the other six. Two lessons in one failure: a batch that adds a gate must grep every
+  `Model::create` of that table across the *whole* `tests/` tree, not only the files it edited; and editing a test
+  file while a run is in flight voids that run's verdict, so the run must be restarted rather than patched mid-air. **Which version a
+  citation is keyed to cannot be measured by comparing HEAD's bytes with the working bytes at the same numbers** —
+  that pair differs for *every* window in any file the batch edited, shifted or not, so it answers nothing. The only
+  discriminator is the one lane 70 costs a session to learn: print the WORKING span and read it against the claim in
+  the document's own sentence. Doing that for G-4's seventeen `ExamController.php` windows showed fifteen already
+  carried their claim (the shift had run), and two that never had: §1.1's example pointer cited `:308` for "the
+  Course-Specific examination refusal" while that line sits inside `entranceApplicants()`, and §26's repeat-proofing
+  row cited `:242` — `AdmissionStatus::Approved->value,` in the transferee filter — for a promise the `firstOrNew`
+  upsert keeps. Pass 252e re-pointed both, each asserted against the line it now names before the write.
 - **A moved file's citations are shifted by bytes or not at all** (lane 76). G-3 grew
   `EvaluationController.php` by 102 lines and `routes/web.php` by 5, and the shift tool rewrote **79** citation
   tokens in the authority docx — 60 in the controller, 18 in the routes, 1 in the Evaluation panel; a fourth run,
@@ -1515,7 +1561,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **The same shape lives in a register row, and the file being right is what hides it** (passes 208/208b). Two
   rows cited ranges inside the very file their own sentence names, and every instrument cleared both: the
   elective-band row quoted the standing-override message for the rule that refuses a proposal outside the min–max
-  band (that check is `EvaluationController.php:603-617`, not the two blocks above it), and the staff row quoted
+  band (that check is `EvaluationController.php:664-670`, not the two blocks above it), and the staff row quoted
   the curriculum block for the seeding of `staff8` and the office heads (that is
   `DevReferenceDataSeeder.php:782-827`). A bounds sweep asks only whether the lines exist; the meaning sweep needs
   the prose to name a *method*. So the rule when draining a pointer queue is to read the cited span's own text
@@ -1743,10 +1789,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `storage/app/scratch/lane70-queue-reads.json` records the rows this lane has opened, keyed by
   `lane70-anchor-cites.php`'s OWN identity — the file its sentence names, the range, and a hash of the sentence; never
   a dump line, because one inserted paragraph above would age every later record to make one unrelated edit. The
-  checker prints `queue reads on record: 107 of 107 UNBOUND row(s) carry a recorded read; 0 record(s) match no current
+  checker printed `queue reads on record: 107 of 107 UNBOUND row(s) carry a recorded read; 0 record(s) match no current
   row` with `104 record(s) answer 104 distinct key(s); 3 key(s) carry more than one row` beneath it — one sentence
   written in two places in the document is ONE read covering TWO rows — and every row of the queue has been opened
-  once (every record names its own evidence). A record whose key has
+  once (every record names its own evidence). **Re-run on 2026-10-27, after docx passes 252 and 252e lengthened
+  sentences and inserted register rows, the same line answers 38 of 106 rows recorded with 69 records matching no
+  current row** — the third way a key disappears, met again and at scale, because the hash covers the sentence and the
+  sentences moved. So that queue is NOT fully read today, and the owed work is to open every STALE row again and then
+  regenerate with `lane70-make-reads.php` — never re-key by hand, and never quote 107-of-107 as though it were the
+  instrument's permanent verdict rather than one day's reading. A record whose key has
   gone is printed as **STALE**, not dropped: the two ways a key disappears are "a pass fixed the row" and "a pass
   re-pointed the pointer", and the second means the saved verdict says nothing about the new citation. **A third way
   was measured on 2026-10-26, and it is neither: the pointer and the file both stayed put and the sentence around them
@@ -2223,8 +2274,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `tools/seed_full_demo_pipeline.php:1686-1693`): the guard asks only whether the student still holds a record on that
   term, and a dropped one holds nothing, so the retirement looked like a missing year to be refilled, and
   `$completeWorkflow()` signed every box on the way. (Re-measured 2026-10-20, by reading rather than arithmetic: the
-  seat guard is `tools/seed_full_demo_pipeline.php:1691-1693` and the record that guard seats is created at
-  `tools/seed_full_demo_pipeline.php:1716-1729`. The pair the 2026-10-16 pass wrote — `:1765` and `:1771` — had
+  seat guard is `tools/seed_full_demo_pipeline.php:1692-1694` and the record that guard seats is created at
+  `tools/seed_full_demo_pipeline.php:1717-1730`. The pair the 2026-10-16 pass wrote — `:1765` and `:1771` — had
   drifted onto two comment lines beside that block, and the pair before it (`:1730`, `:1736`) landed on a blank line
   and on a `->first();` belonging to the term lookup two steps earlier; the older `:1607` sits in the
   clearance-slip seating block, which is
@@ -2274,6 +2325,13 @@ before believing a clean verdict from any checker, feed it a mutant and watch it
 then prove the file still opens — `docx-ooxml-check.php`, `verify-docx.php`, and
 `word-open-copy-test.ps1`, which opens a hash-identical copy in real Word and quits only the
 Word instance it started.
+
+**`docxApply()` opens the archive itself, so a pass that rewrites the document before calling it has written
+nothing.** Pass 252 read `word/document.xml` into `$xml`, moved one §24 heading in memory, then handed the file to
+the engine — which re-read the bytes from disk and applied its own edits over the *unmoved* heading. The pass
+reported 18 targets resolved uniquely and its heading change was discarded silently, because the engine's guards all
+balance over the document it actually wrote. Take every change through the engine's own edit arrays, or through a
+second pass; never through a local `$xml` the engine will overwrite.
 
 Run **Pint before writing the citations**, not after. On 2026-10-17 a pass re-pointed five
 `IDController.php` ranges onto the line numbers read off the edited file; Pint then added one

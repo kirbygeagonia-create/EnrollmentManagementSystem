@@ -5,6 +5,7 @@ namespace Tests\Feature\Admission;
 use App\Enums\EnrollmentStatus;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Enums\StudentType;
 use App\Enums\UnitType;
@@ -179,7 +180,13 @@ class ApprovalReadinessTest extends TestCase
         ]);
     }
 
-    private function generalExam(Students $student, string $result): void
+    /**
+     * §7.2, ruled 2026-10-26: the recording desk's row is provisional and the Registrar's
+     * confirmation adopts it. The fixture writes the adopted state by default, because most
+     * cases here ask what a pass the school stands behind does; a case that asks about the
+     * confirmation itself passes `official: false`.
+     */
+    private function generalExam(Students $student, string $result, bool $official = true): void
     {
         Examresults::create([
             'studentId' => $student->studentId,
@@ -189,6 +196,7 @@ class ApprovalReadinessTest extends TestCase
             'examType' => ExamType::General,
             'examResult' => ExamResult::from($result),
             'examDate' => now(),
+            'resultStatus' => ($official ? ExamStatus::Official : ExamStatus::Provisional)->value,
         ]);
     }
 
@@ -241,6 +249,85 @@ class ApprovalReadinessTest extends TestCase
             ->get(route('admission.show', $admission))
             ->assertInertia(fn ($page) => $page
                 ->where('approvalBlockers.0', 'The General Entrance Exam result on file is fail, not pass.')
+            );
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+    }
+
+    /**
+     * §7.2, ruled 2026-10-26: the scoring desk's entry is not the school's answer until the
+     * Registrar confirms it. The same row is written in both halves of this case and only
+     * `resultStatus` differs — a gate that ignored the status would approve on the first read,
+     * and a gate that treated a provisional row as absent would name the wrong desk.
+     */
+    #[Test]
+    public function a_pass_the_registrar_has_not_confirmed_blocks_approval_and_names_that_desk(): void
+    {
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+        $this->generalExam($student, 'pass', official: false);
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page
+                ->where('approvalBlockers.0', 'The General Entrance Exam result on file is provisional; the Registrar has not confirmed it official.')
+            );
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertForbidden();
+
+        $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+
+        Examresults::where('studentId', $student->studentId)
+            ->where('examType', ExamType::General)
+            ->update(['resultStatus' => ExamStatus::Official->value]);
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page->has('approvalBlockers', 0));
+
+        $this->actingAs($desk)
+            ->post(route('admission.approve', $admission))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('approved', $admission->fresh()->admissionStatus->value);
+    }
+
+    /**
+     * §7.2's second blocker. The general paper above is confirmed; the department's own row is
+     * not, and that is enough to stop the approval — a program that asks for a departmental
+     * result cannot be answered by a paper nobody has adopted. This is the half the case above
+     * cannot reach, because that one carries no course-specific row at all.
+     */
+    #[Test]
+    public function a_provisional_departmental_result_blocks_approval_although_the_general_paper_is_official(): void
+    {
+        $desk = $this->staffWithRole('AdmissionOfficer', 6);
+        $student = $this->createStudent();
+        $admission = $this->createAdmission($student);
+        $this->requirementSubmission($admission, 'verified');
+        $this->generalExam($student, 'pass');
+
+        Examresults::create([
+            'studentId' => $student->studentId,
+            'courseId' => $this->boardCourseId,
+            'termId' => $this->termId,
+            'examStage' => ExamStage::Entrance,
+            'examType' => ExamType::CourseSpecific,
+            'examResult' => ExamResult::Pass,
+            'examDate' => now(),
+            'resultStatus' => ExamStatus::Provisional->value,
+        ]);
+
+        $this->actingAs($desk)
+            ->get(route('admission.show', $admission))
+            ->assertInertia(fn ($page) => $page
+                ->where('approvalBlockers.0', 'The Course-Specific Entrance Exam result on file is provisional; the Registrar has not confirmed it official.')
             );
 
         $this->actingAs($desk)
@@ -324,6 +411,7 @@ class ApprovalReadinessTest extends TestCase
             'examType' => ExamType::CourseSpecific,
             'examResult' => ExamResult::Pass,
             'examDate' => now(),
+            'resultStatus' => ExamStatus::Official->value,
         ]);
 
         $this->actingAs($desk)
@@ -388,6 +476,7 @@ class ApprovalReadinessTest extends TestCase
             'examType' => ExamType::CourseSpecific,
             'examResult' => ExamResult::Pass,
             'examDate' => now(),
+            'resultStatus' => ExamStatus::Official->value,
         ]);
 
         $this->actingAs($desk)
@@ -615,6 +704,7 @@ class ApprovalReadinessTest extends TestCase
             'examType' => ExamType::General,
             'examResult' => ExamResult::Pass,
             'examDate' => now(),
+            'resultStatus' => ExamStatus::Official->value,
         ]);
 
         $this->actingAs($desk)

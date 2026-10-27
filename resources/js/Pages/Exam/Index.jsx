@@ -14,6 +14,15 @@ const resultToneMap = {
     fail: 'danger',
 };
 
+// §7.2: a recorded result is the scoring office's opinion until the Registrar adopts it.
+// The two states must not read alike, and an official row whose verifier is null is the
+// migration's own backfill — study loads credited before this desk kept a signature on
+// each row — so it is labelled rather than painted as a confirmation nobody made.
+const verificationToneMap = {
+    provisional: 'warning',
+    official: 'success',
+};
+
 const typeLabels = {
     general: 'School Entrance',
     courseSpecific: 'Course-Specific',
@@ -29,8 +38,13 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
     // neither sees only the transferred passer roster.
     const canGeneral = can.recordGeneral ?? false;
     const canCourseSpecific = can.recordCourseSpecific ?? false;
+    const canVerify = can.verifyExam ?? false;
     const isGuidance = canGeneral && !canCourseSpecific;
     const isDepartment = canCourseSpecific && !canGeneral;
+
+    const confirmResult = (exam) => {
+        router.put(route('exam.verify', exam.examId), {}, { preserveScroll: true });
+    };
 
     // The Exam module is entrance-only now (retention moved to Academic
     // Evaluation), so the stage filter is gone. The type filter offers only
@@ -70,6 +84,21 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                 {formatStatusLabel(row.examResult)}
             </Badge>
         )},
+        { key: 'resultStatus', label: 'Registrar', render: (row) => (
+            <div className="flex flex-col items-start gap-1">
+                <Badge tone={verificationToneMap[row.resultStatus] || 'neutral'}>
+                    {formatStatusLabel(row.resultStatus)}
+                </Badge>
+                {row.resultStatus === 'official' && (
+                    <span className="text-xs text-brand-500">
+                        {row.verifiedByUser
+                            ? `${row.verifiedByUser.firstName} ${row.verifiedByUser.lastName}`
+                            : 'adopted before this desk signed each row'}
+                        {row.verifiedDate ? ` · ${formatCalendarDay(row.verifiedDate)}` : ''}
+                    </span>
+                )}
+            </div>
+        )},
         { key: 'examDate', label: 'Date', render: (row) => formatCalendarDay(row.examDate) },
     ], []);
 
@@ -86,6 +115,19 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
 
     const renderActions = (row) => (
         <div className="flex items-center gap-2">
+            {canVerify && row.resultStatus === 'provisional' && (
+                <button
+                    type="button"
+                    onClick={() => confirmResult(row)}
+                    className="btn btn-primary btn-sm"
+                    title="The Registrar's confirmation makes this result the answer every other desk counts"
+                >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="hidden sm:inline">Confirm official</span>
+                </button>
+            )}
             <Link
                 href={route('exam.results', { search: row.student?.schoolIdNumber })}
                 className="btn btn-ghost btn-sm text-brand-600 hover:text-brand-900"
@@ -101,8 +143,11 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
     // Item 4: the page frames itself by the viewer's desk. Guidance sees all
     // School Entrance results (pass and failed); the department sees its own
     // course-specific exams plus the transferred passers; everyone else sees
-    // only the transferred passers.
-    const subtitle = isGuidance
+    // only the transferred passers. §7.2 puts the confirming desk first, because
+    // it is the only one that sees every row and is asked to sign some of them.
+    const subtitle = canVerify
+        ? 'Every examination result on file — the Registrar confirms a recorded score official, and only a confirmed result decides an admission, a prerequisite or a progression'
+        : isGuidance
         ? 'School Entrance Examination — Stage 1 (BR9): record every result, pass and failed, and transfer the passers to the academic departments'
         : isDepartment
             ? 'Course-specific entrance examinations — Stage 2 (BR9): your department\'s own exams, plus the School Entrance passers transferred from Guidance'
@@ -159,7 +204,7 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
             )}
 
             {/* Summary tiles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                 <StatCard
                     compact
                     label="Exams in This View"
@@ -190,6 +235,17 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                     icon={
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    }
+                />
+                <StatCard
+                    compact
+                    label="Awaiting the Registrar"
+                    value={stats.pending ?? '—'}
+                    iconBg="warning"
+                    icon={
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     }
                 />

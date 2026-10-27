@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Enums\OfficeId;
 use App\Enums\StaffRole;
@@ -191,7 +192,13 @@ class RetentionGateTest extends TestCase
         ];
     }
 
-    private function recordRetention(string $result, ?int $termId = null): void
+    /**
+     * §7.2, ruled 2026-10-26: the department's mark is provisional until the Registrar
+     * confirms it. The fixture writes the adopted state, because what these cases ask is
+     * what a pass the school stands behind does; the case that asks about the confirmation
+     * itself passes `official: false`.
+     */
+    private function recordRetention(string $result, ?int $termId = null, bool $official = true): void
     {
         Examresults::create([
             'studentId' => $this->student->studentId,
@@ -201,7 +208,72 @@ class RetentionGateTest extends TestCase
             'examType' => ExamType::CourseSpecific,
             'examResult' => ExamResult::from($result),
             'examDate' => now(),
+            'resultStatus' => ($official ? ExamStatus::Official : ExamStatus::Provisional)->value,
         ]);
+    }
+
+    /**
+     * A passing mark the Registrar has not adopted is neither the missing case (another
+     * examination is not what is owed) nor a pass. Both halves are asserted on one row so a
+     * gate that ignored `resultStatus` cannot read green.
+     */
+    #[Test]
+    public function a_passing_retention_result_still_provisional_keeps_the_form_at_the_desk(): void
+    {
+        $enrollment = $this->readyEnrollment();
+        $this->recordRetention('pass', official: false);
+
+        $this->actingAs($this->evaluator)
+            ->get(route('evaluation.show', $enrollment))
+            ->assertInertia(fn ($page) => $page
+                ->where('signBlockers.retention', 'The retention examination on file is provisional; the Registrar has not confirmed it official, and this desk may not forward a form on an unadopted result.')
+                ->where('retentionExam.resultStatus', 'provisional')
+            );
+
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.sign', $enrollment))
+            ->assertSessionHasErrors('retention');
+
+        Examresults::where('studentId', $this->student->studentId)
+            ->where('examStage', ExamStage::Retention->value)
+            ->update(['resultStatus' => ExamStatus::Official->value]);
+
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.sign', $enrollment))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNotNull($enrollment->fresh()->formSignedDate, 'One row, adopted, lets the desk sign.');
+    }
+
+    /**
+     * §7.2: the department corrects its own mark by re-recording it, and the Registrar's
+     * signature covered the figure before the correction. The row therefore goes back to
+     * provisional with the verifier cleared — the same rule the two entrance paths follow,
+     * asserted here because this is the path that re-records in place (`firstOrNew`).
+     */
+    #[Test]
+    public function a_re_recorded_retention_mark_is_provisional_again_and_holds_no_signature(): void
+    {
+        $enrollment = $this->readyEnrollment();
+        $this->recordRetention('pass');
+
+        Examresults::where('studentId', $this->student->studentId)
+            ->update(['resultStatus' => ExamStatus::Official->value]);
+
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.retention.record', ['enrollment' => $enrollment->enrollmentId]), [
+                'examResult' => 'fail',
+                'examDate' => now()->toDateString(),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $row = Examresults::where('studentId', $this->student->studentId)
+            ->where('examStage', ExamStage::Retention->value)
+            ->sole();
+
+        $this->assertSame(ExamStatus::Provisional, $row->resultStatus);
+        $this->assertNull($row->verifiedBy);
+        $this->assertNull($row->verifiedDate);
     }
 
     #[Test]

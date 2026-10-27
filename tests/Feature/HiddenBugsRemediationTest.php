@@ -9,6 +9,7 @@ use App\Enums\ClearancePeriodStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\OfficeId;
 use App\Enums\PaymentMode;
 use App\Enums\PaymentStatus;
@@ -129,6 +130,10 @@ class HiddenBugsRemediationTest extends TestCase
             'examStage' => ExamStage::Entrance,
             'examType' => 'general',
             'examResult' => ExamResult::Pass,
+            // §7.2 (gap G-4): the blocker asks the result the Registrar adopted. This case's claim is
+            // that the general paper alone satisfies approval, so the fixture states an official pass —
+            // not a provisional one, which is a row the approval gate is now obliged to refuse.
+            'resultStatus' => ExamStatus::Official->value,
             'examDate' => now(),
         ]);
 

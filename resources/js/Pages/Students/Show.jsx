@@ -410,6 +410,12 @@ export default function Show({ student }) {
                                                     {er.examStage} · {er.examType}
                                                 </p>
                                                 <p className="text-brand-500 mt-0.5">{er.examDate ? formatCalendarDay(er.examDate) : ''}</p>
+                                                {/* §7.2: a recorded score the Registrar has not adopted is not
+                                                    the school's answer yet, and this page is where a desk reads
+                                                    a student's examination history. */}
+                                                {er.resultStatus && er.resultStatus !== 'official' && (
+                                                    <p className="text-xs font-bold text-amber-700 mt-1">Awaiting the Registrar's confirmation</p>
+                                                )}
                                             </div>
                                             <Badge tone={er.examResult === 'pass' ? 'success' : er.examResult === 'fail' ? 'danger' : 'neutral'}>
                                                 {er.examResult?.toUpperCase() || '—'}

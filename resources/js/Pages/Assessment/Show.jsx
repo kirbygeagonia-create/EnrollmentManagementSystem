@@ -195,14 +195,14 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
         <AuthenticatedLayout
             header={
                 <PageHeader
-                    title="Student Fee Assessment & Scholarship Coverage"
+                    title="Statement of Accounts: Fees Assessed and Scholarship Coverage"
                     subtitle={`${studentName} — ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.name || 'Current Term'})`}
                     phaseBadge="Phase 3 · Fee Assessment"
                     officeBadge="Office 3 · Scholarship Desk"
                 />
             }
         >
-            <Head title="Assessment Details" />
+            <Head title="Statement of Accounts" />
 
             {/* Status Banner */}
             <div className={`rounded-card border p-4 mb-6 flex items-start gap-3 ${

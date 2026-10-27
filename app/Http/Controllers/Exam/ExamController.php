@@ -6,6 +6,7 @@ use App\Enums\AdmissionStatus;
 use App\Enums\ApplicantType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Academicterms;
@@ -15,6 +16,7 @@ use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Students;
 use App\Support\CollegeScope;
+use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +39,7 @@ class ExamController extends Controller
         $user = $request->user();
         $canGeneral = $user->hasPermissionTo('exam.record.general');
         $canCourseSpecific = $user->hasPermissionTo('exam.record.courseSpecific');
+        $canVerify = $user->hasPermissionTo('exam.verify');
         // Course-specific and retention results are handled and viewed only by
         // the owning academic department (item 4).
         $isDepartment = $canCourseSpecific || $user->hasPermissionTo('exam.record.retention');
@@ -44,7 +47,7 @@ class ExamController extends Controller
         // No `stage` branch: the desk's stage filter was removed when a department's list became its own
         // course's results (see Exam/Index.jsx), and nothing else links here with that key. The candidate
         // list at exam.students still takes stage, and keeps it.
-        $query = Examresults::with(['student', 'course', 'term'])
+        $query = Examresults::with(['student', 'course', 'term', 'verifiedByUser'])
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
@@ -55,7 +58,15 @@ class ExamController extends Controller
         // department. What crosses the boundary is the passer transfer (BR9):
         // general-stage PASS rows surface to the department as transferred
         // passers — names and results only, never the failed ones.
-        if ($canGeneral && $isDepartment) {
+        //
+        // §7.2 adds one branch above the rest: the desk that confirms a result official must
+        // read every row, at either stage and of either verdict, because a confirmer shown
+        // only the transferred passers would never see the retention or departmental rows it
+        // is being asked to sign. The right is granted with `exam.view` for exactly this, and
+        // SysAdmin holds every permission, so it takes this branch and the matrix it always saw.
+        if ($canVerify) {
+            // The confirming desk: the full matrix.
+        } elseif ($canGeneral && $isDepartment) {
             // SysAdmin (both scopes): the full matrix.
         } elseif ($canGeneral) {
             $query->where('examStage', ExamStage::Entrance->value)
@@ -83,6 +94,12 @@ class ExamController extends Controller
             ->groupBy('examResult')
             ->pluck('aggregate', 'examResult');
 
+        // §7.2: how much of this desk's queue is still waiting on the Registrar. Counted
+        // over the same filtered set and cloned before paginate(), for the lane 47 reason.
+        $pendingCount = (int) (clone $query)->reorder()
+            ->where('resultStatus', ExamStatus::Provisional->value)
+            ->count();
+
         $exams = $query->paginate(20)->withQueryString();
 
         // An exam record is per (student, term) with no enrollmentId, so the
@@ -103,11 +120,13 @@ class ExamController extends Controller
                 'total' => $exams->total(),
                 'pass' => (int) ($resultCounts[ExamResult::Pass->value] ?? 0),
                 'fail' => (int) ($resultCounts[ExamResult::Fail->value] ?? 0),
+                'pending' => $pendingCount,
             ],
             'filters' => $request->only(['type', 'search']),
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $canCourseSpecific,
+                'verifyExam' => $canVerify,
             ],
         ]);
     }
@@ -197,6 +216,10 @@ class ExamController extends Controller
                 'firstName' => $result->student->firstName,
                 'middleName' => $result->student->middleName,
                 'examResult' => $result->examResult->value,
+                // §7.2: a pass the Registrar has not confirmed cannot yet be recorded
+                // against, so the roster names the state instead of hiding the row — the
+                // department is told before it submits, not by a refusal after.
+                'resultStatus' => $result->resultStatus->value,
                 'generalExamWaived' => false,
             ])->all();
 
@@ -316,9 +339,16 @@ class ExamController extends Controller
             'examStage' => ExamStage::Entrance,
             'examType' => ExamType::General,
         ]);
+        // §7.2: a corrected paper is a new entry, not an amendment the Registrar has
+        // already signed. An official row re-recorded here goes back to provisional and
+        // loses its verifier, so the signature on file can never be read as covering a
+        // figure the desk changed underneath it.
         $exam->fill([
             'examResult' => $validated['examResult'],
             'examDate' => $validated['examDate'],
+            'resultStatus' => ExamStatus::Provisional->value,
+            'verifiedBy' => null,
+            'verifiedDate' => null,
         ]);
         $exam->save();
 
@@ -379,7 +409,18 @@ class ExamController extends Controller
                 ->where('examType', ExamType::General)
                 ->first();
 
-            if (! $waived && (! $generalExam || $generalExam->examResult !== ExamResult::Pass)) {
+            // §7.2: the prerequisite asks the *confirmed* pass, and says which of the three
+            // states it found. A provisional row is not treated as absent — the department is
+            // told to wait for the Registrar — because a missing and a not-yet-adopted result
+            // need different people to act, and calling the second one the first would send
+            // the desk back to Guidance to record something that is already on file.
+            if ($waived) {
+                // nothing to ask: the program waived the general paper for this applicant type
+            } elseif (! $generalExam) {
+                return back()->withErrors(['generalExam' => 'General entrance exam must be recorded first.']);
+            } elseif (! $generalExam->isOfficial()) {
+                return back()->withErrors(['generalExam' => 'The general entrance exam result is on file but the Registrar has not confirmed it official; a department may only record against a confirmed pass.']);
+            } elseif ($generalExam->examResult !== ExamResult::Pass) {
                 return back()->withErrors(['generalExam' => 'General entrance exam must be passed first.']);
             }
         }
@@ -392,6 +433,7 @@ class ExamController extends Controller
             'examType' => ExamType::CourseSpecific,
             'examResult' => $validated['examResult'],
             'examDate' => $validated['examDate'],
+            'resultStatus' => ExamStatus::Provisional->value,
         ]);
 
         // Same boundary as the general stage: this is where the department's opinion
@@ -413,6 +455,7 @@ class ExamController extends Controller
 
         $user = $request->user();
         $canGeneral = $user->hasPermissionTo('exam.record.general');
+        $canVerify = $user->hasPermissionTo('exam.verify');
         // Course-specific and retention results are handled and viewed only by
         // the owning academic department (item 4).
         $isDepartment = $user->hasPermissionTo('exam.record.courseSpecific')
@@ -421,15 +464,20 @@ class ExamController extends Controller
         // The desk's row action links here with the student's School ID, so `search` is honoured the same
         // way index() honours it — the same three matches, the same exact-number alternative. Before this,
         // the link advertised a narrowing this handler never applied and the page opened on every result.
-        $query = Examresults::with(['student', 'course', 'term'])
+        $query = Examresults::with(['student', 'course', 'term', 'verifiedByUser'])
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
 
         // Same ownership split as index(): Guidance holds every School Entrance
         // result including failed; the department holds its own course-specific
-        // results plus the transferred passers (names and results only).
-        if ($canGeneral && $isDepartment) {
+        // results plus the transferred passers (names and results only). A desk that
+        // confirms results official sees the whole matrix here too — the same reason
+        // given in index(): a list that hides the rows a desk is responsible for
+        // signing is not a list, it is a filter that happens to disagree with the right.
+        if ($canVerify) {
+            // The confirming desk: the full matrix.
+        } elseif ($canGeneral && $isDepartment) {
             // SysAdmin (both scopes): the full matrix.
         } elseif ($canGeneral) {
             $query->where('examStage', ExamStage::Entrance->value)
@@ -477,7 +525,43 @@ class ExamController extends Controller
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $user->hasPermissionTo('exam.record.courseSpecific'),
+                'verifyExam' => $canVerify,
             ],
         ]);
+    }
+
+    /**
+     * Confirm a recorded result official (§7.2, ruled 2026-10-26).
+     *
+     * The recording office's entry is its own opinion of the paper; this act is the school
+     * adopting it. Two rights keep the two acts apart — `exam.record.*` writes the row and
+     * `exam.verify` signs it — and no seeded role holds both, so the desk that scored a
+     * result cannot be the desk that stands behind it.
+     *
+     * A row nobody scored cannot be adopted: `examResult` is a nullable enum, and an
+     * unmarked paper is neither a passer nor a failure (the same reason `results()` takes
+     * scored rows as a pass rate's denominator). Confirming it would mint a school verdict
+     * out of an absence, which is what the gate downstream would then read as a pass.
+     */
+    public function verify(Request $request, Examresults $exam): RedirectResponse
+    {
+        $this->authorize('verify', $exam);
+
+        if ($exam->isOfficial()) {
+            return back()->withErrors(['resultStatus' => 'This result is already official; the Registrar confirmed it on '
+                .($exam->verifiedDate ? $exam->verifiedDate->toDateString() : 'an earlier day').'.']);
+        }
+
+        if ($exam->examResult === null) {
+            return back()->withErrors(['resultStatus' => 'This paper has not been scored, so there is no result for the Registrar to confirm.']);
+        }
+
+        $exam->update([
+            'resultStatus' => ExamStatus::Official->value,
+            'verifiedBy' => $request->user()->userId,
+            'verifiedDate' => SchoolTime::today(),
+        ]);
+
+        return back()->with('success', 'The '.strtolower($exam->examStage->value).' result is official. Every desk that asks an examination outcome now counts this row.');
     }
 }

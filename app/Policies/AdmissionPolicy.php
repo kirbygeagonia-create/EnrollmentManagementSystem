@@ -119,9 +119,14 @@ class AdmissionPolicy
             if (! $generalExam) {
                 $blockers[] = 'No General Entrance Exam result on record for this applicant to '
                     .$admission->course->courseCode.' for this term.';
-            } elseif ($generalExam->examResult->value !== 'pass') {
+            } elseif (! $generalExam->isOfficial()) {
+                // §7.2: a row the Registrar has not confirmed is neither adopted nor absent.
+                // Naming it "no result on record" would send this desk back to Guidance for a
+                // paper that is already scored and only waiting for a signature.
+                $blockers[] = 'The General Entrance Exam result on file is provisional; the Registrar has not confirmed it official.';
+            } elseif ($generalExam->examResult?->value !== 'pass') {
                 $blockers[] = 'The General Entrance Exam result on file is '
-                    .$generalExam->examResult->value.', not pass.';
+                    .($generalExam->examResult->value ?? 'unmarked').', not pass.';
             }
         }
 
@@ -143,9 +148,11 @@ class AdmissionPolicy
                 $blockers[] = 'No Course-Specific Entrance Exam result on record for this applicant, and '
                     .$admission->course->courseCode.' requires one.';
             }
-        } elseif ($courseExam->examResult->value !== 'pass') {
+        } elseif (! $courseExam->isOfficial()) {
+            $blockers[] = 'The Course-Specific Entrance Exam result on file is provisional; the Registrar has not confirmed it official.';
+        } elseif ($courseExam->examResult?->value !== 'pass') {
             $blockers[] = 'The Course-Specific Entrance Exam result on file is '
-                .$courseExam->examResult->value.', not pass.';
+                .($courseExam->examResult->value ?? 'unmarked').', not pass.';
         }
 
         return $blockers;

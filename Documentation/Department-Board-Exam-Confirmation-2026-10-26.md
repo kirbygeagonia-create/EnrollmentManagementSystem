@@ -26,7 +26,7 @@ failed. The gate reads a result for that applicant's own program and term, and t
 names it: "No Course-Specific Entrance Exam result on record for this applicant, and *BSCE* requires one." —
 `app/Policies/AdmissionPolicy.php:142`. A recorded result that is not `pass` blocks with its own word instead
 (:145-146). With the flag **off**, an absent departmental result blocks nothing, and your program's paper is not
-offered for recording at all (`app/Http/Controllers/Exam/ExamController.php:354`).
+offered for recording at all (`app/Http/Controllers/Exam/ExamController.php:384`).
 
 So the question is not cosmetic: the flag decides whether your department's examination stands between an
 applicant and enrolment.

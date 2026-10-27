@@ -610,6 +610,20 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                                 <span className="text-xs font-mono text-slate-500">
                                     {formatCalendarDay(retentionExam.examDate)}
                                 </span>
+                                {/* §7.2: forwarding is refused on an unadopted row, so the panel
+                                    says which state it is in instead of letting the desk discover
+                                    the condition from the blocker after it signs. */}
+                                {retentionExam.resultStatus !== 'official' ? (
+                                    <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                        Awaiting the Registrar
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-slate-500">
+                                        official
+                                        {retentionExam.verifiedByName ? ` · ${retentionExam.verifiedByName}` : ' · adopted before this desk signed each row'}
+                                        {retentionExam.verifiedDate ? ` · ${formatCalendarDay(retentionExam.verifiedDate)}` : ''}
+                                    </span>
+                                )}
                             </div>
                         ) : (
                             <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">

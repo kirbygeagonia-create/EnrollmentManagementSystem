@@ -4,6 +4,7 @@ namespace Tests\Feature\Exam;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Enums\UnitType;
 use App\Models\Academicterms;
@@ -250,6 +251,23 @@ class ExamControllerTest extends TestCase
                 'examDate' => now()->toDateString(),
             ])
             ->assertRedirect(route('exam.index'));
+    }
+
+    /**
+     * §7.2, ruled 2026-10-26: a recorded result decides nothing until the Registrar confirms
+     * it. These walkthroughs therefore perform the act through the desk route instead of
+     * setting the column, so the chain the school would walk is the chain under test.
+     * Only a provisional row is sent, which makes the helper safe to call twice.
+     */
+    private function confirmResults(Staffusers $registrar, Students $student): void
+    {
+        Examresults::where('studentId', $student->studentId)
+            ->where('resultStatus', ExamStatus::Provisional->value)
+            ->get()
+            ->each(fn (Examresults $row) => $this->actingAs($registrar)
+                ->put(route('exam.verify', $row->examId))
+                ->assertRedirect()
+            );
     }
 
     #[Test]
@@ -661,6 +679,9 @@ class ExamControllerTest extends TestCase
         // Stage 1: Guidance records the general pass.
         $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'pass');
 
+        // §7.2: the Registrar adopts it, or Stage 2 has nothing confirmed to score against.
+        $this->confirmResults($this->staffWithRole('RegistrarApprover', 1), $student);
+
         // Stage 2: the department records its own pass. This used to write
         // admissionStatus = approved on the spot — an approved application with no
         // enrollment row, which every desk downstream selects against, and which
@@ -686,7 +707,11 @@ class ExamControllerTest extends TestCase
         $this->assertSame(0, Enrollments::where('admissionId', $admission->admissionId)->count());
 
         // The Admission office approves through its own gate, and approval is the
-        // only path that creates the enrollment stages 5-11 operate on.
+        // only path that creates the enrollment stages 5-11 operate on. Both of this
+        // applicant's papers are confirmed first — §7.2 makes the adopted value the one
+        // the gate reads.
+        $this->confirmResults($this->staffWithRole('RegistrarApprover', 1), $student);
+
         $this->actingAs($admissionDesk)
             ->post(route('admission.approve', $admission))
             ->assertRedirect()
@@ -714,6 +739,10 @@ class ExamControllerTest extends TestCase
 
         $this->recordGeneral($guidance, $student, $this->entranceCourseId, 'pass');
 
+        // §7.2: Stage 1 must be the Registrar's adopted answer before the department may
+        // score against it — the ruling made the confirmed value the one every gate asks.
+        $this->confirmResults($this->staffWithRole('RegistrarApprover', 1), $student);
+
         $this->actingAs($department)
             ->post(route('exam.course-specific.record'), [
                 'studentId' => $student->studentId,
@@ -725,6 +754,10 @@ class ExamControllerTest extends TestCase
             ->assertRedirect(route('exam.index'));
 
         $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
+
+        // Confirmed, so what refuses this applicant below is the recorded FAIL and not an
+        // absent confirmation.
+        $this->confirmResults($this->staffWithRole('RegistrarApprover', 1), $student);
 
         // A recorded course-specific result must be a pass for approval to go
         // through (AdmissionPolicy::approve, BR9), so the failing result still
@@ -766,6 +799,8 @@ class ExamControllerTest extends TestCase
             'examStage' => ExamStage::Retention->value,
             'examType' => ExamType::CourseSpecific->value,
             'examResult' => 'pass',
+            // §7.2: the department's own mark arrives provisional.
+            'resultStatus' => ExamStatus::Provisional->value,
         ]);
 
         // Re-recording corrects the existing result rather than duplicating.

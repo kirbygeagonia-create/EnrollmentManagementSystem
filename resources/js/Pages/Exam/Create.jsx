@@ -167,10 +167,13 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                                                 // transferee the program waived that screening
                                                 // for (C-4) is listed too, named as waived — the
                                                 // department still sits them its own exam.
+                                                // §7.2: a pass the Registrar has not confirmed is
+                                                // listed and named, because the save refuses it and
+                                                // a picker that hid it would read as "no candidates".
                                                 label: isCourseSpecific && s.generalExamWaived
                                                     ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — General Entrance waived (transferee)`
                                                     : isCourseSpecific && s.examResult
-                                                    ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — School Entrance: ${formatStatusLabel(s.examResult)}`
+                                                    ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''} — School Entrance: ${formatStatusLabel(s.examResult)}${s.resultStatus === 'provisional' ? ', awaiting the Registrar' : ''}`
                                                     : `${s.schoolIdNumber} — ${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}`,
                                             }))}
                                             placeholder={isCourseSpecific ? 'Search & select a passer or a waived transferee...' : 'Search & select candidate student...'}

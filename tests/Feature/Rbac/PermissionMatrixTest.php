@@ -143,6 +143,10 @@ class PermissionMatrixTest extends TestCase
             // Item 4 / BR10: the retention exam is recorded in the Academic
             // Evaluation area by the owning department.
             ['evaluation.retention.record', 'exam.record.retention', ['enrollment' => 999999], 'post'],
+            // §7.2, ruled 2026-10-26: confirming a result official is its own act under its own
+            // right, listed here so a bare Staff account is refused it the same way every other
+            // mutation in this table is — the right gates the route, not only the policy.
+            ['exam.verify', 'exam.verify', ['exam' => 999999], 'put'],
 
             // Assessment mutations
             ['assessment.compute', 'assessment.compute', ['enrollment' => 999999], 'post'],
@@ -593,9 +597,16 @@ class PermissionMatrixTest extends TestCase
         // really removes the row from a reseeded install.
         $this->assertNull(Permission::where('name', 'exam.verify.general')->first(),
             'exam.verify.general must not exist after RbacSeeder: declared nowhere, read by nothing');
-        $this->assertSame(4, Permission::whereIn('name', [
-            'exam.view', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention',
-        ])->count(), 'the Exam module ships exactly four permissions');
+
+        // §7.2's confirmation right is a DIFFERENT key, and the two must be told apart here
+        // because they differ in exactly the way #47 found: `exam.verify` is read by
+        // ExamPolicy::verify, which the confirm route calls, and it is granted to one role.
+        // Asserting the count without the holder would let a right that gates nothing back in.
+        $this->assertNotNull(Permission::where('name', 'exam.verify')->first(),
+            'exam.verify is declared by the seeder');
+        $this->assertSame(5, Permission::whereIn('name', [
+            'exam.view', 'exam.verify', 'exam.record.general', 'exam.record.courseSpecific', 'exam.record.retention',
+        ])->count(), 'the Exam module ships exactly five permissions');
 
         // dashboard.view was retired 2026-10-10, one lane of the Full Audit Suite after #47. It was
         // the same shape and worse in reach: seeded in its own `dashboard` module, granted to all

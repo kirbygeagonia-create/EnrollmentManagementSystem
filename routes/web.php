@@ -69,6 +69,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/exam/general', [ExamController::class, 'recordGeneral'])->name('exam.general.record');
     Route::post('/exam/course-specific', [ExamController::class, 'recordCourseSpecific'])->name('exam.course-specific.record');
     Route::get('/exam/results', [ExamController::class, 'results'])->name('exam.results');
+    // §7.2, ruled 2026-10-26: the Registrar confirms a recorded result official. This is the
+    // second act on one row and it carries its own right, because the office that scored the
+    // paper is not the office that stands behind it. No second signature is asked for — the
+    // confirmation is the one the prompt's §7.2 names — and no new permission is needed to
+    // *read* it, which is why `exam.view` travels with `exam.verify` on the confirming desk.
+    Route::put('/exam/{exam}/verify', [ExamController::class, 'verify'])->name('exam.verify');
 
     /* ==================== Evaluation ==================== */
     Route::get('/evaluation', [EvaluationController::class, 'index'])->name('evaluation.index');

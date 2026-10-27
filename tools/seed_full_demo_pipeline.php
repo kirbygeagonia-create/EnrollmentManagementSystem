@@ -20,6 +20,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
 use App\Enums\ExamResult;
 use App\Enums\ExamStage;
+use App\Enums\ExamStatus;
 use App\Enums\ExamType;
 use App\Enums\OfficeId;
 use App\Enums\StaffRole;
@@ -3125,6 +3126,12 @@ $retentionSeats = DB::table('enrollments as e')
 
 $heldBack = $retentionSeats->last();
 $retentionPassed = 0;
+// §7.2, ruled 2026-10-26: a recorded result decides nothing until the Registrar confirms it
+// official, and every demo student this pass clears is meant to be forwardable. The tool
+// therefore writes both halves of the act — the department's row and the Registrar's
+// signature — and says so, so a rehearsal never mistakes a generator-adopted result for a
+// confirmation some desk performed.
+$registrarVerifier = $retentionSeats->isNotEmpty() ? desk_signer_for(OfficeId::Registrar->value) : null;
 foreach ($retentionSeats as $seat) {
     if ($heldBack && $seat->enrollmentId === $heldBack->enrollmentId) {
         continue;
@@ -3139,12 +3146,15 @@ foreach ($retentionSeats as $seat) {
         'examType' => ExamType::CourseSpecific->value,
         'examResult' => ExamResult::Pass->value,
         'examDate' => SchoolTime::today(),
+        'resultStatus' => ExamStatus::Official->value,
+        'verifiedBy' => $registrarVerifier,
+        'verifiedDate' => SchoolTime::today(),
     ]);
     $retentionPassed++;
 }
 
 echo $retentionPassed > 0
-    ? '✔ Department Evaluation: '.$retentionPassed.' passing retention result(s) recorded'.($heldBack ? ', 1 held back so the gate is visible' : '')."\n"
+    ? '✔ Department Evaluation: '.$retentionPassed.' passing retention result(s) recorded and confirmed official by office '.OfficeId::Registrar->value."'s desk".($heldBack ? ', 1 held back so the gate is visible' : '')."\n"
     : "  ! Department Evaluation: no returning student sits a program that examines retention — the gate will not show\n";
 
 // -------------------------------------------------------------

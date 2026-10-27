@@ -27,6 +27,22 @@ class ExamPolicy
     }
 
     /**
+     * Determine whether the user can confirm a recorded result official (§7.2).
+     *
+     * The right alone decides this: which rows are *worth* confirming is a state question
+     * and `ExamController::verify()` answers it, so a department that holds no confirm right
+     * is refused here while a Registrar who re-confirms an official row is refused there with
+     * the reason the desk needs. Recording and confirming are deliberately separate rights —
+     * the ruling is that the office that scored the paper does not adopt it — and the same
+     * account may hold both only where it holds both desks, which is SysAdmin's `Gate::before`
+     * and no seeded role.
+     */
+    public function verify(Staffusers $user, Examresults $exam): bool
+    {
+        return $user->hasPermissionTo('exam.verify');
+    }
+
+    /**
      * Determine whether the user can record exam results.
      * BR9: Two-stage entrance exam for board courses
      * BR10: Retention exam for board-course continuing students

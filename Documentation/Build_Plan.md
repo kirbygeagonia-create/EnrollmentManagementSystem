@@ -12,8 +12,8 @@
 
 | Stage | Title | Status | Description |
 |---|---|:---:|---|
-| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 63 tables and 101 foreign keys now, against 62 and 86 at the original baseline; strict enum validation, audit tables, indexes, and full relational model. |
-| **Stage 2** | **Spatie RBAC & Security Infrastructure** | ✅ **COMPLETED** | 13 functional desk roles, 93 granular permissions, multi-guard session authentication, and audit trails. |
+| **Stage 1** | **Database Schema & Architecture Foundation** | ✅ **COMPLETED** | 63 tables and 102 foreign keys now, against 62 and 86 at the original baseline; strict enum validation, audit tables, indexes, and full relational model. |
+| **Stage 2** | **Spatie RBAC & Security Infrastructure** | ✅ **COMPLETED** | 13 functional desk roles, 94 granular permissions, multi-guard session authentication, and audit trails. |
 | **Stage 3** | **Core Enrollment Lifecycle Engine (Phases 0–8)** | ✅ **COMPLETED** | Complete per-student workflow — 7 steps for first-year/transferee, 6 for continuing/shifter (Department Evaluation → Assessment → Accounting → Registrar → Blocking → Clinic → ID Office), via `WorkflowService::stepsFor()`; admissions, exams, and clearance run as their own desk flows alongside. |
 | **Stage 4** | **Enterprise UI/UX Design & App Launcher** | ✅ **COMPLETED** | Glassmorphism, Tailwind design system, MegaAppLauncher command center, phase-specific badging, responsive tables, and filters. |
 | **Stage 5** | **Enterprise Safety, Modals & Print Services** | ✅ **COMPLETED** | Universal `CauseEffectModal.jsx`, destructive action guards, sign-out safety, high-fidelity Certificate of Registration (COR), Class Cards, and Subject Load printing. |

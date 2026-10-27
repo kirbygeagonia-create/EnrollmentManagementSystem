@@ -307,7 +307,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                     </div>
 
                     {/* Fee Ledger Table */}
-                    <Card title="Itemized Fee Charges Breakdown" subtitle="Detailed billing line items and fee allocations">
+                    <Card title="Statement of Accounts, Itemized Charges" subtitle="Every fee line behind the statement, and where each grant and waiver is applied">
                         {charges.length > 0 ? (
                             <DataTable
                                 columns={chargeColumns}
