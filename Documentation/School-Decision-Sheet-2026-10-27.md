@@ -129,5 +129,8 @@ that would use it can be identified.
   institutional definition as item 4 and is recorded in the matrix with its phase and risk. It is
   left off this sheet's count because the prompt itself says to expose it from SEAIT policy or not at
   all, and nobody has read the policy back.
-- The timetable import (G-5) is a build gap with a decided format, not a question for the school: it
-  is on the engineering list, not here.
+- The timetable import (G-5) was never a question for the school, only a build decision, and it was
+  built the same day this sheet was issued: `php artisan ems:import:timetable` reads the CSV a
+  spreadsheet saves as "CSV (Macintosh)", publishes nothing unless `--commit` is given, and refuses
+  any file that repeats a class time and room or books a room past its capacity. The XLSX reader is
+  still not taken, because the school has not said which workbook it actually holds.
