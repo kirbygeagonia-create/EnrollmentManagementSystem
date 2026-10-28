@@ -964,6 +964,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and match the SHA client-side, and never send a command's stderr into the void when its silence is
   being read as a measurement; this is the accepted-but-inert flag defect arriving in a shell wrapper
   rather than in a PHP tool.
+  **That client-side matcher bit me the same day, in the opposite direction.** `storage/app/scratch/watch-ci.sh`
+  did `WANT=$SHA` and then read `getenv("WANT")` from a PHP child — a plain shell assignment is **not** exported, so
+  `getenv` answered `false`, `str_starts_with($headSha, "")` is true for the first element of the list, and the
+  poller resolved *the newest run* and printed `RUN=40462260904 for SHA=34888b5…` for a run whose `headSha` was
+  `771dc8a`. The verdict it quoted was real, just about a different commit — the worst kind of green, because
+  `status == completed / success` was then re-read from that run and reported as this one's. The wrapper now passes
+  the value explicitly (`php -r … ` with `WANT="$WANT"` on the command), refuses when the needle is empty or shorter
+  than seven characters, and after resolving an id asks that run for its own `headSha` and refuses unless it equals
+  the SHA it was asked about. Two rules follow: **a prefix match needs a non-empty needle** (an empty needle matches
+  everything, so the guard is on the needle, not on the result), and **the object a poller resolved is a claim it has
+  to re-read from the server**, not a fact inherited from the command line that started it. (The wrapper itself is
+  `storage/app/scratch/watch-ci.sh`, and `storage/app/.gitignore` re-includes scratch only by extension — `.php`,
+  `.ps1`, `.mjs` — so a `.sh` lives on this box and nowhere else; that is precisely why the three guards are written
+  here rather than left to be inferred from a file a later clone will not have.)
 - **The mirror defect: a watcher's non-zero exit is not a red run.** On 2026-10-25 `gh run watch <id> --exit-status`
   returned 1 while its own final poll showed one job still `in_progress` with an empty conclusion, and the run the
   API reports now is `completed / success` on all three jobs. A watcher can terminate on a partial read, so the
