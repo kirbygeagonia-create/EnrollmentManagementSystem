@@ -81,6 +81,9 @@ class AdminAccessSmokeTest extends TestCase
             'id.index',
             'admin.reference-data.index',
             'admin.users.index',
+            // The workflow monitor (prompt §6.1/§6.3) is a module index page like the two above:
+            // this sweep is the instrument that refuses to let a new admin screen be born orphaned.
+            'admin.workflow-monitor',
         ];
 
         foreach ($routes as $route) {

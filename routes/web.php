@@ -3,6 +3,7 @@
 use App\Http\Controllers\Accounting\AccountingController;
 use App\Http\Controllers\Admin\ReferenceDataController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\WorkflowMonitorController;
 use App\Http\Controllers\Admission\AdmissionController;
 use App\Http\Controllers\Assessment\AssessmentController;
 use App\Http\Controllers\Blocking\BlockingController;
@@ -192,6 +193,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/id/requests/{idRequest}/photo', [IDController::class, 'photo'])->name('id.photo.view');
     Route::post('/id/requests/{idRequest}/validate', [IDController::class, 'validate'])->name('id.validate');
     Route::post('/id/requests/{idRequest}/remark', [IDController::class, 'recordRemark'])->name('id.remark');
+
+    /* ==================== Admin / Workflow monitor ==================== */
+    // Development prompt §6.1 asks that workflow progress be visible on an admin monitoring
+    // page as well as on each desk; §6.3 asks that the same view show the definition each
+    // record is walking. Read-only: the configuration half is matrix G-6 and waits on the
+    // school's ruling about which phases are mandatory.
+    Route::get('/admin/workflow-monitor', [WorkflowMonitorController::class, 'index'])->name('admin.workflow-monitor');
 
     /* ==================== Admin / Reference Data ==================== */
     Route::get('/admin/reference-data', [ReferenceDataController::class, 'index'])->name('admin.reference-data.index');

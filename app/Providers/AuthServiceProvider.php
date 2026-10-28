@@ -129,6 +129,14 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('blocking.manageBlocks', function ($user) {
             return app(BlockingPolicy::class)->manageBlocks($user);
         });
+        // The workflow monitor (development prompt §6.1/§6.3) is gated by a right named
+        // differently from `workflow.view` on purpose: Spatie registers the permission as a
+        // Gate ability of its own, and `Gate::before` hands a SysAdmin any ability whose
+        // name a permission also holds, so a same-named ability would be answered by the
+        // permission alone and its own body would never run (AbilityNameCollisionTest).
+        Gate::define('workflow.monitor', function ($user) {
+            return $user->can('workflow.view');
+        });
 
         /*
         |--------------------------------------------------------------------------

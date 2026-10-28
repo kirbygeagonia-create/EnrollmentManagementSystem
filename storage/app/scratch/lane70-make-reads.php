@@ -53,6 +53,12 @@ $READ = '2026-10-25';
 // record from the previous layout would claim a reading of a line the document no longer cites.
 // Keyed by `File.php:NN-NN`, matched against the key with its sentence-hash stripped.
 $readToday = [
+    // Pass 275b re-took these two pointers (the file grew by eleven lines above them when the
+    // workflow module was declared), so their sentence-hashed keys aged even though both claims
+    // re-read true: :532 is `Role::count()` inside the console line the sentence says is read from
+    // the database, and :523 is the last `Role::updateOrCreate` call of the seventeen.
+    'RbacSeeder.php:532-532' => 'the console line `Created N desk and faculty roles` built from Role::count() — the roles figure is read from the database, not typed here',
+    'RbacSeeder.php:523-523' => '$instructor = Role::updateOrCreate( — the last of the seventeen role declarations the span 247 to 523 counts',
     'AccountingController.php:290-290' => 'settleNoBalance() signs the Accounting box — the act the paragraph says the payment writes',
     'AdmissionController.php:531-531' => 'approve():517-… the seat-holder test `EnrollmentIssuer::seatHolder(...)`, which is the first-enrollment claim',
     'AdmissionController.php:559-559' => 'approve(): the `return Enrollments::create([` that is the applicant\'s first enrollment',
@@ -167,7 +173,7 @@ $byFile = [
     'SendWorkflowNotification.php' => 'direct read: :54-70 is the signature notification and :57 sits in its argument list (WorkflowInbox::actors, the enrollment, the workflow, the message)',
     'ClearanceController.php' => 'lane70-read-span: :408 is downloadSlip()\'s signature — the action the print-route row names',
     'AssertNoSilentSkips.php' => 'lane70-read-span: :39-57 is ALLOWED, whose two E2E entries carry the reason the paragraph states',
-    'RbacSeeder.php' => 'direct read: the row says the contradictory pair is GONE — the "CREATE ALL 13 DESK ROLES" comment is not in the file, and :474 (Role::updateOrCreate) and :483 (the `Created N desk and faculty roles` console line) are the two counts that remain',
+    'RbacSeeder.php' => 'direct read: the row says the contradictory pair is GONE — the "CREATE ALL 13 DESK ROLES" comment is not in the file, and the two counts that remain are read from the database (the role tally) and declared in order (the seventeen updateOrCreate calls, span 247 to 523 as the file stands after the workflow module was added)',
     'DevReferenceDataSeeder.php' => 'direct read: :137/:141/:148 are the three Academicyears::firstOrCreate calls; :748-756 is the requirementName backfill over ProvisionalClearanceRequirements::NAMES; :62-104 deletes the retired office in FK order (pass 228)',
     'enrollment-form.blade.php' => 'direct read: :164-173 is the postal tuple and the ->value comparisons P-18 fixed, :220 the addressType test, :369 the signature date line',
     'clearance-slip.blade.php' => 'direct read: :6 is the <title> the row says sits beside the ID row, not instead of it; :31 the school-name line; :84-107 the requirements table; :103 the per-approval date cell',

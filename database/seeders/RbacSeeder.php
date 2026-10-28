@@ -195,6 +195,17 @@ class RbacSeeder extends Seeder
             'students' => [
                 'students.view',
             ],
+
+            // Workflow monitoring module (1) — development prompt §6.1's fourth place and
+            // §6.3's admin view. The name ends in `.view` on purpose: the Admin role below
+            // takes every `.view` right by rule (it is the read-everywhere overseer with no
+            // mutation rights), so the monitor is reachable by the desk that is meant to
+            // watch the pipeline without this file granting it a write anywhere. The gate
+            // ability is `workflow.monitor`, never this string — Spatie's `Gate::before`
+            // would answer a same-named ability from the permission alone.
+            'workflow' => [
+                'workflow.view',
+            ],
         ];
 
         $createdPermissions = [];
@@ -482,6 +493,12 @@ class RbacSeeder extends Seeder
             'payment.view', 'clearance.view', 'block.view',
             'clinic.view', 'id.view', 'refdata.view', 'user.view', 'audit.view',
             'students.view',
+            // PermissionMatrixTest pins the rule this line follows: a right named `.view` is held
+            // by every desk head, because ruling 7 (X-4) moved the SIGNATURE acts out of this role
+            // and deliberately left the view rights broad. The institution-wide monitor of prompt
+            // §6.1/§6.3 is a read — it grants no act anywhere — so it is seated here rather than
+            // made into the first exception to that invariant.
+            'workflow.view',
             'block.manage', 'block.assign', 'block.schedules.manage',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',

@@ -202,6 +202,21 @@ const subSystems = [
         adminOnly: true,
         items: [
             {
+                name: 'Workflow Monitor',
+                phase: 'Pipeline Integrity',
+                route: 'admin.workflow-monitor',
+                officeId: null,
+                roles: ['admin'],
+                color: 'from-indigo-600 to-slate-800',
+                textColor: 'text-slate-700 bg-slate-100 border-slate-300',
+                description: 'Every record still in the pipeline, whose turn it is, and what any desk returned it for.',
+                icon: (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h10M4 18h7m5-6l3 3 4-6" />
+                    </svg>
+                ),
+            },
+            {
                 name: 'Reference Catalogs',
                 phase: 'Admin Hub',
                 route: 'admin.reference-data.index',
@@ -255,6 +270,9 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
     const canStudentsView = props.can?.studentsView ?? false;
     const canRefdataHub = props.can?.refdataHub ?? false;
     const canClearanceDesk = props.can?.clearanceDesk ?? false;
+    // The monitor is opened by workflow.view, the same right its own route asks, so the card
+    // cannot advertise a page the server would refuse (audit §2.2).
+    const canWorkflowMonitor = props.can?.workflowMonitor ?? false;
     // The two cards the academic roles used to get by route name rather than by right.
     const canEvaluationDesk = props.can?.evaluationDesk ?? false;
     const canBlockingDesk = props.can?.blockingDesk ?? false;
@@ -283,6 +301,7 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
         // the Registrar maintains the grade scale, so it needs this entry without
         // becoming an administrator.
         if (item.route === 'admin.reference-data.index') return canRefdataHub;
+        if (item.route === 'admin.workflow-monitor') return canWorkflowMonitor;
         // Campus Clearance is signed by every office, so no single officeId owns the card; the same
         // right the desk's own gate asks (ClearancePolicy::viewAny) decides whether it appears.
         if (item.route === 'clearance.index') return canClearanceDesk;

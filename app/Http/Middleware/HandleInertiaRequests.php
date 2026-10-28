@@ -68,6 +68,11 @@ class HandleInertiaRequests extends Middleware
             // links/routes the current user cannot actually use (audit §2.2).
             'can' => [
                 'studentsView' => $request->user()?->can('viewAny', Students::class) ?? false,
+                // The workflow monitor's own card, asked from the right the route asks
+                // (`workflow.view`), not from an admin-role guess: the launcher hides what
+                // the server would refuse (audit §2.2), and each desk card already answers
+                // to its own route's right.
+                'workflowMonitor' => $staff?->can('workflow.view') ?? false,
                 // Reference-data catalogs are maintained by more than one desk now
                 // (the Registrar owns the grade scale), so the launcher and the hub ask
                 // this flag instead of assuming the admin role. Which individual catalogs a

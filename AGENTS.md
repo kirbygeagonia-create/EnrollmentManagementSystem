@@ -1421,6 +1421,57 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   "prompt §6.4". Two of the four §6.4 vocabulary questions are on `Documentation/School-Decision-Sheet-2026-10-27.md`
   (the reason-category list, and whether a department may write to Admission), and the §27.2 E-4 register row —
   "a returned record cannot get back to `paid`" — is re-stated only after the round trip is driven, not re-worded.
+- **The pipeline is one list, and only an overseer may read it that way** (lane 82, prompt §6.1/§6.3).
+  The completion audit that asked "is every instruction built" found a requirement the matrix had never scored:
+  §6.1 names four places workflow progress must be visible, and the build served three — the stepper sits on seven
+  desk detail pages, so "where is the year" was answerable only one student at a time, by whoever owned the box.
+  `GET /admin/workflow-monitor` → `Admin\WorkflowMonitorController::index()` is the fourth, plus §6.3's admin view:
+  one row per record still in the pipeline with phases signed against phases total, which desk is next, when a desk
+  last acted, and for a returned record the category, the sending desk and the destination read from the same
+  `enrollmentreturns` row the receiving desk reads. Six rules came out of it. *A new right must be reachable and a
+  gate ability must not wear its name*: `workflow.view` is declared in a fifteenth seeder module and the
+  read-everywhere `Admin` role takes it by its own `.view` rule, while the route asks the ability
+  `workflow.monitor`, because Spatie's `Gate::before` would answer a same-named ability from the permission alone.
+  **The whole-suite run caught a seat that was missing**: `PermissionMatrixTest` asserts that every `.view` right is
+  held by `OfficeHead` — the invariant ruling 7 left standing when it moved the *signature* acts out of that role — so
+  the seeder was corrected rather than the test exempted. A new read right either joins that list or is not named
+  `.view`; an exception written to let one green screen through is the same failure as the hand-spelled year label the
+  vocabulary guard refused.
+  *One definition of "whose turn is it"*: the row calls `WorkflowInbox::nextOffice()` and `progress()` — the same
+  helpers that address the bell — so the list and the notification cannot disagree; both now honour an
+  eager-loaded `workflowsteps` collection, which is what keeps a 25-row page from issuing three queries per record
+  (lane 12's N+1 rule, met inside a shared helper rather than by re-deriving it in the screen). *A desk filter
+  selects the NEXT open box, not any open box*: `whereHas(pending at office)` would hand the Accounting desk a
+  record that Department Evaluation is still ahead of, so the clause carries a `whereNotExists` on a lower
+  `stepOrder`, written in portable SQL because the suite runs it on SQLite too. *A tile may not be a page* and
+  *a dash may not be a zero*: five tiles come from clones taken before `paginate()`, and "no workflow form" is
+  counted — §4's missing-tracker line turned from a reading into a number. *The payload is not the model*: passing
+  `$page` straight to Inertia serialises bare `enrollments` records, so every derived key vanishes and the screen
+  paints a status column with no phase; the paginator's meta now travels beside the mapped rows. Measured the same
+  day: **16 cases / 69 assertions** in `tests/Feature/Admin/WorkflowMonitorTest.php`, `PermissionMatrixTest`'s view
+  table grew the `admin.workflow-monitor → workflow.view` row (Staff is refused), PHPStan 0, Pint PASS over 414
+  files and ESLint silent at `--max-warnings=0` — both re-read on 2026-10-28 after this file's own reseed sentence
+  was found stale, and the whole-suite run then answered **929 passed / 6,234 assertions** with `--list-tests`
+  discovering the same 929, so no test was stolen by an insertion.
+- **Two surfaces, two sentences: a seeder figure is not a live figure.** This batch moved the catalogue from
+  ninety-five rights in fourteen modules to ninety-six in fifteen. The seeder sentences were re-typed first, from
+  `probe-seeder-rbac-counts.php`, while live `ems` still held ninety-five — and the bullet written at that moment
+  said so. The reseed then ran, so **both** surfaces moved and §22's live sentences were re-typed from the server:
+  96 permissions, 308 grants, 17 roles, 0 orphan grants, 96 distinct permissions granted (re-measured 2026-10-28,
+  which is the day that stale sentence was caught by asking the database instead of the note). The §22.3 row of
+  2026-10-06 is a dated record and stays as written. Re-measure the live sentences after a reseed, and state in the
+  §1.1 row which surface each figure is
+  read from, because a half-moved catalogue is the two-copies-of-one-word defect arriving in a document.
+- **Inserting lines ages every pointer below them, and the sweep only sees the ones that hit a blank** (lane 82,
+  same batch). Four citations landed on blank lines: the gradescale route range at lines 242 to 245, `RbacSeeder.php`
+  line 198 and line 223, and the `AuthServiceProvider` define range at lines 168 to 170. Their two bare
+  continuations in the same sentences (the roles tally then named as 483, the last role declaration as 474) sat on
+  live lines and said nothing:
+  reading them back showed the role range had been one *wrong target before this batch touched the file* — 223 was
+  a closing brace and the first `Role::updateOrCreate` was already at 236. `refresh-docx-pass275b.php` therefore
+  asserts, for every new number, that the line it names carries the claim (`247` must contain
+  `Role::updateOrCreate`), and refuses the write otherwise. Run the sweep after any insert into a cited file, then
+  re-read the neighbours of each row it flags.
 - **A moved file's citations are shifted by bytes or not at all** (lane 76). G-3 grew
   `EvaluationController.php` by 102 lines and `routes/web.php` by 5, and the shift tool rewrote **79** citation
   tokens in the authority docx — 60 in the controller, 18 in the routes, 1 in the Evaluation panel; a fourth run,
@@ -1576,7 +1627,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (C-5 with the departments, G-13 at install time), and the read-only queue is the one unattributed pointer, quoted as an example on purpose
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
-  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 130 ranges and flags 18 pairings, every one of them an
+  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 130 ranges and flags 16 pairings, every one of them an
   `encloses` verdict — the shape its own rule permits — and each was re-read on 2026-10-27 after passes 271 and 272
   moved the set down from 21: the pairing list is attribution noise, not a claim the build contradicts — a vendor path
   the basename index cannot see
@@ -2351,7 +2402,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 942 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 950 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

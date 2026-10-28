@@ -63,6 +63,17 @@ final class WorkflowInbox
             return null;
         }
 
+        // A screen that eager-loaded the boxes reads the same answer from the loaded
+        // collection, so the page does not re-query per row. The rule — lowest open step —
+        // lives here alone; the monitor used to re-derive it beside the list it filtered,
+        // which is one definition of "whose turn is it" per runtime and one drift away.
+        if ($workflow->relationLoaded('workflowsteps')) {
+            return $workflow->workflowsteps
+                ->filter(static fn (Workflowsteps $step) => $step->stepStatus === WorkflowStepStatus::Pending)
+                ->sortBy('stepOrder')
+                ->first();
+        }
+
         return $workflow->workflowsteps()
             ->where('stepStatus', WorkflowStepStatus::Pending->value)
             ->orderBy('stepOrder')
@@ -132,10 +143,22 @@ final class WorkflowInbox
      */
     public static function progress(?Enrollmentworkflow $workflow): array
     {
-        $total = $workflow ? $workflow->workflowsteps()->count() : 0;
-        $signed = $workflow
-            ? $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Completed->value)->count()
-            : 0;
+        $boxes = $workflow?->relationLoaded('workflowsteps')
+            ? $workflow->workflowsteps
+            : null;
+
+        if ($boxes !== null) {
+            $total = $boxes->count();
+            $signed = $boxes->filter(
+                static fn (Workflowsteps $step) => $step->stepStatus === WorkflowStepStatus::Completed
+            )->count();
+        } else {
+            $total = $workflow ? $workflow->workflowsteps()->count() : 0;
+            $signed = $workflow
+                ? $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Completed->value)->count()
+                : 0;
+        }
+
         $next = self::nextBox($workflow);
         $labels = WorkflowService::stepLabels();
 

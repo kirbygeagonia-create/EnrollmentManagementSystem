@@ -120,6 +120,10 @@ class PermissionMatrixTest extends TestCase
             ['admin.users.index', 'user.view', true],
             // Audit follow-up §A1: Staff no longer holds audit.view (expect 403)
             ['admin.users.audit-logs', 'audit.view', false],
+            // The workflow monitor (prompt §6.1/§6.3) is an overseer's screen: `workflow.view`
+            // is held by SysAdmin and by Admin through the `.view` rule, and by no desk role —
+            // so a bare Staff account is refused the institution-wide list (expect 403).
+            ['admin.workflow-monitor', 'workflow.view', false],
         ];
     }
 
