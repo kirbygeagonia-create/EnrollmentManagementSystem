@@ -23,6 +23,7 @@ use App\Services\PrintService;
 use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\EnrollmentReadiness;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -378,7 +379,7 @@ class RegistrarController extends Controller
         return Inertia::render('Registrar/PrintCertificate', [
             'enrollment' => $enrollment,
             'documentNumber' => $printLog->documentNumber,
-            'issuedDate' => $enrollment->formIssuedDate?->toDateString() ?? now()->toDateString(),
+            'issuedDate' => $enrollment->formIssuedDate?->toDateString() ?? SchoolTime::today(),
         ]);
     }
 

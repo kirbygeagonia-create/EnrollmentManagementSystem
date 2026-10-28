@@ -28,6 +28,7 @@ use App\Models\Rooms;
 use App\Models\Scholarshiptypes;
 use App\Models\Subjects;
 use App\Support\ReferenceDataSections;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -474,10 +475,14 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageTerms', Academicterms::class);
 
+        // "Which term is live" is the school's calendar question, the same one
+        // Academicterms::covering() answers for every desk's chrome.
+        $today = SchoolTime::today();
+
         $terms = Academicterms::with('academicYear')
             ->when($request->semester, fn ($q, $semester) => $q->where('semester', $semester))
-            ->when($request->status === 'active', fn ($q) => $q->where('startDate', '<=', now()->toDateString())->where('endDate', '>=', now()->toDateString()))
-            ->when($request->status === 'inactive', fn ($q) => $q->where(fn ($sq) => $sq->where('startDate', '>', now()->toDateString())->orWhere('endDate', '<', now()->toDateString())))
+            ->when($request->status === 'active', fn ($q) => $q->where('startDate', '<=', $today)->where('endDate', '>=', $today))
+            ->when($request->status === 'inactive', fn ($q) => $q->where(fn ($sq) => $sq->where('startDate', '>', $today)->orWhere('endDate', '<', $today)))
             ->when($request->search, fn ($q, $search) => $q->whereHas('academicYear', fn ($yq) => $yq->where('yearLabel', 'like', "%{$search}%")))
             ->orderByDesc('termId')
             ->paginate(20)

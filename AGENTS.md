@@ -699,7 +699,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   identity, not a census of `payments`), COMPARISON (one number repeated beside several tables — "They are two
   stages, two offices, two permissions" counts the flows being compared, while `offices` answers 9), CODEISH (a
   number on a class member: "the two `Enrollments::create` sites in app/" counts call sites, which a grep answers —
-  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:73`, so the sentence is true
+  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:76`, so the sentence is true
   and simply not this tool's question), and PER-RECORD (a *lone* number inside an enumeration of eleven table
   names: §3's walkthrough trail "…payments, enrollmentstatushistory, 7 workflowsteps, clinicrecords, idrequests"
   is one enrollment's own trail, not the 199 `workflowsteps` holds). **A census list and a trail list look alike and
@@ -1261,6 +1261,43 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   In the JSX, day cells use `formatCalendarDay`; a date-only or date-and-time view of an instant uses
   `formatSchoolDay` / `formatSchoolMoment`, never `toLocaleDateString()` unqualified, and `Dashboard`'s
   greeting / `max=` "today" values may keep the browser's own clock because they are chrome, not a record. The **demo data follows the desk, not the daemon**: `tools/seed_full_demo_pipeline.php` and its end-to-end test date every `today` row with `SchoolTime::today()`, because between 16:00Z and midnight `now()->toDateString()` writes a receipt onto a day the Accounting drawer will never ask for — the seed then reports success while the screen it exists to demonstrate sits empty. Adding that import moved one line in each file, and with it four document citations, two of them bare continuations inside a single sentence.
+- **A day written or filtered in PHP is the same defect as a day painted in JSX** (lane 85). Lane 51's rule
+  names the shape — never compare `now()` against a DATE column — but the only instrument that enforced it read
+  JavaScript: `lane50-date-day-shift.php` walked the pages under `resources/js/Pages` and opened no PHP file at
+  all. Three server-side sites had
+  been answering the daemon: `EnrollmentIssuer::issue()` stamped `formIssuedDate` from
+  `now()->toDateString()` (so a form issued at 02:00 Manila carries the day before), `RegistrarController`'s
+  certificate fallback printed that same day on paper, and `ReferenceDataController::terms()` filtered
+  Active/Inactive terms by comparing it to `startDate`/`endDate`. All three now call `SchoolTime::today()`, the
+  way `Academicterms::covering()` and the dashboard always have. Pinned by three cases —
+  `php artisan test tests/Feature/Print/PrintControllerTest.php` (two: the stamp, and the printed fallback with
+  `formIssuedDate` nulled) and `php artisan test tests/Feature/Admin/ReferenceDataCrudTest.php` (the filter, read
+  at 18:00Z and at 15:00Z on the same date) — each freezes the clock with `CarbonImmutable::setTestNow` and
+  asserts the UTC reading is *different*, so a case cannot pass by both clocks agreeing. Prove them with
+  `php storage/app/scratch/mutate-lane85-school-day-tests.php` (one defect per promise, each requiring its named
+  case to print `1 failed`, byte-exact restores, and a refusal when a needle does not match exactly once).
+  **That harness died on this file's own documented trap on its first run: `str_replace()` has no limit
+  parameter — its 4th argument is the by-reference `$count`** — and it fataled before planting anything, so the
+  tree was never at risk; the count check moved to `substr_count()` first, then one exact replace.
+  Lane 50 gained a PHP half (it scans `app/` **and** `tools/`, because PHPStan covers `app` only and `pint.json`
+  excludes `tools`), reporting `UTC-DAY-STAMP`, `UTC-DAY-COMPARE`, `SCHOOL-DAY` and `PHP-UNBOUND`; prove it with
+  `php storage/app/scratch/mutate-lane50-checker.php` (13 legs). Two bugs the new legs found in the checker
+  itself, both of which had produced a *clean* verdict over an unread defect: the hoist pattern was built by
+  concatenation and lost its closing `/` (so `preg_match` warned and answered nothing), and the bound between a
+  `where('col'` and the hoisted variable was `[^;]*` — inside a fluent chain there is no semicolon until the
+  last line, so it ran forward and accused `semester`, a real column that is not a day. The bound is now the
+  call's own parentheses, `[^()]*`. **A leg that cannot fail is the only honest test of a new pattern.**
+  Two more readings from the same batch. `mutate-lane50-checker.php` had been **red for weeks while the checker
+  it proves was green**: when lane 50 refuses it prints no `N problem(s)` line, so the baseline's
+  `$final['problems'] === 0` compared `null` to `0`; the harness now treats a refusal as "no counted problems"
+  and separately requires every unbound cell to be *itemised* (count equals printed rows), which is the
+  expectations-age class met from the exit-code side. And a pointer the sweep had cleared for months was found
+  by reading: §24's `academicyears` row cites `ReferenceDataController` for "read only as a dropdown source", and
+  the number it carried pointed at the **opening brace of `terms()`** — the claim lives on the
+  `$years = Academicyears::all(...)` read, which is where the row points now. That number is spelled in words on
+  purpose: the colon form in this file is a citation the checker reads, and this batch moved the line, so a
+  pointer to the old layout would have been a false claim written into the warning about false claims. Shifting
+  this batch's three files moved 45, 3 and 4 citation tokens, one of them by `--map` after reading both endpoints.
 - **The machine's hour is read from MySQL, never from PHP** (lane 54c). Inside a booted application
   `date_default_timezone_get()` answers `app.timezone`, because the framework pins it, so a preflight row built
   on that prints agreement on every server and can never fail. The other candidates are also not the operating
@@ -2111,7 +2148,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   enrollment" row said `createWorkflow()` "is called once, from the Evaluation signature", and §18.6's workflow row said
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
-  answers **two**: `EnrollmentIssuer.php:75`, inside `issue()` directly after `Enrollments::create` at :73, and
+  answers **two**: `EnrollmentIssuer.php:78`, inside `issue()` directly after `Enrollments::create` at :76, and
   `EvaluationController.php:803`, behind `if (! $enrollment->enrollmentworkflow)` at :802. So the one-form rule is held
   by that existence check, not by a single call site — the row's conclusion stands, its stated reason does not — and
   neither cited span contained the call at all (those 532-to-535 lines are `decideStanding()`'s validation, and 466 to 485 is

@@ -170,7 +170,7 @@ $schoolFormatter = '(formatSchoolDay|formatSchoolMoment)';
 
 $problems = 0;
 $blind = [];
-$counts = array_fill_keys(['DAY-VIA-ZONE', 'YEAR-VIA-ZONE', 'DAY-BY-UTC-SLICE', 'DAY-FORMATTER', 'INSTANT-LOCAL', 'VIEWER-ZONE', 'SCHOOL-FORMATTER', 'ARITHMETIC', 'NOW', 'HELDER-PARAM', 'UNBOUND'], 0);
+$counts = array_fill_keys(['DAY-VIA-ZONE', 'YEAR-VIA-ZONE', 'DAY-BY-UTC-SLICE', 'DAY-FORMATTER', 'INSTANT-LOCAL', 'VIEWER-ZONE', 'SCHOOL-FORMATTER', 'ARITHMETIC', 'NOW', 'HELDER-PARAM', 'UNBOUND', 'UTC-DAY-STAMP', 'UTC-DAY-COMPARE', 'SCHOOL-DAY', 'PHP-UNBOUND'], 0);
 
 // First pass over a file: which local names wrap a Date? `const fmt = (d) => (d ? new Date(d).toLocale… : '—')`
 foreach ($files as $file) {
@@ -377,12 +377,117 @@ foreach ($files as $file) {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// 4. The server side (lane 85): a civil day taken from the machine's clock.
+//
+// The screens are not the only surface that answers "what day is it". A DATE column compared to
+// `now()->toDateString()`, or stamped with it, is the same eight-hour error one layer down — the
+// application's clock is UTC (`config/app.php`, and `+00:00` forced on every session), so between
+// 16:00Z and midnight the school is already on the next date. `SchoolTime::today()` is the honest
+// answer, and it is what Academicterms::covering() and the dashboard already use.
+//
+// tools/ is scanned too: PHPStan covers app/ only and pint.json excludes tools, so a day written
+// there is invisible to both static gates.
+// ---------------------------------------------------------------------------------------------
+$machineDay = '/(now\(\)->toDateString\(\)|today\(\)->toDateString\(\)|now\(\)->format\(.[Ym-]*Y-m-d.\)|\bdate\(.[Ym-]*Y-m-d.\))/';
+$phpFiles = [];
+foreach (['app', 'tools'] as $dir) {
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$dir, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $f) {
+        if ($f->isFile() && $f->getExtension() === 'php') {
+            $phpFiles[] = $f->getPathname();
+        }
+    }
+}
+sort($phpFiles);
+
+if ($phpFiles === []) {
+    fwrite(STDERR, "REFUSED: the server-day pass read no PHP file under app/ or tools/ — a clean verdict over nothing.\n");
+    exit(1);
+}
+
+foreach ($phpFiles as $file) {
+    $rel = str_replace('\\', '/', substr($file, strlen($root) + 1));
+    if ($scope !== null && ! preg_match('/('.implode('|', array_map('preg_quote', $scope)).')/i', $rel)) {
+        continue;
+    }
+
+    $fileLines = explode("\n", (string) file_get_contents($file));
+
+    foreach ($fileLines as $i => $line) {
+        if (preg_match($machineDay, $line) !== 1) {
+            continue;
+        }
+
+        // Prose in a comment is not a live expression. The rule this file enforces is written down in
+        // the code it audits, so a whole-line comment quoting the retired call must not read as a defect.
+        $t = trim($line);
+        if (str_starts_with($t, '//') || str_starts_with($t, '*') || str_starts_with($t, '/*')) {
+            continue;
+        }
+
+        // Already answered from the school's declaration: the machine-day pattern matched prose
+        // or an older comment, not a live expression.
+        if (str_contains($line, 'SchoolTime::')) {
+            $counts['SCHOOL-DAY']++;
+
+            continue;
+        }
+
+        // `'formIssuedDate' => now()->toDateString()` — a day written into a day column.
+        if (preg_match("/'([a-zA-Z]*[Dd]ate|effectiveYear)'\s*=>/", $line, $m) === 1 && $isDayName($m[1])) {
+            $counts['UTC-DAY-STAMP']++;
+            $problems++;
+            printf("  %-13s %s:%d  %s is a calendar day stamped from the machine's clock: %s\n",
+                'UTC-DAY-STAMP', $rel, $i + 1, $m[1], mb_substr(trim($line), 0, 96));
+
+            continue;
+        }
+
+        // `where('startDate', '<=', now()->toDateString())` — a day column filtered by the wrong day.
+        if (preg_match("/where(?:Raw)?\(\s*'([a-zA-Z]+)'/", $line, $m) === 1 && $isDayName($m[1])) {
+            $counts['UTC-DAY-COMPARE']++;
+            $problems++;
+            printf("  %-13s %s:%d  %s is a DATE column compared to the machine's day: %s\n",
+                'UTC-DAY-COMPARE', $rel, $i + 1, $m[1], mb_substr(trim($line), 0, 96));
+
+            continue;
+        }
+
+        // A hoisted day: `$today = now()->toDateString();` on one line, `where('startDate', '<=', $today)`
+        // below it. The batch that fixed the terms filter moved the call into a variable, so a checker
+        // that only reads the expression's own line would call that defect invisible.
+        //
+        // The bound has to be the call's own parentheses, not a semicolon: a fluent chain carries no
+        // semicolons until its last line, so `[^;]*` ran forward and accused the first column named in
+        // a later `where(...)` — it matched `semester`, a real column and not a day, and the case read clean.
+        if (preg_match('/^\s*\$([a-zA-Z_]\w*)\s*=\s*.*(now\(\)|today\(\))/', $line, $mv) === 1) {
+            $after = implode("\n", array_slice($fileLines, $i));
+            if (preg_match("/where(?:Raw)?\(\s*'([a-zA-Z]+)'[^()]*\\$".preg_quote($mv[1], '/').'/', $after, $mc) === 1
+                && $isDayName($mc[1])) {
+                $counts['UTC-DAY-COMPARE']++;
+                $problems++;
+                printf("  %-13s %s:%d  %s is a DATE column filtered by the machine's day (hoisted into \$%s): %s\n",
+                    'UTC-DAY-COMPARE', $rel, $i + 1, $mc[1], $mv[1], mb_substr(trim($line), 0, 96));
+
+                continue;
+            }
+        }
+
+        $counts['PHP-UNBOUND']++;
+        $blind[] = sprintf('%s:%d  a machine-day expression bound to no day column this schema knows — %s',
+            $rel, $i + 1, mb_substr(trim($line), 0, 90));
+    }
+}
+
 printf("Files read: %d.  Column types from %d migrations, casts from %d models, %d date-shaped names known.\n",
     count($files), count($migrationFiles), count($modelFiles), count($knownNames));
 printf("DAY-VIA-ZONE: %d   YEAR-VIA-ZONE: %d   DAY-FORMATTER: %d   DAY-BY-UTC-SLICE: %d   SCHOOL-FORMATTER: %d   VIEWER-ZONE: %d   INSTANT-LOCAL: %d   ARITHMETIC: %d   NOW: %d   helper-parameter: %d   UNBOUND: %d\n",
     $counts['DAY-VIA-ZONE'], $counts['YEAR-VIA-ZONE'], $counts['DAY-FORMATTER'], $counts['DAY-BY-UTC-SLICE'],
     $counts['SCHOOL-FORMATTER'], $counts['VIEWER-ZONE'],
     $counts['INSTANT-LOCAL'], $counts['ARITHMETIC'], $counts['NOW'], $counts['HELDER-PARAM'], $counts['UNBOUND']);
+printf("Server side: UTC-DAY-STAMP: %d   UTC-DAY-COMPARE: %d   SCHOOL-DAY: %d   PHP-UNBOUND: %d\n",
+    $counts['UTC-DAY-STAMP'], $counts['UTC-DAY-COMPARE'], $counts['SCHOOL-DAY'], $counts['PHP-UNBOUND']);
 
 if ($blind !== []) {
     echo "\nBlind spots — reported, not counted as clean:\n";

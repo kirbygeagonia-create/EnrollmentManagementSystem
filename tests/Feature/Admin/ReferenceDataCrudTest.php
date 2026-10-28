@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\ScholarshipStatus;
 use App\Enums\StudentType;
 use App\Models\Staffusers;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -479,6 +480,39 @@ class ReferenceDataCrudTest extends TestCase
 
         $this->assertNull(DB::table('courses')->where('courseCode', 'INJ01')->first());
         $this->assertNotNull(DB::table('courses')->where('courseId', $courseId)->first());
+    }
+
+    #[Test]
+    public function the_terms_status_filter_answers_on_the_schools_day_not_the_machines(): void
+    {
+        $admin = $this->staffWithRole('SysAdmin');
+
+        // Opens on the 18th, which is already today in Manila at 18:00Z on the 17th but still
+        // tomorrow for the application's UTC clock.
+        $opening = DB::table('academicterms')->insertGetId([
+            'academicYearId' => 1,
+            'semester' => '1st',
+            'startDate' => '2026-10-18',
+            'endDate' => '2026-10-31',
+        ]);
+
+        try {
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17 18:00:00', 'UTC'));
+            $openingIsLive = collect(
+                $this->actingAs($admin)->get(route('admin.reference-data.terms', ['status' => 'active']))
+                    ->viewData('page')['props']['terms']['data']
+            )->pluck('termId')->all();
+            $this->assertContains($opening, $openingIsLive, 'the school is inside the term, so Active must name it');
+
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17 15:00:00', 'UTC'));
+            $notYet = collect(
+                $this->actingAs($admin)->get(route('admin.reference-data.terms', ['status' => 'active']))
+                    ->viewData('page')['props']['terms']['data']
+            )->pluck('termId')->all();
+            $this->assertNotContains($opening, $notYet, 'at 23:00 on the 17th the school has not opened yet');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     private function staffWithRole(string $roleName): Staffusers

@@ -7,6 +7,7 @@ use App\Enums\EnrollmentType;
 use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
+use App\Support\SchoolTime;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -60,7 +61,9 @@ class EnrollmentIssuer
                 'enrollmentType' => $attributes['enrollmentType'] ?? EnrollmentType::Old,
                 'enrollmentStatus' => EnrollmentStatus::Pending,
                 'evaluatedBy' => $issuer->userId,
-                'formIssuedDate' => now()->toDateString(),
+                // The school's civil day, not the machine's: between 16:00Z and midnight UTC the
+                // Philippines is already on the next date, and this stamp reaches the printed form.
+                'formIssuedDate' => SchoolTime::today(),
             ];
 
             if (! array_key_exists('curriculumId', $enrollment)) {

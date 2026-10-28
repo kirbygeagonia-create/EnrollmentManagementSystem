@@ -29,8 +29,10 @@ use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Models\Subjects;
+use App\Services\EnrollmentIssuer;
 use App\Services\PrintedDocument;
 use App\Services\PrintService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -381,6 +383,59 @@ class PrintControllerTest extends TestCase
             'printedBy' => $registrarStaff->userId,
             'documentNumber' => 1,
         ]);
+    }
+
+    #[Test]
+    public function an_issued_form_is_stamped_on_the_schools_day_not_the_machines(): void
+    {
+        $student = $this->createStudent();
+        $issuer = $this->createStaffForOffice(4);
+
+        try {
+            // 18:00Z on 2026-10-17 is already 02:00 on the 18th in Manila. The desk is issuing the
+            // form on the 18th; only the application's UTC clock calls it the 17th.
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17 18:00:00', 'UTC'));
+
+            $enrollment = app(EnrollmentIssuer::class)->issue([
+                'studentId' => $student->studentId,
+                'courseId' => $this->courseId,
+                'majorId' => $this->majorId,
+                'termId' => $this->termId,
+                'yearLevel' => 1,
+                'studentType' => StudentType::FirstYear,
+            ], $issuer);
+
+            $this->assertSame('2026-10-18', $enrollment->formIssuedDate?->toDateString(),
+                'the issue date is a civil day, so it belongs to the school, not to the daemon');
+            $this->assertSame('2026-10-17', now()->toDateString(),
+                'the discriminator: UTC still calls it the previous day at this instant');
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    #[Test]
+    public function the_certificate_dates_itself_on_the_schools_day_when_the_form_carries_no_issue_date(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+
+        // A record whose form was never stamped: the paper must fall back to the school's today,
+        // and a fallback is exactly where the wrong clock used to show up.
+        DB::table('enrollments')->where('enrollmentId', $enrollment->enrollmentId)
+            ->update(['formIssuedDate' => null]);
+
+        $registrarStaff = $this->createStaffForOffice(1);
+
+        try {
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17 18:00:00', 'UTC'));
+
+            $this->actingAs($registrarStaff)
+                ->get(route('registrar.print-certificate', $enrollment))
+                ->assertInertia(fn ($page) => $page->where('issuedDate', '2026-10-18'));
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     #[Test]

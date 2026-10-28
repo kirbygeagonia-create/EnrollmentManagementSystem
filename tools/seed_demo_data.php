@@ -12,8 +12,10 @@
 // defects were fixed on the way to that finding — the bootstrap that made the file unrunnable, two desk
 // assignments that the sign-rights split and BR9 had reversed, and a reporter that printed "ok" for a
 // validation redirect — and none of them rebuilt the dataset. So this is not the way to make a demo database,
-// and `tools/seed_full_demo_pipeline.php` is right to refuse when the base rows are missing: the presentation
-// dataset still comes from Documentation/ems-demo-backup.sql, which is a September snapshot.
+// and `tools/seed_full_demo_pipeline.php` is right to refuse when the base rows are missing: the
+// presentation dataset comes from running that pipeline. No snapshot ships with the code —
+// Documentation/ems-demo-backup.sql was one until 2026-10-26, when it was taken out of tracking as
+// machine state, and it was already a September snapshot at that.
 //
 // Usage: php tools/seed_demo_data.php   (from the project root)
 //
@@ -34,6 +36,7 @@ use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Support\SchoolTime;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -183,7 +186,7 @@ echo "ok   requirements verified\n";
 // `ExamPolicy::record` asks — `exam.record.general` is held by office4_head and never by an office-7 account,
 // and `exam.record.courseSpecific` is the reverse. Both posts were 403. Nobody saw it because the file could
 // not reach line 11 until the bootstrap import above was fixed.
-$examData = ['studentId' => $studentId, 'courseId' => 3, 'termId' => 11, 'examResult' => 'pass', 'examDate' => now()->toDateString()];
+$examData = ['studentId' => $studentId, 'courseId' => 3, 'termId' => 11, 'examResult' => 'pass', 'examDate' => SchoolTime::today()];
 ok('exam.general.record', req($staff(4), 'POST', route('exam.general.record'), $examData));
 ok('exam.course-specific.record', req($staff(7), 'POST', route('exam.course-specific.record'), $examData));
 $admission->refresh();
@@ -222,7 +225,7 @@ $profile = [
         'email' => 'demo.maria@example.com', 'isEmergencyContact' => true, 'isAuthorizedToActOnBehalf' => true,
     ]],
     'semestersCompleted' => 0, 'yearsInInstitution' => 0, 'academicStanding' => 'regular',
-    'formIssuedDate' => now()->toDateString(),
+    'formIssuedDate' => SchoolTime::today(),
 ];
 ok('evaluation.profile.capture', req($evaluator, 'PUT', route('evaluation.profile.capture', $enrollment), $profile));
 
@@ -246,7 +249,7 @@ echo "     status: {$enrollment->enrollmentStatus->value}\n";
 $assessment = $enrollment->fresh()->studentassessments;
 ok('accounting.payment.record', req($staff(2), 'POST', route('accounting.payment.record', $assessment), [
     'orNumber' => 'DEMO-OR-0001', 'amount' => $assessment->remainingBalance,
-    'paymentMode' => 'cash', 'paymentDate' => now()->toDateString(),
+    'paymentMode' => 'cash', 'paymentDate' => SchoolTime::today(),
 ]));
 $enrollment->refresh();
 echo "     status: {$enrollment->enrollmentStatus->value}\n";
@@ -278,7 +281,7 @@ ok('clinic.record', req($staff(11), 'POST', route('clinic.record', $enrollment),
     'heightCm' => 170, 'weightKg' => 62, 'bloodPressure' => '120/80',
     'philhealthNumber' => 'PH-DEMO-0001', 'philhealthRegistered' => true,
     'assessmentNotes' => 'Fit for enrollment', 'findings' => 'Normal',
-    'assessmentDate' => now()->toDateString(),
+    'assessmentDate' => SchoolTime::today(),
 ]));
 
 // ---------- 9. ID (validation-only flow: intake -> photo -> validate) ----------
@@ -324,7 +327,7 @@ if ($period) {
 // Retention exam for BSAIS (course 5)
 ok('exam.retention.record', req($staff(7), 'POST', route('exam.retention.record'), [
     'studentId' => $student2->studentId, 'courseId' => 5, 'termId' => 11,
-    'examResult' => 'pass', 'examDate' => now()->toDateString(),
+    'examResult' => 'pass', 'examDate' => SchoolTime::today(),
 ]));
 
 echo "\nDEMO DATA SEEDED\n";
