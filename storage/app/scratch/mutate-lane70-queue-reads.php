@@ -175,6 +175,61 @@ $check('the planted record-count numerator reports rows that were read as still 
     $bad !== null && $bad[0] < $bad[1], $bad === null ? 'the mutant printed no reads line' : "mutant says {$bad[0]} of {$bad[1]}, the tool says {$m[1]} of {$m[2]}");
 $check('and the fixed tool reports the queue fully covered', (int) $m[1] === (int) $m[2], "{$m[1]} of {$m[2]}");
 
+// 7 — the identity may not be keyed on the dump's own generated ordinals. Docx pass 273 inserted ONE §1.1 row and
+// orphaned 59 records that had been honestly read that day, because `dump-docx-flat.php` labels every row `ROW nnn:`
+// and the hashed sentence window includes that label whenever the pointer sits near the start of its row. Renumber
+// the whole dump and require the same coverage.
+$dumpPath = $scratch.'/docx-flat.txt';
+$dumpBytes = (string) file_get_contents($dumpPath);
+if ($dumpBytes === '') {
+    exit("REFUSED: the flat dump at {$dumpPath} is empty, so the renumbered leg would measure nothing.\n");
+}
+$renum = preg_replace_callback(
+    '/\b(ROW|P) (\d+):/u',
+    static fn (array $x): string => $x[1].' '.((int) $x[2] + 1).':',
+    $dumpBytes
+);
+if ($renum === $dumpBytes) {
+    exit("REFUSED: renumbering the dump changed no bytes — the leg below would report the control's answer as a pass.\n");
+}
+$renumPath = $tmp.'/renumbered.txt';
+file_put_contents($renumPath, $renum);
+$outRen = $run(' --dump='.escapeshellarg($renumPath).' --reads='.escapeshellarg($reads));
+$covRen = $covered($outRen);
+$check('a renumbered dump leaves every recorded read honoured',
+    $covRen !== null && $covRen === (int) $m[1],
+    $covRen === null ? 'the renumbered run printed no reads line' : "renumbered says {$covRen} recorded, control says {$m[1]}");
+
+// …and the leg must be able to fail: put the fold-out back the way it was written, and require the coverage to fall.
+// Without this case the leg proves only that today's code agrees with itself.
+$ordinalRevert = [[<<<'PHP'
+    $identity = preg_replace('/\b(ROW|P) \d+:/u', '$1:', $sentence) ?? $sentence;
+PHP, <<<'PHP'
+    $identity = $sentence;
+PHP]];
+$ordTool = $scratch.'/tmp-lane70-reads-ordinal.php';
+$ordBytes = $srcBytes;
+$ordApplied = 0;
+foreach ($ordinalRevert as [$from, $to]) {
+    $n = substr_count($ordBytes, $from);
+    if ($n !== 1) {
+        exit("REFUSED: the ordinal revert matched {$n} copy(ies) of its anchor, so this leg would mutate nothing.\n");
+    }
+    $ordBytes = str_replace($from, $to, $ordBytes);
+    $ordApplied++;
+}
+if ($ordApplied < 1 || $ordBytes === $srcBytes) {
+    exit("REFUSED: the planted ordinal defect changed no bytes, so the leg would measure the unfixed tool.\n");
+}
+file_put_contents($ordTool, $ordBytes);
+$outOrd = (string) shell_exec('cd '.escapeshellarg($root).' && '.$php.' '.escapeshellarg($ordTool).' --dump='.escapeshellarg($renumPath).' --reads='.escapeshellarg($reads).' 2>&1');
+@unlink($ordTool);
+@unlink($renumPath);
+$covOrd = $covered($outOrd);
+$check('the planted ordinal-in-key defect ages honest records when a row is inserted',
+    $covOrd !== null && $covOrd < (int) $m[1],
+    $covOrd === null ? 'the mutant printed no reads line' : "mutant keeps {$covOrd} of {$m[1]}, the tool keeps all {$m[1]}");
+
 array_map('unlink', glob($tmp.'/*'));
 @rmdir($tmp);
 printf("\n%d leg(s) failed.\n", $fails);

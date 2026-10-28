@@ -136,7 +136,15 @@ $markUnbound = static function (string $file, int $from, int $to, string $senten
     // The dump line cannot be part of a read's identity: one inserted paragraph above moves every later line, which
     // would age a hundred honest records to make one unrelated edit. The sentence IS the pointer's identity — it is
     // what the reading was about, and it changes only when the citation or the claim it makes changes.
-    $k = str_replace($root.'/', '', $file).':'.$from.'-'.$to.'#'.substr(md5(preg_replace('/\s+/u', ' ', $sentence)), 0, 8);
+    // Nor can the sentence's own leading label. `dump-docx-flat.php` prefixes each row and paragraph with a
+    // generated ordinal (`ROW 2466:`, `P 656:`), and the 240-character window this hash covers includes that label
+    // for every pointer sitting near the start of its row — so docx pass 273, which inserted ONE §1.1 row,
+    // renumbered every later row and orphaned 59 records that had just been read. The ordinal is an artefact of the
+    // dump, not a fact of the document, so it is folded out before hashing. Two rows whose text is otherwise equal
+    // now share one key, which is the semantics this file already carries: one sentence written in two places is
+    // one read covering two rows.
+    $identity = preg_replace('/\b(ROW|P) \d+:/u', '$1:', $sentence) ?? $sentence;
+    $k = str_replace($root.'/', '', $file).':'.$from.'-'.$to.'#'.substr(md5(preg_replace('/\s+/u', ' ', $identity)), 0, 8);
     $unboundKeys[$k] = ($unboundKeys[$k] ?? 0) + 1;
 };
 $printed = 0;

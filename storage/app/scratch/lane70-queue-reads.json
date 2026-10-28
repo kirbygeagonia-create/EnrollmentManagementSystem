@@ -12,27 +12,27 @@
             "verdict": "true",
             "by": "direct read: :164-168 is the useEffect that re-raises a repeat error"
         },
-        "Evaluation/Index.jsx:78-78#ac4a535e": {
+        "Evaluation/Index.jsx:78-78#1f09818e": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the Year Level column definition, rendered through formatYearLevel"
         },
-        "Evaluation/Index.jsx:84-84#ac4a535e": {
+        "Evaluation/Index.jsx:84-84#1f09818e": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the Proposed Standing column definition, beside it"
         },
-        "Students/Show.jsx:147-147#c7c8ef4e": {
+        "Students/Show.jsx:147-147#47545ba7": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the PageHeader title that prints the student's name"
         },
-        "Students/Show.jsx:60-61#c7c8ef4e": {
+        "Students/Show.jsx:60-61#47545ba7": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the two type values printed together (studentType, enrollmentType)"
         },
-        "Students/Show.jsx:65-66#c7c8ef4e": {
+        "Students/Show.jsx:65-66#47545ba7": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the enrollment-status badge and its formatted label"
@@ -47,12 +47,12 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: approve(): the `return Enrollments::create([` that is the applicant's first enrollment"
         },
-        "EvaluationController.php:97-99#7d8ec787": {
+        "EvaluationController.php:97-99#807502a6": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: index()'s queue filter `whereIn('enrollmentStatus', [Pending, ReturnedToEvaluation])`"
         },
-        "RegistrarController.php:338-338#0994b3c9": {
+        "RegistrarController.php:338-338#6f3e408a": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: drop(): the `dropReason => required|string|min:10|max:500` rule the §13 status row names"
@@ -62,7 +62,7 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "RegistrarController.php:296-296#7c2d4054": {
+        "RegistrarController.php:296-296#15f1b5cf": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: approve(): the enrollmentType write taken from the derived type — the BR31 correction §24's enrollmentType row cites"
@@ -72,12 +72,12 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: entranceApplicants() end to end (signature :302, closing brace :311)"
         },
-        "ExamController.php:233-263#c3ce3c2c": {
+        "ExamController.php:233-263#0f2e9039": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: students(): the transferee-waived roster, marked `generalExamWaived` at :261"
         },
-        "ExamController.php:267-274#c3ce3c2c": {
+        "ExamController.php:267-274#0f2e9039": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: students(): the else arm — a program with no general paper lists its own applicants"
@@ -97,42 +97,42 @@
             "verdict": "true",
             "by": "direct read: :152-158 the BR19 note and the zeroes, :160-168 the stored balance, :180 the commented-out auto-transition, :432-443 finalize"
         },
-        "AccountingController.php:290-290#bb69e122": {
+        "AccountingController.php:290-290#4945f947": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: settleNoBalance() signs the Accounting box — the act the paragraph says the payment writes"
         },
-        "Registrar/Index.jsx:93-93#e562d658": {
+        "Registrar/Index.jsx:93-93#fea217db": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: phaseBadge=\"Phase 5 · Registrar Central Desk\" — the badge the sentence quotes, re-read with a numbered reader after pass 243 refused itself"
         },
-        "AuthServiceProvider.php:198-198#198894b7": {
+        "AuthServiceProvider.php:198-198#2c502043": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the clinic gate's body: `return app(ClinicPolicy::class)->record($user, $enrollment);`"
         },
-        "IDController.php:184-184#c75eabd8": {
+        "IDController.php:184-184#b8804221": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: create() writing `bloodType` from validated input — the one medical fact the §19 paragraph says comes from the ID form"
         },
-        "SendWorkflowNotification.php:54-70#dd675bf6": {
+        "SendWorkflowNotification.php:54-70#a08029e1": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the signature notification's notify() call, from its key through the progress payload"
         },
-        "NotificationController.php:33-34#46c6cfa0": {
+        "NotificationController.php:33-34#becb93d0": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the unread count, filtered on Staffusers"
         },
-        "NotificationController.php:51-51#46c6cfa0": {
+        "NotificationController.php:51-51#becb93d0": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markRead()'s ownership test on notifiable_type and notifiable_id"
         },
-        "NotificationController.php:65-66#46c6cfa0": {
+        "NotificationController.php:65-66#becb93d0": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s Staffusers filter"
@@ -147,52 +147,52 @@
             "verdict": "true",
             "by": "direct read: :28-31 and :39-43 pass a real array, which is the row's claim"
         },
-        "AuthenticatedLayout.jsx:85-113#e6e5bdbe": {
+        "AuthenticatedLayout.jsx:85-113#e4d4c5cb": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: handleMarkAllRead, including the :110-112 comment and `.catch()` that make the repaint conditional on an accepted response"
         },
-        "NotificationController.php:65-68#e6e5bdbe": {
+        "NotificationController.php:65-68#e4d4c5cb": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s whole update, including the `read_at` write at :68"
         },
-        "RegistrarController.php:388-388#bcedc468": {
+        "RegistrarController.php:388-388#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: printClassCards's signature, cited both as a §23 print action and as §25.1's class-card page"
         },
-        "RegistrarController.php:419-419#bcedc468": {
+        "RegistrarController.php:419-419#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: printSubjectLoad's signature"
         },
-        "RegistrarController.php:443-443#bcedc468": {
+        "RegistrarController.php:443-443#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadCertificate's signature — the PDF the certificate row cites"
         },
-        "RegistrarController.php:458-458#bcedc468": {
+        "RegistrarController.php:458-458#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadEnrollmentForm's signature, one of the four generated PDFs"
         },
-        "RegistrarController.php:470-470#bcedc468": {
+        "RegistrarController.php:470-470#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadClassCard's signature — the PDF the class-card row cites"
         },
-        "RegistrarController.php:496-496#bcedc468": {
+        "RegistrarController.php:496-496#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadSubjectLoad's signature — the PDF the subject-load row cites"
         },
-        "ClearanceController.php:408-408#bcedc468": {
+        "ClearanceController.php:408-408#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadSlip()'s signature, cited by two rows"
         },
-        "BlockingController.php:571-571#bcedc468": {
+        "BlockingController.php:571-571#1bba0182": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadBlockSchedule()'s signature — the PDF sibling §23's print-action row and §25.1 both name"
@@ -242,37 +242,37 @@
             "verdict": "true",
             "by": "direct read: :147-167 and :170-236 are the cases the row names"
         },
-        "EvaluationController.php:192-194#a10f9d45": {
+        "EvaluationController.php:192-194#da6c9cb3": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: show(): the Item 7 comment and `resolveCurriculum($enrollment)` — the pinning the §21 row claims"
         },
-        "EvaluationController.php:714-738#a10f9d45": {
+        "EvaluationController.php:714-738#da6c9cb3": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: proposeSubjects(): the prerequisite auto-gate over the whole pinned curriculum"
         },
-        "WorkflowService.php:255-255#3d533f5c": {
+        "WorkflowService.php:255-255#c82a113d": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "BlockingController.php:450-462#3f9e9523": {
+        "BlockingController.php:450-462#d336bacf": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: assignStudents()'s room check — §22's room-capacity row cites exactly this span"
         },
-        "DevReferenceDataSeeder.php:141-141#71b7ad69": {
+        "DevReferenceDataSeeder.php:141-141#271a57d3": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the second of the three `Academicyears::firstOrCreate` calls behind §21's academicyears cell"
         },
-        "DevReferenceDataSeeder.php:148-148#71b7ad69": {
+        "DevReferenceDataSeeder.php:148-148#271a57d3": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the third of the three `Academicyears::firstOrCreate` calls"
         },
-        "AuthServiceProvider.php:106-299#6e09e853": {
+        "AuthServiceProvider.php:106-299#bb955602": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: boot()'s gate block: :106 is the SysAdmin Gate::before comment, :299 the last Gate::define — the range the policies row cites"
@@ -292,87 +292,87 @@
             "verdict": "true",
             "by": "direct read: :198 is id.viewAtDesk and :207-215 the two deliberately renamed rights; the range 106-299 is boot()'s Gate::define block, first define :115, last :297"
         },
-        "AdmissionPolicy.php:67-158#a55d07df": {
+        "AdmissionPolicy.php:67-158#54da164a": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: approvalBlockers() end to end: signature :67, `return $blockers;` :158 — the method grew past its old :152 with the G-4 examination conditions"
         },
-        "RegistrarController.php:443-443#5535644f": {
+        "RegistrarController.php:443-443#1edd189f": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadCertificate's signature — the PDF the certificate row cites"
         },
-        "PrintService.php:115-115#5535644f": {
+        "PrintService.php:115-115#1edd189f": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: recordIssue()'s signature — the one writer behind every desk print"
         },
-        "RegistrarController.php:470-470#a9801bca": {
+        "RegistrarController.php:470-470#5b5949d7": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadClassCard's signature — the PDF the class-card row cites"
         },
-        "PrintService.php:254-254#a9801bca": {
+        "PrintService.php:254-254#5b5949d7": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: printClassCard()'s signature, the per-subject render the class-card row names"
         },
-        "RegistrarController.php:496-496#82d6c306": {
+        "RegistrarController.php:496-496#be87ba42": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadSubjectLoad's signature — the PDF the subject-load row cites"
         },
-        "ClearanceController.php:408-408#c0aa5886": {
+        "ClearanceController.php:408-408#41d4e55b": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadSlip()'s signature, cited by two rows"
         },
-        "BlockingController.php:571-571#b5f53790": {
+        "BlockingController.php:571-571#2c47e654": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: downloadBlockSchedule()'s signature — the PDF sibling §23's print-action row and §25.1 both name"
         },
-        "RegistrarController.php:411-411#25736fef": {
+        "RegistrarController.php:411-411#3ac4ec40": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: pass 272: Inertia::render('Registrar/PrintClassCards'), the second of the three Print components"
         },
-        "RegistrarController.php:434-434#25736fef": {
+        "RegistrarController.php:434-434#3ac4ec40": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: pass 272: Inertia::render('Registrar/PrintSubjectLoad'), the third"
         },
-        "PrintCertificate.jsx:119-119#8407c0b2": {
+        "PrintCertificate.jsx:119-119#981ad6e8": {
             "read": "2026-10-25",
             "verdict": "true",
             "by": "direct read: :119 and :124 are the blank signature rules the matrix cell quotes"
         },
-        "PrintCertificate.jsx:124-124#8407c0b2": {
+        "PrintCertificate.jsx:124-124#981ad6e8": {
             "read": "2026-10-25",
             "verdict": "true",
             "by": "direct read: :119 and :124 are the blank signature rules the matrix cell quotes"
         },
-        "class-card.blade.php:121-121#8407c0b2": {
+        "class-card.blade.php:121-121#981ad6e8": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the \"Issued by:\" footer label the signatory matrix cell counts"
         },
-        "PrintSubjectLoad.jsx:133-133#8407c0b2": {
+        "PrintSubjectLoad.jsx:133-133#981ad6e8": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the Adviser Signature line"
         },
-        "PrintSubjectLoad.jsx:137-137#8407c0b2": {
+        "PrintSubjectLoad.jsx:137-137#981ad6e8": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the Registrar Signature line"
         },
-        "enrollment-form.blade.php:369-369#13749e8d": {
+        "enrollment-form.blade.php:369-369#0018ed93": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the signature Date line, blank when formSignedDate is null"
         },
-        "clearance-slip.blade.php:103-103#13749e8d": {
+        "clearance-slip.blade.php:103-103#0018ed93": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the per-approval date cell the Dates row cites"
@@ -462,37 +462,37 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: assignStudents()'s block-capacity refusal (distinct students, not subject rows)"
         },
-        "BlockingController.php:287-288#dbef5efb": {
+        "BlockingController.php:287-288#bd6d9a0f": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: storeSchedule()'s warn-and-proceed return — the ternary that answers the warning when one exists"
         },
-        "BlockingController.php:457-457#dbef5efb": {
+        "BlockingController.php:457-457#bd6d9a0f": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the `if ($roomEnrolled + $requestedCount > $room->capacity)` line the E-11 row names"
         },
-        "EnrollmentStateMachine.php:48-50#45170358": {
+        "EnrollmentStateMachine.php:48-50#672b2590": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: pass 271 asserted these before writing: :48-49 \"A drop is terminal\", :50 `'dropped' => []`"
         },
-        "EnrollmentStateMachine.php:56-60#45170358": {
+        "EnrollmentStateMachine.php:56-60#672b2590": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: pass 271 asserted these before writing: SUBJECT_TRANSITIONS — proposed → confirmed/dropped, confirmed → dropped"
         },
-        "EvaluationController.php:565-565#9033f53a": {
+        "EvaluationController.php:565-565#363c8aec": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: captureProfile()'s `'evaluatedBy' => Auth::user()->userId,` — the write the walkthrough step 2 names"
         },
-        "WorkflowService.php:261-272#cef74f42": {
+        "WorkflowService.php:261-272#c78909bc": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): the BR13 step-order check the T-1 row cites"
         },
-        "EvaluationController.php:352-379#c2027daa": {
+        "EvaluationController.php:352-379#66942907": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: satisfiedPrerequisites() end to end, including the Creditedsubjects read and the merged return at :378"

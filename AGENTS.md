@@ -1502,7 +1502,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 272; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 273; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1893,27 +1893,42 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   having grown by exactly 64 lines above them, measured against the same commit's copy of the file. So the fix was to
   re-read, then regenerate with `lane70-make-reads.php`, never to re-key by hand. **Re-read before you re-record: a
   STALE row asks *why* the key moved, and only one of the three answers means the verdict still holds.** Nothing is
-  recorded that was not opened. **The 2026-10-27 drain found thirteen wrong targets, and eleven of them sit in one
-  table.** Reading the queue file by file turned up §25.1's print-route table: its Staff-route column cited web.php
-  lines 146 to 151, plus 124, 138 and 139, which today are the Blocking chapter banner, five blocking CRUD routes,
-  the Accounting banner and two clearance acts — and its "what the browser gets" column named RegistrarController
+  recorded that was not opened. **The 2026-10-27 drain moved 32 citation numbers out of the document and 33 in,
+  across ten places.** `storage/app/scratch/pass273-count-moves.php` answers that by diffing the multiset of
+  citation-shaped tokens between two copies of the docx, and it exists because the two totals I first wrote down
+  were arithmetic from memory and both were wrong. Reading the queue file by file turned up §25.1's print-route
+  table: its Staff-route column cited nine web.php numbers — lines 146 to 151, plus 124, 138 and 139 — which today
+  are the Blocking chapter banner, five blocking CRUD routes, the Accounting banner and two clearance acts; and its
+  "what the browser gets" column named RegistrarController
   lines 388, 421 and 444 for the certificate, class-card and subject-load pages, which are printClassCards' signature,
-  a line inside printSubjectLoad and the brace of downloadCertificate. Every one of those numbers is a live line in
+  a line inside printSubjectLoad and the brace of downloadCertificate, with the three PDF cells beside them landing on
+  a closing brace and two other documents' downloads. Every one of those numbers is a live line in
   the right file, so the bounds sweep, lane 32 and the anchor checker all agreed with them; only opening
   `routes/web.php` said which route is which. Two lists of the same five print acts (§25.1's reachability paragraph
-  and §28's P-3 row) both carried the three-number run 388, 405, 428. Pass 272 re-took all sixteen numbers, and its
+  and §28's P-3 row) both carried the three-number run 388, 405, 428. Pass 272 re-took all of it, and its
   own assertion loop is the reason the two lists do not now agree on the wrong thing: the paragraph's claim is *every
   `Inertia::render` whose component contains Print*, so it got the three render lines, while the P-3 row's claim is
   that each desk print writes its log row, so it got the three action signatures — spelled as §23's
   `documentprintlog` row spells them after pass 271. **One range cannot carry two claims, and a list has to be cited
-  on the line its own sentence names.** Pass 271 took the other two: §23's print-action row and §28's E-13 row (the
-  state machine's enrolled edge had moved twenty lines down when the two return states were inserted, and E-13's
+  on the line its own sentence names.** Pass 271 took the other three places: §23's print-action row and §28's E-13
+  row (the state machine's enrolled edge had moved seventeen lines down when the two return states were inserted,
+  and E-13's
   second claim — the subject's own `proposed → confirmed → dropped` line — had no pointer at all until the
   `SUBJECT_TRANSITIONS` block was cited beside it), and §6's Registrar/Show cell, whose second number was a closing
   `</div>` while the year level and standing print one div lower. Both passes print their own assertion count and
   refuse the write when any new number fails the line it is offered for, which is the only thing that separates a
   re-point from a re-guess. The historical numbers above are spelled as prose on purpose: a colon in this file makes
-  a token a citation, and a citation to a retired layout is the defect the paragraph exists to warn about. **What a record does not claim:** it says *this span carried this sentence's claim on
+  a token a citation, and a citation to a retired layout is the defect the paragraph exists to warn about.
+  **Then pass 273 inserted one §1.1 row and 59 honest records went stale, which is a fourth way a key disappears and
+  it is the instrument's, not the document's.** The checker's identity is `file:range#md5(sentence)`, and the sentence
+  is a 240-character window of the flat dump — which `dump-docx-flat.php` labels with a *generated* ordinal
+  (`ROW 2466:`, `P 656:`). A pointer sitting near the start of its row therefore hashes that ordinal, so adding a row
+  anywhere above it renumbers every later row and ages its record: the very defect lane 44 names for a mutant anchored
+  on a generated line ordinal, arriving in a read's key. The window is now folded to `ROW:`/`P:` before hashing, and
+  `mutate-lane70-queue-reads.php` grew two legs — one renumbers the whole dump through `--dump=` and requires coverage
+  to hold at 108 of 108, the other plants the old keying back in a copy and **requires coverage to fall**, which it
+  does (the mutant keeps 49 of 108). A generated label is never an identity: check what the dumper adds to the text
+  you hash, not only what the document says. **What a record does not claim:** it says *this span carried this sentence's claim on
   this date* — a later code move leaves the key untouched, so a record is no substitute for re-running
   `probe-moved-cites.php` or lane 51's reconcile after editing a cited file, and the same pointer can be keyed under
   two spellings (`ExamController.php:476` and `app/Http/Controllers/Exam/ExamController.php:476`), only one of which a
@@ -1923,7 +1938,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   never make an unread row look read. A record set may under-report coverage; it cannot falsely clear it.
   `lane70-make-reads.php` regenerates the file
   from `--show-keys` output so the keys can never be re-derived by a second definition of "pointer" (the blind sheet's
-  eleven-fold phantom), and `mutate-lane70-queue-reads.php` (11 legs) proves the mechanism: a ghost record must be
+  eleven-fold phantom), and `mutate-lane70-queue-reads.php` (13 legs) proves the mechanism: a ghost record must be
   STALE and must lower the covered count **by that key's own row count**, an empty file must leave every row unread,
   muting the collector's four sites must make the run refuse because `tally ≠ collected`, a byte-identical copy must
   answer like the control, and the coverage line must add up to the queue.
@@ -2309,7 +2324,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 936 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 942 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
