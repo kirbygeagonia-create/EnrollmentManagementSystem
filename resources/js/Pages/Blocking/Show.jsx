@@ -5,20 +5,24 @@ import { useState, useMemo } from 'react';
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-// Timetable grid: 7:00-21:00 in 30-min slots (item 9) = 28 rows.
+// Timetable grid: 7:00 AM through 9:30 PM in 30-minute slots = 29 rows — the span the development
+// prompt §7.9 asks for, and the reason the last half hour is a row rather than a clamp: a class
+// that runs to 9:30 used to be drawn as if it ended at 9:00, because the grid simply stopped there.
 const START_HOUR = 7;
 const END_HOUR = 21;
-const SLOTS = (END_HOUR - START_HOUR) * 2;
+const END_MINUTE = 30;
+const SLOT_MINUTES = 30;
+const SLOTS = (END_HOUR * 60 + END_MINUTE - START_HOUR * 60) / SLOT_MINUTES;
 
 const slotMinutes = (t) => {
     const [h, m] = String(t).split(':').map(Number);
     return h * 60 + m;
 };
 
-/** [startSlot, spanSlots] for a meeting, clamped to the 7:00-21:00 grid. */
+/** [startSlot, spanSlots] for a meeting, clamped to the 7:00 AM–9:30 PM grid. */
 const meetingSpan = (meeting) => {
-    const start = Math.min(Math.max(Math.floor((slotMinutes(meeting.startTime) - START_HOUR * 60) / 30), 0), SLOTS - 1);
-    const end = Math.min(Math.max(Math.ceil((slotMinutes(meeting.endTime) - START_HOUR * 60) / 30), start + 1), SLOTS);
+    const start = Math.min(Math.max(Math.floor((slotMinutes(meeting.startTime) - START_HOUR * 60) / SLOT_MINUTES), 0), SLOTS - 1);
+    const end = Math.min(Math.max(Math.ceil((slotMinutes(meeting.endTime) - START_HOUR * 60) / SLOT_MINUTES), start + 1), SLOTS);
     return [start, end - start];
 };
 
@@ -598,7 +602,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 }>
                     {sortedSchedules.length > 0 && (
                         <div className="mb-6">
-                            <p className="text-sm text-brand-500 mb-2">Weekly Timetable (7:00 AM – 9:00 PM, 30-minute slots)</p>
+                            <p className="text-sm text-brand-500 mb-2">Weekly Timetable (7:00 AM – 9:30 PM, 30-minute slots)</p>
                             <div className="overflow-x-auto rounded-btn border border-brand-100">
                                 <div
                                     className="grid min-w-[760px]"
