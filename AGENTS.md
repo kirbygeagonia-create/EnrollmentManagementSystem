@@ -1893,7 +1893,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   2026-10-25 prose and today's date while no reading of the moved pointer had happened. Verdicts are now keyed by
   `File.php:NN-NN` with an explicit read date, consulted before the older maps, and the generator prints
   `no verdict on file for N key(s)` with each head named — a queue it cannot answer is printed, never folded into the
-  covered count. Re-take a STALE row by reading it, then regenerate with `lane70-make-reads.php` — never re-key by
+  covered count. **The two instruments this drain produced each got a harness the same day, and each found a defect on
+  its first run, which is the whole argument for writing them.** Honouring the path part was only the first half of
+  the locator's story: its fallback was a list of depth-limited `glob()` patterns, and **PHP's glob has no recursive
+  double-star**, so a "tests" + double-star + filename path answers zero and every key under a two-deep directory
+  printed NOT FOUND while the drained queue showed none — the locator now walks the tree once into a basename index
+  and returns the candidate count, so "no such file" and "two files share this basename" are refused separately
+  rather than guessed.
+  `pass273-count-moves.php` opened its arguments with `if (! $z->open($file))`, and **`ZipArchive::open()` answers an
+  error CODE for a file that is not an archive, which is truthy**, so the guard never fired and the run died on
+  "Uncaught ValueError: Invalid or uninitialized Zip object" instead of refusing; the form is `!== true`, and
+  `mutate-pass273-count-moves.php` plants both bad files (a text file named `.docx`, and a well-formed zip holding a
+  105-byte `document.xml`) to prove each refusal. A negated `open()` guard is the same mistake as trusting
+  `filesize()` for byte-identity: the function answers something truthy and the refusal you wrote never happens.
+  Re-take a STALE row by reading it, then regenerate with `lane70-make-reads.php` — never re-key by
   hand, and never quote 107-of-107 as though it were the
   instrument's permanent verdict rather than one day's reading. A record whose key has
   gone is printed as **STALE**, not dropped: the two ways a key disappears are "a pass fixed the row" and "a pass

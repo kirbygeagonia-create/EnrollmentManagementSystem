@@ -11,13 +11,32 @@
  * "Unread" is computed from the anchor tool's OWN keys minus the keys present in `lane70-queue-reads.json`, so a
  * row is never called unread by one tool's idea of a pointer and read by another's.
  *
- * usage: php storage/app/scratch/lane70-read-unread.php [--all]
+ * usage: php storage/app/scratch/lane70-read-unread.php [--all] [--reads=<file>]
  *        --all prints every UNBOUND key rather than only the ones with no record.
+ *        --reads= judges a different record set, so a harness can prove the set is what makes the queue short.
  */
 
 $root = dirname(__DIR__, 3);
 $php = PHP_BINARY;
-$wantAll = in_array('--all', $argv, true);
+$wantAll = false;
+$readsOverride = null;
+foreach (array_slice($argv, 1) as $arg) {
+    if ($arg === '--all') {
+        $wantAll = true;
+
+        continue;
+    }
+    if (str_starts_with($arg, '--reads=')) {
+        $readsOverride = substr($arg, strlen('--reads='));
+
+        continue;
+    }
+    // An accepted-and-ignored flag is how a mutant run looks clean, so anything this reader does not read is refused
+    // by name rather than tolerated.
+    fwrite(STDERR, "REFUSED: unknown argument {$arg}; this reader reads --all and --reads=<file>.\n");
+
+    exit(1);
+}
 
 $out = (string) shell_exec(escapeshellarg($php).' '.escapeshellarg($root.'/storage/app/scratch/lane70-anchor-cites.php').' --show-keys 2>&1');
 
@@ -41,71 +60,86 @@ if ($keys === []) {
 }
 
 $reads = [];
-$readsFile = $root.'/storage/app/scratch/lane70-queue-reads.json';
+$readsFile = $readsOverride ?? $root.'/storage/app/scratch/lane70-queue-reads.json';
+if ($readsOverride !== null && ! is_file($readsFile)) {
+    // An explicit path that does not exist must refuse: reading it as "no records" would print the whole queue as
+    // unread and look like a finding, while reading it as "the file exists and is empty" is what a silently
+    // defaulted path does to a harness leg.
+    fwrite(STDERR, "REFUSED: --reads={$readsOverride} is not a file, so the record set cannot be judged.\n");
+
+    exit(1);
+}
 if (is_file($readsFile)) {
     $j = json_decode((string) file_get_contents($readsFile), true);
-    if (is_array($j) && isset($j['reads']) && is_array($j['reads'])) {
-        $reads = $j['reads'];
+    if (! is_array($j) || ! array_key_exists('reads', $j)) {
+        fwrite(STDERR, "REFUSED: {$readsFile} holds no \"reads\" object, so \"0 record(s) on file\" would be a parse failure, not a measurement.\n");
+
+        exit(1);
     }
+    $reads = is_array($j['reads']) ? $j['reads'] : [];
 }
 
 $todo = $wantAll ? array_keys($keys) : array_keys(array_diff_key($keys, $reads));
+$covered = count(array_intersect_key($keys, $reads));
+// The queue has two parts and they have to add up to the whole. A parser that reads only some of the records, or
+// only some of the keys, makes "0 to read" and "everything is read" indistinguishable — which is exactly how this
+// reader once reported a clean queue while its own key pattern matched nothing.
+if (! $wantAll && $covered + count($todo) !== count($keys)) {
+    fwrite(STDERR, "REFUSED: {$covered} recorded + ".count($todo).' unread does not equal '.count($keys)
+        ." current key(s), so one of the two parsers read less than it tallied.\n");
+
+    exit(1);
+}
 printf("%d current key(s), %d record(s) on file, %d to read%s\n\n",
     count($keys), count($reads), count($todo), $wantAll ? ' (--all: records ignored)' : '');
 
-/** Where a bare basename actually lives. The document spells these without a directory, so this is a search, not a guess. */
-$locate = static function (string $base) use ($root): ?string {
-    // Some keys carry a path of their own (`Evaluation/Index.jsx`, `app/Http/Controllers/Exam/ExamController.php`),
-    // because that is how the attribution handed them back. Compare on basename, and try the key's own path first.
-    $direct = [$root.'/'.$base, $root.'/resources/js/Pages/'.$base, $root.'/app/'.$base];
-    foreach ($direct as $p) {
+/**
+ * Where a basename actually lives. Most keys are spelled without a directory, so this is a search, not a guess.
+ *
+ * The tree is walked ONCE into a basename index. The depth-limited glob list this replaced was wrong two ways at
+ * once: PHP's glob() has no recursive double-star pattern, so a "tests" + double-star + filename path answered zero
+ * and every key sitting under a
+ * two-deep directory printed NOT FOUND — which `mutate-lane70-read-unread.php` caught by reading the WHOLE queue
+ * rather than the drained one — and a new source folder stayed invisible until someone added another pattern by hand.
+ * The candidate count comes back by reference so the caller can tell "no such file" from "two files share this
+ * basename" and refuse both: a read of `Students/Show.jsx` must not clear a pointer into `Registrar/Show.jsx`, which
+ * is the one-name-two-owners defect this lane keeps paying for.
+ */
+$index = null;
+$locate = static function (string $base, ?int &$n = null) use ($root, &$index): ?string {
+    $n = 0;
+    // The key's own path is a claim: try it before any search, because the document wrote some keys with the path
+    // and that spelling is how the attribution handed them back.
+    foreach ([$root.'/'.$base, $root.'/resources/js/Pages/'.$base, $root.'/app/'.$base] as $p) {
         if (is_file($p)) {
+            $n = 1;
+
             return (string) $p;
         }
     }
-    $needle = basename($base);
-    $candidates = [
-        $root.'/app/Http/Controllers/'.$needle,
-        $root.'/app/Http/Controllers/*/'.$needle,
-        $root.'/app/Http/Controllers/*/*/'.$needle,
-        $root.'/app/Services/'.$needle,
-        $root.'/app/Support/'.$needle,
-        $root.'/app/Policies/'.$needle,
-        $root.'/app/Models/'.$needle,
-        $root.'/app/Providers/'.$needle,
-        $root.'/app/Console/Commands/'.$needle,
-        $root.'/app/Listeners/'.$needle,
-        $root.'/app/Enums/'.$needle,
-        $root.'/tests/**/'.$needle,
-        $root.'/resources/js/Pages/**/'.$needle,
-        $root.'/resources/js/Pages/*/'.$needle,
-        $root.'/resources/js/Layouts/'.$needle,
-        $root.'/resources/js/Components/ui/'.$needle,
-        $root.'/resources/js/Components/'.$needle,
-        $root.'/resources/views/**/'.$needle,
-        $root.'/database/migrations/'.$needle,
-        $root.'/database/seeders/'.$needle,
-        $root.'/routes/'.$needle,
-    ];
-    foreach ($candidates as $pattern) {
-        $hits = str_contains($pattern, '*') ? (glob($pattern) ?: []) : (is_file($pattern) ? [$pattern] : []);
-        foreach ($hits as $h) {
-            if (basename((string) $h) !== $needle) {
+    if ($index === null) {
+        $index = [];
+        foreach (['app', 'bootstrap', 'config', 'database', 'Documentation', 'resources', 'routes', 'tests', 'tools'] as $dir) {
+            if (! is_dir($root.'/'.$dir)) {
                 continue;
             }
-            // A key that says `Students/Show.jsx` must not resolve to `Registrar/Show.jsx` — the path part is a
-            // claim, so honour it when it is present and only fall back to a bare-basename match otherwise.
-            if (str_contains($base, '/') && ! str_ends_with(str_replace('\\', '/', (string) $h), $base)) {
-                continue;
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$dir, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $fi) {
+                if ($fi->isFile()) {
+                    $index[$fi->getFilename()][] = str_replace('\\', '/', $fi->getPathname());
+                }
             }
-
-            return (string) $h;
         }
     }
+    $found = $index[basename($base)] ?? [];
+    if (str_contains($base, '/')) {
+        $want = str_replace('\\', '/', $base);
+        $found = array_values(array_filter($found, static fn (string $p): bool => str_ends_with($p, $want)));
+    }
+    $n = count($found);
 
-    return null;
+    return $n === 1 ? (string) $found[0] : null;
 };
-
 $seen = [];
 foreach ($todo as $key) {
     if (! preg_match('/^(?<f>.+?):(?<a>\d+)(?:-(?<b>\d+))?#/', $key, $m)) {
@@ -124,9 +158,12 @@ foreach ($todo as $key) {
         echo '  QUEUE  '.mb_substr($q, 0, 900)."\n";
     }
 
-    $path = $locate($base);
+    $cands = 0;
+    $path = $locate($base, $cands);
     if ($path === null) {
-        echo "  FILE    NOT FOUND by search — refusing to guess a path\n\n";
+        printf("  FILE    %s — refusing to guess a path\n\n",
+            $cands === 0 ? 'NOT FOUND by the indexed walk (0 candidates)'
+                : "AMBIGUOUS ({$cands} files share this basename, and the key named no directory)");
 
         continue;
     }

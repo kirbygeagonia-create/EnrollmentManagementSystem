@@ -20,8 +20,11 @@ if ($argc < 3) {
 function toks(string $file): array
 {
     $z = new ZipArchive;
-    if (! $z->open($file)) {
-        fwrite(STDERR, "REFUSED: cannot open {$file}.\n");
+    // `!== true`, not `!`: on a file that is not a zip at all, open() answers an error CODE, which is truthy, so a
+    // negated guard walks straight into "Uncaught ValueError: Invalid or uninitialized Zip object" and the refusal
+    // this function exists to print never happens. Its own harness leg plants exactly that file.
+    if ($z->open($file) !== true) {
+        fwrite(STDERR, "REFUSED: cannot open {$file} as an archive.\n");
 
         exit(1);
     }
