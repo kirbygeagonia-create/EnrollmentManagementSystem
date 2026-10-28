@@ -1107,7 +1107,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   safe here for the reason the dump rule above is not: each harness prints its own export command and **refuses with exit 1
   when the copy is missing or byte-identical to the working file** (`mutate-lane55-conflicts.php:29-33`), so an absent
   export is a loud refusal and never a green run. The cost is a naming rule: a real *tool* must never be called
-  `lane*-head-*`, or this pattern hides it from the remote.
+  `lane*-head-*`, or this pattern hides it from the remote. **The mirror defect bit on 2026-10-28:** an export that
+  does *not* follow the convention is invisible to nothing — it simply becomes tracked content. A HEAD snapshot of
+  the admin smoke sweep, written to compare the pre-route table against the new one, was committed under a name
+  outside the pattern and pushed; the only thing that caught it was opening each staged file and diffing it against
+  the tracked test it duplicated, which nothing in the gate list asks for. So the check when staging is *what the
+  bytes are*, not what the filename says: `git diff --cached --name-only` and open anything whose name you cannot
+  justify from the work it belongs to.
 
 ## Facts new code must respect
 
