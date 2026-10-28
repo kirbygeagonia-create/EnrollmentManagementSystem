@@ -1502,7 +1502,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 269; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 272; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.
@@ -1562,15 +1562,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (C-5 with the departments, G-13 at install time), and the read-only queue is the one unattributed pointer, quoted as an example on purpose
   (`php storage/app/scratch/lane70-blind-sheet.php` prints the reading sheet: each one's whole sentence plus every
   file named on its dump line, which is how an owner is found without guessing),
-  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 130 ranges and flags 21 pairings across seventeen distinct
-  constructs — each pairing re-read this session and every one the
-  documented attribution noise, not a claim the build contradicts: a vendor path the basename index cannot see
+  `storage/app/scratch/lane32-cite-meaning-sweep.php` checks 130 ranges and flags 18 pairings, every one of them an
+  `encloses` verdict — the shape its own rule permits — and each was re-read on 2026-10-27 after passes 271 and 272
+  moved the set down from 21: the pairing list is attribution noise, not a claim the build contradicts — a vendor path
+  the basename index cannot see
   (`vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:3208` really is `forPage()`), a `recordIssue()` landing on the block-schedule print action while
   its own `PrintService.php:115` sits later in the sentence, `Payments::held()` on the accounting range its clause
   opened with, two prose-order glosses in the workflow listener, a migration's `:24` cited beside a clause about
   the seeder that names the same constant, and `ProvisionalClearanceRequirements::NAMES` paired with the migration
   that backfills from it — and the fidelity sheet's rows the
-  Registrar has not ticked. Those are work for a reader, not for a wrapper. The anchor checker's 107 UNBOUND rows
+  Registrar has not ticked. Those are work for a reader, not for a wrapper. The anchor checker's 108 UNBOUND rows
   are **read**, not cleared: they stay UNBOUND because their sentences name no construct for a tool to pair, and
   reading them against the code is what produced passes 241 and 242 (seven more wrong targets, the 36th to 42nd).
   **A column can have one owner for the whole table, and then no row-scoped checker will ever see it.** §21.2's
@@ -1869,8 +1870,17 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   once (every record names its own evidence). **Re-run on 2026-10-27, after docx passes 252 and 252e lengthened
   sentences and inserted register rows, the same line answers 38 of 106 rows recorded with 69 records matching no
   current row** — the third way a key disappears, met again and at scale, because the hash covers the sentence and the
-  sentences moved. So that queue is NOT fully read today, and the owed work is to open every STALE row again and then
-  regenerate with `lane70-make-reads.php` — never re-key by hand, and never quote 107-of-107 as though it were the
+  sentences moved. **That same day the queue was drained, and the answer is now `108 of 108 … 0 record(s) match no
+  current row`.** Two defects in the instrument came out of doing it, and both are classes this file already names:
+  `lane70-read-unread.php` reported eight keys as `NOT FOUND` because it resolved only basenames, while the document
+  spells some keys with a path (`app/Http/Controllers/Exam/ExamController.php:524-524`) — an unresolved key is the
+  reader's age, never a missing pointer, so the locator now honours the path part and refuses to guess; and
+  `lane70-make-reads.php` matched its verdict map by prefix on the *whole* key, so an aged key silently inherited the
+  2026-10-25 prose and today's date while no reading of the moved pointer had happened. Verdicts are now keyed by
+  `File.php:NN-NN` with an explicit read date, consulted before the older maps, and the generator prints
+  `no verdict on file for N key(s)` with each head named — a queue it cannot answer is printed, never folded into the
+  covered count. Re-take a STALE row by reading it, then regenerate with `lane70-make-reads.php` — never re-key by
+  hand, and never quote 107-of-107 as though it were the
   instrument's permanent verdict rather than one day's reading. A record whose key has
   gone is printed as **STALE**, not dropped: the two ways a key disappears are "a pass fixed the row" and "a pass
   re-pointed the pointer", and the second means the saved verdict says nothing about the new citation. **A third way
@@ -1883,7 +1893,27 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   having grown by exactly 64 lines above them, measured against the same commit's copy of the file. So the fix was to
   re-read, then regenerate with `lane70-make-reads.php`, never to re-key by hand. **Re-read before you re-record: a
   STALE row asks *why* the key moved, and only one of the three answers means the verdict still holds.** Nothing is
-  recorded that was not opened. **What a record does not claim:** it says *this span carried this sentence's claim on
+  recorded that was not opened. **The 2026-10-27 drain found thirteen wrong targets, and eleven of them sit in one
+  table.** Reading the queue file by file turned up §25.1's print-route table: its Staff-route column cited web.php
+  lines 146 to 151, plus 124, 138 and 139, which today are the Blocking chapter banner, five blocking CRUD routes,
+  the Accounting banner and two clearance acts — and its "what the browser gets" column named RegistrarController
+  lines 388, 421 and 444 for the certificate, class-card and subject-load pages, which are printClassCards' signature,
+  a line inside printSubjectLoad and the brace of downloadCertificate. Every one of those numbers is a live line in
+  the right file, so the bounds sweep, lane 32 and the anchor checker all agreed with them; only opening
+  `routes/web.php` said which route is which. Two lists of the same five print acts (§25.1's reachability paragraph
+  and §28's P-3 row) both carried the three-number run 388, 405, 428. Pass 272 re-took all sixteen numbers, and its
+  own assertion loop is the reason the two lists do not now agree on the wrong thing: the paragraph's claim is *every
+  `Inertia::render` whose component contains Print*, so it got the three render lines, while the P-3 row's claim is
+  that each desk print writes its log row, so it got the three action signatures — spelled as §23's
+  `documentprintlog` row spells them after pass 271. **One range cannot carry two claims, and a list has to be cited
+  on the line its own sentence names.** Pass 271 took the other two: §23's print-action row and §28's E-13 row (the
+  state machine's enrolled edge had moved twenty lines down when the two return states were inserted, and E-13's
+  second claim — the subject's own `proposed → confirmed → dropped` line — had no pointer at all until the
+  `SUBJECT_TRANSITIONS` block was cited beside it), and §6's Registrar/Show cell, whose second number was a closing
+  `</div>` while the year level and standing print one div lower. Both passes print their own assertion count and
+  refuse the write when any new number fails the line it is offered for, which is the only thing that separates a
+  re-point from a re-guess. The historical numbers above are spelled as prose on purpose: a colon in this file makes
+  a token a citation, and a citation to a retired layout is the defect the paragraph exists to warn about. **What a record does not claim:** it says *this span carried this sentence's claim on
   this date* — a later code move leaves the key untouched, so a record is no substitute for re-running
   `probe-moved-cites.php` or lane 51's reconcile after editing a cited file, and the same pointer can be keyed under
   two spellings (`ExamController.php:476` and `app/Http/Controllers/Exam/ExamController.php:476`), only one of which a
