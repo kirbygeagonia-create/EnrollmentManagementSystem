@@ -176,3 +176,74 @@ online-only completion, automatic official enrollment from an online submission,
 identity matching from a photo, physical ID card production, and OCR timetable scanning.
 `ApplicationMode::Online` remains in the schema as a dormant value referenced only by its own cast, so
 historical rows stay readable without any path that activates them.
+
+---
+
+## Addendum (2026-10-29) — the direct answer, and what changed since
+
+**Is the development prompt fully implemented? No — and the honest sentence is two clauses, not one.**
+Everything the prompt asks the *product* to do is now built or classified, and the classification is what
+this addendum extends: a second sweep of the prompt found that the first one had scored 14 of its **55**
+requirement-bearing headings, and the unvisited sections produced ten more open gaps, recorded as G33
+through G42 in the matrix. None of them is a missing office or a missing workflow; they are quality and
+completeness clauses of the kind that stay invisible while the desks work.
+
+### 1. What was inspected in this pass
+
+The prompt file itself, heading by heading, counted by script rather than remembered: **357 enumerated
+requirement lines across 55 headings**. The matrix at
+`Documentation/Prompt-Requirement-Matrix-2026-10-26.md` now carries §7 (the sections the first pass never
+reached) and §8 (§11 and §14), and every `File.php:NN` citation in both sections resolves —
+`repo-file-line-citations.php` reports 159 citations over 14 files with 0 problems, after refusing six
+shorthand paths on the first draft.
+
+### 3. Changes implemented since the report was written
+
+Lane 85: three places that answered a calendar day from the machine's clock rather than the school's —
+`app/Services/EnrollmentIssuer.php` stamping `formIssuedDate`, the certificate's printed fallback in
+`app/Http/Controllers/Registrar/RegistrarController.php`, and the Active/Inactive term filter in
+`app/Http/Controllers/Admin/ReferenceDataController.php` — now call `SchoolTime::today()`; lane 50 gained a
+PHP half so the class cannot return unnoticed, with the mutants to prove it; and the dead seeder
+`tools/seed_demo_data.php` stopped directing a reader to a database dump that left the repository on
+2026-10-26. No schema change, no new permission, no data rewritten.
+
+### 6. Testing evidence for this addendum
+
+Whole suite 931 passed / 6,242 assertions with `--list-tests` discovering the same 931 and
+`ems:ci:no-silent-skips` reading 0 skipped; PHPStan 0 errors; Pint PASS 414 files; ESLint silent at
+`--max-warnings=0`; Vite built; `ems:print-fidelity` 8/8. The three new cases were proved by
+`storage/app/scratch/mutate-lane85-school-day-tests.php` and the checker's new classes by
+`storage/app/scratch/mutate-lane50-checker.php` (13 legs) and
+`storage/app/scratch/mutate-lane70-queue-reads.php`. CI is `completed / success` on all three jobs for the
+pushed head. The demo pipeline was rehearsed on a clone before it was run against live data, and live `ems`
+was re-read before and after and did not move.
+
+### 7. Outstanding, after this sweep
+
+Ten gaps, each with its § reference, risk and smallest coherent fix in the matrix:
+
+- **G33** a rejected admission carries no reason at all, and the table has no column for one (§6.5) — the
+  highest-consequence finding of the sweep, because the prompt states the rule twice.
+- **G34** a clearance requirement may be refused with the remark left empty (§6.5).
+- **G35** a notification shows no title and no protected deep link, so a desk reads the sentence and then
+  hunts for the record (§8).
+- **G36** nothing prevents a duplicate notice when a queued listener is retried — invisible on this box,
+  real on the school's server, which runs `database` plus a worker (§8).
+- **G37** the audit table records CRUD verbs, not the seven action families the prompt names, and holds no
+  reason column (§9).
+- **G38** clinical `findings` render on the Student 360 to every holder of `students.view`; disclosure scope
+  belongs to the school and its Data Protection Officer (§10).
+- **G39** print views re-declare status tone maps that omit the two return states (§11).
+- **G40** no list table sorts, and two queues do not paginate (§11, §14).
+- **G41** §14's "no console errors, and empty/loading/responsive states checked" clause has no instrument,
+  so it is unverified rather than passing (§14).
+- **G42** a deactivated account is refused at login by rule and by no test, and an open session is not
+  re-checked (§9, §14).
+
+Four of those need a school answer before code: G35's destination per notice type, G37's audit vocabulary,
+G38's disclosure scope, and whether a browser job belongs in CI for G41. The rest are buildable now, in the
+prompt's own phase order: G33 and G34 in phase 2, G42 in phase 1, G35 and G36 in phase 2, G39 and G40 in
+phase 5, G37 and G41 as documented decisions.
+
+The four school questions already on `Documentation/School-Decision-Sheet-2026-10-27.md` are unaffected and
+still open, and G6's configurable workflow definition still waits on which phases are mandatory.

@@ -178,3 +178,119 @@ mechanism rather than re-pointed.
 4. **G9, G8, G6 — packaged as one short decision sheet**, because each is blocked on a SEAIT rule the prompt explicitly forbids guessing. Done 2026-10-27 on `Documentation/School-Decision-Sheet-2026-10-27.md`, which carries four items and says so in its own header: G-6, G-8, and the two §6.4 questions the return build could not answer for the school (the reason-category vocabulary, and whether a department may write to Admission at all). G-9 stays a matrix row rather than a sheet item, for the reason stated on that sheet.
 5. **G5, G7** — one commit each, revertable alone. G-7 was done 2026-10-27 as desk wording after the owner ruled that no printed billing document is owed; **G-5 was built the same day (2026-10-27), so every build item in this list is done**, and its first step is extracting `BlockingController::detectConflicts()` into `App\Support\TimetableConflicts` in the same batch as the importer, so the importer validates against the rule the desk already runs rather than against a second copy of it.
 6. Every behaviour change is followed in the same batch by a pass on the authority docx, per the owner's 2026-09-29 ruling; the docx sweeps must be left at 0 problems.
+
+---
+
+## 7. The second sweep (2026-10-29): the headings the first pass never scored
+
+The first pass built §1 and §3 out of the gap list, so a section that produced no gap produced no row.
+Re-walking the prompt heading by heading and counting each subsection's enumerated requirement lines asks a
+different question — how many surfaces a requirement names — and answers **357 requirement lines across 55
+headings**, of which the first pass had rows for 14. The population was counted by script over the prompt
+file rather than estimated, because a denominator recalled is a denominator that drifts.
+
+Everything below was read out of this checkout. Two claims that arrived from a first reading were **refuted
+by opening the files** and are recorded as refuted instead of dropped: there is no bulk
+`->query()->update()` anywhere in `app/`, so a workflow return does not reopen steps outside the audit
+observer; and §12's "preserve soft-delete/archive conventions" is honoured by behaviour rather than by the
+`SoftDeletes` trait — accounts are deactivated instead of deleted
+(`app/Http/Controllers/Admin/UserManagementController.php:238,246`), a completed clearance is never deleted, and every delete
+guard names its own children. Absence of the trait is not absence of the rule.
+
+| § | Requirement, as the prompt enumerates it | State | Evidence read this pass |
+|---|---|---|---|
+| 6.5 | Approve/decline seated per office, not given to every office uniformly | Working | `database/seeders/RbacSeeder.php` seats `enrollment.return` on three desks and `admission.reject` on Admission only |
+| 6.5 | **A decline must require a reason** | **Gap → G33** | `AdmissionController.php:596-609` rejects with no validation and no reason field, and `admissions` holds no column that could store one; `resources/js/Pages/Admission/Show.jsx:166` posts an empty body |
+| 6.5 | A decline preserves the record | Working | each decline is an `update()` of a status; no decline deletes |
+| 6.5 | The reason is shown to the next responsible office | Partly → G33, G34 | shown for a return and a refund (`resources/js/Pages/Registrar/Show.jsx:267`, `resources/js/Pages/Accounting/Show.jsx:628`); a crediting refusal is visible only on its own desk (`resources/js/Pages/Evaluation/Show.jsx:1033-1034`); Admission's page references no reason at all |
+| 8 | A notice goes to the next responsible office, never the completer, never a student | Working | `app/Support/WorkflowInbox.php:124-136` (by office, `status = active`) and both listeners; the addressee is pinned by `lane71-morph-targets` |
+| 8 | Mark-read is authorised and scoped to the recipient | Working | `tests/Feature/NotificationBellTest.php:154,195` |
+| 8 | Queue counts, badges, filters and visible records agree | Working | lanes 46, 47, 48 and 49 are the instruments; each reports 0 problems on this tree |
+| 8 | **Title, action required, record reference, timestamp, protected deep link** | **Gap → G35** | `AuthenticatedLayout.jsx:285-289` renders `data.message` and `created_at` and nothing else; `notifications` has no title column and no link is built anywhere |
+| 8 | **Prevent duplicate notifications when a listener runs more than once** | **Gap → G36** | neither listener carries an idempotency key; `NotificationBellTest.php:204` pins one row per event for a single dispatch, which is not a retry |
+| 9 | Deactivated staff cannot start a new session | Working | `LoginRequest.php:55-62` refuses with the cause named |
+| 9 | Status is distinct from role and permission | Working | `Staffusers` carries both `role` and `status`, validated separately at `UserManagementController.php:80,115` |
+| 9 | Office and department scope enforced server-side | Working | `CollegeScope::of*()` on every list; `EvaluationPolicy.php:37,53`; `ClearancePolicy.php:108` |
+| 9 | An admin sees role, office, unit and permissions, and the change is audited | Working | `UserManagementController.php:46-54,173-190` |
+| 9 | **Audit history for the seven named action families** | **Gap → G37** | `AppServiceProvider.php:43-52` observes every model, so `auditlogs.action` is only created, updated or deleted; no family is queryable, and a reason survives only where it happens to be a column on the mutated row |
+| 10 | Least privilege, private disks, validated uploads, CSRF, throttle, secure sessions, redacted logging, no student-facing route | Working | `filesystems.php:58` declares no `serve` and no `url`; `AdmissionController.php:433` and `IDController.php:234` are the only file doors; `mimes` rules at `AdmissionController.php:456` and `IDController.php:200`; CSP and HSTS in `SecurityHeaders`; observer redaction pinned by `AuditLogRedactionTest` |
+| 10 | Minimise what offices see of clinical detail | Open question → G38 | `assessmentNotes` is withheld, but `clinicrecords.findings` renders on the Student 360 (`resources/js/Pages/Students/Show.jsx:518-519`) to any holder of `students.view`; the prompt assigns disclosure to the school and its Data Protection Officer |
+| 12 | Fifteen backend and database rules | Working, one documented exception | transactions around multi-write acts, `decimal(10,2)` money and no float anywhere, `OfficeId` rather than bare integers, three status enums matched to their columns, additive migrations only; the exception is ENUM `ALTER` SQL, which the project's own driver-guard rule covers |
+| 15 | Run the repository's real commands, narrow first then whole | Working | `package.json` defines `lint => eslint resources/js`, so the prompt's `npm run lint` exists; CI runs the suite whole, as AGENTS.md requires |
+| 15 | Never change a test merely to make the suite pass | Working | §28.3 records each repair to a fixture or to the code, and names the case that proved it |
+| 16 | A final report carrying the eight named parts | Working, and now stale by two batches | `Documentation/Prompt-Completion-Report-2026-10-27.md` holds all eight headings; its §3 and §6 do not yet cover lane 85 or this sweep |
+| 17 | Finish with real verification evidence and the changed files | Working | every §1.1 row in the authority docx carries a command and a reading rather than an adjective |
+| 18 | Re-inspect the repository rather than trust the prompt's claims | Working | this section exists because the first pass's coverage was measured and found short |
+### New gaps from this sweep
+
+Continuing the register: the docx §28.3 runs to G-32, so these begin at G33.
+
+| Id | Gap | § | Phase | Risk | Smallest coherent fix | Verification | Needs a ruling? |
+|---|---|---|---|---|---|---|---|
+| G33 | A rejected admission carries no reason at all — the desk posts an empty body, the controller validates nothing, and the table has no column that could store a reason | 6.5 | 2 | High (the prompt states a decline must require a reason and show it to the next office; today a rejection is unexplained to everyone downstream) | One nullable `rejectionReason` plus `rejectionReason => required_if:admissionStatus,rejected|min:10` and the desk's reason box, mirroring the crediting decision's `decisionReason` pattern; then render it wherever the case is read | A case for each promise, and a mutant harness per defect, the way G-3's crediting decision was built | **No** for the mechanism; **yes** for whether the reason set is a fixed list (that is the same vocabulary question already on the decision sheet) |
+| G34 | A clearance requirement may be marked `rejected` with `remarks` left null | 6.5 | 2 | Medium (the line is refused and the student is not told what was wrong with it) | `required_if:status,rejected` on the reason, cleared on an approval exactly as `decisionReason` is, so a reason never reads as a refusal nobody withdrew | One case per branch and a mutant that drops the `required_if` | No |
+| G35 | A notice has no title and no protected deep link; the desk reads a sentence and then hunts for the record | 8 | 2 | Medium (the prompt lists five things a notice must show, and two are absent; the fourth is a link that must land somewhere the reader may open) | A title line and a link built from the record's own destination — the recipient's desk page, never the Student 360, because `students.view` is not held by a bare OfficeHead or Instructor and a link there is a 403 | A payload case that the link's route is one the recipient's own policy passes; the affordance-vs-predicate rule from lane 78 | **Partly** — which page each notice type lands on is a school workflow answer |
+| G36 | Nothing prevents a duplicate notice when a queued listener is retried | 8 | 1 | Medium on the school's server only (this box runs `sync`, and C-10 rules production `database` plus a worker, where a retried job writes one more row per recipient) | A natural key per notice (event, workflowId, recipient) enforced by a unique index, or an exists-check before writing, dispatched after commit | A case that fires the listener twice for one event and asserts one row; the uniqueness rule is lane 44's instrument | No |
+| G37 | The audit table records CRUD verbs, not the seven action families the prompt names, and carries no reason column | 9 | 2 | Medium (history is complete per act, but only inside each domain table; "show me every Registrar override" is not a query on the audit log) | Either name the act on the audit row at the point of the act, or record in the document that the trail lives in the domain tables and cite each — the second is a documentation act, not a migration | `lane61`-style claim checking that each named family has a stated owner | **Yes** — whether a single audit-action vocabulary is wanted is an institutional records question |
+| G38 | Clinical `findings` free text is visible on the Student 360 to every holder of `students.view`, while the prompt asks that most desks see the clinic outcome rather than the notes | 10 | 2 | Policy-weight, not code-weight (the DPA minimisation bullet) | Either restrict the 360's clinical section to the Clinic and to offices the school names, or record the owner's ruling that `students.view` entitles the notes | A policy case per role once the answer is given | **Yes** — disclosure scope belongs to the school and its Data Protection Officer |
+
+### Process sections, and the two remaining feature sections
+
+| § | Requirement | State | Evidence read this pass |
+|---|---|---|---|
+| 1.1–1.2 | Understand the architecture before changing code; classify each requirement | Working | this file is the mechanism, and §7 exists because its own coverage was measured (55 headings, 14 previously scored) rather than assumed |
+| 1.3 | Fix real defects without duplicating features that exist | Working | each closed gap in §3 records what was re-used rather than re-built; lane 78 deleted `returnToEvaluation()` instead of leaving it beside the shared service |
+| 1.4 | Strengthen workflow integrity, validation, access, auditability, documents, notifications, consistency | Partly | integrity, access, documents and consistency are worked and instrumented; this sweep opened real gaps at notifications (G35, G36) and auditability (G37) and at the decline rule (G33, G34) |
+| 1.5 | A consistent, accessible, uncluttered interface across offices | Partly → G39, G41 | see §11 below |
+| 1.6 | Verify by tests, build, static analysis, realistic end-to-end flows | Working | five gates plus the E2E walkthrough legs; §14's coverage ratios below are where the claim thins |
+| 3.1 | Source-of-truth order | Working | the owner's 2026-09-29 ruling that the docx is the authority is recorded in AGENTS.md and applied by every lane that cites it |
+| 3.3 | Inspect status, branch, commit and changed files before editing; preserve user changes; no commit or push without being asked; no secrets into reports; no architecture swaps; no destructive work against real data | Working as practice | AGENTS.md's two overriding rules, the dump-before-live-write rule, the archive-and-restore procedure used on the 2026-10-28 index corruption, and `lane76`-style refusal to shift a pointer it cannot resolve |
+| 13 | Phased implementation plan | Working as a plan | the Phase column in §3 and in this section's gaps is the prompt's own vocabulary; phases 0–2 are largely built, phase 3 waits on G6, phase 5 on G41 |
+
+## 8. §11 and §14: what the interface and the acceptance list actually have
+
+§11 is a list of qualities rather than a list of screens, which is how it escaped the first pass. The verdicts
+below were read in this checkout; where a claim arrived from the search pass and could not be re-verified
+here, it says so.
+
+| §11 requirement | State | Evidence |
+|---|---|---|
+| One common status-label system across queue cards, detail pages, the tracker, print views and notifications | PARTIAL → G39 | `resources/js/Components/ui/statusLabel.js` is shared by desks, the stepper and the print pages' **labels**, but each print view re-declares its own **tone** map — `resources/js/Pages/Registrar/PrintCertificate.jsx:139-148` lists six statuses and omits the two return states, so a returned record prints neutral where the desk shows a colour |
+| Confirmation on destructive actions | Working | ConfirmDialog appears across 18 pages and CauseEffectModal in 9 (read by the search pass; the two highest-impact acts were opened here: `app/Http/Controllers/Admin/UserManagementController.php:238,246` deactivate rather than delete, and the drop act is modal-confirmed) |
+| Input preserved on failure; server vs network failure distinguished | PARTIAL | Inertia's `useForm` retains input, but `resources/js/app.jsx` handles only the Inertia `invalid` event — no separate network-failure message |
+| Loading state and duplicate-submit suppression | Working | 91 `disabled={processing}` sites (search pass) |
+| Focus states, labelled inputs, accessible modals, status not by colour alone | PARTIAL → G40 | `resources/js/Components/ui/Modal.jsx` carries the aria label and focus handling, and status text ships with every badge, but **no list table is sortable**: `resources/js/Components/ui/DataTable.jsx` contains no sort at all |
+| Table density: headings, sorting, filtering, search, pagination, row actions | GAP → G40 | sorting absent everywhere; pagination missing on `resources/js/Pages/Clearance/Periods.jsx` and `resources/js/Pages/Evaluation/ShiftRequests.jsx` (search pass) |
+| Each office page answers what needs action, what is ready, what is blocked or returned, what next | PARTIAL | tiles and tabs answer three of the four on most desks; the ID desk surfaces pending against issued only, so a returned-with-reason record is not one of its states (search pass) |
+| Never offer an act the backend refuses | Working | the rule from ruling 14 and lane 78; `lane46`'s FICTION class and `lane47`'s IMPOSSIBLE class are the instruments, both reporting 0 on this tree |
+
+§14's acceptance list is 40 bullets in eight groups. Coverage as read by the search pass, spot-verified
+where this session could open the file:
+
+| §14 group | Covered |
+|---|---|
+| Identity and type | 3 of 4 |
+| Admission and documents | 4 of 5 |
+| Exams and department scope | 6 of 6 |
+| Evaluation, prerequisites, crediting | 6 of 7 |
+| Workflow and notifications | 5 of 7 |
+| Registrar and account integrity | 4 of 5 |
+| Accounting, clearance, clinic, blocking, ID | 5 of 8 |
+| UI, security, regression | 2 of 6 |
+
+That is **35 of 48 read here**, and the uncovered ones cluster in exactly two kinds: acts whose backend
+rule is built and untested, and interface qualities with no test runner at all. Two claims in the search
+pass did **not** survive checking and are not recorded as gaps: there is no bulk `->query()->update()` in
+`app/`, so a workflow return does not reopen boxes outside the observer, and an override act does exist —
+the standing override sits in `app/Http/Controllers/Evaluation/EvaluationController.php` and
+`auditlogs.adminOverride` carries it — so "Registrar override is absent" was wrong; what remains unproven
+is whether the Registrar, not the department, holds the act the prompt's §7.6 describes.
+
+### New gaps from §11 and §14
+
+| Id | Gap | § | Phase | Risk | Smallest coherent fix | Verification | Needs a ruling? |
+|---|---|---|---|---|---|---|---|
+| G39 | Print views re-declare status **tone** maps that the shared label module has outgrown, so the two return states print neutral | 11 | 5 | Low as colour, Medium as drift (it is the lane-69 defect class: one number, two definitions) | Read the tone from the shared module, or extend the year-level vocabulary guard to tone and let it name the hand-spelled maps | A case that the tone a print page computes equals the tone the desk computes for the same status, which is how `YearLevelVocabularyTest` pins the PHP-to-JS pair | No |
+| G40 | No list table sorts, and two queues do not paginate | 11, 14 | 5 | Medium for the office that works a long queue (the prompt names sorting and pagination explicitly) | Sorting in `DataTable` by column key with the server doing the ordering — client sort on a paginated page sorts one page, which is the lane-47 page-tile defect in a new costume | A case per sortable column asserting the server ordered it, and `lane46` for any new filter the sort introduces | No |
+| G41 | The prompt's own regression clause — no console errors, and empty, loading and responsive states checked — has no instrument | 14 | 6 | Medium (the clause is unmeetable by the current stack, so it is silently unverified rather than passing) | Either add a browser leg to the CI set for the key workflows, or record in the authority document that this clause is checked by hand at the window and name who did it | The existing `agent-browser`/handset routes exist on this box; a walkthrough leg per desk is the shape | **Yes** — whether a browser job belongs in CI is an owner call about run time |
+| G42 | A deactivated account is refused at login by rule and by no test, and an already-open session is not re-checked | 9, 14 | 1 | High for a records office (the prompt lists this as an acceptance scenario, and `LoginRequest.php:55-62` is one line of prose away from unenforced) | A feature case for the refusal, and a decision on whether a session is cut at deactivation; the session check belongs in the middleware, not the nav | `php artisan test` on a new `tests/Feature/Auth/DeactivatedAccountTest.php`, proved by a mutant that drops the status test | **Partly** — cutting a live session is a policy answer |
