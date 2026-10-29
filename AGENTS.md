@@ -1987,7 +1987,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   2026-10-25 prose and today's date while no reading of the moved pointer had happened. Verdicts are now keyed by
   `File.php:NN-NN` with an explicit read date, consulted before the older maps, and the generator prints
   `no verdict on file for N key(s)` with each head named — a queue it cannot answer is printed, never folded into the
-  covered count. **The two instruments this drain produced each got a harness the same day, and each found a defect on
+  covered count. **The fallback still fires, and only a dated block stops it.** When lane 85 aged 22 keys, the
+  generator answered `no verdict on file for 0 key(s)` and `105 of 105`, although ten of those ranges had only just
+  moved: `$byFile` matches on the FILE, so prose written against the previous layout attached itself to lines nobody
+  had opened since. The rule is therefore not just "key verdicts by range" — it is that **every batch that shifts a
+  cited file appends its own dated block before that fallback is reached**, and the test of honesty is a record's date
+  against the day the line moved, not the coverage tally. Sixteen records now read 2026-10-28 and no
+  RegistrarController record still wears the older date; the ten spans were opened in the file first, each carrying
+  the action or field its own sentence names. **The two instruments this drain produced each got a harness the same day, and each found a defect on
   its first run, which is the whole argument for writing them.** Honouring the path part was only the first half of
   the locator's story: its fallback was a list of depth-limited `glob()` patterns, and **PHP's glob has no recursive
   double-star**, so a "tests" + double-star + filename path answers zero and every key under a two-deep directory

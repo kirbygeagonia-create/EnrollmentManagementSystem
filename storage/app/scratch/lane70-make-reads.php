@@ -193,12 +193,38 @@ $exact = [
     'DevReferenceDataSeeder.php:137-137' => 'direct read: the three Academicyears::firstOrCreate calls behind the §21 seeded cells',
 ];
 
+// Rows re-opened on 2026-10-28 by lane 85. Commit f087208 added one import line to
+// RegistrarController.php, and the shift tool moved every cited window below it by one row, so these
+// keys aged while their claims stayed put. They are recorded here rather than left to the `$byFile`
+// fallback below, because that fallback matches on the FILE and would hand a 2026-10-25 sentence to a
+// pointer nobody has read since — the prefix-inheritance defect the 2026-10-27 block was added to stop.
+// Each line was opened on 2026-10-28 and reads as the sentence says.
+$read28 = [
+    'RegistrarController.php:339-339' => 'drop(): the `'.'dropReason => required|string|min:10|max:500'.'` rule the §13 status row names ("the reason rule at :339")',
+    'RegistrarController.php:297-297' => 'the `'."enrollmentType".' => $enrollmentType,` write — BR31\'s derived type, which §24\'s enrollmentType row cites as "written at :297"',
+    'RegistrarController.php:389-389' => 'printClassCards()\'s signature — §25.1\'s class-card page cell',
+    'RegistrarController.php:420-420' => 'printSubjectLoad()\'s signature — §25.1\'s subject-load page cell',
+    'RegistrarController.php:444-444' => 'downloadCertificate()\'s signature — the PDF the certificate row cites',
+    'RegistrarController.php:459-459' => 'downloadEnrollmentForm()\'s signature, one of the four generated PDFs',
+    'RegistrarController.php:471-471' => 'downloadClassCard()\'s signature — the per-subject PDF the class-card row cites',
+    'RegistrarController.php:497-497' => 'downloadSubjectLoad()\'s signature — the PDF the subject-load row cites',
+    'RegistrarController.php:412-412' => 'Inertia::render(\'Registrar/PrintClassCards\') — the second of the three Print components pass 272 listed',
+    'RegistrarController.php:435-435' => 'Inertia::render(\'Registrar/PrintSubjectLoad\') — the third',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read28 as $p => $t) {
+        if (str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-28', 'by' => 'read 2026-10-28 in the file the shift moved it to: '.$t];
+
+            break;
+        }
+    }
     foreach ($readToday as $p => $t) {
         if (str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-27', 'by' => 'read 2026-10-27 from the numbered span the checker printed: '.$t];
