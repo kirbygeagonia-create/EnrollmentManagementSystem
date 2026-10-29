@@ -1399,7 +1399,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the year-level pairing. Two lessons travel with it. *The sweep's own claim was too wide*: it said every print
   view re-declared the map, and the scan that found the one hold-out cleared the others, so the matrix row was
   re-taken whole rather than left stating a superseded census. *Deleting a construct ages every pointer written
-  against it*: the citation gate went red on `PrintCertificate.jsx:139-148` in a file that is now 137 lines, and
+  against it*: the citation gate went red on the certificate page's tone-map range — lines 139 to 148 of a file
+  that is now 137 lines — and
   re-pointing the number would have left the sentence still promising a re-declared map. Re-take the cell, not
   the digit. `proposed`/`confirmed`/`dropped` belong to the enrolled-subject vocabulary and are deliberately NOT
   matched by the guard — one checker judging two vocabularies is the two-answers-for-one-word defect.
