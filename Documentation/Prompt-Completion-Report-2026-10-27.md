@@ -330,6 +330,10 @@ Plus G6 from the first pass (a configurable workflow definition) and the four it
    fixtures elsewhere in `tests/` (`ExamControllerTest`) that post `admission.reject` with no body at all; the
    fixtures were repaired, not the rule.
 4. **G39 and G40 remain as found**, and G43's other three writers are unfixed.
-5. **G34's five cases have no mutant harness.** They are green in the whole-suite run and each was written
-   against a promise, but nothing has planted the defect since — so the claim for that gap is "pinned", not
-   "pinned and proved to be able to fail", which is the bar this document applies to G33's cases above.
+5. ~~**G34's five cases have no mutant harness.**~~ **Closed the same day.**
+   `mutate-g34-clearance-reason-tests.php` answers `ALL KILLED: 4 leg(s), 0 bad` — requiredness dropped, the
+   ten-character floor dropped, the requirement re-pointed at an approval, and the desk's own word not
+   persisted, each killing its named case with a green control before and after. The register row was re-taken
+   by pass 284, because a row that understates what has since been proved is still a false row. What the
+   harness does **not** cover is stated in the row itself: the cross-office 403 case belongs to the policy, so
+   no leg there would notice a policy widening.
