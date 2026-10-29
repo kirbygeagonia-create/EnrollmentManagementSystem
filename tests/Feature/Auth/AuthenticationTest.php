@@ -51,4 +51,38 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_a_deactivated_account_is_refused_at_the_login_screen_though_its_password_is_correct(): void
+    {
+        $user = Staffusers::factory()->create(['status' => 'inactive']);
+
+        $response = $this->post('/login', [
+            'username' => $user->username,
+            'password' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('username');
+        $this->assertStringContainsString(
+            'deactivated',
+            (string) session('errors')->first('username'),
+            'the refusal must name the cause — an inactive account is not a wrong password'
+        );
+        $this->assertGuest();
+    }
+
+    public function test_the_same_account_authenticates_once_the_school_makes_it_active_again(): void
+    {
+        $user = Staffusers::factory()->create(['status' => 'inactive']);
+
+        $this->post('/login', ['username' => $user->username, 'password' => 'password']);
+        $this->assertGuest();
+
+        $user->update(['status' => 'active']);
+
+        $this->post('/login', ['username' => $user->username, 'password' => 'password']);
+
+        // The login route answers a plain redirect, so the session assertion is the standalone one —
+        // TestResponse::assertAuthenticatedAs() does not exist on a RedirectResponse.
+        $this->assertAuthenticatedAs($user);
+    }
 }

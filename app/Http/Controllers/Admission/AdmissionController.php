@@ -499,14 +499,26 @@ class AdmissionController extends Controller
             ->where('requirementId', $requirement->requirementId)
             ->firstOrFail();
 
-        DB::transaction(function () use ($submission, $request) {
+        // A rejected document row has to say what was wrong with it, or the applicant is refused by a
+        // screen that wrote nothing down. The desk used to fill the gap itself with a canned sentence,
+        // which read as an officer's reason without ever being one.
+        $validated = $request->validate([
+            'approved' => 'required|boolean',
+            'remarks' => [Rule::requiredIf(fn () => ! $request->boolean('approved')), 'nullable', 'string', 'min:10', 'max:500'],
+        ]);
+
+        $approved = $request->boolean('approved');
+
+        DB::transaction(function () use ($submission, $approved, $validated) {
             $submission->update([
-                'submissionStatus' => $request->boolean('approved') ? 'verified' : 'rejected',
-                'remarks' => $request->remarks,
+                'submissionStatus' => $approved ? 'verified' : 'rejected',
+                'remarks' => $validated['remarks'] ?? null,
             ]);
         });
 
-        return back()->with('success', 'Requirement verified.');
+        return back()->with('success', $approved
+            ? 'Requirement verified.'
+            : 'Requirement rejected — the reason is on the application.');
     }
 
     /**
@@ -520,7 +532,9 @@ class AdmissionController extends Controller
             $admission->update([
                 'admissionStatus' => 'approved',
                 'evaluatedBy' => Auth::user()->userId,
-                'evaluatedDate' => now(),
+                // Same as the reject path: `evaluatedDate` is a DATE column, so the day it files is the
+                // school's, read from SchoolTime rather than from the UTC the app clock keeps.
+                'evaluatedDate' => SchoolTime::today(),
             ]);
 
             // Ruling 3 (G-4): one active enrollment per student per term, read at every
@@ -597,14 +611,24 @@ class AdmissionController extends Controller
     {
         $this->authorize('reject', $admission);
 
-        DB::transaction(function () use ($admission) {
+        // Prompt §6.5: the applicant is told why. The desk used to post an empty body and the reason
+        // lived nowhere, so this is the record's only statement of the cause — required, and never
+        // invented by the screen when the officer leaves it blank.
+        $validated = $request->validate([
+            'rejectionReason' => 'required|string|min:10|max:500',
+        ]);
+
+        DB::transaction(function () use ($admission, $validated) {
             $admission->update([
                 'admissionStatus' => 'rejected',
+                'rejectionReason' => $validated['rejectionReason'],
                 'evaluatedBy' => Auth::user()->userId,
-                'evaluatedDate' => now(),
+                // A DATE column written from a Carbon is formatted in the application's UTC, so `now()`
+                // would file the machine's day: the school's day comes from SchoolTime.
+                'evaluatedDate' => SchoolTime::today(),
             ]);
         });
 
-        return back()->with('success', 'Admission rejected.');
+        return back()->with('success', 'Admission rejected and the reason recorded on the file.');
     }
 }

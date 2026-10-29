@@ -64,6 +64,13 @@ export default function CauseEffectModal({
     cancelText = 'Cancel, Keep Unchanged',
     loading = false,
     error = null,
+    // Opt-in reason box: an act that refuses a record has to record why it refused. Defaults off so
+    // every existing call site keeps its markup and its confirm rule.
+    requireReason = false,
+    reasonLabel = 'Reason for this decision',
+    reasonValue = '',
+    reasonError = null,
+    onReasonChange = null,
 }) {
     const shouldRequireAck = requiresAcknowledgement !== null ? requiresAcknowledgement : tone === 'danger';
     const [isAcknowledged, setIsAcknowledged] = useState(false);
@@ -79,7 +86,9 @@ export default function CauseEffectModal({
     };
 
     const cfg = toneConfig[tone] || toneConfig.warning;
-    const isConfirmDisabled = loading || (shouldRequireAck && !isAcknowledged);
+    const isConfirmDisabled = loading
+        || (shouldRequireAck && !isAcknowledged)
+        || (requireReason && !String(reasonValue ?? '').trim());
 
     return (
         <Modal
@@ -174,6 +183,26 @@ export default function CauseEffectModal({
                                 {acknowledgementText}
                             </span>
                         </label>
+                    </div>
+                )}
+
+                {/* The reason the desk records beside a refusal */}
+                {requireReason && (
+                    <div className="pt-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                            {reasonLabel}
+                        </label>
+                        <textarea
+                            rows={3}
+                            value={reasonValue ?? ''}
+                            onChange={(e) => onReasonChange?.(e.target.value)}
+                            className="w-full text-sm rounded-xl border-slate-300 focus:border-slate-500 focus:ring-slate-400"
+                        />
+                        {reasonError && (
+                            <p className="mt-1.5 text-xs font-semibold text-danger-700" role="alert">
+                                {reasonError}
+                            </p>
+                        )}
                     </div>
                 )}
 

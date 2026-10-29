@@ -56,6 +56,7 @@ const statusBannerMap = {
 
 export default function Show({ admission, requirements, approvalBlockers = [], deskActions = {}, returnTarget = null }) {
     const [showConfirmApprove, setShowConfirmApprove] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
     // §6.4 (gap G-10): Admission returns the record its approval issued. The target and the
     // destinations it allows are resolved server-side, because this page is about an application.
     const [returnOpen, setReturnOpen] = useState(false);
@@ -123,7 +124,7 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
         setIsSubmitting(true);
         router.post(route('admission.requirements.verify', { admission: admission.admissionId, requirement: rejectReqModal.requirementId }), {
             approved: false,
-            remarks: rejectReqModal.remarks || 'Requirement rejected / needs resubmission.',
+            remarks: rejectReqModal.remarks,
         }, {
             onSuccess: () => {
                 setIsSubmitting(false);
@@ -163,9 +164,12 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
     };
 
     const confirmReject = () => {
-        router.post(route('admission.reject', { admission: admission.admissionId }), {}, {
+        router.post(route('admission.reject', { admission: admission.admissionId }), {
+            rejectionReason: rejectReason,
+        }, {
             onSuccess: () => {
                 setShowConfirmReject(false);
+                setRejectReason('');
                 setIsSubmitting(false);
             },
             onError: () => setIsSubmitting(false),
@@ -203,6 +207,11 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                     <div>
                         <p className="font-semibold text-brand-900 text-base">{banner.title}</p>
                         <p className="text-xs text-brand-600">{banner.desc}</p>
+                        {admission.admissionStatus === 'rejected' && admission.rejectionReason && (
+                            <p className="mt-1.5 text-xs font-semibold text-brand-800">
+                                Reason on file: {admission.rejectionReason}
+                            </p>
+                        )}
                         {admission.admissionStatus === 'pending' && approvalBlockers.length > 0 && (
                             <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
                                 <p className="text-2xs font-bold uppercase tracking-wide text-amber-800">
@@ -559,6 +568,11 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                     ]}
                     requiresAcknowledgement={true}
                     acknowledgementText="I confirm that this applicant fails admission criteria and must be formally rejected."
+                    requireReason
+                    reasonLabel="Reason for rejection (recorded on the applicant's file)"
+                    reasonValue={rejectReason}
+                    reasonError={errors.rejectionReason}
+                    onReasonChange={setRejectReason}
                     confirmText="Yes, Formally Reject Application"
                     cancelText="Cancel, Keep Under Review"
                     loading={isSubmitting}
@@ -590,6 +604,11 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                                     placeholder="e.g., Image is blurry, missing PSA official seal, or invalid document."
                                     className="w-full text-sm rounded-xl border-slate-300 focus:border-red-500 focus:ring-red-500"
                                 />
+                                {errors.remarks && (
+                                    <p className="mt-1.5 text-xs font-semibold text-red-700" role="alert">
+                                        {errors.remarks}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex items-center justify-end gap-2.5">
                                 <button

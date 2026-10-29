@@ -451,7 +451,7 @@ class ExamControllerTest extends TestCase
         $this->assertSame('pending', $admission->fresh()->admissionStatus->value);
 
         $this->actingAs($admissionDesk)
-            ->post(route('admission.reject', $admission))
+            ->post(route('admission.reject', $admission), ['rejectionReason' => 'The applicant did not meet the entrance criteria for the program.'])
             ->assertRedirect();
 
         $rejected = $admission->fresh();
@@ -770,7 +770,7 @@ class ExamControllerTest extends TestCase
         $this->assertSame(0, Enrollments::count());
 
         $this->actingAs($admissionDesk)
-            ->post(route('admission.reject', $admission))
+            ->post(route('admission.reject', $admission), ['rejectionReason' => 'The applicant did not meet the entrance criteria for the program.'])
             ->assertRedirect();
         $this->assertSame('rejected', $admission->fresh()->admissionStatus->value);
     }

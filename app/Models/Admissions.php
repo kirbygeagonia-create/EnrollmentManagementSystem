@@ -18,7 +18,7 @@ class Admissions extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'termId', 'courseId', 'applicantType', 'applicationMode', 'admissionStatus', 'draftedDate', 'evaluatedBy', 'evaluatedDate'];
+    protected $fillable = ['studentId', 'termId', 'courseId', 'applicantType', 'applicationMode', 'admissionStatus', 'rejectionReason', 'draftedDate', 'evaluatedBy', 'evaluatedDate'];
 
     protected function casts(): array
     {

@@ -285,7 +285,10 @@ class ClearanceController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|in:approved,waived,rejected',
-            'remarks' => 'nullable|string',
+            // Prompt §6.5: a decline must carry a reason. Approved and waived lines keep the box
+            // optional — it is a note there, not a refusal — and ConvertEmptyStringsToNull is what lets
+            // an approval that sends an empty remark through unchanged.
+            'remarks' => 'required_if:status,rejected|nullable|string|min:10|max:500',
         ]);
 
         DB::transaction(function () use ($approval, $validated) {
