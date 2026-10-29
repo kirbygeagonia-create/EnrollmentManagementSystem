@@ -309,11 +309,14 @@ Plus G6 from the first pass (a configurable workflow definition) and the four it
 
 ### What this batch did not finish, stated as work and not as a pass
 
-1. **The §28.3 and §28.5 register rows for G33 to G43 are not written into the authority document.** The §1.1
-   row records the sweep and names the ten items; the registers themselves need their own pass, because adding
-   a row moves every place that counts a register — the family range, §29.4's two count cells, §28.8's tallies —
-   and pass 173's lesson is that a row written before its own count was re-measured makes the document
-   contradict itself. That cascade is deliberately not folded into a revision row.
+1. **The register cascade is written, and it caught a figure that was already stale.** Pass 281 put G-33 … G-43
+   into §28.3 as five-column rows and moved §28.1's index range to `G-1 … G-43` and §29.4's family cell to the
+   measured row total; pass 282 put the six school questions into §28.5 and moved §29.4's "Open decisions" cell
+   and the prose that states the same figure in words. §29.4's family cell turned out to state **48 against the
+   49 rows it counts before this batch touched it** — the same "count that stopped growing" defect §28.3 G-30
+   exists to record, printed by the pass as its own finding rather than absorbed. §28.3's newest row also
+   carries a verdict where its header promises an actor, which `lane61-who-owes.php` reads; that inconsistency
+   is in the register, not in these passes, and is recorded for whoever re-measures it.
 2. **The lane-70 queue reads aged.** This batch moved 32 citation numbers in `ClearanceController.php` and 21 in
    `AdmissionController.php`, so records keyed to the old ranges now report STALE. They were left stale rather
    than regenerated, because the generator's file-keyed fallback would attach prose written against the previous
