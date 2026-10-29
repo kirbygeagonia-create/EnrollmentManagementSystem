@@ -187,7 +187,7 @@ class WorkflowMonitorController extends Controller
                         'signedDate' => $step->signedDate?->toIso8601String(),
                     ])
                     ->all() ?? [],
-                'lastActedAt' => $lastActed?->toIso8601String(),
+                'signedDate' => $lastActed?->toIso8601String(), // the latest box a desk signed; named for the column it derives from, workflowsteps.signedDate, so a checker that binds a render to a schema type can resolve it
                 // The return reason is the record's, not this page's guess: the same row the
                 // receiving desk reads through ReturnRecorder::openReturn().
                 'returnCategory' => $openReturn?->returnCategory?->value,

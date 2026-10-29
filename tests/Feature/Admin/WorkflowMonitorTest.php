@@ -258,7 +258,7 @@ class WorkflowMonitorTest extends TestCase
         $this->assertSame('Assessment', $row['nextPhaseLabel']);
         $this->assertSame(3, WorkflowInbox::nextOffice($enrollment->fresh()->enrollmentworkflow, $enrollment->enrollmentStatus->value),
             'the row and the notification path answer one question');
-        $this->assertNotNull($row['lastActedAt'], 'the row says when a desk last acted');
+        $this->assertNotNull($row['signedDate'], 'the row says when a desk last acted');
     }
 
     #[Test]

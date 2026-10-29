@@ -152,11 +152,11 @@ export default function Index({
         },
         {
             // An instant, so the viewer's own clock is the right one to read it by.
-            key: 'lastActedAt',
+            key: 'signedDate',
             label: 'Last desk action',
             render: (row) => (
                 <p className="whitespace-nowrap text-sm text-slate-600">
-                    {row.lastActedAt ? formatSchoolMoment(row.lastActedAt) : 'No box signed yet'}
+                    {row.signedDate ? formatSchoolMoment(row.signedDate) : 'No box signed yet'}
                 </p>
             ),
         },
