@@ -194,7 +194,10 @@ The prompt file itself, heading by heading, counted by script rather than rememb
 requirement lines across 55 headings**. The matrix at
 `Documentation/Prompt-Requirement-Matrix-2026-10-26.md` now carries §7 (the sections the first pass never
 reached) and §8 (§11 and §14), and every `File.php:NN` citation in both sections resolves —
-`repo-file-line-citations.php` reports 159 citations over 14 files with 0 problems, after refusing six
+`repo-file-line-citations.php` reports 0 problems across every dated owner-facing document in the tree — and it now refuses rather
+than passing when such a document exists that it does not scan, so a sheet issued after this one cannot
+be quietly unread. No citation total is quoted here on purpose: the count moves the moment a document
+is added, and a figure that ages is a figure that will one day be believed falsely, after refusing six
 shorthand paths on the first draft.
 
 ### 3. Changes implemented since the report was written
@@ -247,3 +250,83 @@ phase 5, G37 and G41 as documented decisions.
 
 The four school questions already on `Documentation/School-Decision-Sheet-2026-10-27.md` are unaffected and
 still open, and G6's configurable workflow definition still waits on which phases are mandatory.
+
+## 17. Third addendum — what this batch built, and the answer to "is it fully implemented?"
+
+Built since the second addendum, all of it read back against the running application rather than stated from
+the plan:
+
+- **G34** closed. A clearance line refused on a blank reason is refused by the server, and a reasonless refusal
+  moves neither the line nor the clearance's overall status. The directional case — an approval with nothing
+  typed still passes — is what proves the rule did not break the common act.
+- **G42** closed on its testable half. A deactivated account is refused at the login screen by a case that then
+  authenticates the same account once it is active again, so the pair cannot pass by the credentials failing.
+  Cutting an already-open session is a policy answer and is item 2 on the 2026-10-29 sheet.
+- **G33** closed. `admissions.rejectionReason` (varchar 500, nullable — a rejection filed before the column
+  stays valid and simply shows no reason), refused under ten characters, typed into an opt-in box on the shared
+  `CauseEffectModal`, printed on the rejected panel, and the screen's invented sentence
+  `Requirement rejected / needs resubmission.` is deleted rather than reworded.
+- **G43 opened by measuring, not by reading code**: five desk acts write `now()` into columns the server calls
+  `date`. Eloquent formats a `date` cast in the application's timezone, so the record files the machine's day.
+  The two admission sites are fixed and pinned in this batch; three are open, and lane 50's PHP half cannot see
+  the shape at all (it reads `now()->toDateString()` and `whereDate(...)`, and answered 0 over those files).
+
+### Is the development prompt fully implemented? No.
+
+Eleven register items came out of the sweep (G33 to G43). Three are closed by this batch, one half-closed.
+What remains divides honestly into two kinds:
+
+- **Four buildable now, unbuilt**: G36 (nothing stops a duplicate notice when a queued listener retries),
+  G39 (one print page re-declares a status tone map that never learned the two return states), G40 (no list
+  table sorts), and the three remaining writers of G43.
+- **Six waiting on the school's window**, each on `Documentation/School-Decision-Sheet-2026-10-29.md` with what
+  the answer costs and how it comes back off: G35 (where a notice takes the desk), G42's session cut-off,
+  G38 (who may read a clinical note, not just its outcome), G37 (the audit trail's action vocabulary),
+  G33's fixed-list-versus-free-text half, G41 (whether a browser job belongs in the pipeline).
+
+Plus G6 from the first pass (a configurable workflow definition) and the four items on the 2026-10-27 sheet.
+
+### Evidence for this batch, read from the instruments named
+
+- `tests/Feature/Admission/AdmissionRejectionReasonTest.php` declares seven cases (`#[Test]` counted in the file);
+  the whole suite was then run twice: the first pass answered **944 passed, 2 failed** — the two failures were
+  fixtures elsewhere that post `admission.reject` with no body — and after the fixture repair the gate answers
+  **946 passed**, with `php artisan test --list-tests` discovering the same 946, so no case was stolen by an
+  insertion. No assertion total is stated for the file, because an assertion total belongs to a run and not to
+  the code (lane 58's rule, applied to this document).
+- PHPStan: `[OK] No errors` whole-tree. Pint `--test`: PASS, 417 files. ESLint: silent at
+  `--max-warnings=0`. Vite: `✓ built in 32.80s`. `ems:print-fidelity`: 8/8 rendered, no warning line.
+- Authority document: passes 279, 279b, 280 and 280b. `sweep-docx-citations.php` answers 742 citations over
+  162 files with 0 line problems and 1 blind spot (the quoted example that is a pointer by design);
+  `lane60-ratio-claims.php --run` verdicts "every bound ratio, census figure and column count equals what the
+  server answers"; `lane64-empty-table-inventory.php --verify` agrees with `COUNT(*)`; `lane59-instrument-counts.php`
+  refuses until the lane 37 figure in this repository's own instructions is re-typed to what the sweep prints;
+  OOXML `CLEAN`, `verify-docx` `CONSISTENT`, and real Word opens the hash-identical copy at 234 pages / 186 tables.
+- `repo-file-line-citations.php`: 160 citations across 16 repository files and office sheets, 0 problems.
+- Live `ems`: the migration ran after a verified dump (`C:\Users\ADMIN\ems-backups\ems-pre-g33-rejection-reason-20261029.sql`,
+  1.4 MB, checked for `DROP DATABASE`/`CREATE DATABASE` before anything was pointed at the server); `admissions`
+  still holds 4 rows and `rejectionReason` answers `varchar(500) YES NULL`.
+
+### What this batch did not finish, stated as work and not as a pass
+
+1. **The §28.3 and §28.5 register rows for G33 to G43 are not written into the authority document.** The §1.1
+   row records the sweep and names the ten items; the registers themselves need their own pass, because adding
+   a row moves every place that counts a register — the family range, §29.4's two count cells, §28.8's tallies —
+   and pass 173's lesson is that a row written before its own count was re-measured makes the document
+   contradict itself. That cascade is deliberately not folded into a revision row.
+2. **The lane-70 queue reads aged.** This batch moved 32 citation numbers in `ClearanceController.php` and 21 in
+   `AdmissionController.php`, so records keyed to the old ranges now report STALE. They were left stale rather
+   than regenerated, because the generator's file-keyed fallback would attach prose written against the previous
+   layout to lines nobody has opened since — the conservative direction is a row that reads unread.
+3. **G33's harness was run, and two of its six mutants survived the first attempt.** They are recorded in
+   `AGENTS.md` rather than smoothed out: the school-day case could not fail while the two clocks happened to
+   agree, so it now freezes the instant and asserts the disagreement first; and the canned-sentence mutant was
+   aimed at the rejection case, where a `??` can never fire — the fallback bites only on an approval, which is
+   where the leg points now. `mutate-g33-rejection-reason-tests.php` ends `ALL KILLED: 6 leg(s), 0 bad` with a
+   green control before and after and every touched file restored by sha1. The whole-suite run then caught two
+   fixtures elsewhere in `tests/` (`ExamControllerTest`) that post `admission.reject` with no body at all; the
+   fixtures were repaired, not the rule.
+4. **G39 and G40 remain as found**, and G43's other three writers are unfixed.
+5. **G34's five cases have no mutant harness.** They are green in the whole-suite run and each was written
+   against a promise, but nothing has planted the defect since — so the claim for that gap is "pinned", not
+   "pinned and proved to be able to fail", which is the bar this document applies to G33's cases above.

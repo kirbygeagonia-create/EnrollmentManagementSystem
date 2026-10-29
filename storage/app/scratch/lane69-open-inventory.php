@@ -160,10 +160,17 @@ echo '  count: '.(int) $om[1]."\n";
 // names is invisible to "what is left", which is how the Registrar window packet's own pointers sat
 // outside every gate in 2026-10-26 until the checker was told the file existed — so the list, not a
 // guess from the directory, is the boundary, and a sheet added without adding it here is not checked.
-$sheetFiles = [
-    'Documentation/School-Decision-Sheet-2026-10-23.md',
-    'Documentation/School-Decision-Sheet-2026-10-27.md',
-];
+// Read from the directory, not a hand-kept list: the sheet issued 2026-10-29 carried six open items and
+// a literal list would have answered "4 sheet items" about a register that had doubled. Glob returns
+// nothing if the naming convention ever changes, so an empty result refuses rather than reporting zero.
+$sheetFiles = glob($root.'/Documentation/School-Decision-Sheet-*.md');
+sort($sheetFiles);
+$sheetFiles = array_map(static fn (string $f): string => 'Documentation/'.basename($f), $sheetFiles);
+if ($sheetFiles === []) {
+    fwrite(STDERR, "REFUSED: no School-Decision-Sheet-*.md matched — the inventory would report '0 sheet items' having read none.\n");
+
+    exit(1);
+}
 $allSheetOpen = [];
 
 foreach ($sheetFiles as $sheetFile) {

@@ -989,6 +989,42 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `updatedAt` was four seconds after `createdAt` — a read that early is not a verdict in either direction. So the
   guard is not "trust a zero exit", it is **poll until `status == completed`** and only then quote `conclusion` and
   the per-job list; run 40195587267 answered `completed / success` on all three jobs about eight minutes later.
+- **A register built from a gap list cannot find an unvisited section** (lane 86). The prompt carries **357
+  enumerated requirement lines across 55 headings**; `Documentation/Prompt-Requirement-Matrix-2026-10-26.md`
+  had rows for 14, because its first pass walked the gaps it had found rather than the document's own
+  structure. Counting the population from the file (a script over headings and `- `/`1. ` lines) is what
+  revealed the hole, and it produced G33 … G42. So the sweep instruction is: walk every heading and ask how
+  many things it enumerates, then ask which of those the checkout answers — a section with no gap id is
+  exactly what a gap-derived register reports as silence. **A population you did not measure is a
+  denominator that drifts**, and a clean register over 14 of 55 headings looked complete.
+- **A hand-kept list of documents is a blind spot that prints a clean verdict.** Both
+  `repo-file-line-citations.php` and `lane69-open-inventory.php` named each dated sheet as a literal, so the
+  sheet issued with this lane would have been read by neither — and the inventory would have answered
+  "4 sheet items" about a register holding 10. Both are bound to a glob now, each **refuses on an empty
+  match** (an unmatchable pattern is the failure lane 79 met with `glob()` and no recursive `**`), and the
+  refusal is proved by planting a throwaway `School-Decision-Sheet-2999-01-01.md`, watching both react, then
+  removing it and watching the counts return. Prove a list-with-glob the same way whenever you replace a
+  literal list: name what must appear, and check that its absence is *loud*.
+- **Re-open every `file:line` a subagent hands you before it becomes a register row.** Three of this lane's
+  arrived wrong or overstated: no bulk `->query()->update()` exists in `app/` (so a return does not reopen
+  boxes outside the observer); an override act does exist, in `EvaluationController` with
+  `auditlogs.adminOverride` carrying it (so "Registrar override is absent" was false); and only
+  `PrintCertificate.jsx` re-declares a status tone map, not "the print views". A search pass is a lead, not
+  evidence — the same rule the registers already follow for a citation whose file is right and whose line
+  belongs to something else.
+- **Check a column's type before treating a finding as a schema change.** `auditlogs.action` is
+  `varchar(100)`, so naming the act the audit records is a write, not a migration — and a question that
+  sounds expensive gets deferred for a reason it does not have. `students.religionId` is the mirror case: a
+  real foreign key, so a test fixture must read the id back rather than assume 1.
+- **After any batch that adds or edits a desk filter, a page's `router.get`, or a controller's `filters` echo,**
+  unchanged below, and **after any batch that issues a dated owner-facing document**, run
+  `php storage/app/scratch/repo-file-line-citations.php` — it now refuses an unlisted document rather than
+  reporting a clean sweep over files it never opened.
+- **A figure you wrote about a tool is the last thing to re-measure, and better left unwritten.** This lane
+  typed "159 citations over 14 files" into its own report, then added a document, and the denominator moved
+  under the sentence. The fix states the property (0 problems; the gate refuses what it cannot scan) instead
+  of the count. Lane 58's rule for a revision row applies to prose about a checker: name one surface or state
+  no total.
 - **A verdict word must be read from where a verdict is WRITTEN, never from the block around it** (lane 69).
   Answering "is anything left?" found a committed sentence the register had already overtaken —
   `Documentation/School-Decision-Sheet-2026-10-23.md` introduced §25.4 as "the printed-paper items … three of
@@ -1298,6 +1334,61 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   purpose: the colon form in this file is a citation the checker reads, and this batch moved the line, so a
   pointer to the old layout would have been a false claim written into the warning about false claims. Shifting
   this batch's three files moved 45, 3 and 4 citation tokens, one of them by `--map` after reading both endpoints.
+- **A refusal that names no reason is not a decision, and the screen may not supply one** (lane 86, prompt §6.5).
+  Three gaps from the sweep closed in this batch. G34: `ClearanceController`'s decide action now asks
+  `required_if:status,rejected|nullable|string|min:10|max:500`, and a reasonless refusal moves neither the line
+  nor the clearance's overall status — pinned by `tests/Feature/Clearance/ClearanceRequirementRejectionTest.php`,
+  whose honest-direction case is the one showing an **approval** with nothing typed still passes, because
+  requiring text on every line would make the desk write something about a document that was simply fine.
+  G42: a deactivated account is refused at the login screen, pinned by a pair in `AuthenticationTest` that
+  authenticates the *same* account once it is active again, so the case cannot pass by the password failing.
+  G33: `admissions` gained `rejectionReason` (varchar 500, nullable — every rejection filed before it stays
+  valid and simply shows no reason, which is the truth about it), `reject()` refuses without ten characters, and
+  `Admission/Show.jsx` both asks for the reason and prints the stored one on the rejected panel. The shared
+  `CauseEffectModal` gained an **opt-in** `requireReason` box rather than a per-page invention: defaults off, so
+  every existing call site keeps its markup and its confirm rule, and the confirm button cannot be pressed on a
+  blank reason. Pin: `tests/Feature/Admission/AdmissionRejectionReasonTest.php`.
+  Two traps this batch met. *`required_unless:approved,1` does not survive a JSON boolean* — the desk posts
+  `approved: false` and the rule fired on the approval too, so the admission path uses
+  `Rule::requiredIf(fn () => ! $request->boolean('approved'))`, which is the shape the `status`-word rule was
+  chosen for in G34. *The screen's canned sentence was the defect*: `Show.jsx` wrote
+  `'Requirement rejected / needs resubmission.'` when the officer typed nothing, which reads as a reason on the
+  file while being nobody's words; the controller now refuses the blank and the fallback is gone, not reworded.
+  **Two of six mutants survived this batch's own harness** (`storage/app/scratch/mutate-g33-rejection-reason-tests.php`,
+  which ends `ALL KILLED: 6 leg(s), 0 bad` with a green control before and after). The day case compared the stored
+  date with `SchoolTime::today()` — and for most hours the two clocks *agree*, so putting `now()` back changed
+  nothing: the case now freezes at 18:00Z and asserts the disagreement first, which is lane 85's shape and was not
+  carried into the new file the first time. The canned-sentence leg pointed at the rejection case and could never
+  fire there, because a desk that typed words never reaches a `??`; the fallback only bites when remarks arrive
+  null, and the only act that sends null is an approval — so the leg points at the approval case now. **A leg that
+  cannot fail is not a test of the promise, it is decoration**, and the direction to check is which input actually
+  reaches the branch. Third, from the whole-suite run rather than the file: two fixtures elsewhere in `tests/`
+  (`ExamControllerTest`) post `admission.reject` with no body at all and went red on the new rule. The repair was
+  the fixture's state, not the gate's rule — and the grep for every caller of an act across the whole tree is the
+  step this file already tells you to take when a batch adds a gate.
+- **A mapped citation endpoint is a claim, and must be read like a needle** (lane 86). This batch inserted lines
+  into two files the authority document cites heavily. In `ClearanceController.php` the change aged nineteen
+  pointers and the bounds sweep noticed **two**, because a pointer three lines short still lands on live code of
+  the right file; `lane76-shift-cites.php` resolved eighteen by byte windows and named two it could not. One was
+  the bare `:408` whose file sits outside its XML-byte window — taken by `refresh-docx-pass279b.php` after
+  asserting live line 411 really is `downloadSlip()`'s signature, and its own first guard refused the run because
+  it asserted `and :411` would already exist: the shift had written `( :411 )` in a different cell, so the premise
+  was recalled, not measured. The other was `519-586`, and my first map read **605** — the method's closing brace
+  — because I assumed the cited window was the whole method. HEAD's line 586 is the transaction's `});`, whose
+  live twin is 600, so a map written from arithmetic extends a citation past the construct its own sentence names.
+  Read both endpoints in both files; the tool will happily write a wrong one.
+- **A DATE column fed `now()` files the machine's day, and no shape-matcher sees it** (lane 86, open as G43).
+  Lane 50's PHP half reads the *shapes* `now()->toDateString()` and `whereDate(...)` and answered **0** for every category while
+  six sites wrote `'someDate' => now()` into columns the server says are `date`: `admissions.evaluatedDate`,
+  `studentrequirementsubmissions.submittedDate`, `studentassessments.assessmentDate`,
+  `clearanceapprovals.approvalDate`, `idrequests.requestDate`. Eloquent formats a Carbon for a `date` cast in the
+  **application's** timezone, so anything between 16:00Z and midnight files the day before the school's, which is
+  lane 51's rule reached from the write side instead of the read side. `storage/app/scratch/lane86-probe-date-columns.php`
+  is the measurement (it asks `information_schema`, not the code, because the code is the thing in question). The
+  two sites this batch touched — `approve()` and `reject()` — now call `SchoolTime::today()` and
+  `AdmissionRejectionReasonTest` pins the day; the other three are open, and the instrument for the whole family
+  is not built yet (it would bind the write to the migration's column type, which the JS half of lane 50 already
+  knows how to do).
 - **The machine's hour is read from MySQL, never from PHP** (lane 54c). Inside a booted application
   `date_default_timezone_get()` answers `app.timezone`, because the framework pins it, so a preflight row built
   on that prints agreement on every server and can never fail. The other candidates are also not the operating
@@ -2452,7 +2543,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 950 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 952 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

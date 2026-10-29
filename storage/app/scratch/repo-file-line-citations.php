@@ -43,7 +43,33 @@ $targets = $args !== [] ? $args : [
     // carries each behaviour it classifies, so it is a document an owner is sent — and a pointer that lands on a
     // live line belonging to something else is exactly what this sweep exists to refuse.
     'Documentation/Prompt-Requirement-Matrix-2026-10-26.md',
+    // The §16 final report and the sheet issued with the prompt audit of 2026-10-29. Both are sent to
+    // an owner, so both are read; the guard below is what stops the next dated document from being
+    // silently left out of this list, which is how the 2026-10-11 sheet's three drifted pointers and
+    // the matrix's own shorthand paths went unnoticed.
+    'Documentation/Prompt-Completion-Report-2026-10-27.md',
+    'Documentation/School-Decision-Sheet-2026-10-29.md',
 ];
+
+// A dated owner-facing document that is not in the list above is a citation blind spot, not an absence
+// of citations. Refuse loudly rather than reporting a clean sweep over files this tool never opened.
+// Only when the whole set is being scanned: a scoped run names its own files on purpose.
+if ($args === []) {
+    $dated = glob($root.'/Documentation/{School-Decision-Sheet-*,Prompt-Requirement-Matrix-*,Prompt-Completion-Report-*,Registrar-Window-Packet-*,Department-Board-Exam-Confirmation-*,Registrar-Print-Decision-Sheet-*,Print-Fidelity-Comparison-*}', GLOB_BRACE);
+    $unlisted = [];
+    foreach ((array) $dated as $f) {
+        $rel = 'Documentation/'.basename($f);
+        if (! in_array($rel, $targets, true)) {
+            $unlisted[] = $rel;
+        }
+    }
+    if ($unlisted !== []) {
+        fwrite(STDERR, 'REFUSED: '.count($unlisted)." dated owner-facing document(s) exist but are not scanned: "
+            .implode(', ', $unlisted)."\n  Add the file to the list above, or delete it. An unread document cannot be a clean one.\n");
+
+        exit(1);
+    }
+}
 
 $index = null;
 /** Every file the repository's own prose can cite, indexed by basename. */
