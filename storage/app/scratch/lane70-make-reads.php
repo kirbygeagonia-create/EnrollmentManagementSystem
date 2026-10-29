@@ -201,7 +201,7 @@ $exact = [
 // Each line was opened on 2026-10-28 and reads as the sentence says.
 $read28 = [
     'RegistrarController.php:339-339' => 'drop(): the `'.'dropReason => required|string|min:10|max:500'.'` rule the §13 status row names ("the reason rule at :339")',
-    'RegistrarController.php:297-297' => 'the `'."enrollmentType".' => $enrollmentType,` write — BR31\'s derived type, which §24\'s enrollmentType row cites as "written at :297"',
+    'RegistrarController.php:297-297' => 'the `'.'enrollmentType'.' => $enrollmentType,` write — BR31\'s derived type, which §24\'s enrollmentType row cites as "written at :297"',
     'RegistrarController.php:389-389' => 'printClassCards()\'s signature — §25.1\'s class-card page cell',
     'RegistrarController.php:420-420' => 'printSubjectLoad()\'s signature — §25.1\'s subject-load page cell',
     'RegistrarController.php:444-444' => 'downloadCertificate()\'s signature — the PDF the certificate row cites',
@@ -212,21 +212,51 @@ $read28 = [
     'RegistrarController.php:435-435' => 'Inertia::render(\'Registrar/PrintSubjectLoad\') — the third',
 ];
 
+// Rows re-opened on 2026-10-29. Passes 281 and 282 inserted seventeen register rows, and a read key hashes a
+// 240-character window of the flat dump — which crosses row boundaries — so pointers in the rows NEAR an
+// insertion age even when no code line moved under them. Each span below was opened today through
+// lane70-read-unread.php, which prints the line numbered; the verdict is what the line says.
+// ClearanceController.php:411-411 is the one that genuinely moved: passes 279/279b re-pointed the download
+// action from 408 to 411, so its key changed twice in one batch.
+$read29 = [
+    'AdmissionController.php:545-545' => 'EnrollmentIssuer::seatHolder() consulted inside approve() — the one-seat-per-term check §13 cites',
+    'AdmissionController.php:573-573' => 'the return Enrollments::create of the same action — the enrollment the approval issues',
+    'RegistrarController.php:297-297' => 'the enrollmentType write — BR31\'s derived type, which §24 cites as written here',
+    'RegistrarController.php:389-389' => 'printClassCards()\'s signature — §25.1\'s class-card page cell',
+    'RegistrarController.php:412-412' => 'the Inertia render of Registrar/PrintClassCards — the print component that page answers with',
+    'RegistrarController.php:420-420' => 'printSubjectLoad()\'s signature — §25.1\'s subject-load page cell',
+    'RegistrarController.php:435-435' => 'the Inertia render of Registrar/PrintSubjectLoad — the third of the three Print components',
+    'RegistrarController.php:444-444' => 'downloadCertificate()\'s signature — one of the generated PDFs §23 names',
+    'RegistrarController.php:459-459' => 'downloadEnrollmentForm()\'s signature',
+    'RegistrarController.php:471-471' => 'downloadClassCard()\'s signature — the per-subject PDF',
+    'RegistrarController.php:497-497' => 'downloadSubjectLoad()\'s signature',
+    'ClearanceController.php:411-411' => 'downloadSlip()\'s signature, moved here from 408 by passes 279/279b',
+    'BlockingController.php:571-571' => 'downloadBlockSchedule()\'s signature — the print action §23 lists for the block schedule',
+    'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single branch — the slip names its own term\'s enrollment or nothing',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read29 as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-29', 'by' => 'read 2026-10-29 in the numbered span the unread-list tool printed: '.$t];
+
+            break;
+        }
+    }
     foreach ($read28 as $p => $t) {
-        if (str_starts_with($head, $p)) {
+        if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-28', 'by' => 'read 2026-10-28 in the file the shift moved it to: '.$t];
 
             break;
         }
     }
     foreach ($readToday as $p => $t) {
-        if (str_starts_with($head, $p)) {
+        if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-27', 'by' => 'read 2026-10-27 from the numbered span the checker printed: '.$t];
 
             break;
@@ -234,7 +264,7 @@ foreach ($keys as $k) {
     }
     if ($why === null) {
         foreach ($exact as $p => $t) {
-            if (str_starts_with($head, $p)) {
+            if ($why === null && str_starts_with($head, $p)) {
                 $why = $t;
 
                 break;

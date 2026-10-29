@@ -37,15 +37,15 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the enrollment-status badge and its formatted label"
         },
-        "AdmissionController.php:531-531#b0dfae36": {
-            "read": "2026-10-27",
+        "AdmissionController.php:545-545#6be97461": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: approve():517-… the seat-holder test `EnrollmentIssuer::seatHolder(...)`, which is the first-enrollment claim"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: EnrollmentIssuer::seatHolder() consulted inside approve() — the one-seat-per-term check §13 cites"
         },
-        "AdmissionController.php:559-559#b0dfae36": {
-            "read": "2026-10-27",
+        "AdmissionController.php:573-573#6be97461": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: approve(): the `return Enrollments::create([` that is the applicant's first enrollment"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the return Enrollments::create of the same action — the enrollment the approval issues"
         },
         "EvaluationController.php:97-99#807502a6": {
             "read": "2026-10-27",
@@ -62,10 +62,10 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "RegistrarController.php:297-297#717f4f2a": {
-            "read": "2026-10-28",
+        "RegistrarController.php:297-297#3e6f6b85": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: the `enrollmentType => $enrollmentType,` write — BR31's derived type, which §24's enrollmentType row cites as \"written at :297\""
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the enrollmentType write — BR31's derived type, which §24 cites as written here"
         },
         "ExamController.php:302-311#b7612dce": {
             "read": "2026-10-27",
@@ -157,45 +157,45 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s whole update, including the `read_at` write at :68"
         },
-        "RegistrarController.php:389-389#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:389-389#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: printClassCards()'s signature — §25.1's class-card page cell"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: printClassCards()'s signature — §25.1's class-card page cell"
         },
-        "RegistrarController.php:420-420#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:420-420#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: printSubjectLoad()'s signature — §25.1's subject-load page cell"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: printSubjectLoad()'s signature — §25.1's subject-load page cell"
         },
-        "RegistrarController.php:444-444#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:444-444#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadCertificate()'s signature — the PDF the certificate row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadCertificate()'s signature — one of the generated PDFs §23 names"
         },
-        "RegistrarController.php:459-459#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:459-459#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadEnrollmentForm()'s signature, one of the four generated PDFs"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadEnrollmentForm()'s signature"
         },
-        "RegistrarController.php:471-471#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:471-471#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadClassCard()'s signature — the per-subject PDF the class-card row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadClassCard()'s signature — the per-subject PDF"
         },
-        "RegistrarController.php:497-497#d1e33574": {
-            "read": "2026-10-28",
+        "RegistrarController.php:497-497#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadSubjectLoad()'s signature — the PDF the subject-load row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadSubjectLoad()'s signature"
         },
-        "ClearanceController.php:408-408#d1e33574": {
-            "read": "2026-10-27",
+        "ClearanceController.php:411-411#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: downloadSlip()'s signature, cited by two rows"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadSlip()'s signature, moved here from 408 by passes 279/279b"
         },
-        "BlockingController.php:571-571#d1e33574": {
-            "read": "2026-10-27",
+        "BlockingController.php:571-571#658ab49c": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: downloadBlockSchedule()'s signature — the PDF sibling §23's print-action row and §25.1 both name"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadBlockSchedule()'s signature — the print action §23 lists for the block schedule"
         },
         "ExamController.php:439-446#90395818": {
             "read": "2026-10-27",
@@ -298,9 +298,9 @@
             "by": "read 2026-10-27 from the numbered span the checker printed: approvalBlockers() end to end: signature :67, `return $blockers;` :158 — the method grew past its old :152 with the G-4 examination conditions"
         },
         "RegistrarController.php:444-444#4b94cf32": {
-            "read": "2026-10-28",
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadCertificate()'s signature — the PDF the certificate row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadCertificate()'s signature — one of the generated PDFs §23 names"
         },
         "PrintService.php:115-115#4b94cf32": {
             "read": "2026-10-27",
@@ -308,9 +308,9 @@
             "by": "read 2026-10-27 from the numbered span the checker printed: recordIssue()'s signature — the one writer behind every desk print"
         },
         "RegistrarController.php:471-471#5cded496": {
-            "read": "2026-10-28",
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadClassCard()'s signature — the per-subject PDF the class-card row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadClassCard()'s signature — the per-subject PDF"
         },
         "PrintService.php:254-254#5cded496": {
             "read": "2026-10-27",
@@ -318,29 +318,29 @@
             "by": "read 2026-10-27 from the numbered span the checker printed: printClassCard()'s signature, the per-subject render the class-card row names"
         },
         "RegistrarController.php:497-497#743ed2eb": {
-            "read": "2026-10-28",
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: downloadSubjectLoad()'s signature — the PDF the subject-load row cites"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadSubjectLoad()'s signature"
         },
-        "ClearanceController.php:408-408#41d4e55b": {
-            "read": "2026-10-27",
+        "ClearanceController.php:411-411#63b0e8e2": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: downloadSlip()'s signature, cited by two rows"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadSlip()'s signature, moved here from 408 by passes 279/279b"
         },
         "BlockingController.php:571-571#2c47e654": {
-            "read": "2026-10-27",
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: downloadBlockSchedule()'s signature — the PDF sibling §23's print-action row and §25.1 both name"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: downloadBlockSchedule()'s signature — the print action §23 lists for the block schedule"
         },
-        "RegistrarController.php:412-412#dd28800d": {
-            "read": "2026-10-28",
+        "RegistrarController.php:412-412#7da7ae2b": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: Inertia::render('Registrar/PrintClassCards') — the second of the three Print components pass 272 listed"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the Inertia render of Registrar/PrintClassCards — the print component that page answers with"
         },
-        "RegistrarController.php:435-435#dd28800d": {
-            "read": "2026-10-28",
+        "RegistrarController.php:435-435#7da7ae2b": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: Inertia::render('Registrar/PrintSubjectLoad') — the third"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the Inertia render of Registrar/PrintSubjectLoad — the third of the three Print components"
         },
         "PrintCertificate.jsx:119-119#981ad6e8": {
             "read": "2026-10-25",
@@ -407,10 +407,10 @@
             "verdict": "true",
             "by": "lane70-read-span: :49 setChromePath, :115 recordIssue signature, :254 printClassCard signature"
         },
-        "Studentclearances.php:87-93#7ac94fcc": {
-            "read": "2026-10-25",
+        "Studentclearances.php:87-93#fea70011": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "direct read: :77 termEnrollment and the single ruled branch at :87-93"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the P-17 ruled comment and termEnrollment()'s single branch — the slip names its own term's enrollment or nothing"
         },
         "enrollment-form.blade.php:164-173#aefa3200": {
             "read": "2026-10-25",
@@ -438,19 +438,19 @@
             "by": "read 2026-10-27 from the numbered span the checker printed: recordCourseSpecific(): the BR9/C-4/C-5 comment and the `if ($course->requiresEntranceExam)` it ends on"
         },
         "RegistrarController.php:297-297#f3cea463": {
-            "read": "2026-10-28",
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: the `enrollmentType => $enrollmentType,` write — BR31's derived type, which §24's enrollmentType row cites as \"written at :297\""
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the enrollmentType write — BR31's derived type, which §24 cites as written here"
         },
-        "RegistrarController.php:389-389#fc80210f": {
-            "read": "2026-10-28",
+        "RegistrarController.php:389-389#70bf79de": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: printClassCards()'s signature — §25.1's class-card page cell"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: printClassCards()'s signature — §25.1's class-card page cell"
         },
-        "RegistrarController.php:420-420#fc80210f": {
-            "read": "2026-10-28",
+        "RegistrarController.php:420-420#70bf79de": {
+            "read": "2026-10-29",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: printSubjectLoad()'s signature — §25.1's subject-load page cell"
+            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: printSubjectLoad()'s signature — §25.1's subject-load page cell"
         },
         "BlockingController.php:328-334#9bd17ab5": {
             "read": "2026-10-27",
