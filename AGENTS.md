@@ -1389,6 +1389,20 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `AdmissionRejectionReasonTest` pins the day; the other three are open, and the instrument for the whole family
   is not built yet (it would bind the write to the migration's column type, which the JS half of lane 50 already
   knows how to do).
+- **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
+  G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
+  lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never
+  learned `returnedToEvaluation` or `returnedToAdmission` — so a returned record printed a neutral badge where
+  every desk showed a hold. Fixed by reading the shared map (`resources/js/Pages/Registrar/PrintCertificate.jsx:94`)
+  and **deleting** the local helper, then pinned by `tests/Feature/Enrollment/EnrollmentToneVocabularyTest.php`,
+  which reads the `.jsx` sources because there is no JavaScript test suite — the method lane 69 established for
+  the year-level pairing. Two lessons travel with it. *The sweep's own claim was too wide*: it said every print
+  view re-declared the map, and the scan that found the one hold-out cleared the others, so the matrix row was
+  re-taken whole rather than left stating a superseded census. *Deleting a construct ages every pointer written
+  against it*: the citation gate went red on `PrintCertificate.jsx:139-148` in a file that is now 137 lines, and
+  re-pointing the number would have left the sentence still promising a re-declared map. Re-take the cell, not
+  the digit. `proposed`/`confirmed`/`dropped` belong to the enrolled-subject vocabulary and are deliberately NOT
+  matched by the guard — one checker judging two vocabularies is the two-answers-for-one-word defect.
 - **The machine's hour is read from MySQL, never from PHP** (lane 54c). Inside a booted application
   `date_default_timezone_get()` answers `app.timezone`, because the framework pins it, so a preflight row built
   on that prints agreement on every server and can never fail. The other candidates are also not the operating
@@ -2543,7 +2557,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1008 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1009 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file

@@ -273,12 +273,14 @@ the plan:
 
 ### Is the development prompt fully implemented? No.
 
-Eleven register items came out of the sweep (G33 to G43). Three are closed by this batch, one half-closed.
+Eleven register items came out of the sweep (G33 to G43). Four are closed by this batch — G33, G34, G39 and
+half of G42 — and the fourth was measured before it was claimed: the scan that found the one page re-declaring
+the enrollment tone map also cleared every other print screen, so the sweep's own claim that all of them did was
+disproved by reading the files.
 What remains divides honestly into two kinds:
 
-- **Four buildable now, unbuilt**: G36 (nothing stops a duplicate notice when a queued listener retries),
-  G39 (one print page re-declares a status tone map that never learned the two return states), G40 (no list
-  table sorts), and the three remaining writers of G43.
+- **Three buildable now, unbuilt**: G36 (nothing stops a duplicate notice when a queued listener retries),
+  G40 (no list table sorts), and the three remaining writers of G43.
 - **Six waiting on the school's window**, each on `Documentation/School-Decision-Sheet-2026-10-29.md` with what
   the answer costs and how it comes back off: G35 (where a notice takes the desk), G42's session cut-off,
   G38 (who may read a clinical note, not just its outcome), G37 (the audit trail's action vocabulary),

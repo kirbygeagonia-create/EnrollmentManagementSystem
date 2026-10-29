@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import PrintLayout from '@/Components/ui/PrintLayout';
-import { Badge, formatStatusLabel, formatYearLevel } from '@/Components/ui';
+import { Badge, formatStatusLabel, formatYearLevel, enrollmentStatusTone } from '@/Components/ui';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
 export default function PrintCertificate({ enrollment, documentNumber, issuedDate }) {
@@ -91,7 +91,7 @@ export default function PrintCertificate({ enrollment, documentNumber, issuedDat
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-brand-200">
                     <div className="text-center">
                         <p className="text-sm text-brand-500 mb-1">Enrollment Status</p>
-                        <Badge tone={getStatusTone(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)} className="text-base px-3 py-1">
+                        <Badge tone={enrollmentStatusTone[enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus] || 'neutral'} className="text-base px-3 py-1">
                             {formatStatus(enrollment.enrollmentStatus?.value || enrollment.enrollmentStatus)}
                         </Badge>
                     </div>
@@ -134,16 +134,4 @@ export default function PrintCertificate({ enrollment, documentNumber, issuedDat
 
 function formatStatus(status) {
     return formatStatusLabel(status);
-}
-
-function getStatusTone(status) {
-    const toneMap = {
-        pending: 'pending',
-        evaluated: 'evaluated',
-        assessed: 'assessed',
-        paid: 'paid',
-        enrolled: 'enrolled',
-        dropped: 'dropped',
-    };
-    return toneMap[status] || 'neutral';
 }
