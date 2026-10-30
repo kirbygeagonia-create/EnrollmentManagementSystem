@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // An absent amount is not zero money: it renders a dash, so a desk never reads "₱0.00" for a figure the
@@ -16,8 +16,10 @@ const balanceToneFor = (balance, total) => {
     return 'danger';
 };
 
-export default function Index({ assessments, pendingEvaluations = [], summary = {}, filters = {} }) {
+export default function Index({ assessments, pendingEvaluations = [], summary = {}, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'assessmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
     // Compute writes a fee sheet, so a second click on the same card must not run it twice.
     const [computingId, setComputingId] = useState(null);
 
@@ -33,12 +35,16 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
     };
 
     const columns = useMemo(() => [
-        { key: 'enrollment.student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => {
+        { key: 'enrollment.student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => {
             const s = row.enrollment?.student;
             return s ? `${s.lastName}, ${s.firstName}` : '—';
         }},
         { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
+        // Course, Student Type and Standing carry no sortKey: the first is reachable but not how this queue is
+        // worked, and the other two are read off the enrollment the sheet already points at. Payment Status is
+        // derived from the balance against the total on the screen, so ordering by balance orders it too. A key
+        // the handler does not list is a header that would reset while the queue stayed ordered.
         { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
                 {formatStatusLabel(row.enrollment?.studentType)}
@@ -49,10 +55,10 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 {academicStandingLabel(row.enrollment?.academicStanding)}
             </Badge>
         )},
-        { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
+        { key: 'totalAssessedAmount', label: 'Total Amount', sortKey: 'amount', render: (row) => (
             <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
         )},
-        { key: 'remainingBalance', label: 'Remaining Balance', render: (row) => {
+        { key: 'remainingBalance', label: 'Remaining Balance', sortKey: 'balance', render: (row) => {
             const balance = Number(row.remainingBalance || 0);
             const total = Number(row.totalAssessedAmount || 0);
             const tone = balanceToneFor(balance, total);
@@ -75,14 +81,28 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
         }},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextSort, nextDir) => {
         router.get(route('assessment.index'), {
-            search: search || undefined,
+            search: nextSearch || undefined,
+            // The queue's own newest-first default travels as nothing at all, so a plain link stays a short URL
+            // and an empty string never arrives as a sort key the handler has to recognise as its fallback.
+            ...sortParams('assessmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, key, direction);
     };
 
     const renderActions = (row) => (
@@ -227,6 +247,8 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                             columns={columns}
                             rows={assessments.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No assessments found"
                         />
                         <div className="mt-4">

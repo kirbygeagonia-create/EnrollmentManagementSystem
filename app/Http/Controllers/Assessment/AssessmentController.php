@@ -18,6 +18,7 @@ use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -45,21 +46,55 @@ class AssessmentController extends Controller
 
         $query = Studentassessments::with(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
             ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Evaluated))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('assessmentId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Fee summary across the whole filtered set — the summary tiles must
         // describe the full queue, not just the current page (audit 2026-09-25).
         //
         // Cloned before paginate(): paginate() sets limit/offset on the builder it is called on, so a clone
         // taken afterwards carries the page's OFFSET into the aggregate and `first()` answers with nothing —
-        // the desk then reads ₱0 for money the queue holds.
+        // the desk then reads ₱0 for money the queue holds. It is also cloned before the order is applied: a
+        // name sort joins `students` two hops away, and an aggregate must not learn about a join it never needed.
         $summary = (clone $query)
             ->reorder()
             ->selectRaw('coalesce(sum(totalAssessedAmount), 0) as total, coalesce(sum(remainingBalance), 0) as balance,
                 sum(case when remainingBalance > 0 and remainingBalance < totalAssessedAmount then 1 else 0 end) as partialCount,
                 sum(case when remainingBalance <= 0 then 1 else 0 end) as settledCount')
             ->first();
+
+        // A fee sheet carries no student number of its own — it points at an enrollment, which points at a
+        // student — so the surname and the school ID are ordered through two hops. Two columns the desk sees are
+        // deliberately left out: Payment Status is read off `remainingBalance` against `totalAssessedAmount` on
+        // the screen, so ordering by balance already orders it, and Course would be reachable by the same chain
+        // but the queue is worked by amount, not by program — and a key the handler lists is a promise it keeps.
+        $sortable = [
+            'name' => [
+                'column' => 'lastName',
+                'joins' => [
+                    ['join' => 'enrollments', 'foreign' => 'enrollmentId', 'local' => 'studentassessments.enrollmentId'],
+                    ['join' => 'students', 'foreign' => 'studentId', 'local' => 'srt0.studentId'],
+                ],
+            ],
+            'schoolId' => [
+                'column' => 'schoolIdNumber',
+                'joins' => [
+                    ['join' => 'enrollments', 'foreign' => 'enrollmentId', 'local' => 'studentassessments.enrollmentId'],
+                    ['join' => 'students', 'foreign' => 'studentId', 'local' => 'srt0.studentId'],
+                ],
+            ],
+            'amount' => ['column' => 'studentassessments.totalAssessedAmount'],
+            'balance' => ['column' => 'studentassessments.remainingBalance'],
+            'assessmentId' => ['column' => 'studentassessments.assessmentId'],
+        ];
+
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'assessmentId',
+            'studentassessments.assessmentId'
+        );
 
         $assessments = $query->paginate(20)->withQueryString();
 
@@ -79,7 +114,13 @@ class AssessmentController extends Controller
                 'partialCount' => (int) ($summary->partialCount ?? 0),
                 'settledCount' => (int) ($summary->settledCount ?? 0),
             ],
-            'filters' => $request->only(['search']),
+            // Both halves of the order come back, beside the filter the desk set: a key the screen sent must be
+            // echoed, or the control resets while the queue stays ordered by something the officer chose.
+            'filters' => $request->only(['search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

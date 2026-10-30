@@ -14,6 +14,7 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -207,20 +208,76 @@ class ClearanceQueueSortTest extends TestCase
     }
 
     #[Test]
-    public function a_status_sort_orders_the_stored_word_because_that_is_what_the_column_holds(): void
+    public function a_status_sort_orders_the_way_the_column_sorts_and_the_sequence_is_asked_of_the_server(): void
     {
-        $this->trio();
+        // Created Pending, then Rejected, then Approved, so that FOUR orders answer with four different sequences:
+        //   id ascending  = pending, rejected, approved  (the creation order)
+        //   id descending = approved, rejected, pending  (the queue's own default)
+        //   MySQL         = pending, approved, rejected  (an ENUM sorts by its declaration index)
+        //   SQLite suite  = approved, pending, rejected  (`enum()` compiles to a varchar with a CHECK, so the
+        //                                                  stored STRING sorts)
+        // This box is green and CI's MySQL job was red on the sequence this case remembered, which is lane 88's
+        // fixture lesson reached from the driver side: the code orders by the column, the column's order belongs to
+        // whichever server stated it, and a literal sequence in a test is neither.
+        $this->clearance('Bautista', 'CS-010', ClearanceOverallStatus::Pending->value, '2026-09-05 08:00:00');
+        $this->clearance('Zulueta', 'CS-011', ClearanceOverallStatus::Rejected->value, '2026-09-06 08:00:00');
+        $this->clearance('Magsaysay', 'CS-012', ClearanceOverallStatus::Approved->value, '2026-09-07 08:00:00');
 
         $response = $this->actingAs($this->officer)
             ->get(route('clearance.index', ['sort' => 'status', 'direction' => 'asc']));
 
-        // Stated plainly rather than smoothed over: `overallStatus` is an enum column, so an ascending sort is
-        // alphabetical over the stored values — approved, pending, rejected — and NOT the workflow order a desk
-        // might read as "unfinished first". A vocabulary for that belongs to the school, not to a query.
-        $this->assertSame(
-            [ClearanceOverallStatus::Approved->value, ClearanceOverallStatus::Pending->value, ClearanceOverallStatus::Rejected->value],
-            $this->statuses($response)
-        );
+        $expected = $this->statusOrderFromTheColumnItself([
+            ClearanceOverallStatus::Pending->value,
+            ClearanceOverallStatus::Rejected->value,
+            ClearanceOverallStatus::Approved->value,
+        ]);
+        $this->assertSame($expected, $this->statuses($response));
+
+        // Reversing the same header reverses exactly that sequence — the direction is the other half of the promise.
+        $down = $this->actingAs($this->officer)
+            ->get(route('clearance.index', ['sort' => 'status', 'direction' => 'desc']));
+        $this->assertSame(array_reverse($expected), $this->statuses($down));
+
+        // And on neither driver does the status order coincide with either id order, which is what makes the two
+        // assertions above able to fail: a mutant that ignores the asked column returns one of these two.
+        $newest = $this->actingAs($this->officer)->get(route('clearance.index'));
+        $oldest = $this->actingAs($this->officer)
+            ->get(route('clearance.index', ['sort' => 'studentClearanceId', 'direction' => 'asc']));
+        $this->assertNotSame($this->statuses($newest), $this->statuses($response));
+        $this->assertNotSame($this->statuses($oldest), $this->statuses($response));
+    }
+
+    /**
+     * The sequence this connection really answers for an ascending sort on `overallStatus`.
+     *
+     * Asked of the server, not recalled: MySQL is read through `SHOW COLUMNS`, because an ENUM's order is the index
+     * the column was declared with; the SQLite suite holds a varchar with a CHECK, so its order is the strings'
+     * alphabetical one. A third answer — a sequence typed into this file — is the defect CI named.
+     *
+     * @param  list<string>  $values
+     * @return list<string>
+     */
+    private function statusOrderFromTheColumnItself(array $values): array
+    {
+        sort($values);
+
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return $values;
+        }
+
+        $row = DB::selectOne("SHOW COLUMNS FROM studentclearances LIKE 'overallStatus'");
+        $type = (string) ($row->Type ?? '');
+        if ($type === '' || ! preg_match("/^enum\('(.*)'\)$/s", $type, $m)) {
+            $this->fail("overallStatus came back as [{$type}], which names no enum order to compare with");
+        }
+
+        $rank = array_flip(array_map(
+            fn (string $v): string => str_replace("''", "'", $v),
+            explode("','", $m[1])
+        ));
+        usort($values, fn (string $a, string $b): int => ($rank[$a] ?? PHP_INT_MAX) <=> ($rank[$b] ?? PHP_INT_MAX));
+
+        return $values;
     }
 
     #[Test]

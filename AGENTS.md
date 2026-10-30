@@ -1620,7 +1620,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 32 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 31 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -1661,12 +1661,36 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   process reported the case green, while the identical mutation applied from a shell fails it on its first
   assertion. A leg that cannot fail is decoration; a leg that reports a real guard as surviving is worse, so it is
   stated rather than folded into the tally (task #47 carries the revisit). The same session wired the campus
-  clearance queue as the fourth sortable table — `ClearanceQueueSortTest.php` (9 cases / 29 assertions), five legs
+  clearance queue as the fourth sortable table — `ClearanceQueueSortTest.php` at nine cases and thirty-two
+  assertions (the figure the 2026-10-30 run answers; the case was re-cut when CI's MySQL job refused the sequence it
+  had been remembering, so the class grew three assertions), five legs
   all killed — which added two shapes the other three do not have: the tiles are cloned from the builder BEFORE a
   name sort can introduce a join, and Academic Term, Student Type and Standing are derived per page, so their keys
   stay out of `sort.available` rather than offering an order the query cannot answer. That clone-before-the-join
   ordering has no mutant leg and says so: the join is one-to-one through a NOT NULL key, so no fixture can move a
   tile count, and a leg asserting one would measure a state that cannot exist.
+- **An ENUM is not a string, and a sort sequence typed into a test is a claim about whichever server was open**
+  (this batch, prompt §14, G-40's fifth wired table). The Assessment queue's sheet carries neither a surname nor a
+  school number — it points at an `enrollments` row, which points at a `students` row — so ordering it by the
+  student's name is a **two-hop join**. `ListSort` now takes either spelling (`join`/`foreign`/`local`, or `joins` as
+  a list of the same triples, each `local` naming the base table or an earlier hop's alias `srt0`, `srt1`, …) through
+  one private method, so a screen cannot order by a join its handler never wrote; the bare column name is qualified
+  with the hop that holds it. Proved by `mutate-g40-assessment-sort-tests.php` (eight legs, all killed), two of which
+  live in the helper itself: `hop-qualified-from-first` and `chain-reversed`.
+  **The same batch went red on CI's MySQL job while this box was green, and the defect was in a test's memory.**
+  `studentclearances.overallStatus` is declared `enum('pending','approved','rejected','waived','incomplete')`, and
+  MySQL sorts an ENUM by that **declaration index**, while the suite's `enum()` compiles to a varchar with a CHECK
+  (`SQLiteGrammar::typeEnum`) and sorts the stored **word** — so `sort=status&direction=asc` really does answer
+  `pending, approved, rejected` on the school's server and `approved, pending, rejected` here. The clearance case had
+  asserted the second sequence as though it were the only one. It now asks the connection which order its own column
+  has (`SHOW COLUMNS … LIKE 'overallStatus'`, parsed; alphabetical elsewhere) and its fixture was re-picked to
+  Pending, Rejected, Approved so that **four orders give four different sequences** — id up, id down, the enum's
+  declaration order, the string's alphabetical order — which is what lets the assertion fail on either surface. Same
+  family as lane 79's spent counters and lane 63's rehearsal schema: a literal sequence in a test is a reading of one
+  database, not a property of the code. The two drivers now agree because the expectation is derived: re-run on a
+  scratch MySQL schema with `DB_CONNECTION` pinned, the way lane 79 records, every sort class passes on MySQL 8 as
+  well as here — and no total is quoted for that rehearsal, because it is a surface the runner cannot read (lane 58's
+  one-surface rule, which this file has been caught by before).
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never
@@ -2046,8 +2070,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   tool "exits 0" while its own last line reads `exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0)`,
   and the assertion was written from the tool's intention rather than its output. The first real defect it surfaced was fixed in
   pass 190: the settlement row quoted `( :195-215 )` for a balance formula, the number named no file so no
-  instrument had ever read it, and the formula is `AssessmentController.php:257-273` — the grant insert and the
-  balance update inside `applyScholarship()`, which the scholarship row had been citing correctly all along.
+  instrument had ever read it, and the formula is `applyScholarship()`'s grant insert followed by the balance update —
+  lines 257 to 273 as that file stood when pass 190 read it, and lines 298 to 314 of the working file after the
+  2026-10-30 sort insert moved the action down, the two windows checked byte for byte — which the scholarship row had
+  been citing correctly all along.
   **What this repository still owes, measured rather than recalled:** the registers hold no open engineering
   finding, and `lane69-open-inventory.php` answers "what is left" — the decision sheet's own header and the
   classifier now cross-check each other (a ruling word counts only in decision position, because the sheet's

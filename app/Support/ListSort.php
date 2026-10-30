@@ -19,7 +19,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * A relation column is sorted by joining it under a private alias, because the row's own eager-loaded relation is a
  * separate query and the join exists only to order the page. The select list stays the model's own (`table.*`), so
- * an aliased join adds no ambiguous column to the payload.
+ * an aliased join adds no ambiguous column to the payload. One hop is written `join`/`foreign`/`local`; a column two
+ * tables away — a fee sheet ordered by the student's surname, which sits on `students` and is reached through
+ * `enrollments` — is written `joins` as a list of the same triples, and is the same mechanism with one more hop.
  */
 final class ListSort
 {
@@ -50,24 +52,57 @@ final class ListSort
         $direction = strtolower((string) $askedDirection) === 'asc' ? 'asc' : 'desc';
 
         $spec = $allowed[$column];
+        $joins = self::joins($spec);
+        $orderColumn = $spec['column'];
 
-        if (isset($spec['join'])) {
-            $query->join(
-                $spec['join'].' as srt',
-                'srt.'.$spec['foreign'],
-                '=',
-                $spec['local']
-            );
-            $query->orderBy('srt.'.$spec['column'], $direction);
-        } else {
-            $query->orderBy($spec['column'], $direction);
+        if ($joins !== []) {
+            foreach ($joins as $n => $join) {
+                $alias = 'srt'.$n;
+                $query->join(
+                    $join['join'].' as '.$alias,
+                    $alias.'.'.$join['foreign'],
+                    '=',
+                    $join['local']
+                );
+            }
+            // A handler that names a column of the table it reached last does not have to spell the alias: the
+            // chain's own end is where that column lives. An already-qualified name is obeyed as written, which is
+            // how a sort reached through an earlier hop — a year level on the enrollment a fee sheet belongs to —
+            // stays expressible without a second rule.
+            if (! str_contains($orderColumn, '.')) {
+                $orderColumn = 'srt'.(count($joins) - 1).'.'.$orderColumn;
+            }
         }
 
-        if ($stable !== null && $stable !== $spec['column']) {
+        $query->orderBy($orderColumn, $direction);
+
+        if ($stable !== null && $stable !== $orderColumn) {
             $query->orderBy($stable);
         }
 
         return ['column' => $column, 'direction' => $direction];
+    }
+
+    /**
+     * The hops a column needs, in order.
+     *
+     * One hop is written `join`/`foreign`/`local`; more than one is written `joins` as a list of the same triples,
+     * each one's `local` naming either a column of the table the query started from or an earlier hop's alias
+     * (`srt0`, `srt1`, …). Both spellings are the same mechanism — a list of one — because two ways to express a
+     * join is how a screen ends up ordering by a join its handler never wrote.
+     *
+     * @param  array<string, mixed>  $spec
+     * @return list<array{join: string, foreign: string, local: string}>
+     */
+    private static function joins(array $spec): array
+    {
+        if (isset($spec['joins'])) {
+            return array_values($spec['joins']);
+        }
+
+        return isset($spec['join'])
+            ? [['join' => $spec['join'], 'foreign' => $spec['foreign'], 'local' => $spec['local']]]
+            : [];
     }
 
     /**
