@@ -18,6 +18,7 @@ use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -166,7 +167,7 @@ class AssessmentController extends Controller
                 'totalScholarshipCoverage' => $totalScholarshipCoverage,
                 'totalWaived' => $totalWaived,
                 'remainingBalance' => max(0, $remainingBalance),
-                'assessmentDate' => now(),
+                'assessmentDate' => SchoolTime::today(),
             ]);
 
             foreach ($charges as $charge) {

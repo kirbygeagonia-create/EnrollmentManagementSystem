@@ -20,6 +20,8 @@ use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Models\Workflowsteps;
+use App\Support\SchoolTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -418,6 +420,39 @@ class IDControllerTest extends TestCase
         $this->assertNull($idRequest->cardPhotoPath);
         $this->assertEquals(IdRequestStatus::Pending, $idRequest->status);
         $this->assertNotNull($idRequest->requestDate);
+    }
+
+    #[Test]
+    public function test_the_id_request_is_dated_the_school_s_day_and_not_the_machine_s(): void
+    {
+        // §28.3 G-43. idrequests.requestDate is a DATE column, so a value written from now() was formatted
+        // in the application's timezone — UTC — and between 16:00Z and midnight the counter's own request
+        // carried the day before the one the desk was working.
+        CarbonImmutable::setTestNow('2026-10-29 18:00:00');
+
+        try {
+            $this->assertNotSame(
+                CarbonImmutable::now()->toDateString(),
+                SchoolTime::today(),
+                'the frozen instant reads the same day on both clocks, so this case cannot tell the two apart'
+            );
+
+            $this->actingAs($this->staffForOffice(22));
+            $enrollment = $this->createEnrollment();
+
+            $this->post(route('id.create', $enrollment), [
+                'requestReason' => 'newStudent',
+                'emergencyContactName' => 'Emergency Contact',
+                'emergencyContactNumber' => '09171234569',
+                'bloodType' => 'O+',
+            ])->assertRedirect(route('id.show', $enrollment));
+
+            $idRequest = Idrequests::where('enrollmentId', $enrollment->enrollmentId)->first();
+            $this->assertNotNull($idRequest, 'the desk created no request, so the date below was never a measurement');
+            $this->assertSame('2026-10-30', $idRequest->requestDate?->toDateString());
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     #[Test]

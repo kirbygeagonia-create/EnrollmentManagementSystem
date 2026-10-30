@@ -1,82 +1,80 @@
 <?php
 
 /**
- * G-43: the last three DATE columns written from the machine's civil day.
+ * G-43: every app-side write of a DATE column from `now()`, in one pass.
  *
- * lane 51's rule says a day filed in PHP is the school's civil day, read from SchoolTime, and lane 85 fixed
- * the first three sites — but its checker reads the *shapes* `now()->toDateString()` and `whereDate(...)`, so a
- * write of `'xDate' => now()` into a `date` column is invisible to it. Eloquent formats a `date` cast in the
- * application's timezone, which is UTC, so anything between 16:00Z and midnight files the day before.
+ * lane 51's rule is that a day written in PHP is the school's civil day, read through SchoolTime, and lane 85
+ * fixed the first three sites — but its checker reads the SHAPES `now()->toDateString()` and `whereDate(...)`,
+ * so `'xDate' => now()` into a `date` column is invisible to it and answers 0. Eloquent formats a Carbon for
+ * a `date` cast in the application's timezone, which is UTC, so anything between 16:00Z and midnight files the
+ * day before the school's on the record the next desk reads.
  *
- * Each replacement is asserted to occur a known number of times before writing, and every file is linted by
- * the caller afterwards. The two `submittedDate` sites in one controller are the same defect on the same
- * column of the same table, so both move together.
+ * The site list is `lane87-date-write-columns.php`'s output, not a remembered set: seven writes across six
+ * controllers. Three of them already import SchoolTime, so they change one line each and no citation into
+ * those files ages; the other three gain one import line, and the caller re-points the document's pointers
+ * into exactly those three.
+ *
+ * The import is spliced at the first `use Illuminate` line — where `App\Support` sorts — by OFFSET, because
+ * str_replace would hit every Illuminate import.
  *
  * Usage: php storage/app/scratch/g43-school-day-writes.php [--apply]
  */
 $root = dirname(__DIR__, 3);
 
-$jobs = [
-    [
-        'file' => 'app/Http/Controllers/Clearance/ClearanceController.php',
-        'edits' => [
-            ["                'approvalDate' => now(),\n", "                'approvalDate' => SchoolTime::today(),\n", 1],
-        ],
-    ],
-    [
-        'file' => 'app/Http/Controllers/ID/IDController.php',
-        'edits' => [
-            ["use App\\Models\\Idrequests;\n", "use App\\Models\\Idrequests;\nuse App\\Support\\SchoolTime;\n", 1],
-            ["            'requestDate' => now(),\n", "            'requestDate' => SchoolTime::today(),\n", 1],
-        ],
-    ],
-    [
-        'file' => 'app/Http/Controllers/Admission/AdmissionController.php',
-        'edits' => [
-            ["                'submittedDate' => now(),\n", "                'submittedDate' => SchoolTime::today(),\n", 2],
-        ],
-    ],
-    [
-        'file' => 'app/Http/Controllers/Assessment/AssessmentController.php',
-        'edits' => [
-            // Reported, not rewritten: this site was converted earlier in the batch, so the old text must
-            // occur zero times. A guard that expects to find it would refuse the whole run for the wrong reason.
-            ["                'assessmentDate' => now(),\n", null, 0],
-        ],
-    ],
+$writes = [
+    ['file' => 'app/Http/Controllers/Admission/AdmissionController.php', 'from' => "'submittedDate' => now(),", 'to' => "'submittedDate' => SchoolTime::today(),", 'times' => 2, 'import' => false],
+    ['file' => 'app/Http/Controllers/Admission/AdmissionController.php', 'from' => "'uploadedDate' => now(),", 'to' => "'uploadedDate' => SchoolTime::today(),", 'times' => 1, 'import' => false],
+    ['file' => 'app/Http/Controllers/Assessment/AssessmentController.php', 'from' => "'assessmentDate' => now(),", 'to' => "'assessmentDate' => SchoolTime::today(),", 'times' => 1, 'import' => true],
+    ['file' => 'app/Http/Controllers/Clearance/ClearanceController.php', 'from' => "'approvalDate' => now(),", 'to' => "'approvalDate' => SchoolTime::today(),", 'times' => 1, 'import' => true],
+    ['file' => 'app/Http/Controllers/ID/IDController.php', 'from' => "'requestDate' => now(),", 'to' => "'requestDate' => SchoolTime::today(),", 'times' => 1, 'import' => true],
+    ['file' => 'app/Http/Controllers/Evaluation/EvaluationController.php', 'from' => "'formSignedDate' => now(),", 'to' => "'formSignedDate' => SchoolTime::today(),", 'times' => 1, 'import' => false],
+    ['file' => 'app/Http/Controllers/Registrar/RegistrarController.php', 'from' => "'enrolledDate' => now(),", 'to' => "'enrolledDate' => SchoolTime::today(),", 'times' => 1, 'import' => false],
 ];
 
 $apply = in_array('--apply', $argv, true);
 $failures = [];
 $plan = [];
 
-foreach ($jobs as $job) {
+foreach ($writes as $job) {
     $path = $root.'/'.$job['file'];
     if (! is_file($path)) {
         $failures[] = "{$job['file']}: no such file";
 
         continue;
     }
-    $src = (string) file_get_contents($path);
-    foreach ($job['edits'] as [$from, $to, $expect]) {
-        $hits = substr_count($src, $from);
-        if ($hits !== $expect) {
-            $failures[] = "{$job['file']}: [".trim($from)."] occurs {$hits}, expected {$expect}";
+    $src = $plan[$path] ?? (string) file_get_contents($path);
 
-            continue;
-        }
-        if ($to === null) {
-            echo "already done  {$job['file']}: ".trim($from)."\n";
+    $hits = substr_count($src, $job['from']);
+    if ($hits !== $job['times']) {
+        $failures[] = "{$job['file']}: [".$job['from']."] occurs {$hits}, expected {$job['times']}";
 
-            continue;
-        }
-        if (str_contains($src, 'use App\\Support\\SchoolTime;') === false && ! str_starts_with($from, 'use App')) {
-            $failures[] = "{$job['file']}: SchoolTime is imported nowhere — the write would fatal";
-        }
-        $src = str_replace($from, $to, $src);
-        echo 'staged        '.$job['file'].': '.trim($from).' -> '.trim($to)."\n";
+        continue;
     }
-    $plan[$path] = $src;
+    if ($job['import']) {
+        if (str_contains($src, "use App\\Support\\SchoolTime;\n")) {
+            $failures[] = "{$job['file']}: already imports SchoolTime — the job list is stale";
+
+            continue;
+        }
+        $at = strpos($src, 'use Illuminate');
+        if ($at === false) {
+            $failures[] = "{$job['file']}: no Illuminate import to anchor the new use statement";
+
+            continue;
+        }
+        $src = substr_replace($src, "use App\\Support\\SchoolTime;\n", $at, 0);
+        echo 'import spliced    '.$job['file']." at byte {$at}\n";
+    }
+
+    $plan[$path] = str_replace($job['from'], $job['to'], $src);
+    echo 'staged            '.$job['file'].': '.trim($job['from']).' -> '.trim($job['to'])."\n";
+}
+
+// Nothing may reference SchoolTime in a file the plan did not give an import to.
+foreach ($plan as $path => $src) {
+    if (str_contains($src, 'SchoolTime::today()') && ! str_contains($src, 'use App\\Support\\SchoolTime;')) {
+        $failures[] = basename($path).': uses SchoolTime but imports nowhere — it would fatal at runtime';
+    }
 }
 
 if ($failures !== []) {
@@ -93,5 +91,7 @@ if (! $apply) {
 
 foreach ($plan as $path => $src) {
     file_put_contents($path, $src);
-    echo 'written       '.basename($path)."\n";
+    echo 'written           '.basename($path)."\n";
 }
+
+echo "\n".count($plan)." file(s) written; ".count($writes)." write sites moved to the school's day.\n";

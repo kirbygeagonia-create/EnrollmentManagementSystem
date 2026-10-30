@@ -18,6 +18,7 @@ use App\Models\Payments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Services\PrintService;
+use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -295,7 +296,7 @@ class ClearanceController extends Controller
             $approval->update([
                 'status' => $validated['status'],
                 'approvedBy' => Auth::user()->userId,
-                'approvalDate' => now(),
+                'approvalDate' => SchoolTime::today(),
                 'remarks' => $validated['remarks'] ?? '',
             ]);
 

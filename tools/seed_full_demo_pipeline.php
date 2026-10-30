@@ -398,8 +398,8 @@ if (! Enrollments::where('studentId', $juan->studentId)->where('termId', $termId
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
-        'enrolledDate' => now()->subMonths(9),
-        'formSignedDate' => now()->subMonths(9),
+        'enrolledDate' => SchoolTime::civilDateOf(now()->subMonths(9)),
+        'formSignedDate' => SchoolTime::civilDateOf(now()->subMonths(9)),
         // Seated at `evaluated`: this is the record the guides show as paid and approved, so the receipt and
         // the two desk steps that turn money into `paid` are written here by settle_enrolled_record() rather
         // than left for section 10j's ledger pass to discover.
@@ -423,8 +423,8 @@ if (! Enrollments::where('studentId', $liza->studentId)->where('termId', $priorT
         'enrollmentType' => EnrollmentType::Old,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(5),
-        'enrolledDate' => now()->subMonths(15),
-        'formSignedDate' => now()->subMonths(15),
+        'enrolledDate' => SchoolTime::civilDateOf(now()->subMonths(15)),
+        'formSignedDate' => SchoolTime::civilDateOf(now()->subMonths(15)),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
     echo "✔ Base row created: Liza Bautista (DEMO-2026-004) — BSBA year 2 completed on term {$priorTermId}, the load section 4b grades one failed subject into\n";
@@ -624,7 +624,7 @@ if (! $admCarlo) {
         'applicationMode' => ApplicationMode::FaceToFace,
         'admissionStatus' => AdmissionStatus::Rejected,
         'evaluatedBy' => $admissionHeadId, // Admission, by username
-        'evaluatedDate' => now(),
+        'evaluatedDate' => SchoolTime::today(),
     ]);
     echo "✔ Admissions: Seeded Carlo Mendoza (DEMO-2026-006) - REJECTED with remarks\n";
 }
@@ -643,7 +643,7 @@ if (! $admAna) {
         'applicationMode' => ApplicationMode::FaceToFace,
         'admissionStatus' => AdmissionStatus::Approved,
         'evaluatedBy' => $admissionHeadId,
-        'evaluatedDate' => now(),
+        'evaluatedDate' => SchoolTime::today(),
     ]);
     echo "✔ Admissions: Seeded Ana Gonzales (DEMO-2026-005) - APPROVED\n";
 }
@@ -894,7 +894,7 @@ if (! $marcoPrior) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'enrolledDate' => now()->subMonths(9),
+        'enrolledDate' => SchoolTime::civilDateOf(now()->subMonths(9)),
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
     ]);
     $gradePriorLoad($marcoPrior, ['1.50', '2.25', '2.75']);
@@ -967,7 +967,7 @@ if (! $enrGrace) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     // Propose 3 subjects
@@ -1007,7 +1007,7 @@ if (! $enrChristian) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
     $seedLoad($enrChristian);
@@ -1017,7 +1017,7 @@ if (! $enrChristian) {
         'totalScholarshipCoverage' => 0.00,
         'totalWaived' => 0.00,
         'remainingBalance' => 17500.00,
-        'assessmentDate' => now(),
+        'assessmentDate' => SchoolTime::today(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -1044,7 +1044,7 @@ if (! $enrBea) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(5),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
     $seedLoad($enrBea);
@@ -1054,7 +1054,7 @@ if (! $enrBea) {
         'totalScholarshipCoverage' => 0.00,
         'totalWaived' => 0.00,
         'remainingBalance' => 10500.00, // ₱18,500 - ₱8,000 paid
-        'assessmentDate' => now(),
+        'assessmentDate' => SchoolTime::today(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -1085,7 +1085,7 @@ if (! $enrPat) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         // Seated at `assessed`, not at the `paid` this section is named for: the receipt below is what
         // moves a record into `paid`, and only the state machine writes that step. Minted already-paid,
         // the account held ₱17,500 with no Accounting action in the status history the Registrar reads.
@@ -1098,7 +1098,7 @@ if (! $enrPat) {
         'totalScholarshipCoverage' => 0.00,
         'totalWaived' => 0.00,
         'remainingBalance' => 0.00,
-        'assessmentDate' => now(),
+        'assessmentDate' => SchoolTime::today(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -1145,8 +1145,8 @@ if (! $enrGab) {
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(1),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
-        'enrolledDate' => now(),
-        'formSignedDate' => now(),
+        'enrolledDate' => SchoolTime::today(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     $seedLoad($enrGab, 3, 'confirmed');
@@ -1188,7 +1188,7 @@ if (! $enrDan) {
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
-        'enrolledDate' => now(),
+        'enrolledDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     DB::table('idrequests')->insert([
@@ -1198,7 +1198,7 @@ if (! $enrDan) {
         'emergencyContactNumber' => '09171234599',
         'bloodType' => 'A+',
         'status' => 'pending',
-        'requestDate' => now(),
+        'requestDate' => SchoolTime::today(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -1219,7 +1219,7 @@ if (! $enrKev) {
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
-        'enrolledDate' => now(),
+        'enrolledDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     DB::table('idrequests')->insert([
@@ -1232,7 +1232,7 @@ if (! $enrKev) {
         'status' => 'validated',
         'validatedBy' => $deskSigners[OfficeId::IdOffice->value], // the ID Office signer, resolved with the other desks
         'validatedDate' => now(),
-        'requestDate' => now(),
+        'requestDate' => SchoolTime::today(),
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -1724,9 +1724,9 @@ if ($openPeriod !== null) {
             'academicStanding' => 'regular',
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
             'evaluatedBy' => department_evaluator_for_course($program->courseId),
-            'enrolledDate' => now(),
+            'enrolledDate' => SchoolTime::today(),
             'formIssuedDate' => SchoolTime::today(),
-            'formSignedDate' => now(),
+            'formSignedDate' => SchoolTime::today(),
         ]);
         $seedLoad($prior, 3, 'confirmed');
         $completeWorkflow($prior);
@@ -1905,9 +1905,9 @@ foreach (Enrollments::where(fn ($q) => $q
         'academicStanding' => 'regular',
         'enrollmentStatus' => EnrollmentStatus::Enrolled,
         'evaluatedBy' => department_evaluator_for_course($claim->courseId),
-        'enrolledDate' => now(),
+        'enrolledDate' => SchoolTime::today(),
         'formIssuedDate' => $priorTerm->startDate,
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
     ]);
 
     $gradePriorLoad($earned, ['1.50', '2.00', '2.50']);
@@ -2175,7 +2175,7 @@ if (! $enrAngelica) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     echo "✔ Assessment Desk: Seeded DEMO-2026-019 Angelica Reyes — EVALUATED, awaiting fee computation\n";
@@ -2200,7 +2200,7 @@ if (! $enrMarisol) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Assessed,
     ]);
     $seedLoad($enrMarisol);
@@ -2236,7 +2236,7 @@ if (! $enrIsagani) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Pending,
     ]);
     $seedLoad($enrIsagani);
@@ -2713,7 +2713,7 @@ if (! $enrNena) {
         'academicStanding' => AcademicStanding::Regular,
         'evaluatedBy' => department_evaluator_for_course(3),
         'registrarProcessedBy' => desk_signer_for(OfficeId::Registrar->value),
-        'enrolledDate' => now(),
+        'enrolledDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
     $enrNena = settle_enrolled_record($enrNena, 'DEMO-OR-0026');
@@ -2781,7 +2781,7 @@ if ($kevinSeat) {
             'status' => 'validated',
             'validatedBy' => $deskSigners[OfficeId::IdOffice->value],
             'validatedDate' => now(),
-            'requestDate' => now(),
+            'requestDate' => SchoolTime::today(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -2814,7 +2814,7 @@ if (! $enrCamille) {
         'enrollmentType' => EnrollmentType::New,
         'academicStanding' => null,
         'evaluatedBy' => department_evaluator_for_course(1),
-        'formSignedDate' => now(),
+        'formSignedDate' => SchoolTime::today(),
         'enrollmentStatus' => EnrollmentStatus::Evaluated,
     ]);
 }

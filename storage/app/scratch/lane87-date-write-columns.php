@@ -15,9 +15,13 @@
  * migration declares is printed UNBOUND and never counted clean — the same refusal lane 46 and lane 50 learned
  * for their own blind lists.
  *
- * A positive control is built in, because a sweep that cannot say "found it" can only ever say "clean":
- * the five columns measured on live `ems` on 2026-10-29 by lane86-probe-date-columns.php must all come back
- * as candidates, and the run refuses if any of them does not.
+ * A positive control is built in, because a sweep that cannot say "found it" can only ever say "clean". It
+ * PLANTS its own defect — a throwaway file holding one `'xDate' => now()` write per DATE column the migration
+ * reader found — scans it through the same reader, and refuses unless every planted column comes back. The first
+ * version keyed the control instead to the five columns live `ems` was holding on 2026-10-29, which was honest
+ * while the tree carried those five defects and became a control that FIGHTS the fix the moment one is repaired:
+ * a checker whose control requires the work to remain undone reports REFUSED against its own success. Planting
+ * is the only shape that survives the batch that closes the gap.
  *
  * Usage: php storage/app/scratch/lane87-date-write-columns.php [--ci]
  */
@@ -75,15 +79,22 @@ if ($missing !== []) {
 }
 
 /** @return list<array{file:string, line:int, col:string}> */
-$findWrites = static function (string $dir) use ($root): array {
+$findWrites = static function (string $path) use ($root): array {
     $hits = [];
-    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
-    foreach ($it as $f) {
-        if (! $f->isFile() || ! str_ends_with($f->getFilename(), '.php')) {
-            continue;
+    $files = [];
+    if (is_file($path)) {
+        $files[] = $path;
+    } else {
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(), '.php')) {
+                $files[] = $f->getPathname();
+            }
         }
-        $rel = str_replace($root.'/', '', $f->getPathname());
-        foreach (explode("\n", (string) file_get_contents($f->getPathname())) as $i => $line) {
+    }
+    foreach ($files as $file) {
+        $rel = str_replace($root.'/', '', $file);
+        foreach (explode("\n", (string) file_get_contents($file)) as $i => $line) {
             if (preg_match('/[\'"]([A-Za-z0-9_]*Date)[\'"]\s*=>\s*now\(\)/', $line, $m) !== 1) {
                 continue;
             }
@@ -98,13 +109,46 @@ $findWrites = static function (string $dir) use ($root): array {
     return $hits;
 };
 
-$writes = array_merge($findWrites($root.'/app'), $findWrites($root.'/tools'));
-if ($writes === []) {
-    fwrite(STDERR, "REFUSED: no `'<col>Date' => now()` write found anywhere in app/ or tools/ — a reader that"
-        ." matches nothing reports a clean tree it never saw.\n");
+// The control, planted in the reader's own path and removed on the way out. It writes one line per DATE
+// column name the migration reader found, so the control measures the reader rather than the tree: the first
+// version expected the five columns the tree actually carried on 2026-10-29, and every one of them repaired
+// moved the control one step closer to refusing a clean sweep.
+$plant = $root.'/storage/app/scratch/lane87-plant-'.getmypid().'.php';
+$plantBody = "<?php\n\n\$x = [\n";
+foreach ($positives as $col) {
+    $plantBody .= "    '".$col."' => now(),\n";
+}
+$plantBody .= "];\n";
+if (file_put_contents($plant, $plantBody) === false) {
+    fwrite(STDERR, "REFUSED: could not write the planted file {$plant}, so the control below would read nothing.\n");
 
     exit(1);
 }
+register_shutdown_function(static function () use ($plant): void {
+    if (is_file($plant)) {
+        unlink($plant);
+    }
+});
+
+$planted = $findWrites($plant);
+$plantedFound = [];
+foreach ($planted as $p) {
+    if (isset($columns[$p['col']])) {
+        $plantedFound[$p['col']] = true;
+    }
+}
+$missed = array_values(array_diff($positives, array_keys($plantedFound)));
+printf("control: %d of %d planted DATE-column writes recovered (%d line(s) read in the planted file)\n",
+    count($plantedFound), count($positives), count($planted));
+if ($missed !== []) {
+    fwrite(STDERR, 'REFUSED: the reader lost its own planted defect: '.implode(', ', $missed)
+        .". A sweep that cannot say found it can only ever say clean, so nothing below can be read.\n");
+
+    exit(1);
+}
+unlink($plant);
+
+$writes = array_merge($findWrites($root.'/app'), $findWrites($root.'/tools'));
 
 $candidates = [];
 $safe = [];
@@ -127,25 +171,7 @@ foreach ($writes as $w) {
 
 printf("date columns read from migrations: %d; writes matched: %d\n", count($columns), count($seen));
 
-$found = 0;
 foreach ($candidates as $col => $rows) {
-    if (! in_array($col, $positives, true)) {
-        continue;
-    }
-    $found++;
-    printf("CANDIDATE  %-18s declared date on %-24s written at %s\n", $col, implode('/', $rows[0]['tables']), $rows[0]['file'].':'.$rows[0]['line']);
-}
-printf("positive control: %d of %d columns measured on live ems come back as candidates\n", $found, count($positives));
-if ($found !== count($positives)) {
-    fwrite(STDERR, "REFUSED: the positive control expects all five. A checker that lost one cannot clear the rest.\n");
-
-    exit(1);
-}
-
-foreach ($candidates as $col => $rows) {
-    if (in_array($col, $positives, true)) {
-        continue;
-    }
     foreach ($rows as $r) {
         printf("CANDIDATE  %-18s declared date on %-24s written at %s:%d\n", $col, implode('/', $r['tables']), $r['file'], $r['line']);
     }

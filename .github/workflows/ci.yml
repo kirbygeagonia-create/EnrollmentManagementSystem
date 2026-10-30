@@ -153,6 +153,24 @@ jobs:
           # that stopped judging would otherwise look like the cleanest step in the job.
           php storage/app/scratch/lane71-morph-targets.php --ci
 
+      - name: Refuse a DATE column written from the machine's clock
+        run: |
+          # The write side of lane 51's rule, and the seventh shape no gate could see. Lane 50 polices the shapes
+          # `now()->toDateString()` and `whereDate(…)`, but a column the migration calls DATE and fed a plain
+          # Carbon matches neither — Eloquent formats a `date` cast in the application's timezone, UTC here, so
+          # between 16:00Z and midnight the desk's own record carried the day before the school's. §28.3 G-43
+          # records the gap; this binds every `'xDate' => now()` write to the column type the MIGRATIONS declare,
+          # so it needs no database and runs on the runner as well as on this box. It carries a planted positive
+          # control — one write per DATE column in a throwaway file, recovered through the same reader — because
+          # a control keyed to the defects the tree happened to hold on the day it was written refuses against
+          # the batch that repairs them, which is exactly how its first version behaved. Writes whose column no
+          # migration declares as DATE are printed UNBOUND rather than cleared: those are instants, and §1.2 says
+          # the viewer's zone is right for them. mutate-lane87-school-day-writes.php proves the whole family —
+          # it plants the retired write at each pinned desk site and requires both that site's own frozen-clock
+          # case to report a failure and this step to exit 1 naming the column, then blinds the instrument in two
+          # copies, each of which must refuse rather than report a clean sweep.
+          php storage/app/scratch/lane87-date-write-columns.php --ci
+
   backend-mysql:
     name: Backend (Pest) — MySQL 8
     runs-on: ubuntu-24.04

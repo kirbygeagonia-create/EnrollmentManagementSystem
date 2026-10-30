@@ -13,6 +13,8 @@ use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Support\SchoolTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -171,5 +173,44 @@ class ComputeRequiresSignatureTest extends TestCase
         $this->actingAs($desk)
             ->post(route('assessment.compute', $enrollment))
             ->assertRedirect();
+    }
+
+    /**
+     * §28.3 G-43. `studentassessments.assessmentDate` is a DATE column, so Eloquent formats whatever it
+     * is handed in the application's timezone — UTC here. Fed `now()` it filed the daemon's civil day,
+     * which between 16:00Z and midnight is the day before the school's, and the sheet the Accounting desk
+     * then prices is dated a day its own drawer never asked for.
+     */
+    #[Test]
+    public function the_fee_sheet_is_dated_the_school_s_day_and_not_the_machine_s(): void
+    {
+        // 02:00 on the school's 30th. The two clocks have to disagree, or a green case proves nothing.
+        CarbonImmutable::setTestNow('2026-10-29 18:00:00');
+
+        try {
+            $this->assertNotSame(
+                CarbonImmutable::now()->toDateString(),
+                SchoolTime::today(),
+                'the frozen instant reads the same day on both clocks, so this case cannot tell the two apart'
+            );
+
+            $desk = $this->assessmentDesk();
+            $enrollment = $this->evaluatedEnrollment(['formSignedDate' => '2026-10-29']);
+
+            $this->actingAs($desk)
+                ->post(route('assessment.compute', $enrollment))
+                ->assertRedirect();
+
+            $sheet = DB::table('studentassessments')
+                ->where('enrollmentId', $enrollment->enrollmentId)
+                ->first();
+
+            $this->assertNotNull($sheet, 'compute wrote no fee sheet, so the date below was never a measurement');
+            // The day only, because SQLite answers a DATETIME-shaped text for a column the migration calls
+            // DATE; MySQL would hand back 2026-10-30 with no time part at all.
+            $this->assertSame('2026-10-30', substr((string) $sheet->assessmentDate, 0, 10));
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 }

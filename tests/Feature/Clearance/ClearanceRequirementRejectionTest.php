@@ -14,6 +14,8 @@ use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Support\SchoolTime;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -185,6 +187,40 @@ class ClearanceRequirementRejectionTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame(ClearanceApprovalStatus::Approved->value, $approval->fresh()->status->value);
+    }
+
+    /**
+     * §28.3 G-43. `clearanceapprovals.approvalDate` is a DATE column, so a value handed to it from now() was
+     * formatted in the application's timezone — UTC — and a line cleared between 16:00Z and midnight printed
+     * the day before the one the office signed it on. The slip the student carries shows that date per line.
+     */
+    #[Test]
+    public function an_approved_line_is_dated_the_school_s_day_and_not_the_machine_s(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-29 18:00:00');
+
+        try {
+            $this->assertNotSame(
+                CarbonImmutable::now()->toDateString(),
+                SchoolTime::today(),
+                'the frozen instant reads the same day on both clocks, so this case cannot tell the two apart'
+            );
+
+            $approval = $this->line();
+
+            $this->actingAs($this->head)
+                ->post(route('clearance.approve', $approval), ['status' => 'approved', 'remarks' => ''])
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame(
+                ClearanceApprovalStatus::Approved->value,
+                $approval->fresh()->status->value,
+                'the line did not clear, so the date below would be an absence dressed as a measurement',
+            );
+            $this->assertSame('2026-10-30', $approval->fresh()->approvalDate?->toDateString());
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     #[Test]

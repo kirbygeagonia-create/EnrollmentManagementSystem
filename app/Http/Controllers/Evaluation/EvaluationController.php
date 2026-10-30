@@ -920,7 +920,7 @@ class EvaluationController extends Controller
 
         DB::transaction(function () use ($enrollment) {
             $enrollment->update([
-                'formSignedDate' => now(),
+                'formSignedDate' => SchoolTime::today(),
             ]);
 
             // Create workflow if not exists

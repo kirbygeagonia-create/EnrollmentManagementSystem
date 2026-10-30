@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Services\WorkflowService;
+use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -182,7 +183,7 @@ class IDController extends Controller
             'emergencyContactName' => $validated['emergencyContactName'],
             'emergencyContactNumber' => $validated['emergencyContactNumber'],
             'bloodType' => $validated['bloodType'],
-            'requestDate' => now(),
+            'requestDate' => SchoolTime::today(),
             'status' => IdRequestStatus::Pending,
         ]);
 

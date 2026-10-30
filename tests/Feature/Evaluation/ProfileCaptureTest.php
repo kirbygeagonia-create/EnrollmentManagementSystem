@@ -16,6 +16,8 @@ use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Support\SchoolTime;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -255,6 +257,40 @@ class ProfileCaptureTest extends TestCase
 
         $this->assertNotNull($enrollment->fresh()->formSignedDate);
         $this->assertNotNull($enrollment->fresh()->enrollmentworkflow, 'Signing opens the workflow form.');
+    }
+
+    /**
+     * §28.3 G-43. `enrollments.formSignedDate` is a DATE column, so the signature was dated in the
+     * application's timezone — UTC — and a desk signing after 16:00Z recorded the day before the school's.
+     * This is the date the Enrollment Certificate prints, so the paper carries the machine's day, not the
+     * office's.
+     */
+    #[Test]
+    public function the_evaluation_signature_is_dated_the_school_s_day_and_not_the_machine_s(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-29 18:00:00');
+
+        try {
+            $this->assertNotSame(
+                CarbonImmutable::now()->toDateString(),
+                SchoolTime::today(),
+                'the frozen instant reads the same day on both clocks, so this case cannot tell the two apart'
+            );
+
+            $enrollment = $this->makeEnrollment();
+
+            $this->actingAs($this->evaluator)
+                ->put(route('evaluation.profile.capture', $enrollment), $this->completeProfilePayload())
+                ->assertSessionHasNoErrors();
+
+            $this->actingAs($this->evaluator)
+                ->post(route('evaluation.sign', $enrollment))
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame('2026-10-30', $enrollment->fresh()->formSignedDate?->toDateString());
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     #[Test]

@@ -235,12 +235,44 @@ $read29 = [
     'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single branch — the slip names its own term\'s enrollment or nothing',
 ];
 
+// Rows re-opened on 2026-10-29 by the G43 batch (lane 87). Two causes, both this file already names: the
+// writes moved one line into AssessmentController.php, ClearanceController.php and IDController.php, so the
+// shift tool re-numbered every cited window below (Clearance's download action is now 412, and the read above
+// that said 411 is the aged one), and re-numbering a citation rewrites the 240-character window its NEIGHBOURS
+// hash — which is why seven RegistrarController rows and BlockingController's own aged with no line moving
+// under them at all. Each span below was opened today with lane70-read-span.php; the verdict is that line.
+$read30 = [
+    'AssessmentController.php:433-444' => 'finalize()\'s transaction: the stateMachine->transition at :435 and signStepByOffice at :442 — the two acts the sentence says computation alone does not perform',
+    'AssessmentController.php:181-181' => 'the commented-out transition inside compute() — the absence "computation alone does not advance the enrollment" points at',
+    'AssessmentController.php:161-169' => 'the remainingBalance arithmetic and Studentassessments::create\'s four money columns — §24\'s row names the columns the server holds',
+    'AssessmentController.php:153-159' => 'the BR19 note with $totalScholarshipCoverage and $totalWaived written as 0 — the grant is not auto-awarded here',
+    'IDController.php:185-185' => 'the \'bloodType\' => $validated[\'bloodType\'] write in create() — §30\'s self-declared medical fact, one source',
+    'RegistrarController.php:389-389' => 'printClassCards()\'s signature — §23\'s print-log row lists it among the three desk pages',
+    'RegistrarController.php:412-412' => 'the Inertia render of Registrar/PrintClassCards — the component the desk page answers with',
+    'RegistrarController.php:420-420' => 'printSubjectLoad()\'s signature — the third of the three desk pages',
+    'RegistrarController.php:435-435' => 'the Inertia render of Registrar/PrintSubjectLoad',
+    'RegistrarController.php:444-444' => 'downloadCertificate()\'s signature — one of the four generated PDFs §23 names',
+    'RegistrarController.php:459-459' => 'downloadEnrollmentForm()\'s signature',
+    'RegistrarController.php:471-471' => 'downloadClassCard()\'s signature, opened on the multi-line parameter list',
+    'RegistrarController.php:497-497' => 'downloadSubjectLoad()\'s signature',
+    'ClearanceController.php:412-412' => 'downloadSlip()\'s signature — moved from 411 by this batch\'s +1 line above it',
+    'BlockingController.php:571-571' => 'downloadBlockSchedule()\'s signature — §23\'s print action for the block schedule',
+    'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single first() branch — a slip names its own term\'s enrollment or nothing',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read30 as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-29', 'by' => 'read 2026-10-29 in the numbered span the G43 re-point left it in: '.$t];
+
+            break;
+        }
+    }
     foreach ($read29 as $p => $t) {
         if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-29', 'by' => 'read 2026-10-29 in the numbered span the unread-list tool printed: '.$t];
