@@ -10,6 +10,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 class SendEnrollmentNotification implements ShouldQueue
 {
+    // The status change is written inside a state-machine transaction, so the same deferral applies: a rolled-back
+    // transition must leave no bell behind. Not satisfied by dropping ShouldQueue — that would run the listener
+    // inline, mid-transaction, which is the other half of the same defect.
+    public bool $afterCommit = true;
+
     /**
      * Handle the event.
      *

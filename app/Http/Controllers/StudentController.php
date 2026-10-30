@@ -69,13 +69,19 @@ class StudentController extends Controller
             'enrollments.enrollmentworkflow.workflowsteps.signedBy',
             'enrollments.payments',
             'enrollments.studentassessments',
-            'enrollments.clinicrecords',
             'enrollments.enrolledsubjects.subject',
             'studentclearances',
             'examresults',
             'idrequests',
             'studentscholarships',
         ]);
+
+        // §10's minimum-necessary clause: being allowed to open a student's record is not being allowed to read the
+        // clinic's notes, so the relation is loaded only for an account that holds the clinic's own right. The
+        // Health tab then has nothing to print for anybody else — the server decided, the page did not.
+        if (request()->user()->can('clinic.view')) {
+            $student->load('enrollments.clinicrecords');
+        }
 
         return Inertia::render('Students/Show', [
             'student' => $student,

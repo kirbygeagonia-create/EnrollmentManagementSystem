@@ -12,6 +12,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 class SendWorkflowNotification implements ShouldQueue
 {
+    // Prompt §8 asks that a notification not be delivered for an act that never took place. This listener is queued
+    // and WorkflowStepSigned is fired inside the signature's transaction, so without this a retried request would
+    // ring the next desk for a box that was never signed.
+    public bool $afterCommit = true;
+
     /**
      * Handle the event.
      *

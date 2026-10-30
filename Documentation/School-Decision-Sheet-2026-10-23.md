@@ -117,7 +117,7 @@ on the student's page at all is still the Registrar's.
 Two acts are now two rules: a second **free** slip is allowed only while the row is `incomplete`;
 a **lost** slip goes through the paid route, reads its amount from the Reference Data fee type
 *Clearance Slip Replacement*, and refuses outright when no such fee is on file
-(`ClearancePolicy.php:44-62`, `ClearanceController.php:328-376`). **The student's copy carries no fee
+(`ClearancePolicy.php:44-62`, `ClearanceController.php:328-379`). **The student's copy carries no fee
 line and no amount**, so the charge — if the school charges one — is made at the Accounting window and
 not stated on the slip. Whether every replacement is paid for, and whether a `pending` slip may be
 reissued free, is still the school's.

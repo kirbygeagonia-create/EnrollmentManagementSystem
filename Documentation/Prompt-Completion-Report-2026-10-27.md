@@ -210,7 +210,9 @@ PHP half so the class cannot return unnoticed, with the mutants to prove it; and
 `tools/seed_demo_data.php` stopped directing a reader to a database dump that left the repository on
 2026-10-26. No schema change, no new permission, no data rewritten.
 
-### 6. Testing evidence for this addendum
+### 6. Testing evidence for this addendum (every figure in this section was read on 2026-10-27, at the close of that
+batch; the file count in particular moves as instruments are added, so it is a record of that run, not a property of
+the repository)
 
 Whole suite 931 passed / 6,242 assertions with `--list-tests` discovering the same 931 and
 `ems:ci:no-silent-skips` reading 0 skipped; PHPStan 0 errors; Pint PASS 414 files; ESLint silent at
@@ -237,7 +239,8 @@ Ten gaps, each with its § reference, risk and smallest coherent fix in the matr
 - **G38** clinical `findings` render on the Student 360 to every holder of `students.view`; disclosure scope
   belongs to the school and its Data Protection Officer (§10).
 - **G39** print views re-declare status tone maps that omit the two return states (§11).
-- **G40** no list table sorts, and two queues do not paginate (§11, §14).
+- **G40** no list table sorts (§11, §14). Its second premise — that two queues do not paginate — was retired on
+  2026-10-29 after it was measured: no work queue lacks pagination, so the sorting half is the whole of the gap.
 - **G41** §14's "no console errors, and empty/loading/responsive states checked" clause has no instrument,
   so it is unverified rather than passing (§14).
 - **G42** a deactivated account is refused at login by rule and by no test, and an open session is not
@@ -266,21 +269,26 @@ the plan:
   stays valid and simply shows no reason), refused under ten characters, typed into an opt-in box on the shared
   `CauseEffectModal`, printed on the rejected panel, and the screen's invented sentence
   `Requirement rejected / needs resubmission.` is deleted rather than reworded.
-- **G43 opened by measuring, not by reading code**: five desk acts write `now()` into columns the server calls
-  `date`. Eloquent formats a `date` cast in the application's timezone, so the record files the machine's day.
-  The two admission sites are fixed and pinned in this batch; three are open, and lane 50's PHP half cannot see
-  the shape at all (it reads `now()->toDateString()` and `whereDate(...)`, and answered 0 over those files).
+- **G43 opened by measuring, not by reading code, and closed the same way.** Desk acts wrote `now()` into columns
+  the server calls `date`; Eloquent formats a `date` cast in the application's timezone, so the record filed the
+  machine's day. Lane 50's PHP half could not see the shape at all (it reads `now()->toDateString()` and
+  `whereDate(...)`, and answered 0 over those files), so lane 87 binds each write to the **migrations** instead:
+  eight column names over forty-eight write sites, thirty-eight feeding a DATE column, all thirty-eight now
+  answered from the school's day, and ten instants printed UNBOUND because §1.2 says their viewer's zone is right.
 
 ### Is the development prompt fully implemented? No.
 
-Eleven register items came out of the sweep (G33 to G43). Four are closed by this batch — G33, G34, G39 and
-half of G42 — and the fourth was measured before it was claimed: the scan that found the one page re-declaring
-the enrollment tone map also cleared every other print screen, so the sweep's own claim that all of them did was
-disproved by reading the files.
+Eleven register items came out of the sweep (G33 to G43). Five are closed — G33, G34, G39, G43 and
+half of G42 — and the closure of G43 was measured twice over: the instrument that found it first reported the
+generator's share at three writes when it held twenty-seven, because it printed one row per column name, and the
+count a tool prints is a property of how it prints.
 What remains divides honestly into two kinds:
 
-- **Three buildable now, unbuilt**: G36 (nothing stops a duplicate notice when a queued listener retries),
-  G40 (no list table sorts), and the three remaining writers of G43.
+- **One buildable now, unbuilt; one contained**: G36 (nothing stops a duplicate notice when a queued listener
+  retries — it wants a unique key, so it waits on the decision to spend a migration), and G40, whose sorting
+  mechanism and first wired queue landed on 2026-10-29 while 35 tables still offer no order; its pagination half is
+  measured now rather than owed (§28.3 keeps
+  G-40 open for exactly that reason).
 - **Six waiting on the school's window**, each on `Documentation/School-Decision-Sheet-2026-10-29.md` with what
   the answer costs and how it comes back off: G35 (where a notice takes the desk), G42's session cut-off,
   G38 (who may read a clinical note, not just its outcome), G37 (the audit trail's action vocabulary),
@@ -331,7 +339,10 @@ Plus G6 from the first pass (a configurable workflow definition) and the four it
    green control before and after and every touched file restored by sha1. The whole-suite run then caught two
    fixtures elsewhere in `tests/` (`ExamControllerTest`) that post `admission.reject` with no body at all; the
    fixtures were repaired, not the rule.
-4. **G39 and G40 remain as found**, and G43's other three writers are unfixed.
+4. **G40 is contained, not closed** — one mechanism and two queues (Registrar, then Admission the same day); the
+   pagination half was weighed the same day and no work queue is in it, so what is left is wiring the other 34 tables
+   to `ListSort`; and G43 was closed after this
+   sentence's first draft, by binding the write to the migrations rather than to a live database.
 5. ~~**G34's five cases have no mutant harness.**~~ **Closed the same day.**
    `mutate-g34-clearance-reason-tests.php` answers `ALL KILLED: 4 leg(s), 0 bad` — requiredness dropped, the
    ten-character floor dropped, the requirement re-pointed at an approval, and the desk's own word not

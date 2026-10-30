@@ -432,7 +432,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   dated row would make the row state a figure that was not true on its own day, so the sentence was
   given its own date instead — `as of 2026-10-21` is in `lane60-ratio-claims.php`'s `$DATED` list and
   the figure becomes HISTORY, judged by nothing and false about nothing. **One name per range:** a
-  clause that put `Payments::held()` immediately before `( AssessmentController.php:123-127 )`, a
+  clause that put `Payments::held()` immediately before the document's `AssessmentController.php` lines 123 to
+  127 (quoted as prose: that pointer has since moved, and this sentence records the wording, not a live line), a
   range belonging to the method before it, added one lane 32 flag purely from its own wording, and
   re-spacing the clause cleared it again.
   Fourteen items that the registers genuinely cannot settle were packaged for one meeting in
@@ -1044,17 +1045,50 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   walkthrough table headed `# | Desk | Action | What the record becomes` — "Open the queue" is a step a desk performs
   — and the second is the §29.4 family label "Open decisions" in the column headed `Family`. The tool now reads the
   heading its own cell sits under: a table in the flat dump is a maximal run of consecutive `ROW` lines and the run's
-  first line is the header, so the column name is a fact about the document, not a guess about the words. Measured
-  before writing the rule, over all 184 runs: those two are the ONLY rows anywhere with a cell leading an open word.
+  first line is the header, so the column name is a fact about the document, not a guess about the words. Counted on
+  2026-10-25 over all 184 table runs, two rows led a cell with an open word and both were labels — the reading that
+  the 2026-10-29 note below supersedes.
   The list is inverted on purpose — an unknown column heading still counts OPEN, because an inventory that hides owed
   work is worse than one that prints a label, and **a "leading cell must be a finding id" rule would have been the
   worse bug**: §28.5's rows lead with the *question text*, so that rule would silently stop reporting every school
-  question that is genuinely open. A row whose cell count differs from its header's cannot be resolved at all, so it
-  is printed as UNRESOLVED rather than cleared. Today: **0 OPEN, 2 LABELS, 0 UNRESOLVED, 2 owed actors (C-5, G-13),
-  0 sheet items.** Prove any change to it with `php storage/app/scratch/mutate-lane69-open-labels.php` (9 legs: the
-  same words planted under `Verdict` must be OPEN and under `Action` must be a LABEL, a mis-aligned row must surface
-  as UNRESOLVED, a copy with one more verdict row must answer *more* — which is what proves `--dump=` reaches the
-  walk — a byte-identical copy must change no verdict, and the two refusals each name the path they were handed).
+  question that is genuinely open. **That 2026-10-25 census was superseded on 2026-10-29 by the same batch that
+  repaired the cell counting — the answer is five**, because until the cell count came from `document.xml` the rows
+  whose value column
+  is an enum list were mis-split and never reached the heading test. Today the LABELS list reads `provisional` under
+  `Default`, `open, closed, extended` and `provisional, official` under `Values in the database today`, `Open the
+  queue` under `Action`, and `Open decisions` under `Family` — five, all schema values or desk instructions, none a
+  verdict. A row whose cell count differs from its header's cannot be resolved from the dump,
+  so it is printed as UNRESOLVED rather than cleared. **That rule has now been repaired three times over, and the
+  §24 row it blamed was innocent.** Measured 2026-10-29 and deliberately dated rather than kept current (lane 72's
+  rule for a queue): **6 OPEN rows — G-35, G-36, G-37, G-38, G-40, G-41 — 5 LABELS, 0 UNRESOLVED, 10 sheet items
+  across the three dated sheets.** Three defects came out of the one row the tool had been printing as UNRESOLVED.
+  (a) *The separator*: `dump-docx-flat.php` joins cells with `' | '`, while the inventory split on a bare `'|'`, so
+  every `enum(provisional|official)` cell cut itself in two. (b) *The lossy artefact*: the dumper also **drops empty
+  cells** before joining, so no separator can recover a column position — the §24 `resultStatus` row really holds
+  six `<w:tc>`, exactly like its six siblings (measured in `document.xml`, which is what proved the document
+  innocent), and 377 rows needed their cell count taken from the archive instead of the dump. The checker now reads
+  `document.xml` and locates a row by its text with whitespace and pipes stripped from **both** sides; the first
+  version stripped pipes only on the lookup side, so an enum cell could never be found and the repair looked like it
+  had not fired. `--no-archive` keeps the pure-dump path addressable so a harness can prove the tiebreak is read.
+  (c) *The verdict word*: a cell is judged by the verb it **leads** with, but the tool also cancelled a row when the
+  closed words appeared anywhere inside it — so §28.3 G-41, whose verdict cell begins `Open 2026-10-29.` and whose
+  own sentence later uses the word "answered", went unreported as owed work while `lane61-open-claims.php`, which
+  reads the leading cell, named it all along. Two tools answering "what is left" disagreed and only one of them was
+  read back. The harness was re-cut the same batch: its control was a frozen tally ("0 OPEN, 2 LABELS"), which was
+  true the day it was written and became a failing control once §28.3 held open rows — a verifier whose expectation
+  is a remembered reading is indistinguishable from a broken tool. It now asserts a **relation**: the ids lane 69
+  reports must equal the ids lane 61 names, and every planted leg is a delta against the control measured moments
+  earlier — and the leg that demands the `--no-archive` path print its own refusal is what caught
+  `$archiveCells = []` compared with `> 0`, which is true for an array in PHP 8. Prove
+  any change to it with `php storage/app/scratch/mutate-lane69-open-labels.php` (13 legs: the
+  same words planted under `Verdict` must be OPEN and under `Action` must be a LABEL, a row the archive cannot match
+  and that is short of its header must surface as UNRESOLVED, a cell LEADING `Open` whose own prose says "answered"
+  must still be OPEN while a cell leading `Closed` that later says `Open` must stay out, a copy with one more verdict
+  row must answer *more* — which is what proves `--dump=` reaches the walk, `--no-archive` must answer MORE
+  UNRESOLVED than the archive-bound run (the leg that proves the tiebreak is read, and the one that caught the
+  array-compared-with-zero bug above), an unknown flag and both missing-dump paths must refuse by name, a
+  byte-identical copy must change no verdict, and the control must equal lane 61's ids rather than a remembered
+  tally).
   **The same audit found the older sheet carrying the mirror defect:** `Registrar-Print-Decision-Sheet-2026-10-11.md`
   introduces its comparison table by promising the quoted wording "is what a PDF says today" — true when written,
   and the newer 2026-10-23 sheet closes by telling the Registrar that this one "still stands". Two of its cells
@@ -1377,18 +1411,164 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   — because I assumed the cited window was the whole method. HEAD's line 586 is the transaction's `});`, whose
   live twin is 600, so a map written from arithmetic extends a citation past the construct its own sentence names.
   Read both endpoints in both files; the tool will happily write a wrong one.
-- **A DATE column fed `now()` files the machine's day, and no shape-matcher sees it** (lane 86, open as G43).
-  Lane 50's PHP half reads the *shapes* `now()->toDateString()` and `whereDate(...)` and answered **0** for every category while
-  six sites wrote `'someDate' => now()` into columns the server says are `date`: `admissions.evaluatedDate`,
-  `studentrequirementsubmissions.submittedDate`, `studentassessments.assessmentDate`,
-  `clearanceapprovals.approvalDate`, `idrequests.requestDate`. Eloquent formats a Carbon for a `date` cast in the
-  **application's** timezone, so anything between 16:00Z and midnight files the day before the school's, which is
-  lane 51's rule reached from the write side instead of the read side. `storage/app/scratch/lane86-probe-date-columns.php`
-  is the measurement (it asks `information_schema`, not the code, because the code is the thing in question). The
-  two sites this batch touched — `approve()` and `reject()` — now call `SchoolTime::today()` and
-  `AdmissionRejectionReasonTest` pins the day; the other three are open, and the instrument for the whole family
-  is not built yet (it would bind the write to the migration's column type, which the JS half of lane 50 already
-  knows how to do).
+- **A DATE column fed `now()` files the machine's day, and no shape-matcher sees it** (lane 86 found it, lane 87
+  closed it as §28.3 G-43).
+  Lane 50's PHP half reads the *shapes* `now()->toDateString()` and `whereDate(...)` and answers **0** for every
+  category while thirty-eight sites wrote `'someDate' => now()` into columns the migrations declare `date`:
+  `admissions.evaluatedDate`, `studentrequirementsubmissions.submittedDate`, `studentassessments.assessmentDate`,
+  `clearanceapprovals.approvalDate`, `idrequests.requestDate`, `enrollments.enrolledDate` and
+  `enrollments.formSignedDate`. Eloquent formats a Carbon for a `date` cast in the **application's** timezone, so
+  anything between 16:00Z and midnight files the day before the school's, which is lane 51's rule reached from the
+  write side instead of the read side. `storage/app/scratch/lane86-probe-date-columns.php` measures the schema
+  (it asks `information_schema`, not the code, because the code is the thing in question) and
+  `storage/app/scratch/lane87-date-write-columns.php` binds each write to the **migrations**, so it runs wherever
+  the suite runs and needs no database. It enumerated eight column names over forty-eight write sites;
+  thirty-eight feed a DATE column (eight on desk paths, thirty inside `tools/seed_full_demo_pipeline.php`, which
+  PHPStan does not analyse and `pint.json` excludes) and ten are instants that §1.2 says keep the viewer's zone,
+  printed UNBOUND rather than cleared. All thirty-eight moved: thirty-three to `SchoolTime::today()`, and five to
+  `SchoolTime::civilDateOf(...)` because the generator *ages* those rows deliberately through `now()->subMonths()`
+  and an age must stay an age — `today()` would have re-dated a returning student's enrollment to the day the tool
+  ran. Four desk sites carry a behaviour case that freezes the clock at 18:00Z and asserts first that the two
+  clocks disagree (`AssessmentController::compute`, `IDController::create`,
+  `ClearanceController::approveRequirement`, `EvaluationController::sign`);
+  `php storage/app/scratch/mutate-lane87-school-day-writes.php` plants the retired write at each and requires
+  BOTH its case to print `1 failed` and `lane87 --ci` to exit 1 naming that column, asks the same question of
+  `RegistrarController::approve`'s `enrolledDate` (no test pins it — that site is covered only because an
+  instrument reads the shape), then blinds the instrument in two copies, each of which must refuse rather than
+  print CLEAN. Three findings travel with it. **The figure a tool prints is a property of how it prints**: the
+  first version of lane 87 answered one row per column name for the columns it treated as its control, so it
+  reported the generator's class at three writes when it held twenty-seven — a count read off a summary line is
+  not a census, and a row that closes on that number closes on the print path. **A positive control that requires
+  the defect to survive fights the fix**: lane 87 originally refused unless the five columns the tree carried on
+  the day it was written still came back as candidates, so the first repair turned a green sweep into REFUSED;
+  it now plants a throwaway file holding one write per DATE column the reader found. **Rehearsal errors can be
+  the harness's**: the E2E legs take the schema from `E2E_DB_DATABASE` but the *connection* from `DB_CONNECTION`,
+  and `phpunit.xml` pins sqlite, so naming a MySQL schema without pinning the connection makes Laravel open a
+  SQLite file called `ems_l87_a` — eight errors that looked like a code regression. Run in CI's own order with the
+  connection pinned, that rehearsal prints no finding in the generator's own desk report and a green walkthrough
+  folder on the dataset it built — and states no totals, because a scratch-schema rehearsal is a surface the
+  runner cannot read (lane 58's one-surface rule, which `lane58-suite-claims.php` enforces by refusing what it
+  cannot bind — this batch learned it from the refusal).
+- **The shift tool re-points the docx and nothing else, so markdown citations age in silence** (lane 88).
+  `lane76-shift-cites.php` edits `word/document.xml`; the `.md` files are outside its reach, and the gate that does
+  read them — `repo-file-line-citations.php` — only refuses a line past the end or a blank one, so a pointer left one
+  row short by an inserted `use` statement keeps landing on live code in the right file and reports clean. Measured
+  the same day: after three controllers gained one line, two pointers in the requirement matrix (the ID photo door,
+  and its `mimes` rule) and one in the 2026-10-23 school sheet (the lost-slip handler, whose method runs three lines
+  further than its range said) were all bounds-clean and all wrong by one. This file deliberately does not quote their
+  old numbers in the colon form — a historical literal here is a live citation to the checker, which is how this
+  bullet's own subject once flagged the file. So the re-point list
+  for any batch that moves lines is: the docx through `lane76`, then **every `.md` file that cites those files**,
+  each read at both endpoints rather than shifted by arithmetic — and a number that records what an engine reported
+  on a past day is spelled in words instead, which is how it stops being a live pointer at all.
+- **A pagination census must join the page's rows expression to the action that renders it** (lane 90, §28.3 G-40's
+  second half). `storage/app/scratch/lane90-probe-pagination.php` reads `rows={…}` in every page that uses the shared
+  table, finds each `Inertia::render('<that component>')` in `app/Http/Controllers`, attributes it to its enclosing
+  action by byte offset, and resolves the prop's value to the assignment inside THAT method. Measured 2026-10-29: 41
+  judged rows over those 36 tables, none unread — 29 receive a paginator, 3 a plain collection (Accounting's daily
+  report, one curriculum's subject list, the settings table) and 4 map the rows in the browser over the prop they were
+  given. No work queue is among the 3, which retires the register's "two of those carry no pagination at all". Three
+  drafts printed verdicts before any of that was measured: backslash page paths against forward-slash render names
+  resolved nothing; a whole-file `paginate(` match condemned the ID hub, the student directory and the audit log while
+  all three paginate; and even the action-bound reader failed on its own syntax twice — a bracket inside a `//` comment
+  made a prop array "unreachable", and `[^;]*` cut a chained assignment at the semicolon inside a closure body, hiding
+  the `->paginate(20)` four lines below. Both are now one comment- and string-aware balanced scan, and `through()` /
+  `map()` trace back to the set they reshape. **A token `lane76-shift-cites.php` defers is a reading queue, not a
+  clean skip:** this batch it deferred three bare numbers; two belonged honestly to another file (the clearance slip's
+  print page and its download action), and one was a pointer to
+  `registrarApprovalPending` that had gone 23 lines stale, sitting beside a *different* file's bare 157 that had
+  gone one line stale in the same batch. Pass 298 re-took both by run, anchored on the prose phrase that precedes
+  them, after asserting the lines it names carry the claim (`205` is `return [`, `210` is the key, `158` is
+  `$totalScholarshipCoverage = 0`) — and note that the bare 157 occurred twice document-wide, so a needle list would have
+  moved the wrong sentence. `sweep-docx-citations.php` reads `docx-flat.txt`, so a shift that rewrites 43 tokens shows
+  its true verdict only after a re-dump. Prove the instrument with `php storage/app/scratch/mutate-lane90-pagination.php`
+  (12 legs): the backslash join and the anchored-variable reading must both make the run **REFUSE**, the comment-blind
+  scanner and the `[^;]*` reading must move the census by name (`props spelled as`, `UNBOUND`), the file-not-action join
+  must misclassify three pages as COLLECTION, `--row=` must shrink the population it prints, an unknown flag must be
+  refused by name, and a byte-identical copy must change nothing. Two legs were **replaced rather than kept**:
+  "strings are not skipped" and "a prop value cut at its first comma" were measured as not load-bearing on this corpus
+  (the census did not move, so the leg could never fail), and in their place sits the leg that proves the unread guard
+  is the thing that stopped a fake census — with the guard disabled and the join broken, the probe exits 0 and prints
+  `PAGINATED 1; UNBOUND 32`, a clean-looking verdict over rows it never read.
+- **A second queue wired to the same mechanism is where the contract's other half bit** (lane 91, prompt §14). The
+  Admission queue now sorts through `ListSort` exactly as the Registrar one does — five allowed columns, four
+  sortable headers, `tests/Feature/Admission/AdmissionQueueSortTest.php` (5 cases / 17 assertions) — and
+  `lane46-filter-contract.php` answered **NO-RETURN** on it: the handler consulted `direction` and never echoed it,
+  so the control resets while the list stays narrowed. Both queues now echo `sort` and `direction` in `filters`
+  beside the `sort` prop, which is the honest shape: a key the desk sent must come back. Three consequences travelled
+  with the edit. The sort block added twenty-one lines to `AdmissionController.php`, so **21 citation tokens in the
+  authority document aged** and the sweep found two of them landing on blank lines — the shift tool resolved
+  nineteen and refused a twentieth (`GONE 305-322`) whose HEAD window no longer exists byte-for-byte; it was
+  re-taken by reading (the requirement-selection `orWhere('appliesTo', 'all')` and the insert loop now sit at
+  `:326-343`) and passed through `--map`, never guessed at from arithmetic. The figure the register carries moved
+  with it — §1.1 and §28.3 both said "35 of the 36 pages … still offer no order", and a tally that names the work
+  while the work grows is lane 61's defect in a new place, so pass 300 moved both copies and the row's own
+  "one of those twenty-nine queues" to two. And the fallback case's first expectation was **written from my own
+  mental arithmetic**: it asked `sort=passwordHash` *with* `direction=asc` and then asserted the newest-first order,
+  so the case was wrong while the code was right. It now compares the fallback request with the unsorted one and
+  asserts they answer identically — an equality against the queue's own default cannot agree with a retired order by
+  accident, which is the same trap this file has recorded three times.
+- **A coverage census must read a claim from the place claims are made** (lane 92, prompt §8/§10/§2).
+  `php storage/app/scratch/lane92-prompt-coverage.php` walks the development prompt's own headings, counts the
+  enumerated lines each carries, and asks which of them the requirement matrix scores. Measured 2026-10-29:
+  **73 headings, 39 numbered, 48 carrying enumerated lines, 357 lines total — 28 covered (229 lines), 0 PARENT-ONLY,
+  0 UNVISITED, 20 UNNUMBERED (128 lines)**, buckets asserted equal to the population, and the run refuses when they
+  do not add. Three of its own defects came out before that figure was trustworthy, and each is a class this file
+  already names. **(a)** It read *itself* as the prompt: `$argv[0]` is the script's path, not an argument, and a probe
+  that finds no `#` headings in its own source prints "no headings" — the refusal was the only thing that surfaced it.
+  **(b)** `^§?\s*(\d+)` **without `/u`** binds the `?` to the second byte of the two-byte `§`, so the pattern silently
+  *required* the sigil and rejected all 140 bare `5.1` cells — the census credited zero headings while tracing them.
+  **(c)** A prose `§NN` is NOT a coverage claim: the section that lists the unvisited headings names each one with its
+  sigil, and a prose-reading census reported them visited. Coverage is now read only from a markdown column whose
+  header *is* the section column (`§`, `Section(s)`, `Prompt §`, or a per-line `§4 line` header), because a header rule
+  that accepted anything starting with `§` or containing "prompt s" claimed 46 of 48 visited. An open word is a verdict
+  only in a column that can hold one, and a number is a claim only in a row that scores it.
+  **The census found real gaps, and they are now G-44 … G-50** in `Documentation/Prompt-Requirement-Matrix-2026-10-26.md`
+  §10, each verified by opening the named file rather than trusting the sweep: **G-48** `Students` declares no
+  `$hidden` where `Staffusers.php:30-33` hides `passwordHash`, and `StudentController::show()` passes the whole model,
+  so a student's credential hash ships in every Student-360 payload; **G-49** the same action eager-loads
+  `enrollments.clinicrecords` and `resources/js/Pages/Students/Show.jsx:506-519` prints `cr.findings`, with no field-level gate — the
+  prompt's own worked example of what must not be shared; **G-45** `afterCommit` appears 0 times while both
+  notification listeners are `ShouldQueue` and `notifications` has only a non-unique index (`:20`); **G-46**
+  `DashboardController.php:145` counts institution-wide `Pending` while `EvaluationController.php:91-97` is
+  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` (the lane-47 family, live); **G-44** declines and
+  rejections notify nobody; **G-47** the bell row is message-plus-time, no deep link, and a non-recipient's mark-read
+  returns `{ok:true}`; **G-50** `documents` shares the private root with the served `local` disk. One sweep claim was
+  disproved on the way: `'clinic' => ['clinic.view', …]` in `RbacSeeder.php` is a module declaration, not a role
+  grant. §10's privacy-programme rows (notice, lawful basis, retention) went onto the decision sheet as items 7 and 8
+  with the header tally moved — grep for `Data Privacy|RA 10173|consent|lawful basis` across the tree answers nothing,
+  which is the correct engineering outcome and not a code gap. **And §2's own claims verified, correcting a belief
+  this project carried: the checkout is Laravel 13.23.0 (`composer.json` `^13.8`, `artisan --version`), not 11** —
+  a version note repeated across working memory was inherited, never re-read.
+- **A list table sorts in the query, and the header may offer only what the handler obeys** (lane 88, prompt §14,
+  §28.3 G-40 contained not closed). The Registrar queue had one order since it was written. Sorting now has one
+  mechanism — `App\Support\ListSort::apply($query, $request->input('sort'), $request->input('direction'), $allowed, $fallback, $stable)`,
+  with the two request values read in the ACTION rather than inside the helper: `lane46-filter-contract.php` judges
+  whether a handler obeys the keys its page sends, and a key consumed one call deeper was reported DEAD-SEND until
+  the binding sat on the controller's own line (the checker was right to be suspicious; the fix was to make the
+  contract visible, not to teach the checker to look elsewhere) — and one control, in
+  `resources/js/Components/ui/DataTable.jsx`. Three rules came out of building it. **Server-side, always:** these
+  lists paginate on the server, so a client sort orders the twenty rows already on screen and presents that as the
+  queue — the lane-47 page-tile defect in another costume. **A column name cannot be bound as a parameter**, so the
+  allowed set is a PHP array held by the handler and an unlisted request key falls back rather than passing through;
+  the direction is reduced to `asc`/`desc` for the same reason. **The handler echoes what it applied** plus the
+  set it would obey (`sort.column`, `sort.direction`, `sort.available`), because a sort the server obeyed but never
+  reported is a header that resets while the list stays narrowed — the exact defect lane 46 owns for filters. The
+  header button renders only when `sort.available` contains its key, so a screen cannot offer an order the save
+  ignores. `$stable` (the row's own key) is a tie-break, not decoration: without it two rows equal on Year Level can
+  shuffle between pages, which reads to a desk as a record duplicated or lost. Pin:
+  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (5 cases, 15 assertions), proved by
+  `php storage/app/scratch/mutate-g40-list-sort-tests.php` (4 legs: allow-list bypassed, direction passed through,
+  sort never echoed, sort never applied — each must make its named case report `1 failed`). **One leg survived on
+  its first run and the fixture was the defect**: the three students were created Zulueta, Magsaysay, Bautista, so
+  `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
+  case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
+  same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
+  still owed: 35 of the 36 pages that render `DataTable` offer no order, and the gap's pagination half is untouched,
+  so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
+  file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
+  two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
+  database's mood, not a defect.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never
@@ -1722,8 +1902,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the sentence catches that.
 - **A `File.php:NN , :MM` sentence is two citations, and a checker that needs a filename before the colon
   sees only one of them.** Found by extending that sweep on 2026-10-24: §24 names the clearance print actions
-  as `ClearanceController.php:380 and :404`, and when P-17 grew `printSlip()` four lines the download action
-  moved to `:408`, the print-route table was re-pointed, and §24's bare continuation was not — so the document
+  as `ClearanceController.php` lines 380 and 404 — spelled in words on purpose, because this is a record of that
+  day's layout and the colon form is a live pointer the citation gate reads — and when P-17 grew `printSlip()`
+  four lines the download action
+  moved to line 408, the print-route table was re-pointed, and §24's bare continuation was not — so the document
   cited a blank line while the sweep printed 0 problems, and this file carried that same sentence about bare
   continuations as a *warning* above the very defect. Extending it found five drifted pointers and one claim
   the build had overtaken (§13.6 said the Evaluation queue shows "student type but not standing"; that queue
@@ -1766,7 +1948,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   tool "exits 0" while its own last line reads `exit($counts['MOVED'] > 0 || $counts['NO-ANCHOR'] > 0 ? 1 : 0)`,
   and the assertion was written from the tool's intention rather than its output. The first real defect it surfaced was fixed in
   pass 190: the settlement row quoted `( :195-215 )` for a balance formula, the number named no file so no
-  instrument had ever read it, and the formula is `AssessmentController.php:256-272` — the grant insert and the
+  instrument had ever read it, and the formula is `AssessmentController.php:257-273` — the grant insert and the
   balance update inside `applyScholarship()`, which the scholarship row had been citing correctly all along.
   **What this repository still owes, measured rather than recalled:** the registers hold no open engineering
   finding, and `lane69-open-inventory.php` answers "what is left" — the decision sheet's own header and the
@@ -2061,7 +2243,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   bare `sed -n 'Ap;Bp'`.
   **Pass 244 worked a different figure family: a count over demo rows, written in the present tense.** §20's ID-desk
   paragraph said the Issued tab holds "seven on this box against the two the queue holds". Replicating the controller's
-  own predicate (`IDController.php:68-73` — `enrolled` enrollments having a `completed` step for office 22) on live
+  own predicate (`IDController.php:69-74` — `enrolled` enrollments having a `completed` step for office 22) on live
   `ems` answers **nine** (53, 92, 1063, 1064, 1065, 1066, 1067, 1284, 1285) while the second half is still exactly two
   pending rows, so the count had drifted with the dataset and the sentence's structure was sound. The pass wrote
   `nine` and left the number's twin alone: §28's register row that also reads "seven … against the two still queued"
@@ -2286,8 +2468,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `:244-251`. §13's paragraph said **`entranceApplicants at :239-250`** — the *call site* at :250 re-used as if it were
   the definition; the method is `:279-288`. And two rows cited the method as `:279-290`, which walks past its brace at
   :288, over the blank line after it, into `recordGeneral()`'s docblock at :290. **A token's count is not its owner list:** a
-  first draft asked `expect=3` for `:279-290` and the engine answered **3 occurrences** — the third is
-  `IDController.php:279-290` in §20's ID-remark row, a different file whose span is a legitimate method. Both
+  first draft asked `expect=3` for the range 279 to 290 and the engine answered **3 occurrences** — the third is
+  `IDController.php` lines 279 to 290 in §20's ID-remark row (both spelled in words on purpose: this records what
+  the engine reported that day, and the colon form is a live pointer the citation gate reads — the ID controller has
+  since moved a line), a different file whose span is a legitimate method. Both
   ExamController copies were then taken by anchor instead, after measuring each anchor phrase unique in
   `document.xml`. Same batch, same shape at `WorkflowService.php:52-83` and `:49-80` → `:52-76`.
   Readings after 234: **729 citations / 155 files / 0 line problems, 134 bare judged + 1 blind**, anchor 135 judged =
@@ -2558,8 +2742,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1010 references it resolves against
-  `lane37-docx-inventory.php` (196 numbered headings, 117 finding rows with the section each physically sits
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1018 references it resolves against
+  `lane37-docx-inventory.php` (196 numbered headings, 128 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written

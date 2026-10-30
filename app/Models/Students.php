@@ -20,6 +20,12 @@ class Students extends Model
 
     protected $fillable = ['schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix', 'gender', 'birthdate', 'birthplace', 'citizenship', 'civilStatus', 'religionId', 'contactNumber', 'telephoneNumber', 'semestersCompleted', 'yearsInInstitution', 'email', 'username', 'passwordHash', 'status'];
 
+    // Written at intake and reset through the staff profile path; read by no screen. Staffusers has hidden its own
+    // credential hash from the start, and Student 360 hands the whole student model to the browser.
+    protected $hidden = [
+        'passwordHash',
+    ];
+
     protected function casts(): array
     {
         return [

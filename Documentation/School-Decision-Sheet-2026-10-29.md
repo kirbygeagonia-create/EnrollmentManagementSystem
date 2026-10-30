@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · six items · 0 answered, 6 left for the school**
+**Issued 2026-10-29 · eight items · 0 answered, 8 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
 development prompt on this date (matrix §7 and §8, gaps G33 to G42). Nothing here is owed by the
@@ -121,9 +121,50 @@ explicit statement that the clause is out of scope for a walk-in build.
 **Cost and undo.** Additive and revertible: a workflow file and a leg, at the price of run time on every
 push. That cost is the actual decision.
 
+**7. What is the school's privacy notice, whose lawful basis, and who is the DPO contact?** `[prompt §10, matrix G-48…G-50 — Open]`
+
+**The question as the prompt states it.** Section 10 requires the Philippine Data Privacy Act (RA 10173) treatment:
+sensitive personal information classified, a notice shown, a lawful basis named by the institution rather than
+assumed, and a Data Protection Officer whose decisions the software records. The prompt is explicit that a
+hard-coded consent checkbox is not an acceptable substitute.
+
+**What was measured before asking.** A grep for `Data Privacy`, `RA 10173`, `NPC`, `privacy notice`, `lawful basis`
+and `consent` across `app/`, `config/`, `routes/`, `database/` and `Documentation/` returns **nothing**. That is the
+correct outcome for an engineer — inventing a notice, a basis or a DPO would be inventing institutional fact — but it
+means the requirement cannot be closed in code until the school supplies it.
+
+**What the answer changes.** A notice surface, a stored basis per processing activity, and a named accountable
+account in Admin. None of it is blocked on schema beyond one table the answer would need.
+
+**Cost and undo.** Additive: a settings block plus one table and its desk screen; a rework would touch nothing
+already delivered, because no existing behaviour depends on the absence.
+
 ---
 
-**None of these six is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
-need no ruling; items 1, 2, 3 and 6 change only once the school says which behaviour is intended. Each
+**8. What is the records-retention and archive policy the system should enforce?** `[prompt §10, matrix §27.2 E-8 — Open]`
+
+**The question, in the prompt's own words.** Section 10 asks for retention, archive, access, correction and deletion
+behaviour "based on SEAIT's approved records and privacy policy" and forbids inventing arbitrary deletion deadlines.
+
+**What the build does today, measured rather than recalled.** Deletion is *restrained*, never scheduled: nothing
+deletes a `studentclearances` row (ruled 2026-10-23, pinned by a test), `ems:uploads:prune` refuses to delete unless
+told to, and `RbacSeeder` withholds `audit.view` from the base Staff role precisely because the log carries full model
+snapshots. Correction and return paths exist. So the system is safe-by-default while the policy is unwritten.
+
+**One instance the clinical question now has.** Item 3 asked in the abstract who may read clinical notes; the §10
+read found a concrete case the build should not be waiting on: Student 360 eager-loads every enrollment's clinic
+records and the page prints the findings text with no field-level gate. That half is ours to fix (matrix G-49) and is
+proceeding; the *policy* answer to item 3 still decides how far the gate goes.
+
+**What the answer changes.** A retention schedule expressed as data, an archive act per record class, and the
+deletion semantics the audit trail must survive.
+
+**Cost and undo.** This one may cost a migration and a scheduled command; the restrained default stays until then.
+
+---
+
+**None of these eight is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
+need no ruling; item 8's safety-by-default holds while it waits; items 1, 2, 3, 6 and 7 change only once the
+school says which behaviour is intended. Each
 answer comes back off the same way it went in: one commit, plus a reseed for anything that touches
 reference data.
