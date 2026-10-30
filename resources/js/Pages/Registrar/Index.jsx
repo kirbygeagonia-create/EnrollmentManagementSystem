@@ -10,16 +10,18 @@ const QueueIcon = () => (
     </svg>
 );
 
-export default function Index({ enrollments, readiness = {}, filters = {} }) {
+export default function Index({ enrollments, readiness = {}, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'enrollmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}${row.student.middleName ? ' ' + row.student.middleName.charAt(0) + '.' : ''}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
+        { key: 'yearLevel', label: 'Year Level', sortKey: 'yearLevel', render: (row) => formatYearLevel(row.yearLevel) },
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType?.value || row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType?.value || row.studentType)}
@@ -30,7 +32,7 @@ export default function Index({ enrollments, readiness = {}, filters = {} }) {
                 {academicStandingLabel(row.academicStanding?.value || row.academicStanding)}
             </Badge>
         )},
-        { key: 'enrollmentStatus', label: 'Status', render: (row) => (
+        { key: 'enrollmentStatus', label: 'Status', sortKey: 'status', render: (row) => (
             <Badge tone={enrollmentStatusTone[row.enrollmentStatus?.value || row.enrollmentStatus] || 'neutral'}>
                 {formatStatusLabel(row.enrollmentStatus?.value || row.enrollmentStatus)}
             </Badge>
@@ -54,14 +56,29 @@ export default function Index({ enrollments, readiness = {}, filters = {} }) {
         { key: 'term', label: 'Term', render: (row) => row.term ? `${row.term.semester?.value || row.term.semester} ${row.term.academicYear?.yearLabel || ''}`.trim() : '—' },
     ], [readiness]);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextSort, nextDir) => {
         router.get(route('registrar.index'), {
-            search: search || undefined,
+            search: nextSearch || undefined,
+            // Sent only when it differs from the list's own default, so a plain queue link stays a short URL and
+            // the handler's fallback — not an empty string arriving as a sort key it must ignore.
+            sort: nextSort && nextSort !== 'enrollmentId' ? nextSort : undefined,
+            direction: nextSort && nextSort !== 'enrollmentId' ? nextDir : undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = sortBy === key && sortDir === 'asc' ? 'desc' : 'asc';
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, key, direction);
     };
 
     const renderActions = (row) => (
@@ -162,6 +179,8 @@ export default function Index({ enrollments, readiness = {}, filters = {} }) {
                             <DataTable
                                 columns={columns}
                                 rows={enrollments.data}
+                                sort={sort}
+                                onSort={handleSort}
                                 children={renderActions}
                                 emptyMessage="No enrollments found"
                             />

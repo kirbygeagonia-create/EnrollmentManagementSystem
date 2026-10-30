@@ -13,19 +13,21 @@ const statusOptions = [
 ];
 
 
-export default function Index({ admissions, stats = {}, filters = {} }) {
+export default function Index({ admissions, stats = {}, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'admissionId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         // Admission runs before an enrollment exists, so this desk has an
         // applicant category rather than a student type or a standing.
-        { key: 'applicantType', label: 'Applicant Type', render: (row) => (
+        { key: 'applicantType', label: 'Applicant Type', sortKey: 'applicantType', render: (row) => (
             <Badge tone={studentTypeTone[row.applicantType] || 'neutral'}>
                 {formatStatusLabel(row.applicantType)}
             </Badge>
@@ -35,7 +37,7 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
             const sem = row.term.semester?.value ?? row.term.semester;
             return `${sem} · ${row.term.academicYear?.yearLabel || '—'}`;
         }},
-        { key: 'admissionStatus', label: 'Status', render: (row) => (
+        { key: 'admissionStatus', label: 'Status', sortKey: 'status', render: (row) => (
             <Badge tone={statusToneFor(row.admissionStatus)}>
                 {formatStatusLabel(row.admissionStatus)}
             </Badge>
@@ -46,15 +48,31 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
         { key: 'created_at', label: 'On file', render: (row) => row.created_at ? formatSchoolDay(row.created_at) : '—' },
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextStatus, nextSort, nextDir) => {
         router.get(route('admission.index'), {
-            search: search || undefined,
-            status: status || undefined,
+            search: nextSearch || undefined,
+            status: nextStatus || undefined,
+            // Sent only when it differs from the handler's own default, so an unsorted queue keeps a clean URL and
+            // an empty string never arrives as a sort key the handler has to ignore.
+            sort: nextSort && nextSort !== 'admissionId' ? nextSort : undefined,
+            direction: nextSort && nextSort !== 'admissionId' ? nextDir : undefined,
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, status, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = sortBy === key && sortDir === 'asc' ? 'desc' : 'asc';
+
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, status, key, direction);
     };
 
     const renderActions = (row) => (
@@ -202,6 +220,8 @@ export default function Index({ admissions, stats = {}, filters = {} }) {
                         <>
                             <DataTable
                                 columns={columns}
+                                sort={sort}
+                                onSort={handleSort}
                                 rows={admissions.data}
                                 children={renderActions}
                                 emptyMessage="No admissions found"

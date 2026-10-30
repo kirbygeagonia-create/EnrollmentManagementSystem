@@ -21,10 +21,26 @@ $root = dirname(__DIR__, 3);
 // makes a mutating run look like a clean one (lane 44's sleeping mutant), so the harness also proves this one is
 // read: byte-identical copy answers the same, a copy with an open verb planted in a verdict column answers more.
 $dumpPath = $root.'/storage/app/scratch/docx-flat.txt';
+$archivePath = $root.'/Documentation/EMS Complete Documentation.docx';
+$useArchive = true;
 foreach ($argv as $a) {
     if (str_starts_with((string) $a, '--dump=')) {
         $dumpPath = substr((string) $a, 7);
+    } elseif (str_starts_with((string) $a, '--archive=')) {
+        $archivePath = substr((string) $a, 10);
+    } elseif ((string) $a === '--no-archive') {
+        // The pure-dump path, kept addressable so a harness can prove the tiebreak is what repairs the rows: with
+        // it off, the §24 enum rows come back as UNRESOLVED, which is the defect this code exists to stop.
+        $useArchive = false;
+    } elseif (str_starts_with((string) $a, '--') && $a !== '--no-archive' && ! str_starts_with((string) $a, '--dump=')
+        && ! str_starts_with((string) $a, '--archive=')) {
+        printf("REFUSED: unknown argument %s; this tool reads --dump=, --archive= and --no-archive.\n", $a);
+        exit(1);
     }
+}
+if ($useArchive && ! is_file($archivePath)) {
+    printf("REFUSED: the archive %s is missing, so no cell count could be confirmed. Pass --no-archive to judge the dump alone.\n", $archivePath);
+    exit(1);
 }
 if (! is_file($dumpPath) || filesize($dumpPath) < 1000) {
     printf("REFUSED: the dump %s is missing or too short to be the document — run dump-docx-flat.php first.\n", $dumpPath);
@@ -44,9 +60,53 @@ if (count($rows) < 500) {
 $openWords = '\b(Open[ed]?|still owed|Owed|waits? on|Waiting|To be (?:confirmed|decided|supplied|answered)|not yet (?:deployed|answered|ruled)|undecided|Ask the|Remains|outstanding|Provisional)\b';
 $closedWords = '\b(Closed|Answered|Ruled|Fixed|Resolved|Implemented|Done|Adopted|Retired|Documented)\b';
 
+// A dump row cannot answer how many cells it holds. `dump-docx-flat.php` writes `implode(' | ', $cells)` after
+// collapsing whitespace inside each cell, so an EMPTY cell contributes nothing between two joiners: the §24
+// `resultStatus` row really has six <w:tc> (measured in document.xml, exactly like its six siblings, one of them
+// the empty Key column and one the empty Reference), but flattens to text that splits to four under any
+// separator. So when a row's split disagrees with its header, the cell count is taken from the archive and the
+// row is located by its own stripped text, not by an ordinal (a dump row and an archive row are not the same
+// population: 1,884 against 1,885 here). With `--dump=` there is no archive behind the copy, so the tiebreak
+// stands down and the row is printed as it was — a harness that mutates a dump must keep measuring the dump.
+$archiveCells = 0;
+$archiveRows = [];
+if ($useArchive) {
+    $z = new ZipArchive;
+    if ($z->open($archivePath) === true) {
+        $xml = (string) $z->getFromName('word/document.xml');
+        $z->close();
+        $flat = static function (string $frag): string {
+            preg_match_all('/<w:t(?: [^>]*)?>(.*?)<\/w:t>/s', $frag, $tm);
+
+            return trim(preg_replace('/\s+/', ' ', html_entity_decode(implode('', $tm[1]), ENT_QUOTES | ENT_XML1)));
+        };
+        $at = 0;
+        while (($start = strpos($xml, '<w:tr', $at)) !== false) {
+            $end = strpos($xml, '</w:tr>', $start);
+            if ($end === false) {
+                break;
+            }
+            $end += 7;
+            preg_match_all('/<w:tc[ >].*?<\/w:tc>/s', substr($xml, $start, $end - $start), $cm);
+            $cells = array_map($flat, $cm[0]);
+            // The SAME character class the lookup uses. The first version stripped only whitespace here while the
+            // lookup stripped whitespace and pipes, so a cell writing `enum(provisional|official)` produced an
+            // index key that could never be found — the asymmetry was invisible until the row still reported
+            // UNRESOLVED after the repair supposedly fired.
+            $key = preg_replace('/[\s|]+/u', '', implode('', $cells));
+            if ($key !== '') {
+                $archiveRows[$key][] = $cells;
+            }
+            $at = $end;
+        }
+        $archiveCells = count($archiveRows);
+    }
+}
+
 $openRows = [];
 $labelRows = [];
 $unknown = [];
+$repaired = [];
 
 // A verdict is a cell in a column that can hold one. In the flat dump a table is a maximal run of consecutive
 // `ROW n:` lines and the run's first line is its header, so each cell's column heading is readable — which is how
@@ -58,7 +118,7 @@ $unknown = [];
 $runHeader = null;
 $runCells = 0;
 $prevLine = -2;
-$labelHeadings = '\b(Action|Step|Phase|Desk|Office|Family|Register|Question|Condition|Evidence|Example|Column|Point|Symbol|Legend|Note)\b';
+$labelHeadings = '\b(Action|Step|Phase|Desk|Office|Family|Register|Question|Condition|Evidence|Example|Column|Point|Symbol|Legend|Note|Type|Null|Default|Key|Reference|Values in the database today)\b';
 foreach ($lines as $lineNo => $raw) {
     $s = trim((string) $raw);
     if (preg_match('/^ROW (\d+): (.*)/u', $s, $m) !== 1) {
@@ -70,8 +130,20 @@ foreach ($lines as $lineNo => $raw) {
         $runHeader = null;
     }
     $prevLine = $lineNo;
-    $cells = array_map('trim', explode('|', trim($m[2])));
+    // Split on the dumper's OWN joiner. `dump-docx-flat.php` writes each row as `implode(' | ', $cells)` and
+    // collapses whitespace inside every cell, so a bare '|' also cuts the cell that writes an enum list —
+    // `enum(provisional|official)` became two cells, `enum(pass|fail)` became two, and a row that really holds
+    // six <w:tc> (measured in document.xml) was reported UNRESOLVED against its six-cell header. That is the
+    // prose-pipe defect this file already records for the owed-table, arriving here through the separator: the
+    // tool was counting its own split, not the archive's cells.
+    $cells = array_map('trim', preg_split('/ \| /u', trim($m[2])));
     if ($runHeader === null) {
+        // The header gets the same archive repair: `dump-docx-flat.php` drops empty cells before joining, so a
+        // table whose header row has one empty heading would otherwise state fewer columns than the rows carry.
+        $hkey = preg_replace('/[\s|]+/u', '', $m[2]);
+        if ($archiveCells > 0 && isset($archiveRows[$hkey])) {
+            $cells = $archiveRows[$hkey][0];
+        }
         $runHeader = $cells;
         $runCells = count($cells);
 
@@ -80,13 +152,34 @@ foreach ($lines as $lineNo => $raw) {
 
     $n = (int) $m[1];
     $flat = preg_replace('/\s+/u', ' ', trim($m[2]));
+
+    // Repair the cell split from the archive when it disagrees with the header. Whitespace and the pipe glyph are
+    // stripped from both sides, so an enum written inside a cell matches itself on each.
+    if (count($cells) !== $runCells && $archiveCells > 0) {
+        $key = preg_replace('/[\s|]+/u', '', $m[2]);
+        if (isset($archiveRows[$key])) {
+            $cells = $archiveRows[$key][0];
+            $repaired[] = [$n, count($cells), $runCells, $flat];
+        }
+    }
+
     $leads = [];
     foreach ($cells as $ci => $cell) {
-        if (preg_match('/^\s*(?:'.$openWords.')/iu', $cell) && ! preg_match('/(?:'.$closedWords.')/iu', $cell)) {
+        // Only the verb the cell LEADS WITH is the verdict. The first version cancelled a cell whenever the closed
+        // words appeared anywhere inside it, so §28.3 G-41 — whose verdict cell begins `Open 2026-10-29.` and
+        // later uses the word "answered" in its own prose — was read as closed and owed work went unreported while
+        // `lane61-open-claims.php`, which reads the leading verb, named it. Same shape as lane 61's rule that a
+        // gap's TITLE may begin "Open a second signature…" without that being its verdict.
+        if (preg_match('/^\s*(?:'.$openWords.')/iu', $cell) && ! preg_match('/^\s*(?:'.$closedWords.')/iu', $cell)) {
             $leads[] = [$ci, mb_substr(preg_replace('/\s+/u', ' ', $cell), 0, 60)];
         }
     }
-    if ($leads === [] || preg_match('/(?:'.$closedWords.')/iu', $m[2])) {
+    // Judged per cell, never row-wide. The first version also skipped a row when ANY cell in it carried a closed
+    // word, so §28.3 G-41 — whose verdict cell leads `Open 2026-10-29.` and whose later sentence uses the word
+    // "answered" — was cancelled by its own prose and never reported as owed work, while `lane61-open-claims.php`,
+    // which reads the leading cell, named it. A row that hides owed work is the failure this tool exists to
+    // avoid, and the per-cell test two lines above already excludes a verdict cell that is itself closed.
+    if ($leads === []) {
         continue;
     }
     foreach ($leads as [$ci, $text]) {
@@ -125,6 +218,21 @@ if ($unknown !== []) {
         echo "  ROW {$n} ({$rc} cells against a {$hc}-cell header): ".mb_substr($t, 0, 120)."\n";
     }
     echo '  count: '.count($unknown)."\n\n";
+}
+
+if ($repaired !== []) {
+    echo "=== CELLS TAKEN FROM THE ARCHIVE: the dump could not state these rows' cell counts ===\n";
+    foreach ($repaired as [$n, $rc, $hc, $t]) {
+        echo "  ROW {$n} (archive says {$rc} cells, header says {$hc}): ".mb_substr($t, 0, 96)."\n";
+    }
+    echo '  count: '.count($repaired)."\n";
+    echo "  These rows are judged by their real <w:tc> cells; the flat dump loses empty cells, so the split\n";
+    echo "  alone cannot tell a short row from a row with an empty column. Not printed as a document defect.\n\n";
+} elseif ($archiveCells > 0) {
+    echo "cells taken from the archive: 0 rows needed the tiebreak ({$archiveCells} archive rows indexed)\n\n";
+} else {
+    echo "cells taken from the archive: NOT CONSULTED (--no-archive), so rows whose empty cells the dump lost are\n";
+    echo "  printed as UNRESOLVED — which is the defect the tiebreak exists to stop, not a document finding.\n\n";
 }
 
 // The owed-work half is read out of the instrument that owns it. If it answers nothing, this run refuses rather

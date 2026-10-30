@@ -23,6 +23,7 @@ use App\Services\PrintService;
 use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\EnrollmentReadiness;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -56,8 +57,27 @@ class RegistrarController extends Controller
             'enrolledSubjects.subject', 'payments',
         ])
             ->whereIn('enrollmentStatus', [EnrollmentStatus::Assessed, EnrollmentStatus::Paid])
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('enrollmentId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
+
+        // Prompt §14's density control this repository never built: the queue had exactly one order, newest
+        // enrollment first, and no way to ask for another. Sorting is applied here rather than in the page because
+        // the list paginates on the server — a client sort would order only the twenty rows on screen and present
+        // that as the queue. The column comes from this allow-list, never from the request string.
+        $sortable = [
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'yearLevel' => ['column' => 'enrollments.yearLevel'],
+            'status' => ['column' => 'enrollments.enrollmentStatus'],
+            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'enrollmentId',
+            'enrollments.enrollmentId'
+        );
 
         $enrollments = $query->paginate(20)->withQueryString();
 
@@ -79,7 +99,10 @@ class RegistrarController extends Controller
         return Inertia::render('Registrar/Index', [
             'enrollments' => $enrollments,
             'readiness' => $readiness,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'sort', 'direction']),
+            // Echoed so the header that was clicked is still marked after a page change or a filter: the rule the
+            // filter contract already enforces for narrowed lists, applied to the order as well.
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
@@ -297,7 +320,7 @@ class RegistrarController extends Controller
                 'enrollmentType' => $enrollmentType,
                 'academicStanding' => AcademicStanding::from($validated['academicStanding']),
                 'registrarProcessedBy' => Auth::user()->userId,
-                'enrolledDate' => now(),
+                'enrolledDate' => SchoolTime::today(),
             ]);
 
             // Sign workflow step 5 (Registrar Approval)

@@ -4,8 +4,12 @@
 const resolveKey = (row, key) =>
     key.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), row) ?? '—';
 
-export default function DataTable({ columns, rows, children, emptyMessage = 'No records found', className = '' }) {
+export default function DataTable({ columns, rows, children, emptyMessage = 'No records found', className = '', sort = null, onSort = null }) {
     const hasRows = rows && rows.length > 0;
+
+    // A header is a control only when the handler both listed the key and asked for it to be sortable: the page
+    // never offers an order the server would ignore, which is the shape §28.3 records as a dead filter send.
+    const sortable = (col) => onSort && sort && col.sortKey && (sort.available ?? []).includes(col.sortKey);
 
     return (
         <div className={`overflow-x-auto ${className}`}>
@@ -13,8 +17,30 @@ export default function DataTable({ columns, rows, children, emptyMessage = 'No 
                 <thead>
                     <tr>
                         {columns.map((col) => (
-                            <th key={col.key} className={col.className}>
-                                {col.label}
+                            <th
+                                key={col.key}
+                                className={col.className}
+                                aria-sort={sortable(col) && sort.column === col.sortKey
+                                    ? (sort.direction === 'asc' ? 'ascending' : 'descending')
+                                    : (sortable(col) ? 'none' : undefined)}
+                            >
+                                {sortable(col) ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => onSort(col.sortKey)}
+                                        className="inline-flex items-center gap-1 font-heading font-bold uppercase tracking-wider hover:text-slate-900 dark:hover:text-white"
+                                        title={sort.column === col.sortKey
+                                            ? (sort.direction === 'asc' ? `Sorted ${col.sortKey} ascending — click for descending` : `Sorted ${col.sortKey} descending — click for ascending`)
+                                            : `Sort by ${col.label}`}
+                                    >
+                                        {col.label}
+                                        <span aria-hidden="true" className="text-[10px] leading-none">
+                                            {sort.column === col.sortKey ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                                        </span>
+                                    </button>
+                                ) : (
+                                    col.label
+                                )}
                             </th>
                         ))}
                         {children && <th className="w-[1%] whitespace-nowrap">Actions</th>}

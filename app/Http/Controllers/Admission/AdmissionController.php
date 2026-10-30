@@ -29,6 +29,7 @@ use App\Services\EnrollmentIssuer;
 use App\Services\EnrollmentStateMachine;
 use App\Services\ReturnRecorder;
 use App\Support\CollegeScope;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -60,8 +61,27 @@ class AdmissionController extends Controller
             $request->user()
         )
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('admissionId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
+
+        // Prompt §14's density control, wired the way the Registrar queue is: the order the desk asks for comes from
+        // this allow-list and never from the request string, and it is applied here rather than in the page because
+        // the queue paginates on the server — a client sort would order only the twenty rows on screen.
+        $sortable = [
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'admissions.studentId'],
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'admissions.studentId'],
+            'applicantType' => ['column' => 'admissions.applicantType'],
+            'status' => ['column' => 'admissions.admissionStatus'],
+            'admissionId' => ['column' => 'admissions.admissionId'],
+        ];
+
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'admissionId',
+            'admissions.admissionId'
+        );
 
         // Status counts across the whole filtered set — the summary tiles must
         // describe the full queue, not just the current page (audit 2026-09-25).
@@ -80,7 +100,8 @@ class AdmissionController extends Controller
 
         return Inertia::render('Admission/Index', [
             'admissions' => $admissions,
-            'filters' => $request->only(['status', 'search']),
+            'filters' => $request->only(['status', 'search', 'sort', 'direction']),
+            'sort' => ListSort::present($sort, $sortable),
             'stats' => [
                 'total' => (int) $statusCounts->sum(),
                 'draft' => (int) ($statusCounts[AdmissionStatus::Draft->value] ?? 0),
@@ -318,7 +339,7 @@ class AdmissionController extends Controller
                 'admissionId' => $admission->admissionId,
                 'requirementId' => $req->requirementId,
                 'submissionStatus' => 'pending',
-                'submittedDate' => now(),
+                'submittedDate' => SchoolTime::today(),
                 'remarks' => '',
             ]);
         }
@@ -475,12 +496,12 @@ class AdmissionController extends Controller
                 'submissionId' => $submission->submissionId,
                 'fileUrl' => $path,
                 'fileType' => $request->file('file')->getMimeType(),
-                'uploadedDate' => now(),
+                'uploadedDate' => SchoolTime::today(),
             ]);
 
             $submission->update([
                 'submissionStatus' => 'submitted',
-                'submittedDate' => now(),
+                'submittedDate' => SchoolTime::today(),
                 'remarks' => $validated['remarks'] ?? null,
             ]);
         });

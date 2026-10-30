@@ -1,21 +1,28 @@
 <?php
 
 /**
- * Prove `lane69-open-inventory.php`'s column rule can fail.
+ * Prove `lane69-open-inventory.php`'s discrimination can fail, and that it agrees with the other tool that reads
+ * verdicts.
  *
- * The inventory now decides whether an open word is a *verdict* by reading the column heading the cell sits under,
- * so the two rows it used to report as owed work — a walkthrough's `Open the queue` and §29.4's `Open decisions`
- * family label — are printed as labels instead. Every leg is a claim about that discrimination, planted in a COPY
- * through `--dump=` (a flag this tool honours only since this batch, which is why `dump-is-read` exists at all):
+ * The previous version hard-coded "0 OPEN, 2 LABELS, 0 UNRESOLVED" as its control. That was true the day it was
+ * written and became a failing control the moment §28.3 gained open rows — a verifier whose expectation is a frozen
+ * reading is indistinguishable from a broken tool. So the control asserts a RELATION instead: the ids this inventory
+ * reports as OPEN must equal the ids `lane61-open-claims.php` names from the register cells, and every planted leg
+ * is judged as a DELTA against the control measured moments earlier.
  *
- *   control              0 OPEN, 2 LABELS, 0 UNRESOLVED
- *   planted-verdict      `Waits on …` under a column headed Verdict must be OPEN, not a label
- *   planted-action       the same words under a column headed Action must be a LABEL — the rule reads the heading, not the position
- *   planted-misaligned   a row with a different cell count than its header cannot be resolved: UNRESOLVED, never silently cleared
- *   dump-is-read         a copy with one more verdict row must answer MORE than the control, proving --dump= reaches the walk
- *   byte-identical       a copy that changes nothing must change no verdict
- *   short-dump / missing the refusals, told apart by their own messages
- *   control-again        the real document is untouched
+ *   control                 the two readers name the same open ids, and no row is UNRESOLVED
+ *   planted-verdict         `Waits on …` under a Verdict column must be OPEN (+1)
+ *   planted-action          the same words under an Action column must be a LABEL, never OPEN
+ *   planted-misaligned      a synthetic row shorter than its header, which no archive row matches: UNRESOLVED
+ *   planted-leading-verb    a cell LEADING `Open …` whose own sentence later says "answered" must be OPEN — the
+ *                           shape that hid §28.3 G-41 while lane 61 named it
+ *   planted-closed-lead     a cell leading `Closed …` that later says "Open" must stay out of OPEN
+ *   dump-is-read            one more verdict row must answer MORE, proving --dump= reaches the walk
+ *   byte-identical          a copy that changes nothing changes no verdict (bytes and hashes, not filesize)
+ *   enum-tiebreak-off       --no-archive must surface the rows whose empty cells the flattening lost
+ *   unknown-flag-refused    a flag the tool does not read is refused by name
+ *   short-dump / missing    the refusals, told apart by their own messages
+ *   control-again           the real document is untouched
  *
  *   php storage/app/scratch/mutate-lane69-open-labels.php
  */
@@ -28,6 +35,7 @@ $real = $root.'/storage/app/scratch/docx-flat.txt';
 $base = (string) file_get_contents($real);
 if (strlen($base) < 100000) {
     echo "REFUSED: the dump is not the document.\n";
+
     exit(1);
 }
 
@@ -51,6 +59,15 @@ $counts = function (string $out): array {
     return $c;
 };
 
+$openIds = function (string $out): array {
+    $section = preg_match('/=== OPEN[^\n]*\n(.*?)\n  count:/us', $out, $m) === 1 ? $m[1] : '';
+    preg_match_all('/\b([PXCESG]-\d+)\b/u', $section, $im);
+    $ids = array_values(array_unique($im[1] ?? []));
+    sort($ids);
+
+    return $ids;
+};
+
 $report = function (string $name, bool $ok, string $detail) use (&$fails, &$runs): void {
     $runs++;
     if (! $ok) {
@@ -69,29 +86,51 @@ $run = function (array $args) use ($root): array {
     return [$rc, implode("\n", $out)];
 };
 
+// The other reader of verdict cells. It indexes the register's own verdict column, so agreement between the two is
+// a claim about the document rather than about either parser.
+$runLane61 = static function () use ($root): array {
+    exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg($root.'/storage/app/scratch/lane61-open-claims.php').' 2>&1', $o);
+    if (preg_match('/leading an open verb: ([^\n]*)/u', implode("\n", $o), $m) !== 1) {
+        return [];
+    }
+    $ids = array_values(array_filter(array_map('trim', explode(',', $m[1]))));
+    sort($ids);
+
+    return $ids;
+};
+
 [$rc0, $out0] = $run([]);
 $c0 = $counts($out0);
-$report('control', $rc0 === 0 && $c0['OPEN'] === 0 && $c0['LABELS'] === 2 && $c0['UNRESOLVED'] === 0,
-    sprintf('OPEN %s, LABELS %s, UNRESOLVED %s (exit %d)', var_export($c0['OPEN'], true), var_export($c0['LABELS'], true), var_export($c0['UNRESOLVED'], true), $rc0));
+$ids0 = $openIds($out0);
+$ids61 = $runLane61();
+$report('control', $rc0 === 0 && $c0['UNRESOLVED'] === 0 && $ids61 !== [] && $ids0 === $ids61,
+    sprintf('inventory [%s] vs lane61 [%s], UNRESOLVED %s (exit %d)',
+        implode(',', $ids0), implode(',', $ids61), var_export($c0['UNRESOLVED'], true), $rc0));
 
-// LEGS on a copy. Each synthetic table is two consecutive ROW lines: the first line of a run is its header.
+// LEGS on a copy. Each synthetic table is a P marker plus two consecutive ROW lines: the first row of a run is its
+// header. Ids are Z-n so they cannot collide with a register id the control already counted, and the rows are absent
+// from document.xml, which is what makes the tiebreak legs mean what they say.
 $cases = [
-    ['planted-verdict', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-1 | Waits on the Registrar for the window | Registrar\n", ['OPEN' => 1, 'LABELS' => 2]],
-    ['planted-action', "ROW 99001: # | Desk | Action | Who must act\nROW 99002: 1 | Registrar | Waits on the Registrar for the window | Registrar\n", ['OPEN' => 0, 'LABELS' => 3]],
-    ['planted-misaligned', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-1 | Waits on the Registrar for the window\n", ['OPEN' => 0, 'LABELS' => 2, 'UNRESOLVED' => 1]],
+    ['planted-verdict', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-1 | Waits on the Registrar for the window | Registrar\n", ['OPEN' => 1, 'LABELS' => 0, 'UNRESOLVED' => 0]],
+    ['planted-action', "ROW 99001: # | Desk | Action | Who must act\nROW 99002: 1 | Registrar | Waits on the Registrar for the window | Registrar\n", ['OPEN' => 0, 'LABELS' => 1, 'UNRESOLVED' => 0]],
+    ['planted-misaligned', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-907 | Waits on the Registrar for the window\n", ['OPEN' => 0, 'LABELS' => 0, 'UNRESOLVED' => 1]],
+    ['planted-leading-verb', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-2 | Open 2026-10-29. Whether the check belongs here is answered nowhere in the repository. | Nobody\n", ['OPEN' => 1, 'LABELS' => 0, 'UNRESOLVED' => 0]],
+    ['planted-closed-lead', "ROW 99001: Finding | Verdict | Who must act\nROW 99002: Z-3 | Closed 2026-10-29. It began life Open and the ruling was recorded. | Nobody\n", ['OPEN' => 0, 'LABELS' => 0, 'UNRESOLVED' => 0]],
 ];
 foreach ($cases as [$name, $plant, $want]) {
     $f = $tmp.'/'.$name.'.txt';
     file_put_contents($f, $base."\n".'P 99000: harness table'."\n".$plant);
     [$rc, $out] = $run(['--dump='.$f]);
     $c = $counts($out);
-    $ok = $rc === 0;
-    foreach ($want as $k => $v) {
-        $ok = $ok && $c[$k] === $v;
-    }
-    $report($name, $ok, $rc !== 0 ? 'exit '.$rc : sprintf('OPEN %s, LABELS %s, UNRESOLVED %s (wanted %s)',
-        var_export($c['OPEN'], true), var_export($c['LABELS'], true), var_export($c['UNRESOLVED'], true),
-        implode('/', array_map('strval', $want))));
+    $ok = $rc === 0
+        && $c['OPEN'] === $c0['OPEN'] + $want['OPEN']
+        && $c['LABELS'] === $c0['LABELS'] + $want['LABELS']
+        && $c['UNRESOLVED'] === $c0['UNRESOLVED'] + $want['UNRESOLVED'];
+    $report($name, $ok, $rc !== 0 ? 'exit '.$rc : sprintf('OPEN %s (delta %d, want +%d), LABELS %s (delta %d, want +%d), UNRESOLVED %d (want +%d)',
+        var_export($c['OPEN'], true), (int) $c['OPEN'] - (int) $c0['OPEN'], $want['OPEN'],
+        var_export($c['LABELS'], true), (int) $c['LABELS'] - (int) $c0['LABELS'], $want['LABELS'],
+        $c['UNRESOLVED'] - $c0['UNRESOLVED'], $want['UNRESOLVED']));
+    unlink($f);
 }
 
 // LEG: --dump= is read, not merely accepted.
@@ -111,6 +150,18 @@ clearstatcache(true, $f2);
 $report('byte-identical-copy', $rc2 === 0 && $out2 === $out0
     && hash_file('sha256', $f2) === hash_file('sha256', $real),
     $out2 === $out0 ? 'same verdicts as the control' : 'a byte-identical copy answered differently');
+
+// LEG: the archive tiebreak must be observable. Asked to judge the dump alone, the rows whose empty cells the
+// flattening dropped have to come back as UNRESOLVED — a leg that passed either way would be decoration.
+[$rc6, $out6] = $run(['--no-archive']);
+$c6 = $counts($out6);
+$report('enum-tiebreak-off', $rc6 === 0 && $c6['UNRESOLVED'] > $c0['UNRESOLVED'] && str_contains($out6, 'NOT CONSULTED'),
+    sprintf('--no-archive answers UNRESOLVED %d against the archive-bound %d', $c6['UNRESOLVED'], $c0['UNRESOLVED']));
+
+// LEG: a flag the tool does not read is refused by name, not accepted and ignored.
+[$rc7, $out7] = $run(['--archve=typo']);
+$report('unknown-flag-refused', $rc7 === 1 && str_contains($out7, 'unknown argument'),
+    strtok($out7, "\n") ?: 'exit '.$rc7);
 
 // LEG: a dump too short to be the document must refuse, not report an empty register.
 $f3 = $tmp.'/short.txt';
@@ -132,5 +183,6 @@ array_map('unlink', glob($tmp.'/*') ?: []);
 printf("\n%d legs, %d failure(s).\n", $runs, $fails);
 if ($fails > 0) {
     echo "A leg that cannot fail is not an instrument.\n";
+
     exit(1);
 }
