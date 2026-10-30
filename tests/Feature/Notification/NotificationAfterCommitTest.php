@@ -6,6 +6,7 @@ use App\Listeners\SendEnrollmentNotification;
 use App\Listeners\SendWorkflowNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
