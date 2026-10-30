@@ -1566,7 +1566,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   new cases passed while that relation bug was in the code, because they ran as a staff account whose `unitId` is null and
   every `of*()` method returns the query untouched in that case; only the college-bound fixture executed the line.
   So a count-equality test written solely for an unbounded desk certifies nothing about scoping — pair them.
-  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 32 assertions) compares each badge to
+  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions) compares each badge to
   the number the desk itself prints in **both** directions, and `storage/app/scratch/mutate-g46-dashboard-queues.php`
   (4 legs) is what showed the second direction was missing: its `admission` leg **survived** on the first run,
   because the college case asserted only the `evaluation` badge — the admission half of G-46 had no test until that
@@ -1601,7 +1601,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   header button renders only when `sort.available` contains its key, so a screen cannot offer an order the save
   ignores. `$stable` (the row's own key) is a tie-break, not decoration: without it two rows equal on Year Level can
   shuffle between pages, which reads to a desk as a record duplicated or lost. Pin:
-  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (5 cases, 15 assertions), proved by
+  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (5 cases, 17 assertions), proved by
   `php storage/app/scratch/mutate-g40-list-sort-tests.php` (4 legs: allow-list bypassed, direction passed through,
   sort never echoed, sort never applied — each must make its named case report `1 failed`). **One leg survived on
   its first run and the fixture was the defect**: the three students were created Zulueta, Magsaysay, Bautista, so
@@ -2976,6 +2976,29 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   shift run was needed — the sweep still reads 742 citations / 0 problems. And **run Pint before claiming
   neutrality**: Pint's fix pass then touched only the new test file (`no_unused_imports` on an `Enrollments` import I
   never used), which is why the check after formatting, not before it, is what makes the claim true.
+- **A quoted false figure is still a figure the gate judges, and a comma list is two citations** (lane 98, CI run
+  40861302826 — the batch's own SQLite job went red on both). The day's §1.1 row carried the clause
+  `the report of the batch said "pinned by four cases"` to record that the count had been written from intent, and
+  `lane58-suite-claims.php --ci` bound the quoted number as a present-tense class claim: the classifier cannot tell a
+  disclosure from an assertion, so a retired figure is spelled in words or not written at all. Docx pass 307 re-worded
+  the clause instead of re-typing the digit — the digit was the thing that was never measured. The same run staled two
+  class totals in this file that I had typed from intent rather than read off the run: the sort case's assertion count
+  and the dashboard case's, and the dashboard figure is repeated in the matrix, so one wrong reading sat in three
+  places. **Read a class total out of the junit of the run that produced it before writing it beside a class name**,
+  and grep every document for the figure, because a batch that adds assertions moves all of them at once. The matrix's
+  case count beside the mark-read test was re-read from the same junit and is true; the completion report's worded
+  `four cases` carries no assertion pair, so lane 58 leaves it — which is a reading, not a pass.
+  Second shape, found the same day by a sweep already in the tree: the citation gate takes only the FIRST number of a
+  comma list that shares one colon — the same limitation the docx sweep prints for bare continuations — so the matrix
+  pointer whose second number had become a blank line passed every gate.
+  `storage/app/scratch/lane97-probe-comma-cites.php` is the reader the gate cannot be: it opens both numbers of every
+  comma-list citation in the three dated documents, resolves a basename the way the gate does (a HEAD export under
+  `storage/app/scratch` is not a second target, or the citation is accused of an ambiguity belonging to an artefact),
+  prints the whole sentence beside each pair so the reader judges which construct the line carries and not merely
+  whether it is live, and refuses its own run when the population is empty or the file index read nothing. It found
+  that one blank pointer and no other defect; the row now names the two cases that really carry its claim. **A gate's
+  blind list is the queue its parser cannot read, and this one sat inside a document the gate opens every run** — so
+  when a checker prints "0 problems", ask what it never looked at.
 
 ## Agent dispatch
 
