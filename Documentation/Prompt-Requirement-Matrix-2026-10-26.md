@@ -223,7 +223,10 @@ guard names its own children. Absence of the trait is not absence of the rule.
 | 18 | Re-inspect the repository rather than trust the prompt's claims | Working | this section exists because the first pass's coverage was measured and found short |
 ### New gaps from this sweep
 
-Continuing the register: the docx §28.3 runs to G-32, so these begin at G33.
+Continuing the register: G-1 through G-32 of the authority document's own gap register were already there when this
+matrix was cut on 2026-10-26, so these begin at G33. The seven later ids, G-44 through G-50, were written into that
+register on 2026-10-30 by docx pass 308 — which is what makes a pointer to them resolve instead of being re-worded
+away, and what the sweep over repository comments had been refusing as NO-ID until then.
 
 | Id | Gap | § | Phase | Risk | Smallest coherent fix | Verification | Needs a ruling? |
 |---|---|---|---|---|---|---|---|

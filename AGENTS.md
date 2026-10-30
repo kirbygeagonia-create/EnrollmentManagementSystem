@@ -2786,8 +2786,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1020 references it resolves against
-  `lane37-docx-inventory.php` (196 numbered headings, 128 finding rows with the section each physically sits
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1031 references it resolves against
+  `lane37-docx-inventory.php` (196 numbered headings, 135 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
@@ -2943,10 +2943,11 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
 `P-1 … P-16` in order, once each.
 
 - **A comment that cites a register row the register does not hold is a finding, and only the sweep over repo
-  comments sees it** (lane 96, same batch). Three of my own new files said the blocking card's question was
-  "registered in §28.5, sheet item 9" and one said the dashboard gap is "(§28.3 G-46)". Both were false: the sheet
-  carries item 9 and the docx does not, and §28.3's G family stops at G-43 — G-44 … G-50 exist only in the matrix,
-  which is task #37. `lane37b-repo-citation-sweep.php` printed the refusal as **NO-ID** on the test file, and the
+  comments sees it** (lane 96, same batch; §28.3 gained the seven rows on 2026-10-30 by docx pass 308). Three of my own
+  new files said the blocking card's question was "registered in §28.5, sheet item 9" and one said the dashboard gap is
+  "(§28.3 G-46)". Both were false as written: the sheet
+  carries item 9 and the docx then did not, and §28.3's G family stopped at G-43 while G-44 … G-50 lived only in the
+  matrix, which pass 308 has now written. `lane37b-repo-citation-sweep.php` printed the refusal as **NO-ID** on the test file, and the
   same run went from 1 problem to 0 once the comments named the sheet and the matrix instead of a docx row. Two
   rules follow. A `§NN <letter>-<number>` token is a promise that the row is *in that section of that document*, so
   write the row before citing it, and until then name the register that really holds it ("matrix gap G-46"). And
@@ -2999,6 +3000,18 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   that one blank pointer and no other defect; the row now names the two cases that really carry its claim. **A gate's
   blind list is the queue its parser cannot read, and this one sat inside a document the gate opens every run** — so
   when a checker prints "0 problems", ask what it never looked at.
+  Third shape, from writing the register rows themselves: a clone plan that appends after an anchor **and advances
+  that anchor** must run in ASCENDING order. The first cut reversed the plan for the other recipe — the one that
+  re-locates the anchor per row — and the register came out `G-43, G-50, G-49 … G-44, D-1`. Every bounds check and
+  every id lookup agreed with that document, because a row's identifier lives in its own first cell and nothing
+  asks the sequence: order is a claim, so it is now asserted on read-back, and a failed post-guard restores the
+  pass's own backup rather than printing advice — a guard that only names the fix leaves the file broken and the
+  run looking finished. The falsification is the reversed plan run against the live document with the restore
+  proved twice: the pass exits 1 and `git status` reports the docx unmodified afterwards. Fourth, and the same class
+  one line up: the sentence written into §1.1 to record this batch carries three of the document's own section
+  pointers, so the reference census moved twice while this file was being edited to state it — 1,020 to 1,028 when
+  the register grew and again to 1,031 when the revision row was written. A figure about an instrument is read
+  LAST, from the instrument, after every prose edit that could move it.
 
 ## Agent dispatch
 

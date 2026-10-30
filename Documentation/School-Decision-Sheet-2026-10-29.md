@@ -62,6 +62,14 @@ pressure to any account holding `students.view`. The full assessment narrative (
 already withheld. Prompt §10 asks that most desks know the *outcome*, and assigns the disclosure question
 to the school and its Data Protection Officer, so this repository has ruled nothing.
 
+**Moved the same day.** The paragraph above was true when this sheet was issued and the build overtook it
+the same afternoon: `StudentController::show()` now loads the clinical relation only when the requester
+holds `clinic.view`, so a directory account receives no clinical key at all and the page has nothing to
+print for anyone else. The register carries that as the privacy gap the coverage census named, with its test
+and its mutant harness. What is still unanswered here is only the reach — whether Guidance or Advising reads
+notes as well as the clinic — and the two options below are asked against the older reading, so read the
+first one as "which named rights, beside the clinic's, entitle the notes".
+
 **What the answer changes.** Either the 360's clinical section becomes Clinic-and-named-offices only, or
 the school states that `students.view` entitles the notes and the finding closes as intended design.
 
@@ -97,6 +105,13 @@ controller validates nothing, and `admissions` has no column that could hold one
 reader "Contact the admission office for details". Separately, a refused requirement line currently
 substitutes an invented sentence — `'Requirement rejected / needs resubmission'` — when the desk types
 nothing, which is a placeholder passing as a reason.
+
+**Already false when this sheet was issued.** The paragraph above was copied from the gap list rather than
+re-read against the build: the reason column, the refusal under ten characters and the printed reason all
+landed on 2026-10-29 — the day this sheet was issued — and the register records the mechanism as closed that
+same day, while the invented sentence was deleted rather than re-worded. The reading of that morning is left
+here as written, because a dated document's cells are not re-aged; what this item actually asks is now only
+the vocabulary — fixed list, free text, or both — and the two options below still answer that.
 
 **What is being built regardless.** A nullable reason column, a mandatory reason on a rejection, and the
 reason rendered wherever the case is read: prompt §6.5 states the rule twice, so the mechanism needs no
