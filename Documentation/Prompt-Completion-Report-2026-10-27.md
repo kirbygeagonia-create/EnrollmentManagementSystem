@@ -350,3 +350,108 @@ Plus G6 from the first pass (a configurable workflow definition) and the four it
    by pass 284, because a row that understates what has since been proved is still a false row. What the
    harness does **not** cover is stated in the row itself: the cross-office 403 case belongs to the policy, so
    no leg there would notice a policy widening.
+
+## 18. Fourth addendum — lanes 88 to 96, and the same question asked again (2026-10-30)
+
+### Is the development prompt fully implemented? Still no, and this time the remainder is measured rather than described.
+
+Every figure below was re-read on 2026-10-30 after the last edit in the batch, not carried over from the section
+above it. That is the rule §1.1's revision rows follow and the reason §17's numbers are left standing as that day's
+reading.
+
+**Coverage of the prompt itself** — `php storage/app/scratch/lane92-prompt-coverage.php`:
+the prompt holds 73 headings, 39 of them numbered, 48 carrying enumerated lines, 357 requirement lines in total.
+Of those 48 headings, **28 are credited by a section cell (229 lines) and one more by every one of its own quoted
+lines (4 lines), leaving 19 UNNUMBERED (124 lines)**; 0 PARENT-ONLY, 0 UNVISITED, 0 partially quoted, and the buckets
+are asserted to add up to the population. That last bucket is the one that was lying about the work rather than about
+the register: `lane92` decided UNNUMBERED *before* it read the section column, so a prompt heading carrying no number
+of its own could not be credited even when a table scored all of its lines — discovered by adding exactly such a table
+(matrix §11, prompt §5's four identity lines) and watching the census refuse to move. The instrument was changed the
+same day rather than left as a limit: an unnumbered heading is now bound by **its own requirement lines**, normalised
+identically on both sides and matched verbatim, so full coverage of the quoted lines is `LINE-COVERED`, part is
+`LINE-PARTIAL` with the count printed, and none stays `UNNUMBERED`. The matcher was falsified before it was believed:
+on a throwaway copy of the matrix with one quoted line struck out, §5's heading falls from `LINE-COVERED [4/4 lines]`
+to `LINE-PARTIAL [3/4 lines]` and the sum check still agrees; against the real file it returns to 4/4. Matching stays
+verbatim on purpose — a loosened matcher is how a census starts crediting work that was never scored, and §9 records
+that error being made once already. The 124 lines still uncredited are the §4 audit checklist's own groups and the
+acceptance-list sections, and the census now names them as un-scored here rather than as un-readable.
+
+**What the registers still hold open** — `lane61-open-claims.php` and `lane69-open-inventory.php` agree on the same
+six ids, and that agreement is asserted by a harness rather than assumed: **G-35** (a notice carries a body but no
+title and no link), **G-36** (no duplicate-notice guard; the honest shape is a unique key on the act and the
+addressee, which is a migration nobody has been asked to spend), **G-37** (the audit trail stores the row change,
+not the act — `auditlogs.action` is a varchar, so naming the act needs no migration and is a vocabulary question),
+**G-38** (who may read a clinical note, as distinct from the clinic's outcome), **G-40** (no list table sorts and
+two carry no pagination at all: the pagination half was measured this fortnight and retired as false, the sorting
+half is wired on two queues of the thirty-six), and **G-41** (prompt §14's console-error and loading/empty/responsive
+clause has no instrument, so it is unverified rather than passing). 0 UNRESOLVED rows; the five rows that lead a
+cell with an open word are schema values or desk instructions, printed as LABELS.
+
+**What waits on the school, not on the build** — 13 items across two dated sheets: four on
+`Documentation/School-Decision-Sheet-2026-10-27.md` (return-reason vocabulary, whether a department may send a
+record back to Admission, the mandatory phases, what a Failed enrollment means for a walk-in) and nine on
+`Documentation/School-Decision-Sheet-2026-10-29.md` (the bell's destination, a signed-in account whose user is
+deactivated mid-session, who reads clinical notes, the audit action vocabulary, rejection reasons, whether a browser
+check belongs in CI, the privacy notice and lawful basis and DPO contact, the retention policy, and what the
+Blocking card should count). Items 7 and 8 have no engineering answer available: a grep for
+`Data Privacy|RA 10173|consent|lawful basis` across the tree answers nothing, which is the correct outcome for a
+school that has not yet stated its notice, not a missing module.
+
+**The matrix gaps this fortnight produced, G-44 through G-50** — G-48 and G-49 are closed and now proved: the
+student credential hash is hidden from every payload, and the clinical load happens only for an account that holds
+the clinic's own right. G-45 is half closed: both notification listeners commit after the transaction that queued
+them, while the duplicate-notice key remains open behind G-36. G-46 is closed for eight of the nine dashboard cards.
+G-44 (a decline, rejection or hold notifies nobody) and G-50 (the `documents` disk shares the private root that the
+served `local` disk sits under) are open. G-47 is now **contained**: its ownership half was closed the same day — the
+single mark-read endpoint refused to *write* another desk's notice but still answered `{"ok": true}`, so a bell could
+grey out a notice nobody cleared, and it now refuses with a named 403 (`NotificationMarkReadOwnershipTest`, four
+cases, proved by `mutate-g47-mark-read-ownership.php` at three legs). Its other half — a notice carrying no deep
+link, so the desk must hunt for the record — stays open because item 1 on the 2026-10-29 sheet asks where each
+notice should land, and that is the school's answer, not a refactor. None of the seven has a row in the authority document's §28.3 yet — the register stops at G-43 — which is
+task #37, and it is the reason a code comment in this batch had to be corrected rather than left promising a row
+that does not exist.
+
+### Evidence for the batch, from the instruments it names
+
+Whole suite 977 passed / 6,400 assertions, with `artisan test --list-tests` discovering the same 977 — the pairing
+this file requires after any batch that adds or moves a test method, because a suite can stay green while a pinned
+case stops running. **That run belongs to the dashboard half of this addendum only.** It predates the mark-read
+refusal and its four new cases, so it is not this addendum's final verdict: a second whole-suite run was still in
+flight as this section was written, and the pass condition for it is a `Tests:` tally whose case count equals a
+fresh `--list-tests` discovery at 981 (977 + the four ownership cases). Read both lines before repeating any total
+from this paragraph, and state no figure here until they agree — a revision row that quotes a run the next edit
+invalidated is the defect this file keeps refusing to leave behind. PHPStan 0 errors; Pint PASS over 425 files. ESLint and Vite were **not** re-run, and that is
+stated rather than hidden: this batch changed no file under `resources/js`. The docx holds 742 citations across 162
+files with 0 line problems; lane 37 resolves 1,019 section references with 0 problems; lane 37b judges 876 references
+from repo comments and the markdown with 0 problems; the markdown gate reads 182 `File.php:NN` pointers across 16
+files with 0 problems. `docx-ooxml-check.php` answers CLEAN, `verify-docx.php` CONSISTENT, and real Word opened a
+hash-identical copy at 241 pages / 186 tables and left no process behind.
+
+Two mutant harnesses were written for this batch and both were re-cut once before they earned their pass:
+`mutate-g46-dashboard-queues.php` answers `ALL KILLED: 4 leg(s), 0 bad` — and its admission leg **survived** the
+first run, because the college case asserted only the evaluation badge, so half of G-46 had no test at all until the
+leg refused to die. `mutate-g48-g49-privacy-tests.php` answers `ALL KILLED: 5 leg(s), 0 bad` — and its gate leg
+survived first because it deleted the whole clinic gate, which is what the fix achieves; the defect was the
+unconditional load, so the leg was re-cut to plant exactly that. Both harnesses restore their files by hash and the
+tree was verified afterwards by reading the files, not by trusting an exit code.
+
+### What this batch did not finish, stated as work
+
+Four desk lists (assessment, accounting, registrar, clearance) still restate their filters inline, so their badge
+agreement is tested rather than structural (task #41). Thirty-four of the thirty-six shared tables still offer no
+order (task #28). The authority document's §28.3 does not yet carry G-44 … G-50 (task #37). The §24 paragraph that
+described the notification payload as double-encoded was re-taken inside this addendum (task #40 closed): it now
+states that both listeners pass the array, names `SendEnrollmentNotification.php:72` and
+`SendWorkflowNotification.php:95` — each asserted against the line it names before the write — and says the cast is
+the only encoder; the same pass tightened that sentence's model pointer from the range that began on `$fillable` and
+stopped one line short of `casts()` to the method's own span, and it spliced out a bare `:57` that sat alone in a
+styled run, which is the one edit no text needle could reach. `lane92`'s heading-level binding was added in this same addendum rather than left owed (task #42 closed): the
+line matcher and its falsification are described above.
+The G-34 harness's cross-office leg was closed inside this same addendum rather than left owed:
+`mutate-g34-clearance-reason-tests.php` now answers `ALL KILLED: 5 leg(s), 0 bad`, its fifth leg removing
+`ClearancePolicy::approveRequirement()`'s office test and requiring
+`a_desk_outside_the_lines_office_cannot_refuse_it_at_all` to report one failure — the control reads six cases green
+before anything is planted and again after every restore, and the restore check now covers both files the harness
+mutates, not only the controller. §17's sentence that "no leg there would notice a policy widening" stays as the
+2026-10-27 reading it was, because that day it was true; this is the row that says what changed. Nothing here is
+committed: the batch sits in the working tree, and a commit and a push each need their own word from the owner.

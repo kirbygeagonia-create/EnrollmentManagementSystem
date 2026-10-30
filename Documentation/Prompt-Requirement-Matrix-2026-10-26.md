@@ -213,7 +213,7 @@ guard names its own children. Absence of the trait is not absence of the rule.
 | 9 | Office and department scope enforced server-side | Working | `CollegeScope::of*()` on every list; `EvaluationPolicy.php:37,53`; `ClearancePolicy.php:108` |
 | 9 | An admin sees role, office, unit and permissions, and the change is audited | Working | `UserManagementController.php:46-54,173-190` |
 | 9 | **Audit history for the seven named action families** | **Gap → G37** | `AppServiceProvider.php:43-52` observes every model, so `auditlogs.action` is only created, updated or deleted; no family is queryable, and a reason survives only where it happens to be a column on the mutated row |
-| 10 | Least privilege, private disks, validated uploads, CSRF, throttle, secure sessions, redacted logging, no student-facing route | Working | `filesystems.php:58` declares no `serve` and no `url`; `AdmissionController.php:433` and `IDController.php:235` are the only file doors; `mimes` rules at `AdmissionController.php:456` and `IDController.php:201`; CSP and HSTS in `SecurityHeaders`; observer redaction pinned by `AuditLogRedactionTest` |
+| 10 | Least privilege, private disks, validated uploads, CSRF, throttle, secure sessions, redacted logging, no student-facing route | Working | `filesystems.php:58` declares no `serve` and no `url`; `AdmissionController.php:433` and `IDController.php:232` are the only file doors; `mimes` rules at `AdmissionController.php:456` and `IDController.php:198`; CSP and HSTS in `SecurityHeaders`; observer redaction pinned by `AuditLogRedactionTest` |
 | 10 | Minimise what offices see of clinical detail | Open question → G38 | `assessmentNotes` is withheld, but `clinicrecords.findings` renders on the Student 360 (`resources/js/Pages/Students/Show.jsx:518-519`) to any holder of `students.view`; the prompt assigns disclosure to the school and its Data Protection Officer |
 | 12 | Fifteen backend and database rules | Working, one documented exception | transactions around multi-write acts, `decimal(10,2)` money and no float anywhere, `OfficeId` rather than bare integers, three status enums matched to their columns, additive migrations only; the exception is ENUM `ALTER` SQL, which the project's own driver-guard rule covers |
 | 15 | Run the repository's real commands, narrow first then whole | Working | `package.json` defines `lint => eslint resources/js`, so the prompt's `npm run lint` exists; CI runs the suite whole, as AGENTS.md requires |
@@ -305,12 +305,21 @@ headings, counts the enumerated lines each one carries, and asks whether this ma
 `§16` or as the spelled form "section 16") in a table column that can hold one.
 
 Measured by that tool, with the semantics stated in the paragraph you are reading now: **73 headings, 39 numbered,
-48 carrying enumerated lines, 357 lines in total — 28 headings covered (229 lines), 0 PARENT-ONLY, 0 UNVISITED,
-20 UNNUMBERED (128 lines).** The buckets are asserted to add up, and a run whose buckets do not equal the population
-refuses. Eleven of the matrix's thirteen markdown tables expose a section column, and every column the census reads
-is headed either `§` or a per-line header that names the section it enumerates (`§4 line`); 38 distinct section
-numbers come out of them. The 128 lines under unnumbered headings are the §4 audit checklist's own groups and the
-acceptance-list sections, which this census cannot bind by number and which the register scores in prose above.
+48 carrying enumerated lines, 357 lines in total — 28 headings credited by a section cell (229 lines) and one more
+credited by every one of its own quoted lines (4 lines), 0 PARENT-ONLY, 0 UNVISITED,
+19 UNNUMBERED (124 lines).** The buckets are asserted to add up, and a run whose buckets do not equal the population
+refuses. The line-level credit is new as of 2026-10-30 and was added the same day the limit it removes was found:
+before it, an unnumbered prompt heading went into UNNUMBERED **before** the section column was consulted, so a table
+that scored all of its lines could not be credited at all. Fourteen of the matrix's sixteen markdown tables expose a section column (re-read 2026-10-30: it was eleven
+of thirteen when this section was written, and three tables have been added since — the gap register's
+machine-readable rows, the dashboard card table, and §5's identity rows), and every column the census reads is headed
+either `§` or a per-line header that names the section it enumerates (`§4 line`); thirty-eight distinct section numbers
+came out of the eleven it read on 2026-10-29, and the census prints no such tally, so that figure is a dated reading
+rather than a live one. The 124 lines still under unnumbered headings are the §4 audit checklist's own groups and the
+acceptance-list sections. The census now reads those headings by their own line text rather than by a number, and it
+credits one only when EVERY line of it is quoted in this file — which, measured today, §5's identity group is and the
+other nineteen are not, with 0 heading partially quoted. A heading in this bucket is therefore a statement about this
+register, not about the build: the requirement line is un-scored here, and the tool can now say which.
 
 Three corrections had to be made before that figure could be trusted, and all three were the instrument's own. The
 first run of the column reader credited **zero** headings while tracing 140 section cells: the pattern was `^§?\s*(\d+…)$`
@@ -363,9 +372,9 @@ flight, and crediting a section before its evidence exists is how an unread surf
 **What the census still owes.** §8 (9 lines) and §10 (9 lines) are the numbered sections with no verdict on file, and
 the 6 PARENT-ONLY rows (§3.3, §6.2, §7.5, §7.7, §7.8, §7.10) are the register citing a chapter when the requirement
 lives in a subsection — those six are a citation question, not necessarily a build question, and each needs its
-subsection read against the rows that already exist. The 128 lines under unnumbered headings are outside this
-instrument entirely; they are the §4 audit checklist and the acceptance-list groups, which the matrix's earlier
-sections score in prose.
+subsection read against the rows that already exist. The 124 lines that remain under unnumbered headings are the §4
+audit checklist and the acceptance-list groups: the census can now read them line by line, and it reports them
+uncovered because those lines are not quoted here, not because the tool cannot see them.
 
 ## 10. §8 and §10, scored line by line (2026-10-29, lane 93): six new gaps
 
@@ -378,12 +387,12 @@ nothing in this table depends on who holds `clinic.view`.
 |---|---|---|---|
 | 8 | New item, return, approval, hold or handoff notifies the correct active staff | PARTLY | Returns and step handoffs are addressed correctly (`app/Support/WorkflowInbox.php` `RETURNED_HANDOFF`, read by the listeners), and a new box notifies the desk still owed. **A per-requirement clearance decline and an admission rejection write no notification at all**: the only two writers of a `notifications` row in `app/` and `tools/` are `SendWorkflowNotification` and `SendEnrollmentNotification`. → **G-44** |
 | 8 | Prevent duplicates on retry; dispatch after the transaction commits where appropriate | PARTLY, weakest clause in either section | Act-level dedup exists (a second signature on one box is refused) and one status change writes one message, pinned. But `afterCommit` occurs **0 times** across `app/`, `config/` and `database/`, both listeners implement `ShouldQueue`, both events fire inside a transaction, and `database/migrations/2026_08_02_1000000042_create_notifications_table.php:20` carries only a **non-unique** composite index. With `QUEUE_CONNECTION=database` (`.env.example:80`; this box ships `sync`, which hides it) a rolled-back request still leaves a queued notice and a retried job re-inserts every row. → **G-45** |
-| 8 | A dashboard count must not contradict the list underneath it | PARTLY, one live contradiction | `app/Http/Controllers/DashboardController.php:145` counts `'evaluation' => Enrollments::where('enrollmentStatus', Pending)->count()` — institution-wide, Pending only — while the page it opens, `app/Http/Controllers/Evaluation/EvaluationController.php:91-97`, is `CollegeScope::ofEnrollments(...)` and lists `Pending` **and** `ReturnedToEvaluation`. A college-bound department's badge therefore over-states and mis-labels its own queue, and the existing test pins only *which* keys appear. The workflow monitor gets this right by reading the same helper the bell uses. → **G-46** |
-| 8 | Show title, action required, record reference, timestamp and a protected deep link | PARTLY | Title prose and a school-day timestamp are there, and the empty/stalled states are genuinely handled (`resources/js/Layouts/AuthenticatedLayout.jsx:39-42,270-282`). **The bell row is a message and a time** (`:285-291`): no title/action-required field and no link to the record, although the payload already carries `enrollmentId`. Mark-read by a non-recipient is a silent no-op returning `{ok:true}` rather than a refusal. → **G-47** |
+| 8 | A dashboard count must not contradict the list underneath it | CLOSED for eight of the nine cards (2026-10-30, lane 96) | The defect as first written: `DashboardController::queueCounts()` counted `'evaluation' => Enrollments::where('enrollmentStatus', Pending)->count()` — institution-wide, Pending only — while the page it opens, `app/Http/Controllers/Evaluation/EvaluationController.php:91-97`, is `CollegeScope::ofEnrollments(...)` and lists `Pending` **and** `ReturnedToEvaluation`. All eight queues now come from `App\Support\DeskQueues`, and `ClinicController` / `IDController` build their own lists from that same class, so those two pairs are one call rather than two copies. The ninth card, `blocking`, is deliberately not unified: its badge counts enrollments waiting at that office while `BlockingController::index()` lists timetable blocks, and which subject the card names is item 9 on the 2026-10-29 sheet. Pinned by `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 32 assertions) and proved by `storage/app/scratch/mutate-g46-dashboard-queues.php` (4 legs, all killed). → **G-46** |
+| 8 | Show title, action required, record reference, timestamp and a protected deep link | PARTLY | Title prose and a school-day timestamp are there, and the empty/stalled states are genuinely handled (`resources/js/Layouts/AuthenticatedLayout.jsx:39-42,270-282`). **The bell row is a message and a time** (`:285-291`): no title/action-required field and no link to the record, although the payload already carries `enrollmentId`. Mark-read by a non-recipient used to be a silent no-op returning `{ok:true}`; it is a named 403 since 2026-10-30, pinned by `tests/Feature/Notification/NotificationMarkReadOwnershipTest.php` and proved by `storage/app/scratch/mutate-g47-mark-read-ownership.php`, so what is left in this row is the title and the link. → **G-47** |
 | 8 | Route on student classification and department scope too | PARTLY | Workflow instance, configured office and active status are honoured by `WorkflowInbox::actors()`; `unitId`, `studentType` and `applicantType` appear **nowhere** in `app/Listeners/` or `WorkflowInbox.php`, so a college-bound desk's bell goes to every active account in the office while its list is `CollegeScope`-filtered. → folded into **G-44** |
 | 10 | Never log or leak passwords, tokens, or unnecessary sensitive records | PARTLY, one real exposure | Write-time redaction is deliberate and works (`app/Observers/AuditLogObserver.php:43` `SENSITIVE_KEY_PATTERN` = `/password|hash|token|secret/i`). But `app/Models/Students.php` declares **no `$hidden`** where `app/Models/Staffusers.php:30-33` hides `passwordHash` and `remember_token`, and `app/Http/Controllers/StudentController.php:81` passes the whole model to Student 360 — so a bcrypt student credential hash and `students.username` are serialised into every payload any `students.view` account can open. No code reads `$student->passwordHash` after the fact (every hit is a write: intake, reset, import, admin create), so hiding it is safe. → **G-48**, the most urgent item in this table |
 | 10 | Minimise what offices share — a desk needs the clinic *outcome*, not the notes | PARTLY, second exposure | The clearance path is clean (no Clinic read exists in the clearance or registrar controllers). But `StudentController.php:72` eager-loads `enrollments.clinicrecords` for **every** Student 360 and `resources/js/Pages/Students/Show.jsx:506,518-519` renders the card "Physical exam vitals, PhilHealth registration, and clinical findings" including `cr.findings`. Nothing asks whether the requester may see clinical text — the prompt's own worked example of what must not be shared. → **G-49** |
-| 10 | Private storage served only through authorized routes | PARTLY | The `documents` disk declares no `serve` and no `url` (`config/filesystems.php:58-63`), uploads are read through `authorize`d actions (`AdmissionController.php:458`, `IDController.php:237`), and the served-path gate is pinned. The residual: `documents` shares `storage_path('app/private')` with the *served* `local` disk, so a student's photo sits under `/storage/{path}` with only the `APP_KEY` HMAC in front of it — `ems:preflight` names that fact ("that signature is the door") but no test enforces physical separation. → **G-50** |
+| 10 | Private storage served only through authorized routes | PARTLY | The `documents` disk declares no `serve` and no `url` (`config/filesystems.php:58-63`), uploads are read through `authorize`d actions (`AdmissionController.php:458`, `IDController.php:234`), and the served-path gate is pinned. The residual: `documents` shares `storage_path('app/private')` with the *served* `local` disk, so a student's photo sits under `/storage/{path}` with only the `APP_KEY` HMAC in front of it — `ems:preflight` names that fact ("that signature is the door") but no test enforces physical separation. → **G-50** |
 | 10 | RA 10173, lawful basis, DPO review, retention policy | WAITS ON THE SCHOOL, correctly un-invented | Grep for `Data Privacy`, `RA 10173`, `NPC`, `privacy notice`, `lawful basis`, `consent` across `app/`, `config/`, `routes/`, `database/`, `Documentation/` returns **nothing**: no privacy notice, no DPO role or account, no classification of sensitive personal information, no retention schedule. Deletion is restrained rather than scheduled and the prompt forbids inventing deadlines, so this is a school input, not a code gap. Two questions are written for the decision sheet rather than a migration. |
 | 10 | Least privilege; CSRF, escaping, rate limiting; grade confidentiality; no student portal | VERIFIED | Policies gate the reads and `CollegeScope` is the single boundary statement, pinned by `PermissionMatrixTest` and `AbilityNameCollisionTest` (and the new sort test refuses `sort=passwordHash`). CSP and headers are pinned, `{!!` appears in no view, login is rate-limited at five attempts, one `web` guard maps to `Staffusers` so no student can authenticate, and guests are refused all thirteen desks. Two operator-side caveats are recorded, not fixed here: `.env.example:57` ships `SESSION_SECURE_COOKIE=false` and the CSP carries `unsafe-inline unsafe-eval`. |
 
@@ -403,15 +412,102 @@ claim the evidence above does not already support: the verdict column names the 
 
 | Id | Gap | § | Phase | Risk | Smallest coherent fix | Verification | Needs a ruling? |
 |---|---|---|---|---|---|---|---|
-| G-48 | ~~`Students` declares no `$hidden`, so a student's bcrypt credential hash is serialised into every Student 360 payload~~ **closed 2026-10-29** | 10 | 1 | High for a public-network install | `app/Models/Students.php` now hides `passwordHash`, matching the `Staffusers` precedent; no code reads the hash after the fact, only writes | `tests/Feature/Student/Student360PrivacyTest.php` — the hash is absent for both a `students.view` desk and the clinic, while the column is asserted still to hold a hash; a mutant harness is owed (#39) | No |
-| G-49 | ~~Student 360 eager-loads every enrollment's clinic records and prints the findings text with no field-level gate~~ **closed 2026-10-29** | 10 | 1 | High — the prompt's own example of what must not be shared | `app/Http/Controllers/StudentController.php` loads `enrollments.clinicrecords` only when the requester holds `clinic.view`, so the page has nothing to print for anyone else | same file, directional: a non-holder receives no `clinicrecords` key at all and the clinic still receives its findings | No, but how far the gate goes is item 3 on the 2026-10-29 sheet |
+| G-48 | ~~`Students` declares no `$hidden`, so a student's bcrypt credential hash is serialised into every Student 360 payload~~ **closed 2026-10-29** | 10 | 1 | High for a public-network install | `app/Models/Students.php` now hides `passwordHash`, matching the `Staffusers` precedent; no code reads the hash after the fact, only writes | `tests/Feature/Student/Student360PrivacyTest.php` — the hash is absent for both a `students.view` desk and the clinic, while the column is asserted still to hold a hash; proved by `storage/app/scratch/mutate-g48-g49-privacy-tests.php` — five legs (the `$hidden` deleted, a `$hidden` naming the wrong column, the clinic load made unconditional again, the gate test inverted, the holder's load widened), all killed, tree restored by hash | No |
+| G-49 | ~~Student 360 eager-loads every enrollment's clinic records and prints the findings text with no field-level gate~~ **closed 2026-10-29** | 10 | 1 | High — the prompt's own example of what must not be shared | `app/Http/Controllers/StudentController.php` loads `enrollments.clinicrecords` only when the requester holds `clinic.view`, so the page has nothing to print for anyone else | same file, directional: a non-holder receives no `clinicrecords` key at all and the clinic still receives its findings; proved by the same harness, whose first cut of that leg survived because deleting the load outright is what the fix achieves — the defect was the UNCONDITIONAL load, and the leg was re-cut to plant that | No, but how far the gate goes is item 3 on the 2026-10-29 sheet |
 | G-44 | A clearance decline, an admission rejection and a hold notify nobody; only two listeners write a notification row, and a college-bound desk's bell ignores student classification and department scope | 8 | 2 | Medium — the office is told by the workflow, not by the bell | one shared addressee helper that asks `CollegeScope` as the list does, plus a notice on the per-requirement decide acts | a case per act, asserting which office receives it | Partly: whether every decline must ring a bell is a school question (item 1) |
 | G-45 | ~~No `afterCommit` anywhere while both notification listeners are `ShouldQueue`, so a retried job re-inserts rows a rolled-back request queued~~ **the deferral half closed 2026-10-29**; the duplicate-at-rest half remains | 8 | 1 | Medium, and invisible locally because `.env` ships `sync` | done: `public bool $afterCommit = true;` on both listeners, so a signature or transition that rolled back cannot ring the next desk — and deliberately *not* by dropping `ShouldQueue`, which would run the listener inside the transaction instead. Outstanding: a unique key on `notifications` so a re-run cannot insert a second row | `tests/Feature/Notification/NotificationAfterCommitTest.php` (4 cases over both listeners: deferred, and still queued), plus the five existing bell cases unchanged | **Yes for the unique key** — it is a migration decision, the G-36 question; no for `afterCommit` |
 | G-46 | The dashboard's queue counts are institution-wide: **no** key applies `CollegeScope`, and `evaluation` additionally omits `ReturnedToEvaluation`, so a college desk's badge contradicts the list it opens | 8 | 1 | Medium for a college desk. Reading the endpoint in full widened this finding: `admission`, `assessment`, `accounting`, `registrar`, `id` and `clearance` all count across the whole school, while `blocking` and `clinic` correctly use first-pending-step logic that is also unscoped. The Registrar entry even carries a comment promising to "mirror RegistrarController::index … so the badge must match what the desk sees" — and it does not, because the desk is college-bound and the count is not | One definition of "this desk's queue", shared by the count and the list, exactly as the workflow monitor already does it: the same `CollegeScope::of…()` call and the same status set, reached through a helper rather than restated | A directional case: seed a row in another college and a `ReturnedToEvaluation` row, then assert the badge equals the row count of that desk's own queue, for a bounded and an unbounded account | No |
-| G-47 | The bell row is a message and a timestamp: no title or action-required field, no deep link to the record, and a mark-read by the wrong recipient returns `{ok:true}` | 8 | 2 | Low-to-medium; the payload already carries `enrollmentId` | render title, action and a protected link in `resources/js/Components/AuthenticatedLayout.jsx`, and make the scoped mark-read refuse | a case that the refusal is a refusal, and reading the JSX props (no JS test suite) | No |
+| G-47 | The bell row is a message and a timestamp: no title or action-required field, no deep link to the record, and a mark-read by the wrong recipient answering `{ok:true}` rather than refusing | 8 | 2 | Low-to-medium; the payload already carries `enrollmentId` | render title, action and a protected link in `resources/js/Components/AuthenticatedLayout.jsx`, and make the scoped mark-read refuse | a case that the refusal is a refusal, and reading the JSX props (no JS test suite). the ownership half is pinned by `tests/Feature/Notification/NotificationMarkReadOwnershipTest.php` (4 cases, 10 assertions) and proved by `storage/app/scratch/mutate-g47-mark-read-ownership.php` (3 legs, all killed) | No |
 | G-50 | The `documents` disk shares `storage/app/private` with the *served* `local` disk, so a student's photo sits behind nothing but the `APP_KEY` HMAC | 10 | 1 | High if `APP_KEY` is ever blank or leaked | give `documents` its own root outside the served tree, or turn the served disk's `serve` off | extend `ServedUploadPathTest` to the documents path and add a preflight row that refuses a shared root | No |
 
 **Two of the seven are already closed** (G-48, G-49, both on 2026-10-29, both pinned by the four cases named). The
 struck-through form is the register's convention so the closure is visible and the claim is not re-asked. Of the rest,
 G-45's unique-key half and G-44's "must every decline ring" are school decisions; G-46, G-47 and G-50 are ours to
 build. That is the whole of the §8/§10 remainder.
+
+### G-46 closed for eight of the nine cards (2026-10-30, lane 96)
+
+`App\Support\DeskQueues` now holds each dashboard queue's population — no eager loading, no search, no ordering —
+and `DashboardController::queueCounts()` is built from it. Three drifts were measured in the old endpoint before
+anything was changed: `admission` and `evaluation` counted the whole school while the pages behind them are bounded
+by the desk's college, `evaluation` counted `Pending` only while its desk has always also listed what the Registrar
+sent back, and `assessment` counted **enrollments** where its page lists **fee sheets** (`accounting` and `id` had
+the same subject slip from the other side). `CollegeScope::ofAssessments()` was added on the way, because passing a
+`Studentassessments` builder to `ofEnrollments()` asked that model for a `course` relation it does not have.
+
+That last error is the finding worth keeping, and it was followed by its mirror. Three of the first five cases passed
+**before** the relation error was fixed, because they ran as an account with no college — and the unbounded path
+returns the query untouched, so the scoped branch was never executed. Only the college-bound case reached it. The
+repair, `CollegeScope::ofAssessments()`, then scoped the two assessment badges by college — and that was the same §8
+defect wearing the fix's clothes: `AssessmentController` and `AccountingController` apply no `CollegeScope` to their
+own lists at all, so a college-bound desk would have got a badge of 1 over a page of 2. The scope was therefore
+**removed from the badge**, not left beside an unbounded list, and `CollegeScope::ofAssessments()` went with it.
+Measured on live `ems` before that decision: the only college-bound accounts are six office-7 teachers
+(`dept.caf`, `dept.cjc`, `dept.cbg`, `dept.ctic`, `dept.cee`, `dept.cte`), holding evaluation and admission rights
+alone, so no bounded account can open any of the six unbounded desks today. Whether those desks *should* be
+college-bounded is a dormant question, not a live contradiction, and it is recorded here rather than answered by a
+signature that implies a scope nobody applies.
+
+`tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 32 assertions) compares each badge to the
+number the desk itself prints, in **both** directions: bounded where the list is bounded (`evaluation`, `admission`)
+and institution-wide where the list is (`assessment`, `accounting`, `registrar`, and the two shared-call desks). The
+second direction is the one the harness added, because a count-equality test written only for an unbounded desk
+certifies nothing about scoping — and `storage/app/scratch/mutate-g46-dashboard-queues.php` proved that in its own
+first run: four legs, and **one survived**. The college case asserted only the `evaluation` badge, so planting the
+institution-wide `admission` count changed no verdict — the admission half of G-46 had no test at all until that leg
+refused to kill it. A second leg reported `needle matched 0 times`, which is the harness's own age rather than a
+surviving defect, and both were fixed before the run answered `ALL KILLED: 4 leg(s), 0 bad`.
+
+| § | Card | Now counted by | Note |
+|---|---|---|---|
+| 8 | admission, evaluation, assessment, accounting, registrar, clinic, id, clearance | `DeskQueues` | each equals the desk's own tile or paginator total |
+| 8 | blocking | `DeskQueues::waitingAtFirstPendingBox(OfficeId::Blocking)` for its predicate, its subject still a question | the badge counts enrollments waiting at that office; `BlockingController::index()` lists timetable blocks. Which subject the card names is item 9 on the 2026-10-29 sheet, so it is asked rather than decided by a refactor |
+
+`ClinicController::index()` and `IDController::index()` were moved onto the same builders their cards use, so those
+two equalities are now **one call**, not a duplicated rule; the other four lists still build their queries inline,
+and for those the agreement remains *tested* rather than structural. Moving each of them onto `DeskQueues` is the
+next step, and the class docblock says which of the eight are shared calls and which are only measured to agree.
+
+## 11. §5 scored line by line (2026-10-30, lane 96): identity, the four types, and the returnee
+
+The coverage census left prompt §5's group "Identity and type coverage" in the UNNUMBERED bucket: the register had
+rows that *touch* identity (G-2's draft intake, G-3's crediting, G-48/G-49's payload) but no row that answers the
+four enumerated lines themselves. This section scores them, one line per row, against the checkout read today rather
+than against the earlier pass notes — every pointer below was opened before it was written, and the two numbers that
+are quoted as prose are quoted as prose on purpose, because a colon form here is a live citation the gate will judge.
+
+| § | Line | Status | Evidence read on 2026-10-30 |
+|---|---|---|---|
+| 5 | A first-year applicant remains an applicant during intake; no duplicate student/person is created as it progresses | Working | `Students::create` appears once in the whole admission path — `AdmissionController.php:236`, inside `store()`'s transaction, on both the draft and the full branch — and the approval and issuance paths create `admissions` and `enrollments` rows only (`EnrollmentIssuer.php:37-39` takes an existing `studentId`). The person cannot be duplicated even by accident: `students.schoolIdNumber` carries a UNIQUE key, so a second intake under one number is refused by the server rather than by a screen. Pinned by `tests/Feature/Admission/DraftIntakeTest.php` |
+| 5 | Transferee, shifter, continuing and returnee follow their correct distinct rules | Working, with one vocabulary note | `StudentType` is the four-way enum the line asks for: `firstYear`, `continuing`, `transferee`, `shifter` (`StudentType.php:7-10`). The rules differ where the prompt says they must — a transferee or shifter may file credited subjects for the department to decide (`Creditedsubjects::approved()`, G-3), a continuing student skips the assessment box (`WorkflowService.php`'s `$includesAssessment`), and the credit-equivalency gates read the approved set only. The odd one is the prompt's word **returnee**: the schema spells that idea as `EnrollmentType::Old` (`EnrollmentType.php:7-8`, `new` / `old`) rather than as a fifth `StudentType`, so "returnee" is a property of the enrollment, not of the person. That is a naming difference, not a missing rule, and it is recorded rather than renamed — renaming a persisted enum value is a migration and a data decision the school has not been asked for |
+| 5 | A returnee reuses existing identity and historical grades/enrollments | Working | `EvaluationController::returningStudents()` (the private method at `EvaluationController.php:295`) selects a person who already holds a non-dropped enrollment, by name **or** by `schoolIdNumber`, and hands the desk that existing `studentId` (`:303`, `:317`) — the issue path then seats a new enrollment on the same person through `EnrollmentIssuer::seatHolder()`. The history travels with it: `AcademicStandingService::gradeHistory()` (G-1) reads the rows for every year and semester, deliberately including the term under review and any ungraded row, and answers null where nobody entered a grade so the desk dashes it instead of counting a pass |
+| 5 | A deactivated staff user cannot authenticate or act on records | PARTLY, and the half that is open is a school question | The authenticate half is closed: `AuthenticationTest` refuses a deactivated account and the paired case authenticates the *same* account once it is active again, so the case cannot pass by the password failing (G-42). The **act on records** half is not closed and is deliberately not guessed: an account deactivated mid-session keeps its session until it expires, and whether the next request must be refused — and what happens to the boxes it already signed — is item 2 on `Documentation/School-Decision-Sheet-2026-10-29.md`. A middleware that kills live sessions is a one-file change; it is withheld because the answer decides whether a signed box re-opens, which is the school's rule, not the developer's |
+
+Two consequences, and the first one is a correction written after measuring rather than before. This table exposes a
+`§` column, and I expected the census to move with it — it did not. Re-run after this section was written, the
+census answered exactly what it answered before: 28 headings covered over 229 lines, 20 UNNUMBERED over 128 lines, and
+"Identity and type coverage" still in the UNNUMBERED list. The reason was in the instrument: `lane92-prompt-coverage.php`
+put a heading in UNNUMBERED **before** it consulted the section column, because a prompt heading that carries no number
+has no number for a column cell to name — which §9 had already said in so many words, so the error was mine for writing
+a sentence about a limit and then treating it as a hole.
+
+That limit has now been removed, the same day, and the removal is what makes this section's rows judgeable: the census
+binds an unnumbered heading by **its own requirement lines**. Each enumerated line of the heading is normalised on
+both sides and looked for in the matrix; all of them found is `LINE-COVERED`, some is `LINE-PARTIAL` with the count
+printed beside the heading, none stays `UNNUMBERED`. Matching is verbatim rather than fuzzy on purpose — a loosened
+matcher is how a census starts crediting work that was never scored, and §9 records that error being made once already.
+Measured after the change, with the buckets still asserted to add to the population of 48 headings:
+**28 covered by section cell (229 lines), 1 covered by every line quoted (this section's four lines), 0 partially,
+0 PARENT-ONLY, 0 UNVISITED, 19 UNNUMBERED (124 lines)** — so the register now reaches 29 headings and 233 of the
+prompt's 357 requirement lines, and §9's figures were re-taken to say so.
+
+The change was not accepted on its own output. On a throwaway copy of this file with one quoted line struck out, the
+heading falls from `LINE-COVERED [4/4 lines]` to `LINE-PARTIAL [3/4 lines]` and the sum check still agrees; run
+against the real matrix again, it returns to 4/4. A matcher that never changed its verdict under a planted deletion
+would have been crediting the heading from something other than the lines, which is the busy-instrument failure this
+file refuses in every lane.
+
+The second consequence is a naming fact worth keeping in front of anyone who reads the enum: the prompt's **returnee**
+is `EnrollmentType::Old` in the schema. A future pass that looks for a fifth `StudentType` will find none and may
+conclude the requirement is unmet; it is met, under a different word, and the difference is recorded in the row above
+instead of being renamed by a migration nobody was asked for.

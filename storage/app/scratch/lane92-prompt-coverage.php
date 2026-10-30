@@ -62,7 +62,7 @@ foreach ($promptLines as $text) {
         $title = trim($m[1]);
         // A heading's number is whatever leads it: "6.4 Returns, holds…" or "4. Required Initial Audit".
         $num = preg_match('/^(\d+(?:\.\d+)*)[.\s]/', $title, $nm) === 1 ? $nm[1] : '';
-        $current = ['num' => $num, 'title' => $title, 'lines' => 0];
+        $current = ['num' => $num, 'title' => $title, 'lines' => 0, 'lineTexts' => []];
         $headings[] = $current;
 
         continue;
@@ -71,7 +71,9 @@ foreach ($promptLines as $text) {
         continue;
     }
     if (preg_match('/^\s*(?:[-*]\s+|\d+\.\s+|\[[ xX]\]\s+)/', $text)) {
-        $headings[count($headings) - 1]['lines']++;
+        $i = count($headings) - 1;
+        $headings[$i]['lines']++;
+        $headings[$i]['lineTexts'][] = $text;
     }
 }
 
@@ -173,12 +175,54 @@ if ($columnsRead === 0) {
 // (The old refusal on an empty `$exact` stood here, before the column scan filled it — a guard that judged a
 // variable the next block had not yet written, which refused a matrix it had not finished reading.)
 
+// A prompt heading with no number of its own cannot be cited by a section cell at all — that is why the UNNUMBERED
+// bucket exists. But the register can still answer the heading's requirement LINES one by one, and a line is a
+// claim the tool can bind without inventing a section number: so the text of each enumerated line is normalised on
+// both sides and looked for in the matrix. Full set found = LINE-COVERED, some = LINE-PARTIAL, none = UNNUMBERED.
+// Matching is verbatim rather than fuzzy on purpose; a loosened matcher is how a census starts crediting work that
+// was never scored, and §9 of the matrix already records that error being made once.
+$norm = static function (string $s): string {
+    $s = strtolower(str_replace(['**', '`'], '', $s));
+    $s = preg_replace('/^\s*(?:[-*]\s+|\d+\.\s+|\[[ xX]\]\s+)/', '', $s);
+    $s = preg_replace('/[^a-z0-9]+/u', ' ', $s);
+
+    return trim((string) $s);
+};
+
+$matrixNorm = $norm($matrixText);
+if ($matrixNorm === '') {
+    fwrite(STDERR, "REFUSED: the matrix normalised to nothing, so no line could be matched — read the file, not this verdict.\n");
+
+    exit(1);
+}
+
 $rows = [];
 foreach ($populated as $h) {
     if ($h['num'] === '') {
-        // An unnumbered heading cannot be cited by section number at all, so calling it UNVISITED would be this
-        // instrument's own breadth, not a hole in the register: it is printed as UNNUMBERED for a reader.
-        $rows[] = ['(none)', $h['lines'], 'UNNUMBERED', $h['title']];
+        $found = 0;
+        $short = 0;
+        foreach ($h['lineTexts'] as $line) {
+            $n = $norm($line);
+            if (mb_strlen($n) < 12) {
+                $short++;
+
+                continue;
+            }
+            if (str_contains($matrixNorm, $n)) {
+                $found++;
+            }
+        }
+        $judgeable = $h['lines'] - $short;
+        if ($judgeable > 0 && $found === $judgeable) {
+            // A heading may not be called covered on an empty reading: if every line was too short to bind, the
+            // instrument measured nothing and must say so rather than report the cleanest-looking bucket.
+            $key = $found > 0 ? 'LINE-COVERED' : 'UNNUMBERED';
+        } elseif ($found > 0) {
+            $key = 'LINE-PARTIAL';
+        } else {
+            $key = 'UNNUMBERED';
+        }
+        $rows[] = ['(none)', $h['lines'], $key, $h['title'].' ['.$found.'/'.$judgeable.' lines]'];
 
         continue;
     }
@@ -192,8 +236,8 @@ foreach ($populated as $h) {
     $rows[] = [$h['num'], $h['lines'], $key, $h['title']];
 }
 
-$counts = ['covered' => 0, 'PARENT-ONLY' => 0, 'UNVISITED' => 0, 'UNNUMBERED' => 0];
-$lines = ['covered' => 0, 'PARENT-ONLY' => 0, 'UNVISITED' => 0, 'UNNUMBERED' => 0];
+$counts = ['covered' => 0, 'PARENT-ONLY' => 0, 'UNVISITED' => 0, 'LINE-COVERED' => 0, 'LINE-PARTIAL' => 0, 'UNNUMBERED' => 0];
+$lines = ['covered' => 0, 'PARENT-ONLY' => 0, 'UNVISITED' => 0, 'LINE-COVERED' => 0, 'LINE-PARTIAL' => 0, 'UNNUMBERED' => 0];
 foreach ($rows as $r) {
     $counts[$r[2]]++;
     $lines[$r[2]] += $r[1];
@@ -210,8 +254,9 @@ foreach ($rows as [$num, $n, $verdict, $title]) {
 }
 $shown = $showAll ? count($rows) : $counts['PARENT-ONLY'] + $counts['UNVISITED'];
 printf("\nheadings printed: %d of %d%s\n", $shown, count($rows), $showAll ? '' : ' (covered rows are folded; --all prints them)');
-printf("coverage: %d headings covered (%d lines), %d PARENT-ONLY (%d lines), %d UNVISITED (%d lines), %d UNNUMBERED (%d lines)\n",
-    $counts['covered'], $lines['covered'], $counts['PARENT-ONLY'], $lines['PARENT-ONLY'],
+printf("coverage: %d headings covered by section cell (%d lines), %d covered by every line quoted (%d lines), %d partially (%d lines), %d PARENT-ONLY (%d lines), %d UNVISITED (%d lines), %d UNNUMBERED (%d lines)\n",
+    $counts['covered'], $lines['covered'], $counts['LINE-COVERED'], $lines['LINE-COVERED'],
+    $counts['LINE-PARTIAL'], $lines['LINE-PARTIAL'], $counts['PARENT-ONLY'], $lines['PARENT-ONLY'],
     $counts['UNVISITED'], $lines['UNVISITED'], $counts['UNNUMBERED'], $lines['UNNUMBERED']);
 printf("sum check: %d headings = the population %d%s\n",
     array_sum($counts), count($rows), array_sum($counts) === count($rows) ? ' — agrees' : ' — REFUSES: the buckets do not add up');

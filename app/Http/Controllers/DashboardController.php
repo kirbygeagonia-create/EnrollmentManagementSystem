@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AdmissionStatus;
-use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrollmentStatus;
-use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
@@ -20,6 +17,7 @@ use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\SchoolTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -132,7 +130,8 @@ class DashboardController extends Controller
      */
     public function queueCounts(Request $request): JsonResponse
     {
-        $visible = $this->visibleQueueKeys($request->user());
+        $user = $request->user();
+        $visible = $this->visibleQueueKeys($user);
 
         $admitted = [];
         foreach ($visible as $key) {
@@ -141,34 +140,29 @@ class DashboardController extends Controller
 
         return response()->json([
             'queueCounts' => array_intersect_key([
-                'admission' => Admissions::where('admissionStatus', AdmissionStatus::Pending->value)->count(),
-                'evaluation' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Pending->value)->count(),
-                'assessment' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Evaluated->value)->count(),
-                'accounting' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Assessed->value)->count(),
-                // Mirror RegistrarController::index — the registrar queue holds
-                // both assessed (payment collected, awaiting approval) and paid
-                // enrollments, so the dashboard badge must match what the desk sees.
-                'registrar' => Enrollments::whereIn('enrollmentStatus', [EnrollmentStatus::Assessed->value, EnrollmentStatus::Paid->value])->count(),
-                // First-pending-step logic (mirrors ClinicController::index): the
-                // stepper only marks the FIRST pending step current, so an enrollment
-                // with both blocking and clinic steps pending must count once — at
+                // Every one of these is the base the desk's own list is built from — see
+                // App\Support\DeskQueues. Restating the filters here is what let the badge count the whole
+                // school while the page behind it showed one college, and count `Pending` while the desk also
+                // listed what the Registrar had sent back.
+                'admission' => DeskQueues::admission($user)->count(),
+                'evaluation' => DeskQueues::evaluation($user)->count(),
+                'assessment' => DeskQueues::assessment()->count(),
+                'accounting' => DeskQueues::accounting()->count(),
+                'registrar' => DeskQueues::registrar()->count(),
+                // First-pending-step logic (shared with ClinicController::index and IDController::index through
+                // DeskQueues::waitingAtFirstPendingBox): the stepper only marks the FIRST pending step current,
+                // so an enrollment with both blocking and clinic steps pending must count once — at
                 // the desk whose step is first — not in both queues.
-                'blocking' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
-                    ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                        ->where('stepStatus', WorkflowStepStatus::Pending->value)
-                        ->where('officeId', OfficeId::Blocking->value)
-                        ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
-                    )
-                    ->count(),
-                'clinic' => Enrollments::where('enrollmentStatus', EnrollmentStatus::Enrolled->value)
-                    ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                        ->where('stepStatus', WorkflowStepStatus::Pending->value)
-                        ->where('officeId', OfficeId::Clinic->value)
-                        ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
-                    )
-                    ->count(),
-                'id' => Idrequests::where('status', IdRequestStatus::Pending->value)->count(),
-                'clearance' => Studentclearances::where('overallStatus', ClearanceOverallStatus::Pending->value)->count(),
+                //
+                // `blocking` is the one badge whose *subject* is still a question rather than a filter: its
+                // badge counts enrollments waiting at that office, while BlockingController::index() lists
+                // timetable blocks. Which one the card should name is the school's to say — it is item 9 on the
+                // 2026-10-29 decision sheet, and the docx register does not hold that question yet. The predicate
+                // it waits on, though, is not in question and comes from the same helper.
+                'blocking' => DeskQueues::waitingAtFirstPendingBox(OfficeId::Blocking)->count(),
+                'clinic' => DeskQueues::clinic()->count(),
+                'id' => DeskQueues::id()->count(),
+                'clearance' => DeskQueues::clearance()->count(),
             ], $admitted),
         ]);
     }

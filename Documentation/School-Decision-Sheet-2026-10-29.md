@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · eight items · 0 answered, 8 left for the school**
+**Issued 2026-10-29 · nine items · 0 answered, 9 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
 development prompt on this date (matrix §7 and §8, gaps G33 to G42). Nothing here is owed by the
@@ -161,10 +161,26 @@ deletion semantics the audit trail must survive.
 
 **Cost and undo.** This one may cost a migration and a scheduled command; the restrained default stays until then.
 
+**9. What should the Blocking card on the dashboard actually count?** `[prompt §8, matrix G-46 — Open]`
+
+**Why this is on the sheet and not in the code.** The other eight cards now count what the page behind them lists
+(`App\Support\DeskQueues`, 2026-10-30). Blocking is the exception, and unifying it would have been a silent choice:
+its badge counts **enrollments whose first open box is the Blocking office**, while `BlockingController::index()`
+lists **timetable blocks** with their capacity and seats. Both are true to a reading of "the blocking queue" — one is
+work waiting for the desk, the other is what that desk actually edits — and the number a coordinator sees before
+clicking is the difference.
+
+**What each answer costs.** If the card should count records waiting, the Blocking page needs the pending-enrollment
+list beside its block table (additive, no schema). If it should count blocks, the badge becomes the page's own
+`stats.blocks` and one line changes. Neither is a migration; both are revertible in one commit.
+
+**Cost and undo.** One card and one query, whichever way it goes. The default until then is unchanged: the badge
+counts enrollments waiting, and the page says plainly that it lists blocks.
+
 ---
 
-**None of these eight is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
-need no ruling; item 8's safety-by-default holds while it waits; items 1, 2, 3, 6 and 7 change only once the
+**None of these nine is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
+need no ruling; item 8's safety-by-default holds while it waits; items 1, 2, 3, 6, 7 and 9 change only once the
 school says which behaviour is intended. Each
 answer comes back off the same way it went in: one commit, plus a reseed for anything that touches
 reference data.

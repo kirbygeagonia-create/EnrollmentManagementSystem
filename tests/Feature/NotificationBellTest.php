@@ -155,13 +155,15 @@ class NotificationBellTest extends TestCase
     {
         $mine = $this->notify($this->registrar, 'Yours', '2026-09-01 08:00:00');
 
-        // The controller filters on ownership instead of authorizing, so the write
-        // cannot land — but it still answers {"ok":true} whether it acted or not.
-        // Pinned: any future fix should return a real refusal, not a quieter lie.
+        // This pin held a lie in place: the controller filtered on ownership instead of authorizing, so the
+        // write could not land yet the endpoint answered {"ok":true} anyway, and the comment asked that any
+        // future fix return a real refusal rather than a quieter lie. G-47's ownership half landed on
+        // 2026-10-30 and the endpoint now refuses by name, so the expectation IS the refusal — and the row's
+        // read_at is what proves nothing was written, not the body. The fuller ownership pair lives in
+        // tests/Feature/Notification/NotificationMarkReadOwnershipTest.php.
         $this->actingAs($this->cashier)
             ->postJson(route('notifications.read', $mine))
-            ->assertOk()
-            ->assertJson(['ok' => true]);
+            ->assertForbidden();
 
         $this->assertNull($mine->fresh()->read_at);
 

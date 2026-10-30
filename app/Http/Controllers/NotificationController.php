@@ -48,9 +48,9 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
 
-        if ($notification->notifiable_type === Staffusers::class && $notification->notifiable_id === $user->userId) {
-            $notification->update(['read_at' => now()]);
-        }
+        abort_unless($notification->notifiable_type === Staffusers::class && $notification->notifiable_id === $user->userId, 403, 'That notice belongs to a different desk, so this account cannot mark it read.');
+
+        $notification->update(['read_at' => now()]);
 
         return response()->json(['ok' => true]);
     }

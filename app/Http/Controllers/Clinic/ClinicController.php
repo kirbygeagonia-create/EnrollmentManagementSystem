@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Clinic;
 
 use App\Enums\ClinicRecordStatus;
-use App\Enums\EnrollmentStatus;
 use App\Enums\OfficeId;
-use App\Enums\WorkflowStepStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Clinicrecords;
 use App\Models\Enrollments;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,13 +32,10 @@ class ClinicController extends Controller
     {
         $this->authorize('viewAny', Clinicrecords::class);
 
-        $query = Enrollments::with(['student', 'course', 'term', 'clinicrecords'])
-            ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                ->where('stepStatus', WorkflowStepStatus::Pending->value)
-                ->where('officeId', OfficeId::Clinic->value)
-                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', [WorkflowStepStatus::Pending->value])
-            )
+        // The queue's population comes from App\Support\DeskQueues, which is the same builder the dashboard's
+        // clinic badge counts — one definition of "waiting at the clinic box", not two that must be kept in step.
+        $query = DeskQueues::clinic()
+            ->with(['student', 'course', 'term', 'clinicrecords'])
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('enrollmentId');
 

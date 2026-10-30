@@ -1464,10 +1464,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 - **A pagination census must join the page's rows expression to the action that renders it** (lane 90, §28.3 G-40's
   second half). `storage/app/scratch/lane90-probe-pagination.php` reads `rows={…}` in every page that uses the shared
   table, finds each `Inertia::render('<that component>')` in `app/Http/Controllers`, attributes it to its enclosing
-  action by byte offset, and resolves the prop's value to the assignment inside THAT method. Measured 2026-10-29: 41
-  judged rows over those 36 tables, none unread — 29 receive a paginator, 3 a plain collection (Accounting's daily
-  report, one curriculum's subject list, the settings table) and 4 map the rows in the browser over the prop they were
-  given. No work queue is among the 3, which retires the register's "two of those carry no pagination at all". Three
+  action by byte offset, and resolves the prop's value to the assignment inside THAT method. **The probe prints one
+  row per judged rows-expression, so its two readings are different units and both are true.** Re-read 2026-10-30,
+  the footer answers 41 judged rows over the 36 tables, 0 unread: PAGINATED 29, COLLECTION 4, CLIENT-DERIVED 8 —
+  which sums to 41 because one page can contribute several rows (`Accounting/Show` maps three arrays,
+  `Assessment/Show` three, `Blocking/Show` two, and `Accounting/DailyReport` builds two collections from one
+  action). The **page-level** reading, which is what the register's claims are about, is 29 pages handed a paginator
+  by their own index action, 3 a plain collection (Accounting's daily report, one curriculum's subject list, the
+  settings table) and 4 mapping the rows in the browser over the prop they were given. Quote the unit with the
+  number: a reader who expects pages and meets rows will report a census that never drifted. No work queue is among
+  the three collection pages, which retires the register's "two of those carry no pagination at all". Three
   drafts printed verdicts before any of that was measured: backslash page paths against forward-slash render names
   resolved nothing; a whole-file `paginate(` match condemned the ID hub, the student directory and the audit log while
   all three paginate; and even the action-bound reader failed on its own syntax twice — a bracket inside a `//` comment
@@ -1530,8 +1536,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollments.clinicrecords` and `resources/js/Pages/Students/Show.jsx:506-519` prints `cr.findings`, with no field-level gate — the
   prompt's own worked example of what must not be shared; **G-45** `afterCommit` appears 0 times while both
   notification listeners are `ShouldQueue` and `notifications` has only a non-unique index (`:20`); **G-46**
-  `DashboardController.php:145` counts institution-wide `Pending` while `EvaluationController.php:91-97` is
-  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` (the lane-47 family, live); **G-44** declines and
+  `DashboardController::queueCounts()` counted institution-wide `Pending` while `EvaluationController.php:91-97` is
+  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` (the lane-47 family, live, and closed by lane 96); **G-44** declines and
   rejections notify nobody; **G-47** the bell row is message-plus-time, no deep link, and a non-recipient's mark-read
   returns `{ok:true}`; **G-50** `documents` shares the private root with the served `local` disk. One sweep claim was
   disproved on the way: `'clinic' => ['clinic.view', …]` in `RbacSeeder.php` is a module declaration, not a role
@@ -1540,6 +1546,44 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   which is the correct engineering outcome and not a code gap. **And §2's own claims verified, correcting a belief
   this project carried: the checkout is Laravel 13.23.0 (`composer.json` `^13.8`, `artisan --version`), not 11** —
   a version note repeated across working memory was inherited, never re-read.
+- **A dashboard badge and the list under it must be one predicate** (lane 96, prompt §8, §28.3 G-46).
+  `DashboardController::queueCounts()` restated each desk's filters as its own query and drifted in three ways:
+  `admission` and `evaluation` counted the whole school while the pages behind them are bounded by the desk's
+  college, `evaluation` counted `Pending` while its desk also lists what the Registrar returned, and `assessment`
+  counted **enrollments** where its page lists **fee sheets** (`accounting` and `id` had the same subject slip
+  mirrored). Now the badges are built from `App\Support\DeskQueues`, which carries the population only — no eager
+  load, no search, no order — and `ClinicController::index()` / `IDController::index()` build their own lists from
+  that same class, so those two pairs are one call. **Then the fix produced its own mirror.** `CollegeScope::ofAssessments()`
+  was added because handing a `Studentassessments` builder to `ofEnrollments()` asked that model for a `course`
+  relation it does not have — and scoping the two assessment badges by college was wrong too, because
+  `AssessmentController` and `AccountingController` apply no `CollegeScope` to their own lists: a bounded desk would
+  have read a badge of 1 over a page of 2, which is §8 with the sign flipped. The scope came **out of the badge** and
+  the helper went with it. Before deciding that, the live table was asked rather than reasoned about: the only
+  college-bound accounts are six office-7 teachers (`dept.caf` … `dept.cte`) holding evaluation and admission rights
+  alone, so no bounded account can open any of the six unbounded desks today — a dormant question, recorded in the
+  matrix rather than answered by a signature implying a scope nobody applies.
+  **The bounded branch is only reachable with a bounded account.** Three of five
+  new cases passed while that relation bug was in the code, because they ran as a staff account whose `unitId` is null and
+  every `of*()` method returns the query untouched in that case; only the college-bound fixture executed the line.
+  So a count-equality test written solely for an unbounded desk certifies nothing about scoping — pair them.
+  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 32 assertions) compares each badge to
+  the number the desk itself prints in **both** directions, and `storage/app/scratch/mutate-g46-dashboard-queues.php`
+  (4 legs) is what showed the second direction was missing: its `admission` leg **survived** on the first run,
+  because the college case asserted only the `evaluation` badge — the admission half of G-46 had no test until that
+  leg refused to die. A second leg answered `needle matched 0 times`, which is the harness's own age and not a
+  surviving defect; both were repaired before the run answered `ALL KILLED: 4 leg(s), 0 bad`. `blocking` is
+  deliberately **not** unified: its badge counts enrollments whose
+  first open box is Blocking while the page lists timetable blocks, and picking one silently is a school decision —
+  it is item 9 on the 2026-10-29 sheet. Four desk lists (assessment, accounting, registrar, clearance) still build
+  their queries inline, so for those the agreement is *tested*, and `DeskQueues`' own docblock says which are shared
+  calls and which are only measured to agree; moving the rest onto it is
+  the next step. `lane76-shift-cites.php` refused line 44 of `DashboardController.php` as AMBIGUOUS because the `$user =
+  $request->user();` line I added made a second identical line exist — resolve by reading, pass `--map=44=42`, never
+  by letting the tool guess. The same batch moved the ID and Clinic controllers, and a pointer in *this* file's own
+  pass-244 paragraph aged with them: the Issued tab's predicate it quotes is now lines 66 to 71 of that controller.
+  A markdown pointer is invisible to `lane76` (it edits `word/document.xml` only), so the re-point list for a moved
+  file is the docx **and** every `.md` that cites it — `repo-file-line-citations.php` refuses only a line past the
+  end or a blank one, and a comment that replaced a query reads clean.
 - **A list table sorts in the query, and the header may offer only what the handler obeys** (lane 88, prompt §14,
   §28.3 G-40 contained not closed). The Registrar queue had one order since it was written. Sorting now has one
   mechanism — `App\Support\ListSort::apply($query, $request->input('sort'), $request->input('direction'), $allowed, $fallback, $stable)`,
@@ -2243,7 +2287,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   bare `sed -n 'Ap;Bp'`.
   **Pass 244 worked a different figure family: a count over demo rows, written in the present tense.** §20's ID-desk
   paragraph said the Issued tab holds "seven on this box against the two the queue holds". Replicating the controller's
-  own predicate (`IDController.php:69-74` — `enrolled` enrollments having a `completed` step for office 22) on live
+  own predicate (`IDController.php:66-71` — `enrolled` enrollments having a `completed` step for office 22) on live
   `ems` answers **nine** (53, 92, 1063, 1064, 1065, 1066, 1067, 1284, 1285) while the second half is still exactly two
   pending rows, so the count had drifted with the dataset and the sentence's structure was sound. The pass wrote
   `nine` and left the number's twin alone: §28's register row that also reads "seven … against the two still queued"
@@ -2742,7 +2786,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1018 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1020 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 128 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
   point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
@@ -2897,6 +2941,41 @@ one row's worth is exactly what the guard checks). Write a cloned cell by emptyi
 the flattened cell to equal the supplied text — containment is not enough. `lane62-probe-p7-targets.php` prints each
 target cell's run count for this reason, and pass 176's stage 1 refuses when the register's ids are not
 `P-1 … P-16` in order, once each.
+
+- **A comment that cites a register row the register does not hold is a finding, and only the sweep over repo
+  comments sees it** (lane 96, same batch). Three of my own new files said the blocking card's question was
+  "registered in §28.5, sheet item 9" and one said the dashboard gap is "(§28.3 G-46)". Both were false: the sheet
+  carries item 9 and the docx does not, and §28.3's G family stops at G-43 — G-44 … G-50 exist only in the matrix,
+  which is task #37. `lane37b-repo-citation-sweep.php` printed the refusal as **NO-ID** on the test file, and the
+  same run went from 1 problem to 0 once the comments named the sheet and the matrix instead of a docx row. Two
+  rules follow. A `§NN <letter>-<number>` token is a promise that the row is *in that section of that document*, so
+  write the row before citing it, and until then name the register that really holds it ("matrix gap G-46"). And
+  when a comment claims a school question is registered somewhere, the claim is about content, not a section number:
+  §28.5 exists, §28.5 resolves, and §28.5 did not contain the question — which is the wrong-target shape this file
+  already documents for line numbers, arriving in a prose pointer.
+
+- **A mutant leg must plant the defect, not the absence of the fix** (same batch). `mutate-g48-g49-privacy-tests.php`
+  first removed the whole `clinic.view` gate around the clinical load. The structural case stayed green, and the leg
+  was wrong rather than the guard: deleting the load is exactly what the fix achieves, so the payload had nothing for
+  the case to refuse. The defect was the **unconditional** load, so the leg now plants
+  `$student->load('enrollments.clinicrecords')` outside any test, which is the pre-fix bytes. Five legs, all killed,
+  control green before and after, tree restored by hash — and the harness's own first run refused loudly for the
+  other reason: `escapeshellarg()` wraps in single quotes and `cmd.exe` does not strip them, so `--filter` selected
+  no test at all. A leg that cannot fail is decoration, and a leg that selects nothing is a green over nothing.
+
+- **A refusal that answers success is the same lie as a zero the server never sent** (lane 97, prompt §8, G-47's
+  ownership half). `NotificationController::markRead()` already declined to write another desk's notice — inside an
+  `if` — and then returned `{"ok": true}` regardless. Nothing in the front end calls that route today (the bell
+  fetches only `notifications.index` and `notifications.read-all`, measured by grep over `resources/js`), so the
+  false success was reachable only by a direct POST; it is refused now, with the reason in `abort_unless`, and
+  `tests/Feature/Notification/NotificationMarkReadOwnershipTest.php` asserts the row's `read_at` stays null rather
+  than trusting the body. Prove it with `storage/app/scratch/mutate-g47-mark-read-ownership.php` (three legs: the
+  silent `if` restored, the addressee test deleted, the refusal's sentence dropped). Two lessons worth keeping.
+  **A line-neutral edit keeps the authority document honest**: replacing those three lines with three lines left
+  `NotificationController.php:51` on the same construct the sentence about it names, so no citation aged and no
+  shift run was needed — the sweep still reads 742 citations / 0 problems. And **run Pint before claiming
+  neutrality**: Pint's fix pass then touched only the new test file (`no_unused_imports` on an `Enrollments` import I
+  never used), which is why the check after formatting, not before it, is what makes the claim true.
 
 ## Agent dispatch
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -58,13 +59,9 @@ class IDController extends Controller
             ->orWhere('firstName', 'like', "%{$search}%")
             ->orWhere('schoolIdNumber', $search)));
 
-        $queueBase = $withSearch(Enrollments::query()
-            ->where('enrollmentStatus', EnrollmentStatus::Enrolled)
-            ->whereHas('enrollmentworkflow.workflowsteps', fn ($q) => $q
-                ->where('stepStatus', WorkflowStepStatus::Pending->value)
-                ->where('officeId', OfficeId::IdOffice->value)
-                ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', ['pending'])
-            ));
+        // The queue's population comes from App\Support\DeskQueues, which is the builder the dashboard's ID badge
+        // counts: the "Awaiting validation" tab and that card are now one predicate rather than two copies of it.
+        $queueBase = $withSearch(DeskQueues::id());
 
         $issuedBase = $withSearch(Enrollments::query()
             ->where('enrollmentStatus', EnrollmentStatus::Enrolled)

@@ -17,11 +17,26 @@
 $root = dirname(__DIR__, 3);
 $testFile = 'tests/Feature/Clearance/ClearanceRequirementRejectionTest.php';
 $php = 'C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe';
-$caseCount = 5;
+$caseCount = 6;
 
 $controller = $root.'/app/Http/Controllers/Clearance/ClearanceController.php';
+$policy = $root.'/app/Policies/ClearancePolicy.php';
 $snapshots = [$controller => ['bytes' => (string) file_get_contents($controller)]];
 $snapshots[$controller]['sha1'] = sha1($snapshots[$controller]['bytes']);
+$snapshots[$policy] = ['bytes' => (string) file_get_contents($policy)];
+$snapshots[$policy]['sha1'] = sha1($snapshots[$policy]['bytes']);
+
+// The fifth promise this harness owns is not in the controller at all: a desk outside the requirement's own office
+// may not decide the line, which is `ClearancePolicy::approveRequirement()`'s office test. Asserting the needle is
+// there once is what makes the leg a test rather than a no-op that reports a kill.
+$officeGuard = "        // Office-scoped: user's office must match the requirement's office\n        \$requirement = \$approval->clearanceRequirement;\n        if (\$user->officeId !== \$requirement->officeId) {\n            return false;\n        }";
+if (substr_count($snapshots[$policy]['bytes'], $officeGuard) !== 1) {
+    fwrite(STDERR, 'REFUSED: the policy office guard occurs '
+        .substr_count($snapshots[$policy]['bytes'], $officeGuard).' time(s) in ClearancePolicy.php, expected exactly 1.'
+        ." Either the guard moved or it is gone; the leg would measure nothing.\n");
+
+    exit(1);
+}
 
 $rule = "'remarks' => 'required_if:status,rejected|nullable|string|min:10|max:500',";
 $statusRule = "'status' => 'required|in:approved,waived,rejected',";
@@ -36,7 +51,7 @@ foreach ([$rule, $statusRule, $writeStatus] as $needle) {
     }
 }
 
-register_shutdown_function(static function () use ($snapshots): void {
+register_shutdown_function(static function () use (&$snapshots): void {
     foreach ($snapshots as $path => $s) {
         if (sha1((string) file_get_contents($path)) !== $s['sha1']) {
             file_put_contents($path, $s['bytes']);
@@ -90,6 +105,17 @@ $legs = [
         'to' => "'status' => \$request->boolean('approved') ? 'approved' : 'rejected',",
         'promise' => 'the decision the desk chose is the decision the row records',
     ],
+    [
+        // The one promise this harness used to admit it could not reach: the office boundary lives in the policy,
+        // so a widening there was invisible to four legs that all mutate the controller. The test it proves already
+        // exists — what was missing was a leg that could break it.
+        'name' => 'cross-office-guard-removed',
+        'file' => $policy,
+        'case' => 'a_desk_outside_the_lines_office_cannot_refuse_it_at_all',
+        'from' => $officeGuard,
+        'to' => "        \$requirement = \$approval->clearanceRequirement;",
+        'promise' => 'a desk outside the requirement’s own office cannot decide that line at all',
+    ],
 ];
 
 $bad = 0;
@@ -103,7 +129,8 @@ if ($control[0] !== 'green') {
 }
 
 foreach ($legs as $leg) {
-    $src = $snapshots[$controller]['bytes'];
+    $target = $leg['file'] ?? $controller;
+    $src = $snapshots[$target]['bytes'];
     $hits = substr_count($src, $leg['from']);
     if ($hits !== 1) {
         echo "BAD  {$leg['name']}: the needle occurs {$hits} time(s).\n";
@@ -111,9 +138,9 @@ foreach ($legs as $leg) {
 
         continue;
     }
-    file_put_contents($controller, str_replace($leg['from'], $leg['to'], $src));
+    file_put_contents($target, str_replace($leg['from'], $leg['to'], $src));
     $verdict = $runCase($leg['case']);
-    file_put_contents($controller, $snapshots[$controller]['bytes']);
+    file_put_contents($target, $snapshots[$target]['bytes']);
 
     if ($verdict[0] === '1-failed') {
         echo "ok   {$leg['name']}: {$leg['promise']} — its case reports one failure\n";
@@ -129,9 +156,11 @@ if ($runCase('')[0] !== 'green') {
     echo "BAD final control\n";
     $bad++;
 }
-if (sha1((string) file_get_contents($controller)) !== $snapshots[$controller]['sha1']) {
-    echo "BAD restore: the controller is not the bytes it was handed.\n";
-    $bad++;
+foreach ($snapshots as $path => $s) {
+    if (sha1((string) file_get_contents($path)) !== $s['sha1']) {
+        echo 'BAD restore: '.basename($path)." is not the bytes it was handed.\n";
+        $bad++;
+    }
 }
 
 printf("\n%s: %d leg(s), %d bad\n", $bad === 0 ? 'ALL KILLED' : 'REFUSE', count($legs), $bad);
