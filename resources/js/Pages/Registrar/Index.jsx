@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, registrarGateLabels } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, registrarGateLabels, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Inline icon — queue of records awaiting registrar validation
@@ -59,10 +59,9 @@ export default function Index({ enrollments, readiness = {}, filters = {}, sort 
     const visit = (nextSearch, nextSort, nextDir) => {
         router.get(route('registrar.index'), {
             search: nextSearch || undefined,
-            // Sent only when it differs from the list's own default, so a plain queue link stays a short URL and
-            // the handler's fallback — not an empty string arriving as a sort key it must ignore.
-            sort: nextSort && nextSort !== 'enrollmentId' ? nextSort : undefined,
-            direction: nextSort && nextSort !== 'enrollmentId' ? nextDir : undefined,
+            // The list's own default travels as nothing at all, so a plain queue link stays a short URL and the
+            // handler's fallback is never handed a sort key it would have to recognise and ignore.
+            ...sortParams('enrollmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -75,7 +74,7 @@ export default function Index({ enrollments, readiness = {}, filters = {}, sort 
     };
 
     const handleSort = (key) => {
-        const direction = sortBy === key && sortDir === 'asc' ? 'desc' : 'asc';
+        const direction = nextSortDirection(key === sortBy, sortDir);
         setSortBy(key);
         setSortDir(direction);
         visit(search, key, direction);

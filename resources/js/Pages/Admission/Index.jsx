@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, statusToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, statusToneFor, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
@@ -52,10 +52,9 @@ export default function Index({ admissions, stats = {}, filters = {}, sort = nul
         router.get(route('admission.index'), {
             search: nextSearch || undefined,
             status: nextStatus || undefined,
-            // Sent only when it differs from the handler's own default, so an unsorted queue keeps a clean URL and
-            // an empty string never arrives as a sort key the handler has to ignore.
-            sort: nextSort && nextSort !== 'admissionId' ? nextSort : undefined,
-            direction: nextSort && nextSort !== 'admissionId' ? nextDir : undefined,
+            // The list's own default travels as nothing at all, so an unsorted queue keeps a clean URL and an
+            // empty string never arrives as a sort key the handler has to recognise and ignore.
+            ...sortParams('admissionId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -68,7 +67,7 @@ export default function Index({ admissions, stats = {}, filters = {}, sort = nul
     };
 
     const handleSort = (key) => {
-        const direction = sortBy === key && sortDir === 'asc' ? 'desc' : 'asc';
+        const direction = nextSortDirection(key === sortBy, sortDir);
 
         setSortBy(key);
         setSortDir(direction);

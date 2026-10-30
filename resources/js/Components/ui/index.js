@@ -18,3 +18,4 @@ export { default as PrintLayout } from './PrintLayout';
 export { default as StepProgress } from './StepProgress';
 export { default as WorkflowStepper } from './WorkflowStepper';
 export { default as Toast } from './Toast';
+export { nextSortDirection, sortParams } from './listSort';

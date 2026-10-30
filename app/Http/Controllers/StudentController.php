@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\StudentStatus;
 use App\Models\Students;
 use App\Support\CollegeScope;
+use App\Support\ListSort;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -40,13 +41,42 @@ class StudentController extends Controller
                     ->orWhere('firstName', 'like', "%{$search}%")
                     ->orWhere('middleName', 'like', "%{$search}%")
                     ->orWhere('schoolIdNumber', 'like', "%{$search}%");
-            }))
-            ->orderBy('lastName')
-            ->orderBy('firstName');
+            }));
+
+        // The directory paginates on the server, so the order is asked of the query: a client sort would arrange
+        // the twenty rows already on screen and present that as the list. The keys below are the only ones the
+        // handler obeys, and the page renders a sortable header only where this list contains its key.
+        $sortable = [
+            'name' => ['column' => 'lastName'],
+            'firstName' => ['column' => 'firstName'],
+            'schoolId' => ['column' => 'schoolIdNumber'],
+            'gender' => ['column' => 'gender'],
+            'status' => ['column' => 'status'],
+            'studentId' => ['column' => 'studentId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            // A directory reads top to bottom unless the desk says otherwise, so this list's own default is the
+            // ascending one — the helper's absence-of-direction answer is descending, which is what a queue of
+            // newest-first records wants and is not what a surname list wants.
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'name',
+            'studentId'
+        );
 
         return Inertia::render('Students/Index', [
             'students' => $query->paginate(20)->withQueryString(),
-            'filters' => ['search' => $request->search, 'status' => $status],
+            // `status` is echoed as the value actually applied, and the order as the order actually applied, so a
+            // control never resets while the list it describes stays narrowed.
+            'filters' => [
+                'search' => $request->search,
+                'status' => $status,
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

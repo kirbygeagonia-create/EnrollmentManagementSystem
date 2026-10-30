@@ -1608,11 +1608,25 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 35 of the 36 pages that render `DataTable` offer no order, and the gap's pagination half is untouched,
-  so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
+  still owed: 33 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
   database's mood, not a defect.
+- **A sort default is the list's own decision, and the screen half of a mechanism needs one definition too** (this
+  batch, prompt §14, G-40's third wired screen). `ListSort` answers `desc` when a request carries no direction —
+  right for a queue of newest-first records, wrong for a directory of surnames, where opening at Z is a defect a desk
+  sees on arrival. The helper was not widened: the handler asks for `asc` on its own behalf, so each list states its
+  default beside its fallback column, and `StudentsDirectorySortTest.php`'s first case (7 cases / 22 assertions,
+  proved by `mutate-g40-directory-sort-tests.php` at six legs) goes red if the two are swapped, as does its fallback
+  case, which compares an unlisted key against the unsorted request rather than against arithmetic done here. The screen
+  side had already been copied twice — Registrar and Admission each spelled the toggle and the send-nothing-for-my-own-
+  default query inline — so the third copy went into `resources/js/Components/ui/listSort.js` and the two earlier
+  pages now call it. Refactoring a working screen with no JavaScript suite is proven in the browser, not by the
+  backend test: the directory header sent `?direction=asc&sort=schoolId`, reordered to it, reversed on the second
+  click, and kept both the search term and the order through a filter submit; the same two clicks were then re-taken
+  on the two refactored queues, because a page that stopped sorting after a shared-module swap would still leave every
+  Pest case green.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never

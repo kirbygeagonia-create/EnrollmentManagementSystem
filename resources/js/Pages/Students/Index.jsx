@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // students.status is enum('active','inactive') — the two options this dropdown may offer. It used to list
@@ -27,13 +27,15 @@ function formatName(row) {
     return full === ',' ? '—' : full;
 }
 
-export default function Index({ students, filters = {} }) {
+export default function Index({ students, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'name');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'asc');
 
     const columns = useMemo(() => [
-        { key: 'schoolIdNumber', label: 'School ID', className: 'font-mono text-sm text-brand-700', render: (row) => row.schoolIdNumber || '—' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm text-brand-700', render: (row) => row.schoolIdNumber || '—' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             <div className="flex items-center gap-3">
                 <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-seait-100 text-seait-700 text-xs font-semibold ring-1 ring-seait-200">
                     {((row.firstName?.[0] || '') + (row.lastName?.[0] || '')).toUpperCase() || '—'}
@@ -41,23 +43,37 @@ export default function Index({ students, filters = {} }) {
                 <span className="font-medium text-brand-900">{formatName(row)}</span>
             </div>
         )},
-        { key: 'gender', label: 'Gender', render: (row) => row.gender ? formatStatusLabel(row.gender) : '—' },
-        { key: 'status', label: 'Status', render: (row) => (
+        { key: 'gender', label: 'Gender', sortKey: 'gender', render: (row) => row.gender ? formatStatusLabel(row.gender) : '—' },
+        { key: 'status', label: 'Status', sortKey: 'status', render: (row) => (
             <Badge tone={statusToneMap[row.status] || 'neutral'}>
                 {formatStatusLabel(row.status)}
             </Badge>
         )},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextStatus, nextSort, nextDir) => {
         router.get(route('students.index'), {
-            search: search || undefined,
-            status: status || undefined,
+            search: nextSearch || undefined,
+            status: nextStatus || undefined,
+            // The list's own default travels as nothing at all, so a plain directory link stays a short URL
+            // rather than arriving as a sort key the handler would have to recognise as its fallback.
+            ...sortParams('name', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, status, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, status, key, direction);
     };
 
     const renderActions = (row) => (
@@ -119,6 +135,8 @@ export default function Index({ students, filters = {} }) {
                                 rows={students.data}
                                 children={renderActions}
                                 emptyMessage="No students found"
+                                sort={sort}
+                                onSort={handleSort}
                             />
                             <div className="mt-4">
                                 <Pagination paginator={students} />
