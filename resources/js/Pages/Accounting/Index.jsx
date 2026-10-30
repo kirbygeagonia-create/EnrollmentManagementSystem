@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
@@ -25,16 +25,20 @@ const QUEUES = [
     { key: 'no_balance', label: 'Nothing To Collect' },
 ];
 
-export default function Index({ assessments, summary = {}, filters = {}, queueCounts = {} }) {
+export default function Index({ assessments, summary = {}, filters = {}, queueCounts = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'assessmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
     const queue = filters.queue === 'no_balance' ? 'no_balance' : 'due';
 
     const columns = useMemo(() => [
-        { key: 'enrollment.student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm', render: (row) => row.enrollment?.student?.schoolIdNumber || '—' },
-        { key: 'enrollment.student.lastName', label: 'Student Name', render: (row) => {
+        { key: 'enrollment.student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm', render: (row) => row.enrollment?.student?.schoolIdNumber || '—' },
+        { key: 'enrollment.student.lastName', label: 'Student Name', sortKey: 'name', render: (row) => {
             const s = row.enrollment?.student;
             return s ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` : '—';
         }},
+        // Course, Student Type and Standing carry no sortKey: the first names a relation the cashier does not work
+        // by, and the other two belong to the enrollment the sheet points at rather than to the row listed here.
         { key: 'enrollment.course.name', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
         { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
@@ -46,16 +50,18 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                 {academicStandingLabel(row.enrollment?.academicStanding)}
             </Badge>
         )},
-        { key: 'totalAssessedAmount', label: 'Total Amount', render: (row) => (
+        { key: 'totalAssessedAmount', label: 'Total Amount', sortKey: 'amount', render: (row) => (
             <span className="font-semibold text-brand-900">{peso(row.totalAssessedAmount)}</span>
         )},
+        // 'Covered By' prints a sum of two columns, so it is not offered: a header may not promise an order the
+        // query cannot give. The Balance column, when this tab shows it, is one stored column and does sort.
         queue === 'no_balance'
             ? { key: 'totalScholarshipCoverage', label: 'Covered By', render: (row) => (
                 <Badge tone="paid">
                     {peso(Number(row.totalScholarshipCoverage || 0) + Number(row.totalWaived || 0))}
                 </Badge>
             )}
-            : { key: 'remainingBalance', label: 'Balance', render: (row) => {
+            : { key: 'remainingBalance', label: 'Balance', sortKey: 'balance', render: (row) => {
                 const balance = Number(row.remainingBalance || 0);
                 const totalAssessed = Number(row.totalAssessedAmount || 0);
                 const tone = balanceToneFor(balance, totalAssessed);
@@ -65,28 +71,35 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                     </Badge>
                 );
             }},
-        { key: 'createdAt', label: 'Assessed Date', render: (row) => formatCalendarDay(row.assessmentDate) },
+        { key: 'createdAt', label: 'Assessed Date', sortKey: 'date', render: (row) => formatCalendarDay(row.assessmentDate) },
     ], [queue]);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextQueue, nextSort, nextDir) => {
         router.get(route('accounting.index'), {
-            search: search || undefined,
-            queue: queue === 'due' ? undefined : queue,
+            search: nextSearch || undefined,
+            queue: nextQueue === 'due' ? undefined : nextQueue,
+            // The list's own newest-first default travels as nothing at all, so a plain link stays a short URL.
+            ...sortParams('assessmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, queue, sortBy, sortDir);
+    };
+
     const handleQueue = (key) => {
-        router.get(route('accounting.index'), {
-            search: search || undefined,
-            queue: key === 'due' ? undefined : key,
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+        visit(search, key, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, queue, key, direction);
     };
 
     const renderActions = (row) => (
@@ -239,6 +252,8 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                             columns={columns}
                             rows={assessments.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No assessments with outstanding balance found"
                         />
                         <div className="mt-4">

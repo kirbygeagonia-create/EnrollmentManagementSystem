@@ -1620,7 +1620,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 31 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 30 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -1676,7 +1676,15 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a list of the same triples, each `local` naming the base table or an earlier hop's alias `srt0`, `srt1`, …) through
   one private method, so a screen cannot order by a join its handler never wrote; the bare column name is qualified
   with the hop that holds it. Proved by `mutate-g40-assessment-sort-tests.php` (eight legs, all killed), two of which
-  live in the helper itself: `hop-qualified-from-first` and `chain-reversed`.
+  live in the helper itself: `hop-qualified-from-first` and `chain-reversed`. A sixth table joined the same day — the
+  cashier's collection queue, the first wired screen whose echo contract carries three keys at once (a queue TAB, a
+  search and an order) and the first whose two money columns were built to disagree with each other, so a handler
+  that read the wrong entry out of its own list cannot satisfy both — proved by
+  `mutate-g40-accounting-sort-tests.php` at ten legs. Three of its document pointers were re-taken **by hand, not by
+  `lane76-shift-cites.php`**: the numbers 243 and 290 are also the tails of another file's ranges (`Preflight.php:86-104`
+  whose application-key rule runs from 228 to 243, and `ClearanceController.php:290-304`), so a map by number would
+  have rewritten a true pointer into a different file — the prefix-of-a-longer-citation defect met from the tail side,
+  and the reason `--skip=N` is a queue handed to a reader rather than a clean run.
   **The same batch went red on CI's MySQL job while this box was green, and the defect was in a test's memory.**
   `studentclearances.overallStatus` is declared `enum('pending','approved','rejected','waived','incomplete')`, and
   MySQL sorts an ENUM by that **declaration index**, while the suite's `enum()` compiles to a varchar with a CHECK
@@ -2018,7 +2026,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   a broken record there is red there — but the other files in that directory still answer only to a hand run.
 - **Re-measuring only the files a batch touched is how the document accumulated wrong line numbers:** 14
   citations had drifted in files no recent batch edited. Run the whole-document sweep after any batch that moves lines — `php storage/app/scratch/dump-docx-flat.php` then
-  `php storage/app/scratch/sweep-docx-citations.php` (742 citations over 162 files as of docx pass 273; it exits non-zero on a
+  `php storage/app/scratch/sweep-docx-citations.php` (it reads the regenerated dump, so re-dump before believing a verdict, and its own census moves when a pointer is added — so no total is stated here; it exits non-zero on a
   citation past the end of a file or landing on a blank line, and it was proved by planting one). It checks
   lines, not meaning: a citation can land on a live line that belongs to something else, and only reading
   the sentence catches that.

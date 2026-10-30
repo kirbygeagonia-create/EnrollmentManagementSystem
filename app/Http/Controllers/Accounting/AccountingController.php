@@ -12,6 +12,7 @@ use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -49,12 +50,12 @@ class AccountingController extends Controller
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         $query = (clone $base)
-            ->when($queue === 'no_balance', fn ($q) => $q->where('remainingBalance', '<=', 0), fn ($q) => $q->where('remainingBalance', '>', 0))
-            ->orderByDesc('assessmentId');
+            ->when($queue === 'no_balance', fn ($q) => $q->where('remainingBalance', '<=', 0), fn ($q) => $q->where('remainingBalance', '>', 0));
 
         // Financial summary across the whole filtered set — the summary tiles
         // must describe the full queue, not just the current page (audit 2026-09-25).
-        // Taken before paginate(), so the page limit cannot reach the aggregates.
+        // Taken before paginate(), so the page limit cannot reach the aggregates — and before the order is
+        // applied, so a name sort's join cannot reach them either.
         $summary = (clone $query)
             ->reorder()
             ->selectRaw('coalesce(sum(totalAssessedAmount), 0) as totalAssessed, coalesce(sum(remainingBalance), 0) as totalBalance,
@@ -62,6 +63,39 @@ class AccountingController extends Controller
                 sum(case when remainingBalance >= totalAssessedAmount and totalAssessedAmount > 0 then 1 else 0 end) as unpaidCount,
                 coalesce(sum(totalScholarshipCoverage + totalWaived), 0) as totalCovered')
             ->first();
+
+        // The surname and the school number sit on `students`, two hops from the fee sheet this list shows, so they
+        // are ordered by the same join chain the assessment desk reached. 'Covered By' is not among the keys: it
+        // prints a sum of two columns, and a header may not promise an order the query cannot give.
+        $sortable = [
+            'name' => [
+                'column' => 'lastName',
+                'joins' => [
+                    ['join' => 'enrollments', 'foreign' => 'enrollmentId', 'local' => 'studentassessments.enrollmentId'],
+                    ['join' => 'students', 'foreign' => 'studentId', 'local' => 'srt0.studentId'],
+                ],
+            ],
+            'schoolId' => [
+                'column' => 'schoolIdNumber',
+                'joins' => [
+                    ['join' => 'enrollments', 'foreign' => 'enrollmentId', 'local' => 'studentassessments.enrollmentId'],
+                    ['join' => 'students', 'foreign' => 'studentId', 'local' => 'srt0.studentId'],
+                ],
+            ],
+            'amount' => ['column' => 'studentassessments.totalAssessedAmount'],
+            'balance' => ['column' => 'studentassessments.remainingBalance'],
+            'date' => ['column' => 'studentassessments.assessmentDate'],
+            'assessmentId' => ['column' => 'studentassessments.assessmentId'],
+        ];
+
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'assessmentId',
+            'studentassessments.assessmentId'
+        );
 
         $assessments = $query->paginate(20)->withQueryString();
 
@@ -84,7 +118,13 @@ class AccountingController extends Controller
                 'totalCovered' => (float) ($summary->totalCovered ?? 0),
             ],
             'queueCounts' => $queueCounts,
-            'filters' => $request->only(['search', 'queue']),
+            // Every control the desk set comes back: the tab, the search, and both halves of the order — a key
+            // consulted but not echoed is a control that resets while the list stays narrowed.
+            'filters' => $request->only(['search', 'queue']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
