@@ -323,6 +323,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   migrations and a divergence is a real defect; row counts — `42 assignments over 17 roles`, `gradescale has 4 rows`, the
   `settings` rows — are named and not judged there, since they belong to whichever database stated them. The probe refuses a
   schema it was not told to read: `--allow-schema=<name>` is how CI says so on the command line.
+  **The checker itself now refuses a flag it does not read** (repaired 2026-10-30, six weeks after it was measured and
+  left as a note): `--verify` — lane 64's flag — and a made-up flag each ran the whole judgement and exited 0, because
+  the argument chain had no `else`. A run that ignores its own scope prints exactly the verdict a scoped one does, so
+  `mutate-lane60-ratio-claims.php` grew four legs: three refuse `--verify`, `--verify=docx` and
+  `--no-such-flag-at-all` **by name**, and the fourth requires `--trace` still to run clean — a guard that refused
+  everything would satisfy the first three and break the tool. CI's own shape
+  (`--ci --run --allow-schema=ems_test`) was re-read against the known list before this shipped.
 - **After any batch that edits a sentence about whether a finding is still open**, run
   `php storage/app/scratch/lane61-open-claims.php` and prove it with
   `php storage/app/scratch/mutate-lane61-open-claims.php`. This is the fourth prose family — not the suite totals

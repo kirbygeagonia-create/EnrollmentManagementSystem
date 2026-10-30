@@ -28,8 +28,9 @@
  *   php storage/app/scratch/lane60-ratio-claims.php [--run] [--ci] [--trace] [--report-only]
  *   php storage/app/scratch/lane60-ratio-claims.php --readings=<file> [--flat=<file>] [--docs=docx,AGENTS.md]
  *       [--only=counts-sentence+headings]   ids joined by + or ,; `headings` selects the §24 per-table class
+ *   Any other flag is refused by name. A flag the argument chain does not read still lets the whole judgement run,
+ *   and a clean verdict printed by a run that ignored its scope is the defect this repository has met four times.
  */
-
 $root = dirname(__DIR__, 3);
 $php = PHP_BINARY;
 
@@ -67,7 +68,15 @@ foreach (array_slice($argv, 1) as $a) {
         $readings = $root.'/'.$m[1];
     } elseif (preg_match('/^--flat=(.*)$/s', $a, $m) === 1) {
         $flat = $root.'/'.$m[1];
-    } elseif (! str_starts_with($a, '-') && $a !== '') {
+    } elseif (str_starts_with($a, '-')) {
+        // Measured 2026-10-30: `--verify` (lane 64's flag) and a made-up flag both ran the whole judgement and
+        // exited 0, because this chain had no else. An accepted flag the tool never reads turns a mutant run into
+        // a clean one and a scoped run into an unscoped one, so refuse by name and print what is read.
+        fwrite(STDERR, 'REFUSED: this tool does not read '.$a.'. Known flags: --run, --ci, --trace, --report-only, '
+            ."--only=, --docs=, --doc=<file>=<path>, --allow-schema=, --readings=, --flat=, and one bare path.\n");
+
+        exit(1);
+    } elseif ($a !== '') {
         $readings = $root.'/'.$a;
     }
 }
@@ -398,7 +407,7 @@ foreach ($CLAIMS as $c) {
                 $label, $c['id'], $lineNo, $path, $claimed, $expect);
         }
         if ($trace) {
-            echo "         sentence: ".trim(preg_replace('/\s+/', ' ', mb_substr($sentence, 0, 170)))."\n";
+            echo '         sentence: '.trim(preg_replace('/\s+/', ' ', mb_substr($sentence, 0, 170)))."\n";
         }
     }
 }

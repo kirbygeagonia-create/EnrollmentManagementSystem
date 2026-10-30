@@ -18,7 +18,6 @@
  *
  *   php storage/app/scratch/mutate-lane60-ratio-claims.php
  */
-
 $root = dirname(__DIR__, 3);
 $php = escapeshellarg(PHP_BINARY);
 $checker = escapeshellarg($root.'/storage/app/scratch/lane60-ratio-claims.php');
@@ -258,6 +257,26 @@ file_put_contents($root.'/'.$dir.'/readings-scratch.json', json_encode($wrongSch
 $r = $run($php.' '.$checker.' --readings='.$dir.'/readings-scratch.json --flat='.$dir.'/census-tables.clean.txt --docs=docx --only=counts-sentence');
 $say(str_contains($r['out'], 'a schema named ems_l54_a') || str_contains($r['out'], 'REFUSED'),
     'surface-named — readings from a scratch schema are reported as that surface, never silently called the live one');
+
+// ------------------------------------------------------------------ an accepted flag the tool does not read
+//
+// Measured 2026-10-30 and repaired the same day: `--verify` — lane 64's flag — and a made-up flag each ran the whole
+// judgement and exited 0, because the argument chain had no else. A flag that is read and a flag that is ignored
+// print the same clean verdict, so the refusal has to be asked for by name, in all three shapes: bare, valued, and
+// something no tool in this repository uses.
+foreach (['--verify', '--verify=docx', '--no-such-flag-at-all'] as $inert) {
+    $r = $run($php.' '.$checker.' --readings='.$dir.'/readings.json --flat='.$dir.'/census-tables.clean.txt'
+        .' --docs=docx --only=counts-sentence '.$inert);
+    $say($r['code'] === 1 && str_contains($r['out'], 'REFUSED') && str_contains($r['out'], $inert),
+        'inert-flag '.$inert.' — a flag the tool does not read is refused by name, not accepted and ignored');
+}
+
+// The bare path is still the readings file, and a known flag still runs: a guard that refused everything would
+// satisfy the three legs above and break the tool.
+$r = $run($php.' '.$checker.' --readings='.$dir.'/readings.json --flat='.$dir.'/census-tables.clean.txt'
+    .' --docs=docx --only=counts-sentence --trace');
+$say($r['code'] === 0,
+    'known-flag-still-reads — --trace is accepted and the judgement runs, so the refusal is scoped to unread flags');
 
 // ------------------------------------------------------------------ CI mode and ground truth
 
