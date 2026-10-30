@@ -1565,6 +1565,19 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   which is the correct engineering outcome and not a code gap. **And §2's own claims verified, correcting a belief
   this project carried: the checkout is Laravel 13.23.0 (`composer.json` `^13.8`, `artisan --version`), not 11** —
   a version note repeated across working memory was inherited, never re-read.
+- **A register that states its verdict in prose gets a column, and the checker reads the column** (task #43).
+  The requirement matrix carries its gap rows in prose, so a verdict word sat in the middle of a cell and
+  `lane94-matrix-claims.php` answered AMBIGUOUS for six of twenty-eight rows — a census of the register was not
+  computable by anything but a reader. Four tables gained a `Status` column, every value read from its own row and
+  cross-checked against the authority docx’s §28.3 verdict cell. The instrument’s first reaction was instructive:
+  adding the column moved AMBIGUOUS from 6 to 12, because the classifier knew only built-side verbs and a row that
+  began "Not built" now matched the row-wide search it had never been asked to make. So the classifier was taught
+  the column — a table whose header names a `Status` cell is judged by THAT cell alone — and three legs prove it is
+  honoured rather than tolerated: blunting one cell raises the ambiguous count and names the row, renaming one
+  header raises it for the whole table, and planting a Built claim in the prose of a row whose cell says "Not built"
+  changes nothing. Two rows then stood out as `NO-ARTIFACT` — a Built claim naming no file — and both were made
+  resolvable by naming the files a grep confirmed, which is where the column earns its keep: nine rows now read
+  Not built, none is ambiguous, and every built claim points at a path the repository holds.
 - **A dashboard badge and the list under it must be one predicate** (lane 96, prompt §8, §28.3 G-46).
   `DashboardController::queueCounts()` restated each desk's filters as its own query and drifted in three ways:
   `admission` and `evaluation` counted the whole school while the pages behind them are bounded by the desk's
@@ -1884,7 +1897,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `lane64-empty-table-inventory.php --verify` will refuse until the listing says so. Naming trap for anyone citing
   the authority docx: **§28.3's own `G-10` is a different, closed finding** (a validated ID request unreachable from
   the desk that validated it), so the return is registered as **G-32** and "gap G-10" is only ever written beside
-  "prompt §6.4". Two of the four §6.4 vocabulary questions are on `Documentation/School-Decision-Sheet-2026-10-27.md`
+  "prompt §6.4". Measured 2026-10-30, when the matrix grew a machine-read `Status` column: the collision is not one id but the first nine or so, since §28.3’s G-6 and G-8 are closed findings that share those numbers with two open rows of the matrix. So a gap id is written with its register named, and a count of open gaps is taken from one table, never from a grep. Two of the four §6.4 vocabulary questions are on `Documentation/School-Decision-Sheet-2026-10-27.md`
   (the reason-category list, and whether a department may write to Admission), and the §27.2 E-4 register row —
   "a returned record cannot get back to `paid`" — is re-stated only after the round trip is driven, not re-worded.
 - **The pipeline is one list, and only an overseer may read it that way** (lane 82, prompt §6.1/§6.3).
@@ -2881,10 +2894,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1031 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1027 references it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 135 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
-  point into the document, the acceptance script and the audit file — three separate numbering systems. **This file
+  point into the document, the acceptance script and the audit file — three separate numbering systems. The 1027 was read off the sweep's own line on 2026-10-30, after three docx passes rewrote §28.3's G-40 row and the day's §1.1 row and four pointers sat inside the sentences that were replaced — a census this file states has to be generated from the tool that prints it, and lane 59 refuses the run when it is not. **This file
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
   about the sweep adds a reference for the sweep to judge and invalidates the figure in the same edit (measured
   twice on 2026-10-25 while recording pass 226: 403 → 405 → 406). Lane 58's rule for a revision row applies to a

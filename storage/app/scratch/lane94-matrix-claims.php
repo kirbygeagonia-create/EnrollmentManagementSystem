@@ -17,11 +17,14 @@
  *
  * Its population is the three matrix tables that carry an `Id` column; §1's Working table and this file's
  * §10 table are headed differently and are NOT read, so "21 gap rows" is a scope, not the register's size.
- * Seven rows came back AMBIGUOUS because the verdict word sits mid-cell — printed, not cleared.
+ * Seven rows came back AMBIGUOUS because the verdict word sits mid-cell — printed, not cleared. The matrix grew a
+ * Status column on 2026-10-30 for exactly that reason, and a table whose header names one is judged by THAT cell
+ * alone: `mutate-lane94-matrix-claims.php` has a leg that blunts the cell, one that renames the header, and one that
+ * plants a Built claim in the row's prose while the cell says "Not built". Rows in a table without the column keep
+ * the positional rule below.
  *
  * Usage: php storage/app/scratch/lane94-matrix-claims.php [--matrix=<path>] [--all]
  */
-
 $root = dirname(__DIR__, 3);
 $matrix = $root.'/Documentation/Prompt-Requirement-Matrix-2026-10-26.md';
 $showAll = false;
@@ -66,20 +69,38 @@ $cells = function (string $line): ?array {
         return null;
     }
 
-    return array_map('trim', explode('|', trim($line, '|')));
+    // Split on UNESCAPED pipes: a validation rule inside a code span legitimately carries `\|`, and a splitter that
+    // cuts there reads a well-formed row as having extra columns.
+    return array_map(
+        static fn (string $c): string => trim(str_replace('\|', '|', $c)),
+        preg_split('/(?<!\\\\)\|/', trim($line, '|')) ?: []
+    );
 };
 
 $rows = [];
 $idColumn = null;
+$statusColumn = null;
 foreach ($lines as $i => $line) {
     $c = $cells($line);
     $sepLine = trim($lines[$i + 1] ?? '');
     if ($c !== null && preg_match('/^\|[-\s:|]+\|$/', $sepLine) === 1) {
         $idColumn = null;
+        $statusColumn = null;
         foreach ($c as $k => $h) {
             if (preg_match('/^(id|gap)\b/iu', trim($h, '*` '))) {
                 $idColumn = $k;
                 break; // 'Id' holds the id and comes first; 'Gap' holds the description
+            }
+        }
+        // A table that carries a Status column states its verdicts there, so that is the only cell judged. Reading
+        // the whole row instead is how the column was added and the census got WORSE: "Not built" leads the cell, the
+        // built-side pattern matched nothing positional, and the row fell to AMBIGUOUS for containing the word in
+        // prose. Verdicts are read from where verdicts are written (lane 69's rule, applied to a column).
+        foreach ($c as $k => $h) {
+            if (preg_match('/^status$/iu', trim($h, '*` '))) {
+                $statusColumn = $k;
+
+                break;
             }
         }
 
@@ -91,7 +112,12 @@ foreach ($lines as $i => $line) {
     if (preg_match('/^G-?(\d+)$/', $c[$idColumn], $m) !== 1) {
         continue;
     }
-    $rows[] = ['id' => 'G-'.$m[1], 'row' => implode(' | ', $c), 'raw' => $line];
+    $rows[] = [
+        'id' => 'G-'.$m[1],
+        'row' => implode(' | ', $c),
+        'raw' => $line,
+        'status' => $statusColumn === null ? null : ($c[$statusColumn] ?? null),
+    ];
 }
 
 if ($rows === []) {
@@ -104,23 +130,46 @@ $built = '/\b(built|working|verified|closed|delivered|shipped)\b/i';
 $counts = ['ARTIFACT-OK' => 0, 'ARTIFACT-MISSING' => 0, 'NO-ARTIFACT' => 0, 'NOT-BUILT' => 0, 'AMBIGUOUS' => 0];
 $out = [];
 foreach ($rows as $r) {
-    // The verdict is the cell that LEADS with a verdict verb (lane 61's rule): a gap's title can begin
-    // "Built around …" without claiming anything, and a later cell can state the real status.
-    $cellList = array_map('trim', explode('|', $r['row']));
-    $verdictIn = null;
-    foreach ($cellList as $cell) {
-        // A struck-through claim is the register's own convention for "this used to be the state": the retired text is
-        // struck and the verdict follows it, so the struck span is removed BEFORE asking whether the cell leads with a
-        // verdict verb. The rule stays positional on purpose — searching the whole row would let a gap titled
-        // "Open a second signature…" report itself as a verdict, which is the lane-61 defect this file keeps refusing.
-        $unstruck = preg_replace('/^\s*~~.*?~~\s*/su', '', $cell);
-        if (preg_match('/^(?:\s*(?:\*\*|~~))*\s*(built|working|verified|closed|delivered|shipped)\b/iu', $unstruck)) {
-            $verdictIn = $cell;
+    // A table with a Status column states its verdict there, so only that cell is read. Without it the fallback is
+    // lane 61's positional rule over the row's cells. Both directions are narrow on purpose: a widened search would
+    // let a gap titled "Built around …" claim a status, and a table that grows a column nobody reads is the
+    // accepted-and-inert defect this repository keeps refusing.
+    $statusCell = isset($r['status']) && is_string($r['status']) ? trim($r['status']) : '';
+    if ($statusCell !== '') {
+        $head = trim((string) preg_replace('/^\s*~~.*?~~\s*/su', '', $statusCell));
+        if (preg_match('/^(?:\s*\*\*)?\s*(built|working|verified|closed|delivered|shipped|partly built)\b/iu', $head) === 1) {
+            $claimsBuilt = true;
+        } elseif (preg_match('/^(?:\s*\*\*)?\s*not built\b/iu', $head) === 1) {
+            $counts['NOT-BUILT']++;
 
-            break;
+            continue;
+        } else {
+            $counts['AMBIGUOUS']++;
+            $out[] = ['AMBIGUOUS', $r['id'], 'the Status cell leads with neither verdict: '.mb_substr($head, 0, 60)];
+
+            continue;
         }
+        $cellList = [$statusCell];
+    } else {
+        $cellList = array_map('trim', explode('|', $r['row']));
+        $claimsBuilt = false;
     }
-    $claimsBuilt = $verdictIn !== null;
+    if (! isset($claimsBuilt) || ! $claimsBuilt) {
+        $verdictIn = null;
+        foreach ($cellList as $cell) {
+            // A struck-through claim is the register's own convention for "this used to be the state": the retired text is
+            // struck and the verdict follows it, so the struck span is removed BEFORE asking whether the cell leads with a
+            // verdict verb. The rule stays positional on purpose — searching the whole row would let a gap titled
+            // "Open a second signature…" report itself as a verdict, which is the lane-61 defect this file keeps refusing.
+            $unstruck = preg_replace('/^\s*~~.*?~~\s*/su', '', $cell);
+            if (preg_match('/^(?:\s*(?:\*\*|~~))*\s*(built|working|verified|closed|delivered|shipped)\b/iu', $unstruck)) {
+                $verdictIn = $cell;
+
+                break;
+            }
+        }
+        $claimsBuilt = $verdictIn !== null;
+    }
     if (! $claimsBuilt && preg_match($built, $r['row'])) {
         $counts['AMBIGUOUS']++;
         $out[] = ['AMBIGUOUS', $r['id'], 'the word appears mid-cell; no cell leads with a verdict verb'];

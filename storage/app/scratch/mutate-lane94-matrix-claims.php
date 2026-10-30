@@ -30,12 +30,16 @@ $run = static function (string $args) use ($php, $tool): array {
     $rows = preg_match('/(\d+) gap row\(s\) read/', $out, $rm) === 1 ? (int) $rm[1] : null;
     $ok = preg_match('/OK (\d+), MISSING (\d+)/', $out, $am) === 1 ? [(int) $am[1], (int) $am[2]] : null;
     $noArtifact = preg_match('/NO-ARTIFACT (\d+)/', $out, $nm) === 1 ? (int) $nm[1] : null;
+    $ambiguous = preg_match('/AMBIGUOUS (\d+)/', $out, $bm) === 1 ? (int) $bm[1] : null;
+    $notBuilt = preg_match('/NOT-BUILT (\d+)/', $out, $cm) === 1 ? (int) $cm[1] : null;
 
     return [
         'out' => $out,
         'rows' => $rows,
         'ok' => $ok,
         'noArtifact' => $noArtifact,
+        'ambiguous' => $ambiguous,
+        'notBuilt' => $notBuilt,
         'refused' => str_contains($out, 'REFUSED'),
     ];
 };
@@ -94,6 +98,60 @@ $plant = static function (string $from, string $to, string $label) use ($matrix,
     return ['bad' => false, 'r' => $r];
 };
 
+/**
+ * Rewrite one cell of one gap row, addressed by the row's own id.
+ *
+ * The Status column is per-row prose that repeats across rows ("Not built" appears in several), so a leg that
+ * needle-matched on the value alone would plant in the wrong row or in all of them. These two helpers locate the
+ * row by its id and then require the inner needle to be unique INSIDE that row — the same "a needle needs an owner"
+ * rule the citation passes follow.
+ *
+ * @return array{bad: bool, r: ?array, row: ?string}
+ */
+$plantInRow = static function (string $id, string $from, string $to, string $label, bool $isStatus = false) use ($matrix, $copy, $run): array {
+    $lines = file($matrix);
+    $hit = null;
+    foreach ($lines as $i => $l) {
+        if (preg_match('/^\|\s*'.preg_quote($id, '/').'\s*\|/', $l) === 1) {
+            $hit = $i;
+
+            break;
+        }
+    }
+    if ($hit === null) {
+        fwrite(STDERR, "BAD: {$label} found no {$id} row in the matrix — the register moved and this leg is out of date.\n");
+
+        return ['bad' => true, 'r' => null, 'row' => null];
+    }
+
+    $row = rtrim((string) $lines[$hit], "\r\n");
+    if ($isStatus) {
+        $parts = preg_split('/(?<!\\\\)\|/', $row) ?: [];
+        $last = count($parts) - 2;
+        if ($last < 2) {
+            fwrite(STDERR, "BAD: {$label}: the {$id} row has no Status cell to rewrite.\n");
+
+            return ['bad' => true, 'r' => null, 'row' => $row];
+        }
+        $parts[$last] = ' '.$to.' ';
+        $lines[$hit] = implode('|', $parts)."\n";
+    } else {
+        $n = substr_count($row, $from);
+        if ($n !== 1) {
+            fwrite(STDERR, "BAD: {$label}'s needle matched {$n} time(s) inside the {$id} row, want 1.\n");
+
+            return ['bad' => true, 'r' => null, 'row' => $row];
+        }
+        $lines[$hit] = str_replace($from, $to, $row)."\n";
+    }
+
+    file_put_contents($copy, implode('', $lines));
+    $r = $run('--matrix='.$copy);
+    @unlink($copy);
+
+    return ['bad' => false, 'r' => $r, 'row' => $row];
+};
+
 $legs = [
     'invented-artifact' => function () use ($control, $realPath, $plant) {
         $p = $plant($realPath, 'tests/Feature/NeverWritten/NeverWrittenTest.php', 'invented-artifact');
@@ -148,6 +206,87 @@ $legs = [
         @unlink($copy);
 
         return $r['rows'] === $control['rows'] && $r['ok'] === $control['ok'] && ! $r['refused'];
+    },
+    // ↓ Three legs for the Status column the matrix gained on 2026-10-30 (task #43). Adding the column moved the
+    // checker's AMBIGUOUS count from 6 to 12 BEFORE the checker was taught to read it — which is the lesson that a
+    // register change and a classifier change are two changes, and that a rewritten checker whose complaint count
+    // falls must be falsified, not admired. These are the falsifications.
+    'status-cell-must-lead' => function () use ($control, $plantInRow) {
+        $p = $plantInRow('G36', '', 'See the row above', 'status-cell-must-lead', true);
+        if ($p['bad']) {
+            return false;
+        }
+        $r = $p['r'];
+
+        return $r['rows'] === $control['rows']
+            && $r['ambiguous'] === $control['ambiguous'] + 1
+            && str_contains($r['out'], 'G-36')
+            && str_contains($r['out'], 'the Status cell leads with neither verdict');
+    },
+    'status-header-is-load-bearing' => function () use ($control, $matrix, $copy, $run) {
+        // Rename the header of ONLY the table that carries G40, so the column exists but is no longer recognised.
+        // G40's prose then decides its verdict positionally and says "Partly built", which no leading-verb pattern
+        // matches — the row must fall to AMBIGUOUS. If the header were decoration, nothing would move.
+        $lines = file($matrix);
+        $rowIdx = null;
+        foreach ($lines as $i => $l) {
+            if (preg_match('/^\|\s*G40\s*\|/', $l) === 1) {
+                $rowIdx = $i;
+
+                break;
+            }
+        }
+        if ($rowIdx === null) {
+            fwrite(STDERR, "BAD: no G40 row in the matrix — the register moved and this leg is out of date.\n");
+
+            return false;
+        }
+        $headIdx = null;
+        for ($i = $rowIdx; $i >= 0; $i--) {
+            if (str_contains((string) $lines[$i], '| Status |') && str_starts_with(trim((string) $lines[$i]), '| Id |')) {
+                $headIdx = $i;
+
+                break;
+            }
+        }
+        if ($headIdx === null) {
+            fwrite(STDERR, "BAD: no `| Id | … | Status |` header above the G40 row.\n");
+
+            return false;
+        }
+        $before = substr_count(implode('', $lines), '| Status |');
+        $lines[$headIdx] = str_replace('| Status |', '| Outcome |', (string) $lines[$headIdx]);
+        if (substr_count(implode('', $lines), '| Status |') !== $before - 1) {
+            fwrite(STDERR, "BAD: the header edit changed the column count by nothing.\n");
+
+            return false;
+        }
+        file_put_contents($copy, implode('', $lines));
+        $r = $run('--matrix='.$copy);
+        @unlink($copy);
+
+        // At least one, not exactly one: the header governs a whole table, so every row of it loses its column and
+        // this leg's first draft asserted +1 and reported SURVIVED when two moved. The instrument was right and the
+        // expectation was arithmetic from intent — the same failure this file records for verifier expectations.
+        return $r['rows'] === $control['rows']
+            && $r['ambiguous'] !== null && $control['ambiguous'] !== null
+            && $r['ambiguous'] >= $control['ambiguous'] + 1
+            && str_contains($r['out'], 'G-40');
+    },
+    'status-column-beats-row-prose' => function () use ($control, $plantInRow) {
+        // Put a Built claim in the row's own prose while its Status cell still says "Not built". The verdict must not
+        // move: a classifier that read the prose would either claim the artifact check or call the row ambiguous, and
+        // either way the column would be decoration.
+        $p = $plantInRow('G36', '| A natural key per notice', '| Built first: a natural key per notice', 'status-column-beats-row-prose');
+        if ($p['bad']) {
+            return false;
+        }
+        $r = $p['r'];
+
+        return $r['rows'] === $control['rows']
+            && $r['notBuilt'] === $control['notBuilt']
+            && $r['ambiguous'] === $control['ambiguous']
+            && $r['ok'] === $control['ok'];
     },
 ];
 
