@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor, statusToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, StatCard, CauseEffectModal, Modal, FormSection, formatStatusLabel as titleCase, studentTypeTone, academicStandingLabel, academicStandingToneFor, statusToneFor, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
@@ -17,10 +17,12 @@ const peso = (n) => (n === null || n === undefined || n === '' || !Number.isFini
     ? '—'
     : `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
-export default function Index({ clearances, periods, students = [], filters = {}, stats = {}, replacementFee = null, replacementFeeName = '' }) {
+export default function Index({ clearances, periods, students = [], filters = {}, stats = {}, replacementFee = null, replacementFeeName = '', sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [periodId, setPeriodId] = useState(filters.periodId || '');
     const [status, setStatus] = useState(filters.status || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'studentClearanceId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
     const [selectedId, setSelectedId] = useState(null);
     const [confirmState, setConfirmState] = useState(null); // { approval, action }
     const [showLostSlipModal, setShowLostSlipModal] = useState(false);
@@ -63,7 +65,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
         { value: '', label: 'All Periods' },
         ...periods.map((p) => ({
             value: p.clearancePeriodId,
-            label: `${p.term?.academicYear?.yearStart}-${p.term?.academicYear?.yearEnd} ${p.term?.semester} (${p.periodStatus})`,
+            label: `${p.term?.academicYear?.yearLabel} ${p.term?.semester} (${p.periodStatus})`,
         })),
     ], [periods]);
 
@@ -82,16 +84,30 @@ export default function Index({ clearances, periods, students = [], filters = {}
         [periods],
     );
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextPeriod, nextStatus, nextSort, nextDir) => {
         router.get(route('clearance.index'), {
-            search: search || undefined,
-            periodId: periodId || undefined,
-            status: status || undefined,
+            search: nextSearch || undefined,
+            periodId: nextPeriod || undefined,
+            status: nextStatus || undefined,
+            // The queue's own default travels as nothing at all, so a plain link stays a short URL rather than
+            // arriving as a sort key the handler would have to recognise as its fallback.
+            ...sortParams('studentClearanceId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, periodId, status, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, periodId, status, key, direction);
     };
 
     const openConfirm = (approval, action) => {
@@ -153,16 +169,21 @@ export default function Index({ clearances, periods, students = [], filters = {}
     };
 
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm font-bold', render: (row) => row.student?.schoolIdNumber || '—' },
-        { key: 'student.lastName', label: 'Student Full Name', render: (row) => {
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm font-bold', render: (row) => row.student?.schoolIdNumber || '—' },
+        { key: 'student.lastName', label: 'Student Full Name', sortKey: 'name', render: (row) => {
             const s = row.student;
             return s ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` : '—';
         }},
-        { key: 'clearancePeriod.term', label: 'Academic Term', render: (row) => {
+        {
+            // Academic Term, Student Type and Standing carry no sortKey on purpose: the standing pair is derived
+            // per page from the enrollment map rather than stored on the clearance row, and the term reads two
+            // relations away. A header becomes a control only when the handler listed its key, so offering an
+            // order these columns cannot answer is the defect §28.3 owns for filters.
+            key: 'clearancePeriod.term', label: 'Academic Term', render: (row) => {
             const cp = row.clearancePeriod;
             if (!cp) return '—';
             const ay = cp.term?.academicYear;
-            return ay ? `${ay.yearStart}-${ay.yearEnd} ${cp.term?.semester}` : '—';
+            return ay?.yearLabel ? `${ay.yearLabel} ${cp.term?.semester}` : '—';
         }},
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
@@ -174,12 +195,12 @@ export default function Index({ clearances, periods, students = [], filters = {}
                 {academicStandingLabel(row.academicStanding)}
             </Badge>
         )},
-        { key: 'overallStatus', label: 'Clearance Status', render: (row) => (
+        { key: 'overallStatus', label: 'Clearance Status', sortKey: 'status', render: (row) => (
             <Badge tone={statusToneFor(row.overallStatus)}>
                 {titleCase(row.overallStatus)}
             </Badge>
         )},
-        { key: 'receivedDate', label: 'Registrar Receiving', render: (row) => (
+        { key: 'receivedDate', label: 'Registrar Receiving', sortKey: 'received', render: (row) => (
             row.receivedDate ? (
                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     Received {fmtDate(row.receivedDate)}
@@ -343,6 +364,8 @@ export default function Index({ clearances, periods, students = [], filters = {}
                             rows={clearances.data}
                             children={renderActions}
                             emptyMessage="No clearance records found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={clearances} />
@@ -459,7 +482,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
                             <option value="" disabled>Select open period</option>
                             {openPeriods.map(p => (
                                 <option key={p.clearancePeriodId} value={p.clearancePeriodId}>
-                                    {p.term?.academicYear?.yearStart}-{p.term?.academicYear?.yearEnd} {p.term?.semester} (Open)
+                                    {p.term?.academicYear?.yearLabel} {p.term?.semester} (Open)
                                 </option>
                             ))}
                         </select>
@@ -571,7 +594,7 @@ function ClearanceDetailPanel({ clearance, onClose, onAct, onLostSlip, lostSlipL
         : '—';
     const cp = clearance.clearancePeriod;
     const periodLabel = cp?.term?.academicYear
-        ? `${cp.term.academicYear.yearStart}-${cp.term.academicYear.yearEnd} ${cp.term?.semester}`
+        ? `${cp.term.academicYear.yearLabel} ${cp.term?.semester}`
         : '—';
 
     return (

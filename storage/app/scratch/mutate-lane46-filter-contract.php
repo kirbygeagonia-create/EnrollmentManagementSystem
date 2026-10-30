@@ -12,7 +12,6 @@
  *
  * Usage: php storage/app/scratch/mutate-lane46-filter-contract.php
  */
-
 $root = dirname(__DIR__, 3);
 $php = getenv('EMS_PHP') ?: 'C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe';
 $checker = 'storage/app/scratch/lane46-filter-contract.php';
@@ -21,6 +20,7 @@ $targets = [
     'student' => $root.'/app/Http/Controllers/StudentController.php',
     'students-jsx' => $root.'/resources/js/Pages/Students/Index.jsx',
     'exam-jsx' => $root.'/resources/js/Pages/Exam/Index.jsx',
+    'clearance' => $root.'/app/Http/Controllers/Clearance/ClearanceController.php',
 ];
 
 $original = [];
@@ -149,14 +149,27 @@ $case('the status filter never read at all',
             ."            : null;\n\n"
             ."        \$query = CollegeScope::ofStudents(Students::query(), \$request->user())\n"
             ."            ->when(\$status, fn (\$q) => \$q->where('status', \$status))\n",
-            "        \$query = CollegeScope::ofStudents(Students::query(), \$request->user())\n"]],
+        "        \$query = CollegeScope::ofStudents(Students::query(), \$request->user())\n"]],
 );
 
 // B. The handler still narrows, but the prop no longer says so — the control resets while the list is filtered.
+//    The anchor was re-taken on 2026-10-30: G-40's wiring put `sort` and `direction` beside `status`, so the echo
+//    is a multi-line array and the one-line needle this leg carried matched nothing. A leg whose anchor is gone is
+//    the harness's age, not a surviving defect — it reports BAD, and the defect it names was never planted.
+//    The planted state is the real one: `status` is still applied to the query, only the echo loses the key.
 $case('a filter applied but never echoed',
     'NO-RETURN',
-    ['student' => ["'filters' => ['search' => \$request->search, 'status' => \$status]",
-        "'filters' => ['search' => \$request->search]"]],
+    ['student' => ["                'status' => \$status,\n", '']],
+);
+
+// B2. The other echo shape the reader used to miss: `$request->only([…]) + ['sort' => …]`, where the merged array
+//     is part of the same echo. Cutting the value at the first depth-zero `]` reported three keys and called the
+//     two sort keys unechoed — a false complaint about a page that echoes them; cutting at the first depth-zero
+//     comma reads the merge. Deleting one merged key here must therefore raise NO-RETURN, which is what proves the
+//     comma stop is honoured rather than tolerated.
+$case('a key echoed only inside a merged array is still read',
+    'NO-RETURN',
+    ['clearance' => ["                'direction' => \$sort['direction'],\n", '']],
 );
 
 // C. The dropdown regains a value the column cannot hold.

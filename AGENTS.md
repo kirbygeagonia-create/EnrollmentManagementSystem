@@ -90,11 +90,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   read only `route('x', {…})` link objects and never `router.get(route('x'), {…})`** — the shape where a desk's
   own filters actually live, so every filter submit in the repository was invisible; the corrected run judges 56
   bindings, measured 2026-10-26 — the set grew by one when the Registrar's record page gained its history filters, and
-  the sentence states only the number the tool answers today, because two figures for one instrument in one sentence is
+  the sentence names the day it was read, because two figures for one instrument in one sentence is
   how lane 58's multi-total defect is born.
   A checker pointed at the wrong construct is worse than one that reads nothing, because it prints a pass. Its
   scope is a flag (`EMS_LANE46_PAGES`), so the harness proves the flag changes what is scanned and that an empty
   scope *refuses* rather than reporting clean.
+  **Its echo reader was blind to the two shapes the sort batch introduced** (2026-10-30). A `filters` prop written as a
+  multi-line array, or as `$request->only([…]) + ['sort' => …]`, matched neither of its two one-line patterns, so the
+  reader answered null — and null means "no echo to compare", which left NO-RETURN unsatisfied on exactly the four
+  newest screens while a mutant that deleted an echoed key printed a clean tree. The value is now walked by its own
+  brackets and ends at the first comma at bracket depth zero, because a merged array is part of the same echo. And a
+  page that builds its query by spreading `sortParams(…)` sends `sort` and `direction` with neither name written in the
+  object literal, so those keys are read out of the helper's own `return { … }` rather than spelled a second time
+  here — two definitions of one vocabulary is the lane 69 defect. The harness surfaced both because one of its legs
+  reported `MUTANT DID NOT APPLY`: its anchor had aged the day the wiring put `sort` and `direction` beside `status`,
+  and re-cutting that leg to the current shape is what exposed the reader's null. **A leg that cannot apply is the
+  instrument's age; a leg that applies and still prints clean is the instrument's hole. Both are read as findings,
+  never as a run that passed.**
   **A harness run concurrently with the suite is not a harness run.** The first run of that pair, launched in the same
   message as `artisan test`, reported `1 case(s) failed`; run on its own afterwards it answered 8 legs `ok` and exit 0.
   That is the no-concurrent-mutating-runs rule biting an *instrument* instead of a suite: the bad verdict was fake, and
@@ -1608,7 +1620,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 33 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 32 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -1627,6 +1639,34 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   click, and kept both the search term and the order through a filter submit; the same two clicks were then re-taken
   on the two refactored queues, because a page that stopped sorting after a shared-module swap would still leave every
   Pest case green.
+- **A JSX field name no model supplies is invisible to every gate, and a page can print the word `undefined` at a
+  desk for as long as nobody looks** (this batch, found by opening the running app). `Academicyears` holds
+  `yearLabel`, `startDate` and `endDate` — there is no `yearStart`, `yearEnd` or `year`, and no accessor or `$appends`
+  anywhere in `app/` (measured by reflection, not recalled). Nine sites in five pages built an academic-year label
+  from those names: the clearance queue's term column, its period dropdown, the detail card's caption and three more
+  on the periods screen interpolated `undefined` into what a Registrar reads, while the Admission intake and case
+  pages and the Examination form used `|| ''`, so a term choice read "1st" with nothing to say *which* year's first
+  semester it was and a case page printed a bare semester beside the dash it reserves for absence. PHPStan does not
+  read JSX, ESLint checks syntax not data, Vite builds it happily, and no test asserts a rendered string — this is
+  lane 71's "a sentence states how the code behaves today" class reached from the screen side. All nine now read
+  `yearLabel`. The guard is `tests/Feature/Clearance/AcademicYearLabelSurfaceTest.php`: the legal names are DERIVED
+  from the migrated table plus the model's own `$fillable`, casts and `get…Attribute` methods; `const ay =
+  …academicYear` aliases are resolved, so a read cannot hide behind a local; and a `|| ''` fallback fails as firmly
+  as a bare interpolation. Two instrument defects came out of writing it: the scanner read only the FIRST
+  `receiver.NAME` on a line, so a guard clause like `ay?.yearLabel ?` masked the planted field two tokens later on
+  the same line, and a page promise phrased as "the file contains `yearLabel`" survived deleting one of its two
+  sites — so the name is matched everywhere on a line and its occurrences are counted.
+  `mutate-year-label-surface-tests.php` plants three defects, each killed by the case that names it. Its fourth leg
+  is WITHDRAWN and the withdrawal is the record: the planted bytes were verified on disk, yet the harness's own child
+  process reported the case green, while the identical mutation applied from a shell fails it on its first
+  assertion. A leg that cannot fail is decoration; a leg that reports a real guard as surviving is worse, so it is
+  stated rather than folded into the tally (task #47 carries the revisit). The same session wired the campus
+  clearance queue as the fourth sortable table — `ClearanceQueueSortTest.php` (9 cases / 29 assertions), five legs
+  all killed — which added two shapes the other three do not have: the tiles are cloned from the builder BEFORE a
+  name sort can introduce a join, and Academic Term, Student Type and Standing are derived per page, so their keys
+  stay out of `sort.available` rather than offering an order the query cannot answer. That clone-before-the-join
+  ordering has no mutant leg and says so: the join is one-to-one through a NOT NULL key, so no fixture can move a
+  tile count, and a leg asserting one would measure a state that cannot exist.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never

@@ -18,6 +18,7 @@ use App\Models\Payments;
 use App\Models\Studentclearances;
 use App\Models\Students;
 use App\Services\PrintService;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -45,8 +46,7 @@ class ClearanceController extends Controller
         $query = Studentclearances::with(['student', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser'])
             ->when($request->periodId, fn ($q, $id) => $q->where('clearancePeriodId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('overallStatus', $status))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('studentClearanceId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Full-dataset status counts for the summary tiles (m2): counting
         // client-side from clearances.data understates the dataset beyond
@@ -63,6 +63,25 @@ class ClearanceController extends Controller
             ->selectRaw('overallStatus, count(*) as aggregate')
             ->groupBy('overallStatus')
             ->pluck('aggregate', 'overallStatus');
+
+        // The order is asked of the query, and only after the tiles were cloned: a name sort joins `students`, and
+        // an aggregate must not learn about a join it never needed. The join is 1:1 through a NOT NULL foreign key,
+        // so it could not have changed a count either way — but a tile's number should not depend on that fact.
+        $sortable = [
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'studentclearances.studentId'],
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'studentclearances.studentId'],
+            'status' => ['column' => 'overallStatus'],
+            'received' => ['column' => 'receivedDate'],
+            'studentClearanceId' => ['column' => 'studentClearanceId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'studentClearanceId',
+            'studentclearances.studentClearanceId'
+        );
 
         $clearances = $query->paginate(20)->withQueryString();
 
@@ -87,7 +106,11 @@ class ClearanceController extends Controller
             'replacementFee' => Feetypes::clearanceSlipReplacementFee(),
             'replacementFeeName' => Feetypes::CLEARANCE_SLIP_REPLACEMENT,
             'students' => Students::orderBy('lastName')->orderBy('firstName')->get(['studentId', 'schoolIdNumber', 'firstName', 'middleName', 'lastName']),
-            'filters' => $request->only(['periodId', 'status', 'search']),
+            'filters' => $request->only(['periodId', 'status', 'search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
             'stats' => [
                 'pending' => (int) ($statusCounts[ClearanceOverallStatus::Pending->value] ?? 0),
                 'approved' => (int) ($statusCounts[ClearanceOverallStatus::Approved->value] ?? 0),

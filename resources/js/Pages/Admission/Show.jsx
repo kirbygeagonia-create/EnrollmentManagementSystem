@@ -365,7 +365,7 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                                     <dd className="text-brand-900 font-medium">{admission.course?.courseName || '—'}</dd>
                                 </FormSection>
                                 <FormSection label="Term">
-                                    <dd className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.year || ''}</dd>
+                                    <dd className="text-brand-900">{admission.term?.semester || '—'} {admission.term?.academicYear?.yearLabel || ''}</dd>
                                 </FormSection>
                                 <FormSection label="Gender">
                                     <dd className="text-brand-900 capitalize">{student?.gender || '—'}</dd>

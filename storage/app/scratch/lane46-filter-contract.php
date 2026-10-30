@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
+
 /**
  * Lane 46 — does every filter a desk sets reach the query, and does the screen say what it applied?
  *
@@ -25,6 +28,17 @@
  * hole and a clean tree look identical otherwise, which is the lesson every checker in this repository has
  * already paid for once.
  *
+ * Two shapes the first parser never learned, both met on 2026-10-30 when the sort batch wired four more screens.
+ * (1) A `filters` prop written as a multi-line array, or as `$request->only([…]) + ['sort' => …]`: the two
+ * one-line patterns read null, and null means "no echo to compare", so NO-RETURN went unsatisfied on exactly the
+ * newest pages — a mutant that deleted an echoed key printed 0 problems. The value is now walked by its own
+ * brackets and ends at the first comma at bracket depth zero, which is what carries a merged array too.
+ * (2) A page whose query is built by spreading a shared helper (`...sortParams(…)`) sends `sort` and `direction`
+ * with neither name written in the object literal, so no literal-key scan enumerated them and the order contract
+ * was invisible here; the helper's own `return { … }` is read for its keys, so one definition owns the vocabulary.
+ * The harness legs that plant a deleted key in each shape are the proof, because a clean tree reads the same
+ * either way.
+ *
  * What this does NOT claim. DEAD-SEND is about a key the handler never reads. A key read into a variable that
  * is then unused — `->when($status, …)` deleted but `$status = …$request->query('status')` left behind — still
  * counts as consulted, and no rule here catches it, because enumerating "is this variable used for anything"
@@ -41,7 +55,6 @@
  * builder starts from, the enum the column holds — because FICTION checks nothing at all when it cannot resolve
  * a column, and a silently skipped class is the defect this repository keeps paying for.
  */
-
 $root = dirname(__DIR__, 3);
 $php = getenv('EMS_PHP') ?: 'C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe';
 
@@ -49,9 +62,9 @@ $php = getenv('EMS_PHP') ?: 'C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\p
 // around information_schema, and the database named is the one .env points at.
 require $root.'/vendor/autoload.php';
 $app = require $root.'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
-$database = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+$database = DB::connection()->getDatabaseName();
 $debug = null;
 foreach ($argv as $arg) {
     if (str_starts_with($arg, '--debug=')) {
@@ -66,7 +79,7 @@ $enumOf = function (string $table, string $column) use ($database): ?array {
     if (array_key_exists($k, $cache)) {
         return $cache[$k];
     }
-    $row = \Illuminate\Support\Facades\DB::selectOne(
+    $row = DB::selectOne(
         'SELECT COLUMN_TYPE AS t FROM information_schema.columns '
         .'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
         [$database, $table, $column]
@@ -197,10 +210,78 @@ $handlerKeys = function (string $body): array {
 
 /** The keys the `filters` prop hands back to the page. */
 $echoedKeys = function (string $body): ?array {
-    if (! preg_match("/['\"]filters['\"]\s*=>\s*(.+?),\n\s*['\"]/", $body, $m) && ! preg_match("/['\"]filters['\"]\s*=>\s*(.+?)\s*,\s*\n\s*\]/", $body, $m)) {
+    // Read the value by its own brackets, never by the next quote or the next `]` in the file.
+    //
+    // The first version matched only two shapes — one line ending at the next `'key'`, or one line ending at the
+    // array's own `]` — and three of the four handlers wired to `ListSort` write a multi-line array with a comment
+    // above it. Those reads answered null, and null means "no echo to compare", so NO-RETURN was silently
+    // unsatisfied on exactly the newest pages: a mutant that deleted an echoed key still printed 0 problems.
+    // An unread surface is the same liability as an unread tile (lane 50 read this class from the JSX side).
+    if (! preg_match("/['\"]filters['\"]\s*=>\s*/", $body, $m, PREG_OFFSET_CAPTURE)) {
         return null;
     }
-    $expr = $m[1];
+    $i = $m[0][1] + strlen($m[0][0]);
+    $len = strlen($body);
+    while ($i < $len && (preg_match('/\s/', $body[$i]))) {
+        $i++;
+    }
+    if ($i >= $len) {
+        return null;
+    }
+    $expr = '';
+    $depth = 0;
+    for (; $i < $len; $i++) {
+        $c = $body[$i];
+        if ($c === "'" || $c === '"') {
+            $q = $c;
+            $open = $i;
+            $i++;
+            for (; $i < $len; $i++) {
+                if ($body[$i] === '\\') {
+                    $i++;
+
+                    continue;
+                }
+                if ($body[$i] === $q) {
+                    break;
+                }
+            }
+            // The whole literal travels, not just its opening quote: the first cut appended only `$c`, so the
+            // key text was dropped and `'search' =>` never matched. That made the reader answer null on a
+            // handler whose array it had just walked correctly — the unread-surface defect reproduced inside
+            // its own fix, which is why the leg that plants a deleted key is the proof and not the clean run.
+            $expr .= substr($body, $open, $i - $open + 1);
+
+            continue;
+        }
+        if ($c === '/' && ($i + 1) < $len && $body[$i + 1] === '/') {
+            $nl = strpos($body, "\n", $i);
+            $i = $nl === false ? $len : $nl;
+
+            continue;
+        }
+        if ($c === '[' || $c === '(' || $c === '{') {
+            $depth++;
+            $expr .= $c;
+
+            continue;
+        }
+        if ($c === ']' || $c === ')' || $c === '}') {
+            $depth--;
+            $expr .= $c;
+
+            continue;
+        }
+        // A comma at depth zero ends this prop. The old stop was the array's own closing bracket, which is wrong
+        // for the shape `Campus Clearance` writes: `'filters' => $request->only([...]) + ['sort' => …]` — that
+        // merge is part of the same echo, and cutting at the first `]` reported the three `only` keys and read
+        // `sort`/`direction` as never echoed.
+        if ($c === ',' && $depth === 0) {
+            break;
+        }
+        $expr .= $c;
+    }
+
     $keys = [];
     if (preg_match('/\$request->only\(\[([^\]]*)\]/', $expr, $o)) {
         foreach (explode(',', $o[1]) as $one) {
@@ -252,7 +333,7 @@ $pageKeys = function (string $jsx) use ($root): array {
         return [[], [], false];
     }
 
-    /** The top-level keys of the object literal that starts at $start, braces counted. */
+    /** The top-level keys and the whole text of the object literal that starts at $start, braces counted. */
     $objectKeys = function (int $start) use ($src): array {
         $depth = 0;
         $end = $start;
@@ -276,14 +357,42 @@ $pageKeys = function (string $jsx) use ($root): array {
             }
         }
 
-        return array_keys($keys);
+        return [array_keys($keys), $obj];
+    };
+
+    // The keys a spread contributes, read from the helper that returns them. A page that builds its query with
+    // `...sortParams(…)` sends `sort` and `direction` without either name appearing in the object literal, and
+    // the first version of this reader enumerated only literal keys — so the order contract the four wired
+    // screens just acquired was invisible to the instrument that owns "a key sent must come back". Hardcoding
+    // the two names here would be a second definition of the helper's vocabulary, so they are taken from its
+    // own `return { … }` in resources/js/Components/ui/listSort.js; an unread helper means no spread keys, and
+    // the run's `unread` tally would say so rather than clear the class silently.
+    $spreadKeys = [];
+    $helperSrc = @file_get_contents($root.'/resources/js/Components/ui/listSort.js');
+    if ($helperSrc !== false
+        && preg_match('/export function sortParams\([^)]*\)\s*\{.*?return\s*\{(.*?)\};/s', $helperSrc, $hm)
+        && preg_match_all('/(?:^|[{,])\s*([a-zA-Z_]\w*)\s*:/', $hm[1], $km)) {
+        foreach ($km[1] as $key) {
+            $spreadKeys[] = $key;
+        }
+    }
+    $spreadKeys = array_values(array_unique($spreadKeys));
+
+    /** Which helper names this object spreads into itself. */
+    $spreadInto = function (string $obj) use ($spreadKeys): array {
+        if ($spreadKeys === [] || ! str_contains($obj, '...sortParams(')) {
+            return [];
+        }
+
+        return $spreadKeys;
     };
 
     $sends = [];
     // (A) a link or a query built inline on the route call: route('x.y', { … })
     if (preg_match_all('/route\(\x27([a-zA-Z0-9_.\-]+)\x27\s*,\s*(\{)/', $src, $m, PREG_OFFSET_CAPTURE)) {
         foreach ($m[1] as $i => $nameHit) {
-            foreach ($objectKeys($m[2][$i][1]) as $key) {
+            [$keys, $obj] = $objectKeys($m[2][$i][1]);
+            foreach ([...$keys, ...$spreadInto($obj)] as $key) {
                 $sends[$nameHit[0]][$key] = true;
             }
         }
@@ -293,7 +402,8 @@ $pageKeys = function (string $jsx) use ($root): array {
     //     and a checker that reads only shape (A) clears a tree while judging the wrong sites.
     if (preg_match_all('/router\.get\(\s*route\(\x27([a-zA-Z0-9_.\-]+)\x27\)\s*,\s*(\{)/', $src, $m, PREG_OFFSET_CAPTURE)) {
         foreach ($m[1] as $i => $nameHit) {
-            foreach ($objectKeys($m[2][$i][1]) as $key) {
+            [$keys, $obj] = $objectKeys($m[2][$i][1]);
+            foreach ([...$keys, ...$spreadInto($obj)] as $key) {
                 $sends[$nameHit[0]][$key] = true;
             }
         }
@@ -403,7 +513,16 @@ foreach ($pages as $page => $path) {
             foreach ($seen as $tc => $vals) {
                 printf("    column enum     %s = %s\n", $tc, $vals === null ? '(not an enum on this box)' : implode('|', $vals));
             }
-            printf("    offers          %s\n", $offers === [] ? '(no value: literals in this page)' : implode(', ', $offers));
+            // `$offers` is keyed by filter name and each value is the list of literals, so a bare implode walks
+            // straight into "Array to string conversion" — the debug branch crashed here the first time the sort
+            // batch sent anyone to read a binding, which is how a flag that prints nothing was found unread.
+            printf("    offers          %s\n", $offers === []
+                ? '(no value: literals in this page)'
+                : implode(', ', array_map(
+                    fn (array $v, string $k): string => $k.'='.implode('|', $v),
+                    $offers,
+                    array_keys($offers)
+                )));
         }
 
         foreach ($keys as $key) {

@@ -18,7 +18,7 @@ const fmtDate = (d) => formatCalendarDay(d, { year: 'numeric', month: 'short', d
 const useTermOptions = (periods) => useMemo(() => periods
     .map((p) => ({
         value: p.termId,
-        label: `${p.term?.academicYear?.yearStart}-${p.term?.academicYear?.yearEnd} ${p.term?.semester}`,
+        label: `${p.term?.academicYear?.yearLabel} ${p.term?.semester}`,
     }))
     .filter((v, i, a) => a.findIndex((t) => t.value === v.value) === i), [periods]);
 
@@ -136,7 +136,7 @@ export default function Periods({ periods }) {
 
     const periodLabel = (p) => {
         const ay = p.term?.academicYear;
-        return ay ? `${ay.yearStart}-${ay.yearEnd} ${p.term?.semester}` : '—';
+        return ay?.yearLabel ? `${ay.yearLabel} ${p.term?.semester}` : '—';
     };
 
     const openExtendModal = (period) => {

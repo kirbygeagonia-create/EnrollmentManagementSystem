@@ -797,7 +797,7 @@ export default function Create({ courses, terms, religions }) {
                                 <Select
                                     value={form.data.termId}
                                     onChange={(v) => form.setData('termId', v)}
-                                    options={terms.map(t => ({ value: t.termId, label: `${t.semester} ${t.academicYear?.year || ''}` }))}
+                                    options={terms.map(t => ({ value: t.termId, label: `${t.semester} ${t.academicYear?.yearLabel || ''}` }))}
                                     placeholder="Select term"
                                     required
                                 />
