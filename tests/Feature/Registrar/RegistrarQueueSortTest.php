@@ -174,8 +174,8 @@ class RegistrarQueueSortTest extends TestCase
     #[Test]
     public function a_column_the_handler_never_listed_falls_back_and_never_reaches_the_query(): void
     {
-        $this->assessed('Zulueta');
-        $this->assessed('Magsaysay');
+        $zulueta = $this->assessed('Zulueta');
+        $magsaysay = $this->assessed('Magsaysay');
 
         // The shape of a forged or stale key: it is not in the allow-list, so it must be ignored rather
         // than interpolated — an identifier cannot be bound as a parameter, so passing it through would be
@@ -189,14 +189,29 @@ class RegistrarQueueSortTest extends TestCase
 
         // The fallback is about the COLUMN; a direction the desk asked for is still honoured, because it was
         // validated to asc|desc and an officer who asked for ascending did not ask to be contradicted.
+        //
+        // The ids are read back from the rows the fixture created, never written as 1 and 2: on MySQL 8 an
+        // AUTO_INCREMENT counter spent by earlier tests in the same run hands out different numbers, while
+        // SQLite rewinds it inside a rolled-back transaction — so literals pass locally and go red on CI, the
+        // exact trap AGENTS.md records for the rehearsal schema. Order, not value, is the promise.
         $ascending = array_map(fn ($row) => (int) $row['enrollmentId'], $this->rows($withDirection));
         $this->assertCount(2, $ascending, 'an order cannot be read from fewer than two rows');
-        $this->assertSame([1, 2], $ascending);
+        $this->assertSame(
+            [$zulueta->enrollmentId, $magsaysay->enrollmentId],
+            $ascending,
+            'the ascending fallback must be the creation order, read from the rows the fixture made'
+        );
+        $this->assertSame(['Zulueta', 'Magsaysay'], $this->surnames($withDirection));
 
         // With no direction asked, the list keeps its own newest-first order.
         $plain = $this->actingAs($this->registrar)->get(route('registrar.index'));
         $this->assertSame('desc', $plain->viewData('page')['props']['sort']['direction']);
-        $this->assertSame([2, 1], array_map(fn ($row) => (int) $row['enrollmentId'], $this->rows($plain)));
+        $this->assertSame(
+            [$magsaysay->enrollmentId, $zulueta->enrollmentId],
+            array_map(fn ($row) => (int) $row['enrollmentId'], $this->rows($plain)),
+            'with nothing asked the queue keeps its own newest-first order'
+        );
+        $this->assertSame(['Magsaysay', 'Zulueta'], $this->surnames($plain));
     }
 
     #[Test]
