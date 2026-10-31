@@ -12,6 +12,7 @@ use App\Models\Enrollments;
 use App\Models\Idrequests;
 use App\Services\WorkflowService;
 use App\Support\DeskQueues;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -70,12 +71,37 @@ class IDController extends Controller
                 ->where('officeId', OfficeId::IdOffice->value)
             ));
 
+        // Student Type and Standing are deliberately absent from this set, and so is the ID Status column — three
+        // different reasons, each written here rather than left to be rediscovered. The first two are ENUM columns:
+        // the school's MySQL orders an ENUM by the index each value was declared with while the test schema's
+        // `enum()` is a varchar with a CHECK and orders the stored word, so a header over either would answer a
+        // different sequence depending on which machine replied (the same split CI reported for the clearance
+        // queue, recorded in §28.3 G-40). ID Status is not a column at all: the row paints the status of its FIRST
+        // request, which a list over enrollments cannot order without deciding what an enrollment with two requests
+        // means — a question the desk has never been asked and the school has not answered.
+        $sortable = [
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'enrollments.courseId'],
+            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
+        ];
+
         // Clone, as the single-tab version did: paginate() mutates the builder it runs on, and both tiles are
-        // computed from these same bases afterwards.
-        $enrollments = (clone ($tab === 'issued' ? $issuedBase : $queueBase))
-            ->with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow'])
-            ->orderByDesc('enrollmentId')
-            ->paginate(20)->withQueryString();
+        // computed from these same bases afterwards — so the order is applied to this clone and never to the bases
+        // the counts are taken from.
+        $list = (clone ($tab === 'issued' ? $issuedBase : $queueBase))
+            ->with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow']);
+
+        $sort = ListSort::apply(
+            $list,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'enrollmentId',
+            'enrollments.enrollmentId'
+        );
+
+        $enrollments = $list->paginate(20)->withQueryString();
 
         // Each tile counts the set its own tab shows. Counting validated rows inside the queue asked one
         // enrollment to hold a signed ID box and a pending one at once, which is why the tile read zero on
@@ -94,7 +120,14 @@ class IDController extends Controller
                 'pending' => $queueStats['pending'],
                 'validated' => $issuedStats['validated'],
             ],
-            'filters' => $request->only(['search', 'tab']),
+            // Four keys travel back: the tab the desk is standing on, the search it typed, and the order it asked
+            // for. A key the screen sent and the handler never returns is a control that resets while the list
+            // stays narrowed by the others — the defect §28.3 owns for filters.
+            'filters' => $request->only(['search', 'tab']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

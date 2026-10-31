@@ -1577,7 +1577,11 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   header raises it for the whole table, and planting a Built claim in the prose of a row whose cell says "Not built"
   changes nothing. Two rows then stood out as `NO-ARTIFACT` — a Built claim naming no file — and both were made
   resolvable by naming the files a grep confirmed, which is where the column earns its keep: nine rows now read
-  Not built, none is ambiguous, and every built claim points at a path the repository holds.
+  Not built, none is ambiguous, and every built claim points at a path the repository holds. **A markdown table row is
+  ONE line, and an edit that wraps it mid-cell does not fail — it shrinks the table.** Re-typing this row with a hard
+  break inside a cell made the next run read 27 of 28 gap rows and 33 artifacts instead of 47, a quiet loss of a whole
+  row and fourteen pointers; the check is the tool's own row count, so re-run it after any edit to a table cell, and
+  never trust a green exit as proof the table still has the rows it had.
 - **A dashboard badge and the list under it must be one predicate** (lane 96, prompt §8, §28.3 G-46).
   `DashboardController::queueCounts()` restated each desk's filters as its own query and drifted in three ways:
   `admission` and `evaluation` counted the whole school while the pages behind them are bounded by the desk's
@@ -1640,7 +1644,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 29 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 28 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -1711,7 +1715,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   out anyway, with the reason in the handler beside the allow-list, and `ClinicQueueSortTest.php` (10 cases / 35
   assertions) asserts
   `sort.available` rather than trusting the comment: a header whose sequence changes with the machine that answered is
-  not an order a desk can be given. Apply this to the remaining 29 tables before writing a sortable set — check the
+  not an order a desk can be given. Apply this to the remaining 28 tables before writing a sortable set — check the
   column's MySQL type (`information_schema.COLUMNS.DATA_TYPE`, not the model) and leave an ENUM out unless the
   expectation can be derived per connection, the way the clearance case now does. Two of the eleven legs of
   `mutate-g40-clinic-sort-tests.php` plant the JOIN rather than a column (`one-hop-spec-read-as-no-join`,
@@ -1728,6 +1732,28 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and a key is not a label. `aria-sort` was read from the same DOM: `descending` on the active header, `none` on the
   two other sortable ones, absent on the three that are not controls — which is the a11y evidence one row cannot give
   for a sequence.
+  **The eighth table, the ID desk, made a TAB the third control an order must survive.** Its queue tab is not a filter:
+  it chooses which population the list is built from — the enrollments whose first open box is office 22 against the
+  ones whose ID box is already signed — so `ListSort` runs on the clone of the base the tab chose, and the two tiles
+  and both tab counts still clone the bases themselves. Pinned by `IDQueueSortTest.php` (10 cases / 39 assertions), and a
+  harness can now plant the swap directly
+  (`order-applied-to-the-other-base` in `mutate-g40-id-sort-tests.php`, thirteen legs, all killed) and require the
+  tab's own case to go red while the order stays perfectly formed. The tab must also come BACK: the filter echo carries
+  four keys now, and an un-echoed tab is lane 46's NO-RETURN seen from the side a desk switches rather than types. Its
+  withheld column adds a THIRD reason, different from the ENUM one and from "the query cannot reach it": ID Status
+  paints the status of the row's FIRST request, and ordering by it would decide what two requests on one enrollment
+  amount to — a question the school has never been asked, so no header is painted rather than an invented one. This
+  queue is also the first wired screen whose browser read could show a sequence at all: live `ems` holds two
+  enrollments waiting at the ID office, and the running screen swapped them (Alcantara at rest, Sotto ascending, back
+  again on the second click). Two instrument readings from the same batch. **A comma-list citation is one token and the
+  shift tool defers its tail:** the document pairs the blood-type validation rule with the write of the same value in
+  one citation — the rule's own line, then a comma, then a bare continuation. `lane76-shift-cites.php` resolved the
+  head and deferred the bare tail as BARE-DEFERRED, so writing the head alone would have left the pair half-moved, and
+  a half-moved pointer looks valid in a way a missing one never does. Both numbers were skipped and the whole pair
+  re-taken by hand, each endpoint asserted byte-for-byte in HEAD and in the working file before the write. **And the
+  obvious needle for that tail belongs to another file:** the run-tail of the retired number matches a live pointer in
+  the service provider, so the pass guards that neighbour's own count on read-back — lane 69's "a needle can be
+  another citation's tail", met again one batch later.
   **The same batch went red on CI's MySQL job while this box was green, and the defect was in a test's memory.**
   `studentclearances.overallStatus` is declared `enum('pending','approved','rejected','waived','incomplete')`, and
   MySQL sorts an ENUM by that **declaration index**, while the suite's `enum()` compiles to a varchar with a CHECK
@@ -2418,7 +2444,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   bare `sed -n 'Ap;Bp'`.
   **Pass 244 worked a different figure family: a count over demo rows, written in the present tense.** §20's ID-desk
   paragraph said the Issued tab holds "seven on this box against the two the queue holds". Replicating the controller's
-  own predicate (`IDController.php:66-71` — `enrolled` enrollments having a `completed` step for office 22) on live
+  own predicate (`IDController.php:67-72` — `enrolled` enrollments having a `completed` step for office 22) on live
   `ems` answers **nine** (53, 92, 1063, 1064, 1065, 1066, 1067, 1284, 1285) while the second half is still exactly two
   pending rows, so the count had drifted with the dataset and the sentence's structure was sound. The pass wrote
   `nine` and left the number's twin alone: §28's register row that also reads "seven … against the two still queued"

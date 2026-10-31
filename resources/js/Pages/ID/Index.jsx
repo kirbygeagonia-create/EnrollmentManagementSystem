@@ -1,18 +1,23 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, nextSortDirection, sortParams } from '@/Components/ui';
 import { formatStatusLabel, idRequestStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui/statusLabel';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, stats = {}, filters = {}, tab = 'queue', tabs = {} }) {
+export default function Index({ enrollments, stats = {}, filters = {}, tab = 'queue', tabs = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'enrollmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        // Student Type and Standing are not offered: both are ENUM columns, and the school's MySQL orders an ENUM by
+        // the index it was declared with while the test suite's varchar orders the word — one header, two sequences.
+        // ID Status is the status of this row's FIRST request, which no order over enrollments can answer.
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}
@@ -38,21 +43,31 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
         }},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextTab, nextSort, nextDir) => {
         router.get(route('id.index'), {
-            search: search || undefined,
-            tab: tab === 'issued' ? 'issued' : undefined,
+            search: nextSearch || undefined,
+            tab: nextTab === 'issued' ? 'issued' : undefined,
+            // The desk's own newest-first default travels as nothing at all, so a plain link stays a short URL.
+            ...sortParams('enrollmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
-    const openTab = (next) => router.get(route('id.index'), {
-        tab: next === 'issued' ? 'issued' : undefined,
-        search: search || undefined,
-    }, { preserveScroll: true });
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, tab, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, tab, key, direction);
+    };
+
+    const openTab = (next) => visit(search, next, sortBy, sortDir);
 
     const renderActions = (row) => (
         <div className="flex items-center gap-2">
@@ -151,6 +166,8 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
                             columns={columns}
                             rows={enrollments.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No ID requests found"
                         />
                         <div className="mt-4">
