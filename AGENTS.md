@@ -1640,7 +1640,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 30 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 29 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -1705,6 +1705,29 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   whose application-key rule runs from 228 to 243, and `ClearanceController.php:290-304`), so a map by number would
   have rewritten a true pointer into a different file — the prefix-of-a-longer-citation defect met from the tail side,
   and the reason `--skip=N` is a queue handed to a reader rather than a clean run.
+  **The seventh table turned that server-dependent ordering into a rule about what a screen may OFFER.** The clinic
+  queue's `studentType` and `academicStanding` are both ENUM and both already sit on the enrollment row the desk
+  reads, so the usual reason to leave a column unsortable — the query cannot reach it — does not apply. They are left
+  out anyway, with the reason in the handler beside the allow-list, and `ClinicQueueSortTest.php` (10 cases / 35
+  assertions) asserts
+  `sort.available` rather than trusting the comment: a header whose sequence changes with the machine that answered is
+  not an order a desk can be given. Apply this to the remaining 29 tables before writing a sortable set — check the
+  column's MySQL type (`information_schema.COLUMNS.DATA_TYPE`, not the model) and leave an ENUM out unless the
+  expectation can be derived per connection, the way the clearance case now does. Two of the eleven legs of
+  `mutate-g40-clinic-sort-tests.php` plant the JOIN rather than a column (`one-hop-spec-read-as-no-join`,
+  `surname-spec-loses-its-join`), which is the shape a wrong-column-only harness never sees: a surname ordered with no
+  join does not print a wrong sequence, it fails to build a list at all. **And the browser read was bounded rather
+  than padded:** `lane102-probe-clinic-queue.php` answers that live `ems` holds ONE row waiting at the clinic box, so
+  no click there can show a sequence change — what the running app proved was the contract (three headers send `sort`
+  and `direction`, the second click reverses, and a filter submit keeps both the typed search and the arrow) while the
+  ordering is pinned by a fixture that writes four. Ask how long the queue is before claiming a desk demonstrated an
+  order; lane 47's rule for a page-two defect is the same rule from the sequence side. The browser read found one
+  wording defect in the shared control while it was at it: the active header's tooltip printed
+  `Sorted schoolId descending` — the internal column key, on a screen a person reads. It now names the column the way
+  the heading does (`Sorted School ID descending — click for ascending`), because prompt §11 asks for labelled controls
+  and a key is not a label. `aria-sort` was read from the same DOM: `descending` on the active header, `none` on the
+  two other sortable ones, absent on the three that are not controls — which is the a11y evidence one row cannot give
+  for a sequence.
   **The same batch went red on CI's MySQL job while this box was green, and the defect was in a test's memory.**
   `studentclearances.overallStatus` is declared `enum('pending','approved','rejected','waived','incomplete')`, and
   MySQL sorts an ENUM by that **declaration index**, while the suite's `enum()` compiles to a varchar with a CHECK
@@ -2894,10 +2917,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   as a clean result. If this family is ever re-instrumented, the convention to establish first is a registered writer
   per artifact — not a grep.
 - The `§` vocabulary has its own sweeps now, because `File.php:NN` checks say nothing about it.
-  `storage/app/scratch/lane37-section-reference-sweep.php` judges the 1027 references it resolves against
+  `storage/app/scratch/lane37-section-reference-sweep.php` judges every reference it resolves against
   `lane37-docx-inventory.php` (196 numbered headings, 135 finding rows with the section each physically sits
   under); `lane37b-repo-citation-sweep.php` judges the references PHP comments and the markdown files
-  point into the document, the acceptance script and the audit file — three separate numbering systems. The 1027 was read off the sweep's own line on 2026-10-30, after three docx passes rewrote §28.3's G-40 row and the day's §1.1 row and four pointers sat inside the sentences that were replaced — a census this file states has to be generated from the tool that prints it, and lane 59 refuses the run when it is not. **This file
+  point into the document, the acceptance script and the audit file — three separate numbering systems. The reference
+  figure was re-taken on 2026-10-30 after docx pass 321b added a §1.1 row of its own, because the row written to
+  record a pass is itself one of the references the sweep counts — the reading this file carried had been taken before
+  that row existed, and re-taking it moved again while this bullet was being edited. Earlier still, three docx passes
+  rewrote §28.3's G-40 row and the day's §1.1 row and four pointers sat inside the sentences that were replaced. A
+  census this file states has to be generated from the tool that prints it, and lane 59 refuses the run when it is not
+  — which is why the honest form for a figure this file can itself move is no figure at all. **This file
   states no count for it, on purpose:** `AGENTS.md` is one of the markdown files it scans, so a sentence written
   about the sweep adds a reference for the sweep to judge and invalidates the figure in the same edit (measured
   twice on 2026-10-25 while recording pass 226: 403 → 405 → 406). Lane 58's rule for a revision row applies to a

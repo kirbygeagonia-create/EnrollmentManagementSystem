@@ -30,7 +30,7 @@ export default function DataTable({ columns, rows, children, emptyMessage = 'No 
                                         onClick={() => onSort(col.sortKey)}
                                         className="inline-flex items-center gap-1 font-heading font-bold uppercase tracking-wider hover:text-slate-900 dark:hover:text-white"
                                         title={sort.column === col.sortKey
-                                            ? (sort.direction === 'asc' ? `Sorted ${col.sortKey} ascending — click for descending` : `Sorted ${col.sortKey} descending — click for ascending`)
+                                            ? (sort.direction === 'asc' ? `Sorted ${col.label} ascending — click for descending` : `Sorted ${col.label} descending — click for ascending`)
                                             : `Sort by ${col.label}`}
                                     >
                                         {col.label}

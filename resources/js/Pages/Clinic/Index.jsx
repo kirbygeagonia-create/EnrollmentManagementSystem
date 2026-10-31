@@ -1,18 +1,22 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, stats = {}, filters = {} }) {
+export default function Index({ enrollments, stats = {}, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
-
+    const [sortBy, setSortBy] = useState(sort?.column || 'enrollmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        // Student Type and Standing are not offered: both are ENUM columns, and the school's MySQL orders an ENUM by
+        // the index it was declared with while the test suite's varchar orders the word — one header, two sequences.
+        // Clinic Status is read off whether a record exists on this row, so the query has nothing to order by.
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}
@@ -35,14 +39,27 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
         }},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextSort, nextDir) => {
         router.get(route('clinic.index'), {
-            search: search || undefined,
+            search: nextSearch || undefined,
+            // The queue's own newest-first default travels as nothing at all, so a plain link stays a short URL.
+            ...sortParams('enrollmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, key, direction);
     };
 
     const renderActions = (row) => (
@@ -131,6 +148,8 @@ export default function Index({ enrollments, stats = {}, filters = {} }) {
                             columns={columns}
                             rows={enrollments.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No clinic records found"
                         />
                         <div className="mt-4">
