@@ -1123,7 +1123,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   UNRESOLVED than the archive-bound run (the leg that proves the tiebreak is read, and the one that caught the
   array-compared-with-zero bug above), an unknown flag and both missing-dump paths must refuse by name, a
   byte-identical copy must change no verdict, and the control must equal lane 61's ids rather than a remembered
-  tally).
+  tally. A prose cross-reference inside an OPEN row is NOT a second open item: §28.3's G-52 row says the contrast is
+  with G-51, and the collector that swept the printed row for any id token handed the inventory an id the register
+  had closed — so ids now come from each row's LEADING CELL, and one leg plants a `G-907` named only in prose and
+  requires it absent. The first draft of that leg planted a `Z-62` and would have passed on the very parser it was
+  written to catch, because the old character class was `[PXCESG]` and could never have harvested a Z; it was
+  re-cut, then run against a copy carrying the old parser, where it failed and the control failed with it. This file
+  states no leg total: the harness prints its own.
   **The same audit found the older sheet carrying the mirror defect:** `Registrar-Print-Decision-Sheet-2026-10-11.md`
   introduces its comparison table by promising the quoted wording "is what a PDF says today" — true when written,
   and the newer 2026-10-23 sheet closes by telling the Registrar that this one "still stands". Two of its cells
@@ -1653,7 +1659,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   header button renders only when `sort.available` contains its key, so a screen cannot offer an order the save
   ignores. `$stable` (the row's own key) is a tie-break, not decoration: without it two rows equal on Year Level can
   shuffle between pages, which reads to a desk as a record duplicated or lost. Pin:
-  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (8 cases, 28 assertions), proved by
+  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (8 cases, 31 assertions), proved by
   `php storage/app/scratch/mutate-g40-list-sort-tests.php` (4 legs: allow-list bypassed, direction passed through,
   sort never echoed, sort never applied — each must make its named case report `1 failed`). **One leg survived on
   its first run and the fixture was the defect**: the three students were created Zulueta, Magsaysay, Bautista, so
@@ -1738,7 +1744,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   model), offer the ENUM, and never type its order. The cases the ruling added, each named on the same line as the
   figures its delivered run reported: `ClinicQueueSortTest.php` (11 cases / 36 assertions) for type and standing,
   `IDQueueSortTest.php` (11 cases / 41 assertions) for the same two on the ID desk, and
-  `RegistrarQueueSortTest.php`, whose figure was re-taken from the delivered run at 8 cases / 28 assertions and now
+  `RegistrarQueueSortTest.php`, whose figure was re-taken from the delivered run at 8 cases / 31 assertions and now
   carries three things rather than one — the Status header that had been offered since the first wiring and answered
   by nothing, that queue's own Student Type and Final Standing headers under the same ruling, and the payload case
   for its one-hop join (§28.3 G-51). Two of the eleven legs of
@@ -1825,8 +1831,48 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   claims must be printed apart (lane 62's "no ID on this paper" is not "this record's ID is absent"). That read
   confirmed `passwordHash` absent everywhere and one column set under every order, and it is what found **G-52**,
   registered open: the queues load the whole student to paint a name, so a cashier receives birthdate and contact
-  number that no screen of theirs reads — three `with` clauses, no school ruling needed, deferred out of this batch
-  only because each handler moved ages its citations again.
+  number that no screen of theirs reads. It was deferred out of that batch because each handler moved ages its
+  citations again; the next bullet records what the following batch actually narrowed, and why the rest stayed open.
+- **A column list is a claim about a table, so read the table before writing it — and a case that compares
+  requests must assert each one answered** (lane 108, §28.3 G-52 — narrowed on the three queues the live read named,
+  and the rest is measured, not guessed). Narrowing those loads to the columns a desk actually paints was written from
+  the screen, not from `students`, and the first draft named `id`: that table keys on `studentId` and has never held
+  `id`, so all three queues answered **500** — and every sort class stayed green, because an order case reads row
+  sequences out of the payload and never asks the response for its status. The repair is the column list; the durable
+  changes are two. **(a)** Each comparison case now calls `assertOk()` on every request it makes, because an error
+  page and an unsorted list both arrive as "the two lists differ"; `lane108-pin-the-nested-student-payload.php`
+  counts those calls per class and refuses on a copy where one was deleted, which is how the reader was proved rather
+  than trusted. **(b)** `lane108-narrow-the-queue-student-loads.php` reads every name it is about to write out of the
+  `students` **migrations** and refuses by name — `--cols=id` is its positive control, and the block binder excludes
+  a column that belongs to another table declared in the same migration file, or the guard accepts a wrong target.
+  **(c)** The class is wider than the three handlers and that was counted, not assumed:
+  `lane108-census-whole-student-loads.php` binds each whole-student eager load to the action that runs it and to the
+  `Inertia::render` inside that same action, then asks the page which columns it reads. Measured 2026-10-30: **25 load
+  sites over 25 controllers — 24 answer a page that reads nothing beyond the name, 1 (Admission's case screen)
+  legitimately edits them.** The 24 split, in the tool's own buckets, into **12 desk list sites, 8 detail screens and
+  4 print paths**. A suffix is not a demographic field, it is half of a NAME, so it sits in the identity set: sixteen
+  of those rows belong to seven pages that also paint it, and a five-column list on any of them loses "Jr." — that
+  mis-classification was caught by reading the buckets, not by the count. What is narrowed: the Registrar, Accounting
+  and Assessment queues (four sites, including Assessment's pending-evaluation list). What is not: the list, detail
+  and print sites above, because a print view is judged on paper rather than source and a queue page is judged in the
+  browser — so the register row leads `Open`, and the census is the instrument that will show it falling.
+- **A builder's pinned select travels into every clone of it, and `selectRaw()` appends** (lane 108, found only by
+  CI's MySQL job). The G-51 pin put `admissions.*` on the admission queue's builder, so the status tile's
+  `(clone $query)->reorder()->selectRaw('admissionStatus, count(*) as aggregate')` was no longer a two-column
+  aggregate: it selected the star *and* the count, and `ONLY_FULL_GROUP_BY` answered **1055** — a 500 at the desk for
+  clicking a header. SQLite has no equivalent mode, so the case was green here, the tile was green here, and the
+  whole suite was green here; the fix reached the document through the runner. `select()` **replaces** the column
+  list and `selectRaw()` appends to it, so an aggregate cloned from a builder the order already touched must name its
+  own columns. The other shape — clone before the order, which is what the clearance queue does — was not taken here,
+  and this clone sits safely after it for one measurable reason: the hop is many-to-one through
+  `admissions.studentId`, which the migration declares NOT NULL with a foreign key, so no row the unsorted queue
+  counts can drop out. Say that reason where the clone is written, or the next reader cannot tell a safe late clone
+  from a leak. `lane108-tile-replaces-its-columns.php` applies the change line-neutrally and now reports ALREADY
+  APPLIED on a re-run, because a one-shot patcher whose needles this batch consumed refuses with "needle matched 0"
+  and reads like a broken tool; `lane47` still owes the durable rule (an aggregate inheriting a pinned select is a
+  second SILENT-ZERO shape) and does not carry it yet. The reproducible surface is a scratch MySQL schema —
+  `E2E_DB_DATABASE` **plus** a pinned `DB_CONNECTION`, lane 87's rule, or Laravel opens a SQLite file named after the
+  MySQL schema — driven against the header that joins, not a reasoning about which driver is stricter.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never
@@ -3201,7 +3247,8 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   silent `if` restored, the addressee test deleted, the refusal's sentence dropped). Two lessons worth keeping.
   **A line-neutral edit keeps the authority document honest**: replacing those three lines with three lines left
   `NotificationController.php:51` on the same construct the sentence about it names, so no citation aged and no
-  shift run was needed — the sweep still reads 742 citations / 0 problems. And **run Pint before claiming
+  shift run was needed — the sweep answered 0 line problems on that run, and this file states no citation total for
+  it, because that figure moves with every pointer any later batch writes. And **run Pint before claiming
   neutrality**: Pint's fix pass then touched only the new test file (`no_unused_imports` on an `Enrollments` import I
   never used), which is why the check after formatting, not before it, is what makes the claim true.
 - **A quoted false figure is still a figure the gate judges, and a comma list is two citations** (lane 98, CI run

@@ -52,7 +52,7 @@ class RegistrarController extends Controller
         $this->authorize('viewAny', Enrollments::class);
 
         $query = Enrollments::with([
-            'student', 'course', 'major', 'term',
+            'student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term',
             'studentassessments', 'enrollmentworkflow.workflowsteps',
             'enrolledSubjects.subject', 'payments',
         ])

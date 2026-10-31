@@ -86,13 +86,13 @@ class AdmissionController extends Controller
         // Status counts across the whole filtered set — the summary tiles must
         // describe the full queue, not just the current page (audit 2026-09-25).
         //
-        // Taken before paginate(), not after: paginate() calls forPage(), which sets limit and offset on the
-        // builder it is called on, so a clone made afterwards carries "LIMIT 20 OFFSET 20" and answers with
-        // nothing once the desk leaves page 1. AccountingController has always cloned first; these three did
-        // not, and page 1 is not evidence either way.
+        // Before paginate(), which would put this clone behind its limit and offset; AFTER the order, which is safe
+        // only because `select()` replaces the list that order pinned and the hop is many-to-one through a NOT NULL
+        // `admissions.studentId`, so no row the unsorted queue counts can drop out. MySQL 8's ONLY_FULL_GROUP_BY
+        // refused the appended shape with 1055 — a 500 for clicking a header — where SQLite answered it quietly.
         $statusCounts = (clone $query)
             ->reorder()
-            ->selectRaw('admissionStatus, count(*) as aggregate')
+            ->select('admissionStatus')->selectRaw('count(*) as aggregate')
             ->groupBy('admissionStatus')
             ->pluck('aggregate', 'admissionStatus');
 

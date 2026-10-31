@@ -362,5 +362,15 @@ class RegistrarQueueSortTest extends TestCase
         foreach (['passwordHash', 'birthdate', 'contactNumber'] as $leaked) {
             $this->assertArrayNotHasKey($leaked, $twoHop[0], "{$leaked} reached the payload through the join");
         }
+
+        $this->actingAs($this->registrar)->get(route('registrar.index'))->assertOk();
+        $this->actingAs($this->registrar)->get(route('registrar.index', ['sort' => 'name', 'direction' => 'asc']))->assertOk();
+        // The Registrar queue lists enrollments, so the student is one level shallower here than on the two
+        // money queues — and the same identity set has to be all of it.
+        $student = $twoHop[0]['student'] ?? [];
+        $names = array_keys($student);
+        sort($names);
+        $this->assertSame(['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'], $names,
+            'the approval queue loads the student for a name and a school number, and for nothing else');
     }
 }

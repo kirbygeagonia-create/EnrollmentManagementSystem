@@ -45,7 +45,7 @@ class AccountingController extends Controller
 
         $queue = $request->input('queue') === 'no_balance' ? 'no_balance' : 'due';
 
-        $base = Studentassessments::with(['enrollment.student', 'enrollment.course', 'enrollment.term'])
+        $base = Studentassessments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term'])
             ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Assessed))
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 

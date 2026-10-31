@@ -435,5 +435,14 @@ class AccountingQueueSortTest extends TestCase
         foreach (['passwordHash', 'birthdate', 'contactNumber'] as $leaked) {
             $this->assertArrayNotHasKey($leaked, $twoHop[0], "{$leaked} reached the payload through the join");
         }
+
+        $this->actingAs($this->cashier)->get(route('accounting.index'))->assertOk();
+        $this->actingAs($this->cashier)->get(route('accounting.index', ['sort' => 'name', 'direction' => 'asc']))->assertOk();
+        $this->actingAs($this->cashier)->get(route('accounting.index', ['sort' => 'studentType', 'direction' => 'asc']))->assertOk();
+        $student = $twoHop[0]['enrollment']['student'] ?? [];
+        $names = array_keys($student);
+        sort($names);
+        $this->assertSame(['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'], $names,
+            'the cashier queue loads the student for a name and a school number, and for nothing else');
     }
 }

@@ -61,8 +61,17 @@ $counts = function (string $out): array {
 
 $openIds = function (string $out): array {
     $section = preg_match('/=== OPEN[^\n]*\n(.*?)\n  count:/us', $out, $m) === 1 ? $m[1] : '';
-    preg_match_all('/\b([PXCESG]-\d+)\b/u', $section, $im);
-    $ids = array_values(array_unique($im[1] ?? []));
+    // The id is read from each row's LEADING CELL, never from the printed row as text. A §28.3 row's own prose
+    // cross-references its neighbours — G-52's cell says "the contrast with G-51 is the whole lesson" — and a
+    // collector that sweeps the whole line harvests that mention as a claimed open id, which is lane 61's rule
+    // ("an id is judged only inside the sentence holding the open-words") violated inside this harness.
+    $ids = [];
+    foreach (explode("\n", $section) as $line) {
+        if (preg_match('/^\s+ROW \d+ \(column .*\):\s*([A-Z]-\d+)\b/u', $line, $lm) === 1) {
+            $ids[] = $lm[1];
+        }
+    }
+    $ids = array_values(array_unique($ids));
     sort($ids);
 
     return $ids;
@@ -132,6 +141,23 @@ foreach ($cases as [$name, $plant, $want]) {
         $c['UNRESOLVED'] - $c0['UNRESOLVED'], $want['UNRESOLVED']));
     unlink($f);
 }
+
+// LEG: a prose cross-reference inside an OPEN row is NOT a second open item. This batch's G-52 row says "the
+// contrast with G-51 is the whole lesson", and the old collector swept the printed row with `/\b([PXCESG]-\d+)\b/u`,
+// so the control reported the inventory claiming G-51 while lane 61, which reads the leading cell, did not. That is
+// the same disagreement this harness exists to catch — but from the harness's own parser.
+//
+// The mention is planted as a G-id on purpose, and the first draft of this leg used a second Z-id: the old class was
+// `[PXCESG]`, so a Z-62 could never have been harvested by it and the leg would have passed on the broken parser —
+// a leg that cannot fail is decoration. `G-907` names no row in the register, so its appearance can only be the prose.
+$f61 = $tmp.'/prose-mention.txt';
+file_put_contents($f61, $base."\n".'P 99100: harness table'."\nROW 99101: Finding | Verdict | Who must act\n"
+    ."ROW 99102: Z-61 | Open 2026-10-30. The contrast with G-907 is the whole lesson, and G-907 is a closed row. | Nobody\n");
+[$rc61, $out61] = $run(['--dump='.$f61]);
+$ids61 = $openIds($out61);
+$report('prose-mention-not-an-id', $rc61 === 0 && in_array('Z-61', $ids61, true) && ! in_array('G-907', $ids61, true),
+    'ids on the copy: '.implode(',', $ids61).' (want Z-61 present, G-907 absent — an id named only in prose is not a finding)');
+unlink($f61);
 
 // LEG: --dump= is read, not merely accepted.
 $f1 = $tmp.'/copy-with-one-more.txt';

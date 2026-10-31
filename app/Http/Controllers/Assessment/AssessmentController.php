@@ -44,7 +44,7 @@ class AssessmentController extends Controller
     {
         $this->authorize('viewAny', Studentassessments::class);
 
-        $query = Studentassessments::with(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
+        $query = Studentassessments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
             ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Evaluated))
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
@@ -115,7 +115,7 @@ class AssessmentController extends Controller
 
         $assessments = $query->paginate(20)->withQueryString();
 
-        $pendingEvaluations = Enrollments::with(['student', 'course', 'term', 'enrolledSubjects.subject'])
+        $pendingEvaluations = Enrollments::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'enrolledSubjects.subject'])
             ->where('enrollmentStatus', EnrollmentStatus::Evaluated)
             ->doesntHave('studentassessments')
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))

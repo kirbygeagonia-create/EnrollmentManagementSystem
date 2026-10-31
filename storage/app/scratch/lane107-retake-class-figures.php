@@ -92,12 +92,19 @@ foreach ($classes as $c) {
     printf("  %-32s %d cases / %d assertions\n", $c, $figures[$c]['tests'], $figures[$c]['assertions']);
 }
 
-/** [file, needle, class, expected needle count] */
+/**
+ * [file, needle, class, expected needle count]
+ *
+ * The needles are the CURRENT spelling in each document and they age every time a figure is re-taken, so this list
+ * is re-cut per batch rather than left as a memory of the last one — the first version of this file named the 2026-10-29
+ * numbers after the 2026-10-30 run had already replaced them, and its exact-count guard is what made that a loud
+ * refusal rather than a silent no-op.
+ */
 $edits = [
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AssessmentQueueSortTest.php` answers 9 cases / 35 assertions', 'AssessmentQueueSortTest.php', 1],
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AccountingQueueSortTest.php` answers 10 cases / 38 assertions', 'AccountingQueueSortTest.php', 1],
-    ['AGENTS.md', 'RegistrarQueueSortTest.php` (6 cases / 21 assertions)', 'RegistrarQueueSortTest.php', 1],
-    ['AGENTS.md', 'RegistrarQueueSortTest.php` (6 cases, 21 assertions)', 'RegistrarQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AssessmentQueueSortTest.php` answers 11 cases / 40 assertions', 'AssessmentQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AccountingQueueSortTest.php` answers 12 cases / 43 assertions', 'AccountingQueueSortTest.php', 1],
+    ['AGENTS.md', 'RegistrarQueueSortTest.php` (8 cases, 28 assertions)', 'RegistrarQueueSortTest.php', 1],
+    ['AGENTS.md', 'delivered run at 8 cases / 28 assertions', 'RegistrarQueueSortTest.php', 1],
 ];
 
 $failures = [];
