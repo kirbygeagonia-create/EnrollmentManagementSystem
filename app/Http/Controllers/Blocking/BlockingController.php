@@ -94,7 +94,7 @@ class BlockingController extends Controller
         $block->load([
             'course', 'term.academicYear',
             'schedules.subject', 'schedules.room', 'schedules.instructor', 'schedules.meetings',
-            'enrolledSubjects.enrollment.student',
+            'enrolledSubjects.enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix',
             // The roster table prints each row's subject code; without this the
             // Subject column renders an em-dash for every assigned student.
             'enrolledSubjects.subject',
@@ -111,7 +111,7 @@ class BlockingController extends Controller
         $available = $capacity - $enrolled;
 
         // Eligible enrollments for assignment (mirrors assignStudents eligibility logic)
-        $eligibleEnrollments = Enrollments::with(['student', 'enrolledSubjects.subject'])
+        $eligibleEnrollments = Enrollments::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix', 'enrolledSubjects.subject'])
             ->where('courseId', $block->courseId)
             ->where('termId', $block->termId)
             ->where('yearLevel', $block->yearLevel)

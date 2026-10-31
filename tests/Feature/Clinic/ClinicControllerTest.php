@@ -25,6 +25,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 class ClinicControllerTest extends TestCase
@@ -798,5 +799,18 @@ class ClinicControllerTest extends TestCase
         // which checks hasPermissionTo('clinic.view') - Staff role has this
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Clinic/Index'));
+    }
+
+    #[Test]
+    public function the_clinic_record_screen_ships_only_the_student_name(): void
+    {
+        $this->actingAs($this->staffForOffice(11));
+        $enrollment = $this->createEnrollment();
+
+        $props = $this->get(route('clinic.show', $enrollment))->assertOk()->viewData('page')['props'];
+
+        // Clinic/Show paints the student's name line and the record's own fields; the person's demographics belong to
+        // the record screen, not to every desk that reads one counter entry. §28.3 G-52.
+        DeskStudentPayload::assertNameOnly($enrollment->student, $props['enrollment']['student'] ?? null, 'clinic.show', true);
     }
 }

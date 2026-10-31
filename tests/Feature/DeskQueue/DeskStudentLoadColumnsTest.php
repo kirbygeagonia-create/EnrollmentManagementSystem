@@ -11,8 +11,8 @@ use Tests\TestCase;
  * §28.3 G-52. The runtime half of this lives in the seven queue classes (Admission, Assessment, Accounting,
  * Clearance, Clinic, ID and the Registrar's approval queue each assert the exact nested key set and a 200 first).
  * This class covers what those fixtures cannot reach: it walks every controller and refuses any action that still
- * loads `student` with no column list, unless that action is on the list below — the eleven detail and print sites
- * §28.3's row records as still open.
+ * loads `student` with no column list, unless that action is on the list below — the two sites §28.3's row records
+ * as still open.
  *
  * The list is a debt, not an exemption: a site that has been narrowed but stays on the list FAILS, so the register
  * cannot keep a stale claim while the code moves on, and a NEW bare load anywhere also fails. This is the shape
@@ -30,22 +30,19 @@ class DeskStudentLoadColumnsTest extends TestCase
      * a site that leaves it without the code changing FAILS — a paid debt kept on the books is the same defect as
      * an unpaid one, in the other direction.
      *
-     * These TEN names cover the ELEVEN sites the census counts, because `BlockingController::show` loads the
-     * student twice and this reader keys by name. That is a stated blind spot, not a hidden one: the per-site
-     * instrument is `lane108-census-whole-student-loads.php`, which answers 7 detail and 4 print sites today;
-     * narrowing one of Blocking's two loads while leaving the other would show there first.
+     * Only TWO names remain, and both are a different shape from every site already narrowed: their literal is a
+     * relation ON the student (`student.addresses`, `student.guardians`, `student.enrollments.course`), so the
+     * student sits in the middle of the path and a column list appended to the leaf would ask the ADDRESSES or the
+     * COURSE table for `lastName`. Narrowing either needs a closure that selects on `student` and re-loads the
+     * relation inside it — a per-site rewrite, not a byte splice, which is why the rewriter skips them by name.
+     *
+     * The nine sites that left this list on 2026-10-31 (five desk detail screens and the Registrar's three print
+     * pages) were rewritten at their census byte offsets, and the desk folders for each of those routes answered
+     * green: the column list is a claim about the `students` table, and a GET that returns 200 is what proves it.
      */
     private const STILL_OPEN = [
-        'AccountingController::show',
-        'AssessmentController::show',
-        'BlockingController::show',
-        'ClinicController::show',
-        'IDController::show',
         'RegistrarController::show',
         'ClearanceController::printSlip',
-        'RegistrarController::printCertificate',
-        'RegistrarController::printClassCards',
-        'RegistrarController::printSubjectLoad',
     ];
 
     /**
@@ -100,7 +97,10 @@ class DeskStudentLoadColumnsTest extends TestCase
         $open = count($this->wholeStudentLoadSites());
         $narrowed = 0;
         foreach (glob($this->root().'/app/Http/Controllers/*/*Controller.php') ?: [] as $f) {
-            $narrowed += preg_match_all("/'(?:[a-zA-Z0-9_.]*\.)?student:studentId,schoolIdNumber,lastName,firstName,middleName'/", (string) file_get_contents($f));
+            // BOTH spellings of the identity list count as narrowed. The page under a site decides whether `suffix`
+            // travels (lane 108b reads it out of the census), and a reader that matched only the five-column spelling
+            // would be a second, narrower definition of "paid" than the rewriter that wrote it.
+            $narrowed += preg_match_all("/'(?:[a-zA-Z0-9_.]*\.)?student:studentId,schoolIdNumber,lastName,firstName,middleName(?:,suffix)?'/", (string) file_get_contents($f));
         }
 
         $this->assertGreaterThan($open, $narrowed, "the register still owes more than it has paid: {$narrowed} narrowed"

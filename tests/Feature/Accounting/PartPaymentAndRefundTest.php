@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 /**
@@ -472,5 +473,21 @@ class PartPaymentAndRefundTest extends TestCase
         $this->assertNull($untouched->refundedAt);
         $this->assertNull($untouched->refundedReason);
         $this->assertEquals(2000, (float) $assessment->fresh()->remainingBalance);
+    }
+
+    #[Test]
+    public function the_fee_sheet_screen_ships_only_the_student_name(): void
+    {
+        $assessment = $this->createOwingAssessment();
+
+        $props = $this->actingAs($this->cashier)
+            ->get(route('accounting.show', $assessment))
+            ->assertOk()
+            ->viewData('page')['props'];
+
+        // Five columns, not six: this screen is reached through the enrollment and Accounting/Show's own import graph
+        // prints no name suffix, which is what the census read rather than a constant shared with the clinic desk.
+        // §28.3 G-52.
+        DeskStudentPayload::assertNameOnly($assessment->enrollment->student, $props['assessment']['enrollment']['student'] ?? null, 'accounting.show');
     }
 }

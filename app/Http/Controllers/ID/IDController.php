@@ -169,7 +169,7 @@ class IDController extends Controller
     {
         $this->authorize('id.viewAtDesk', $enrollment);
 
-        $enrollment->load(['student', 'course', 'term', 'idrequests.validatedBy', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
+        $enrollment->load(['student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix', 'course', 'term', 'idrequests.validatedBy', 'enrollmentworkflow.workflowsteps.office', 'enrollmentworkflow.workflowsteps.signedBy']);
 
         $idRequest = $enrollment->idrequests->first();
 

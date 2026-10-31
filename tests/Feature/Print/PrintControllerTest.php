@@ -39,6 +39,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 class PrintControllerTest extends TestCase
@@ -1190,5 +1191,30 @@ class PrintControllerTest extends TestCase
         };
 
         $this->app->instance(PrintService::class, $fake);
+    }
+
+    #[Test]
+    public function the_three_registrar_print_pages_ship_only_the_student_name(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrar = $this->createStaffForOffice(1);
+
+        // The paper is the claim here, not only the screen: each of the three documents leads with the student's name,
+        // so a column list that dropped it would print a blank where the Registrar signs. Asserted per page rather
+        // than once, because each action writes its own eager-load list and nothing shares them (§25.4's lesson).
+        $pages = [
+            'registrar.print-certificate' => 'Registrar/PrintCertificate',
+            'registrar.print-class-cards' => 'Registrar/PrintClassCards',
+            'registrar.print-subject-load' => 'Registrar/PrintSubjectLoad',
+        ];
+
+        foreach ($pages as $routeName => $component) {
+            $response = $this->actingAs($registrar)->get(route($routeName, $enrollment));
+            $page = $response->assertOk()->viewData('page');
+            $this->assertSame($component, $page['component']);
+
+            DeskStudentPayload::assertNameOnly($student, $page['props']['enrollment']['student'] ?? null, $routeName, true);
+        }
     }
 }

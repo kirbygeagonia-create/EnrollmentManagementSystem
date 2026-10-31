@@ -1025,6 +1025,22 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `updatedAt` was four seconds after `createdAt` — a read that early is not a verdict in either direction. So the
   guard is not "trust a zero exit", it is **poll until `status == completed`** and only then quote `conclusion` and
   the per-job list; run 40195587267 answered `completed / success` on all three jobs about eight minutes later.
+- **A wrapper that edits its own script while an instance of it is still running produces a syntax error that is
+  nobody's defect** (the CI poller, 2026-10-31). The first run wrote one line — the resolved run id — and exited 0.
+  Reading it as a clean poll would have been wrong, so the run was asked directly and answered `in_progress`: the
+  poller had died mid-file. The cause was mine twice over: `gh run watch` was dropped in favour of polling the run
+  (the two faces above), and the edit landed while the *previous* background instance was still reading the same
+  file — bash reads a script at byte offsets, so a rewritten file makes it resume inside a comment and report
+  `syntax error near unexpected token '('` at a line that parses clean under `bash -n`. Three rules follow. Never edit
+  a script while an instance runs; give each invocation its own log instead of letting two writers truncate one path;
+  and treat a run that exits 0 with **no footer line** as a dead instrument, never as a verdict. The rewritten poller
+  was then proved by reading the run it claims to have watched — `gh run view` answered `completed / success`, with
+  its own `headSha` equal to the SHA it was asked about, and all three jobs listed. Two smaller traps surfaced in the
+  same sitting: `--junit=` is not an `artisan test` option (`--log-junit` is), and the unknown-option refusal still
+  left the wrapper printing its own `SUITE_EXIT=2` line — a suite that never ran is not a green suite; and
+  `$zip->open($f) !== true or exit("REFUSED…")` refuses on the **success** path, because `A or B` evaluates B when A
+  is false. Write the `if`: a refusal must be its own statement, never the right-hand side of `or`. `ZipArchive::open`
+  already bites with a truthy error code; this is the same guard inverted one level up.
 - **A register built from a gap list cannot find an unvisited section** (lane 86). The prompt carries **357
   enumerated requirement lines across 55 headings**; `Documentation/Prompt-Requirement-Matrix-2026-10-26.md`
   had rows for 14, because its first pass walked the gaps it had found rather than the document's own
@@ -1908,6 +1924,33 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   already true must still write the four — refusing the whole run on a byte-identical pair made the tool unusable on
   exactly the case it exists for, and what remains guarded is an empty plan with no skips at all, which means the
   needle list has aged.
+  **(f)** The debt then fell, and the fall was written as a reading rather than a guess. The census had answered 13
+  whole-student load sites; the nine whose eager-load literal **ends at the student** were narrowed the same day, so
+  the four that remain are two legitimate editors and two sites that load a relation *through* the student — the
+  Registrar's own record screen (`student.addresses`, `student.guardians`) and the slip's print page
+  (`student.enrollments.course`). Appending a column list to one of those asks the **addresses** table, or the course
+  table, for `lastName`, so `lane108b` skips them by shape and says so on the dry run; the register stays `Open` on
+  them by name, because a site the tool cannot splice is a site a reader must rewrite with a closure. Six lessons from
+  the same half-batch. **(a)** The narrowing was line-neutral — every write replaced one literal with one literal — so
+  no citation into those six controllers aged and `sweep-docx-citations` answered 0 without a shift run; that is the
+  cheapest possible citation outcome and it is worth designing for. **(b)** A suffix is half of a NAME, so the rewriter
+  now *widens* from the census's `readsSuffix` reading instead of refusing: four detail sites and all three Registrar
+  print pages received the six-column set and the two whose import graph paints none received the five. Any register
+  sentence that described the old refuse-instead-of-widen behaviour was stale as it stood, and pass 341 corrected it —
+  a claim about what a tool **does** rots faster than a count, because the next reader trusts the tool rather than
+  re-running it. **(c)** The wire case is an equality on the key set, never an absence: `assertArrayNotHasKey` on the
+  demographics also passes when the surname the desk paints has gone missing with them, so
+  `tests/Support/DeskStudentPayload.php` compares the nested student to exactly the identity set and then re-reads the
+  three name values against the row. **(d)** One screen can carry two student reads that travel differently, and
+  asserting only the model-shaped one leaves the hand-mapped one unpinned: the blocking roster rides inside the block's
+  own eager load (identity set), while the assign pick-list is mapped into four name keys in the controller. The harness
+  plants an extra key in **that** map, because a leg which only tests the load cannot see a map that grew. **(e)** A
+  plant must be anchored where it is unique: `'enrollment.student:…'` occurs four times in `AccountingController`, so
+  the leg anchors on `$assessment->load([` — a needle that matches several sites plants in one of them and the named
+  case then fails for a reason the leg never claimed. **(f)** A docx pass that **appends** must expect its own retired
+  needle to survive as the head of the new sentence; demanding 0 made pass 341 refuse a correct write and restore its
+  backup, which is (e)'s per-edit residual rule met again one batch later, and the reason the expectation is now a
+  per-edit flag rather than one constant for the loop.
 - **A builder's pinned select travels into every clone of it, and `selectRaw()` appends** (lane 108, found only by
   CI's MySQL job). The G-51 pin put `admissions.*` on the admission queue's builder, so the status tile's
   `(clone $query)->reorder()->selectRaw('admissionStatus, count(*) as aggregate')` was no longer a two-column

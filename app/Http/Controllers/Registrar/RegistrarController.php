@@ -401,7 +401,7 @@ class RegistrarController extends Controller
         $this->authorize('registrar.printCertificate', $enrollment);
 
         $enrollment->load([
-            'student', 'course', 'major', 'term.academicYear',
+            'student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix', 'course', 'major', 'term.academicYear',
             'enrolledSubjects.subject', 'registrarProcessedByUser',
         ]);
 
@@ -423,7 +423,7 @@ class RegistrarController extends Controller
         $this->authorize('registrar.printClassCards', $enrollment);
 
         $enrollment->load([
-            'student', 'course', 'major', 'term.academicYear',
+            'student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix', 'course', 'major', 'term.academicYear',
             'enrolledSubjects.subject',
             'enrolledSubjects.schedule.room',
             'enrolledSubjects.schedule.instructor',
@@ -454,7 +454,7 @@ class RegistrarController extends Controller
         $this->authorize('registrar.printSubjectLoad', $enrollment);
 
         $enrollment->load([
-            'student', 'course', 'major', 'term.academicYear',
+            'student:studentId,schoolIdNumber,lastName,firstName,middleName,suffix', 'course', 'major', 'term.academicYear',
             'enrolledSubjects.subject',
             'enrolledSubjects.schedule.room',
             'enrolledSubjects.schedule.instructor',

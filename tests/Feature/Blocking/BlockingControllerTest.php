@@ -27,6 +27,7 @@ use App\Models\Workflowsteps;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 class BlockingControllerTest extends TestCase
@@ -1052,5 +1053,53 @@ class BlockingControllerTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('enrolled', 2)
                 ->where('capacity', 40));
+    }
+
+    #[Test]
+    public function the_blocking_screen_ships_only_the_student_name_on_both_rosters(): void
+    {
+        $this->actingAs($this->staffForOffice(5));
+
+        $fixture = $this->createBlockWithSchedule();
+        $block = $fixture['block'];
+        $schedule = $fixture['schedule'];
+
+        $assigned = $this->createEnrollment();
+        $this->post(route('blocking.assign', $block), [
+            'enrollmentIds' => [$assigned->enrollmentId],
+            'scheduleId' => $schedule->scheduleId,
+        ])->assertSessionHasNoErrors();
+
+        $props = $this->get(route('blocking.show', $block))->assertOk()->viewData('page')['props'];
+
+        // One screen, two student reads, and they travel differently on purpose: the roster rides inside the block's
+        // own eager load, so its node is the identity set; the assign pick-list is mapped by hand into four name
+        // keys. Both are asserted, because a narrowed list that emptied the hand-built row would leave the roster
+        // green. §28.3 G-52.
+        DeskStudentPayload::assertNameOnly(
+            $assigned->student,
+            $props['block']['enrolledSubjects'][0]['enrollment']['student'] ?? null,
+            'blocking.show (the block roster)',
+            true,
+        );
+
+        // The pick-list only carries a row that is NOT seated in this block, so a second enrollment is what proves
+        // the map — and the map's own key set is the claim, not a value comparison against a row nobody paints.
+        $candidate = $this->createEnrollment();
+        $this->createWorkflowAtBlockingStep($candidate);
+
+        $second = $this->get(route('blocking.show', $block))->assertOk()->viewData('page')['props'];
+        $row = collect($second['eligibleEnrollments'])->firstWhere('enrollmentId', $candidate->enrollmentId);
+        $this->assertNotNull($row, 'the unassigned enrollment never reached the assign pick-list, so this case would'
+            .' be certifying an empty list');
+
+        $keys = array_keys($row['student']);
+        sort($keys);
+        $this->assertSame(
+            ['firstName', 'lastName', 'middleName', 'schoolIdNumber'],
+            $keys,
+            'the assign pick-list map is a statement of what the desk paints; a demographic key arriving here is'
+            .' §28.3 G-52 reopened'
+        );
     }
 }

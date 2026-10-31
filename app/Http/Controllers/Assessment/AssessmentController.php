@@ -151,7 +151,7 @@ class AssessmentController extends Controller
         $this->authorize('view', $assessment);
 
         $assessment->load([
-            'enrollment.student',
+            'enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName',
             'enrollment.course',
             'enrollment.term',
             'charges.feeType',

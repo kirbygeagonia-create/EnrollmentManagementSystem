@@ -26,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 /**
@@ -444,5 +445,20 @@ class ScholarshipWithdrawalTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('can.withdrawScholarship', false)
             );
+    }
+
+    #[Test]
+    public function the_assessment_screen_ships_only_the_student_name(): void
+    {
+        $assessment = $this->assess();
+
+        $props = $this->actingAs($this->officer)
+            ->get(route('assessment.show', $assessment))
+            ->assertOk()
+            ->viewData('page')['props'];
+
+        // Assessment/Show prints the sheet beside a name line; the person record is not this office's to pull whole.
+        // §28.3 G-52.
+        DeskStudentPayload::assertNameOnly($assessment->enrollment->student, $props['assessment']['enrollment']['student'] ?? null, 'assessment.show');
     }
 }

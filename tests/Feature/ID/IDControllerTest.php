@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\DeskStudentPayload;
 use Tests\TestCase;
 
 class IDControllerTest extends TestCase
@@ -1217,5 +1218,17 @@ class IDControllerTest extends TestCase
             $this->props($this->get(route('id.show', ['enrollment' => $enrollment, 'tab' => 'issued'])))['backTab'],
             'a record opened from the Issued tab must return to the Issued tab'
         );
+    }
+
+    #[Test]
+    public function the_id_request_screen_ships_only_the_student_name(): void
+    {
+        $this->actingAs($this->staffForOffice(22));
+        $enrollment = $this->createEnrollment();
+
+        $props = $this->get(route('id.show', $enrollment))->assertOk()->viewData('page')['props'];
+
+        // The ID desk reads a name, a school number and a course for the card it orders. §28.3 G-52.
+        DeskStudentPayload::assertNameOnly($enrollment->student, $props['enrollment']['student'] ?? null, 'id.show', true);
     }
 }

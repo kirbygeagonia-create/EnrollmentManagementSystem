@@ -154,7 +154,7 @@ class AccountingController extends Controller
     {
         $this->authorize('view', $assessment);
 
-        $assessment->load(['enrollment.student', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'payments.processedBy', 'payments.refundedByUser', 'enrollment.enrollmentworkflow.workflowsteps.office', 'enrollment.enrollmentworkflow.workflowsteps.signedBy']);
+        $assessment->load(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'payments.processedBy', 'payments.refundedByUser', 'enrollment.enrollmentworkflow.workflowsteps.office', 'enrollment.enrollmentworkflow.workflowsteps.signedBy']);
 
         return Inertia::render('Accounting/Show', [
             'assessment' => $assessment,
