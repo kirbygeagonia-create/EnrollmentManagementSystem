@@ -225,6 +225,111 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
     }
 
     #[Test]
+    public function three_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge(): void
+    {
+        // The agreement between a badge and its list used to be only a tested one: two copies of a predicate, with a
+        // case watching whether they still said the same thing. Three desks now ask `DeskQueues` for their rows, so
+        // there is one copy and drift is not representable — a stronger claim than equality, and it needs its own
+        // guard, because a later batch that re-inlined the predicate would keep every number equal while putting the
+        // two copies back.
+        //
+        // The reading is scoped to each index ACTION, and that matters: `AssessmentController::pendingEvaluations()`
+        // holds a file-wide search would have called a legitimate query in another action a duplicate. And a
+        // whole-file string test would have tripped on `AccountingController`'s own comment, which names
+        // `DeskQueues::accounting()` to explain why the list does not call it.
+        $shared = [
+            'Assessment/AssessmentController.php' => [
+                'DeskQueues::assessmentsFor(EnrollmentStatus::Evaluated)',
+                "->whereHas('enrollment', fn (\$q) => \$q->where('enrollmentStatus', EnrollmentStatus::Evaluated))",
+            ],
+            'Registrar/RegistrarController.php' => [
+                'DeskQueues::registrar()',
+                "->whereIn('enrollmentStatus', [EnrollmentStatus::Assessed, EnrollmentStatus::Paid])",
+            ],
+            'Accounting/AccountingController.php' => [
+                'DeskQueues::assessmentsFor(EnrollmentStatus::Assessed)',
+                "->whereHas('enrollment', fn (\$q) => \$q->where('enrollmentStatus', EnrollmentStatus::Assessed))",
+            ],
+        ];
+        foreach ($shared as $path => [$call, $retired]) {
+            $body = $this->actionBody('app/Http/Controllers/'.$path, 'index');
+            $this->assertStringContainsString(
+                $call,
+                $body,
+                $path.'::index() builds its queue inline again: the dashboard card and this desk are two predicates once more'
+            );
+            // The claim is about THIS queue's predicate, not about every status filter in the action: an assessment
+            // page builds a second list (the evaluated enrollments with no sheet yet) and that is a different
+            // population with a badge of its own. A first draft of this assertion banned `where('enrollmentStatus',`
+            // anywhere in index() and tripped on that legitimate second list — a guard that fires on the wrong
+            // construct reports the file, not the rule.
+            $this->assertStringNotContainsString(
+                $retired,
+                $body,
+                $path.'::index() restates the queue predicate the helper now owns'
+            );
+        }
+
+        // The clearance desk is the pair that must NOT be unified: its card counts the pending queue, its page lists
+        // every status a desk may still act on. One approved clearance therefore makes the list longer than the
+        // badge, and a future "fix" that built the list from `DeskQueues::clearance()` would hide that row.
+        $period = Clearanceperiods::create([
+            'periodName' => 'Subset proof period 2026-2027',
+            'termId' => $this->term->termId,
+            'clearanceStartDate' => '2026-11-01',
+            'clearanceEndDate' => '2026-12-15',
+            'periodStatus' => 'open',
+        ]);
+        foreach ([ClearanceOverallStatus::Pending, ClearanceOverallStatus::Approved] as $status) {
+            // One clearance per student: `uq_student_clearanceperiod` is on (studentId, clearancePeriodId), so two
+            // rows for the same pair would not be a test of anything, it would be an integrity error.
+            Studentclearances::create([
+                'studentId' => $this->student('SUB'.$status->value)->studentId,
+                'clearancePeriodId' => $period->clearancePeriodId,
+                'overallStatus' => $status->value,
+                'academicStanding' => 'good',
+                'studentType' => StudentType::FirstYear->value,
+            ]);
+        }
+
+        $staff = $this->unbounded();
+        $badges = $this->badges($staff);
+        $clearance = $this->props($staff, 'clearance.index');
+
+        $this->assertSame(1, (int) $badges['clearance'], 'the card counts the queue the desk awaits');
+        $this->assertSame(2, (int) $clearance['clearances']['total'], 'the page lists every clearance a desk may act on');
+    }
+
+    /**
+     * The body of one action, read from the file by byte offset.
+     *
+     * A whole-file string check cannot tell `index()` from its neighbours, and this repository's own rule for a
+     * claim about a file is to read the construct the sentence names.
+     */
+    private function actionBody(string $relative, string $action): string
+    {
+        $src = (string) file_get_contents(base_path($relative));
+        if (preg_match('/function\s+'.$action.'\s*\([^)]*\)[^{]*\{/', $src, $m, PREG_OFFSET_CAPTURE) !== 1) {
+            $this->fail("no {$action}() in {$relative} — the file moved or the action was renamed");
+        }
+        $start = $m[0][1] + strlen($m[0][0]);
+        $rest = substr($src, $start);
+        $depth = 1;
+        for ($i = 0, $len = strlen($rest); $i < $len; $i++) {
+            if ($rest[$i] === '{') {
+                $depth++;
+            } elseif ($rest[$i] === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    break;
+                }
+            }
+        }
+
+        return substr($rest, 0, $i);
+    }
+
+    #[Test]
     public function the_assessment_badge_counts_the_sheets_the_desk_lists_not_the_enrollments(): void
     {
         // An evaluated enrollment with no fee sheet yet is the other list on that same page; counting

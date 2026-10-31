@@ -25,11 +25,16 @@ use Illuminate\Database\Eloquent\Builder;
  * enrollments or requests where their pages list assessment sheets and enrollment rows.
  *
  * These builders carry the *population* only: no eager loading, no search, no ordering, no pagination. The
- * dashboard's badges are built from them; the desk screens still build their own lists inline, and what keeps the
- * two honest is `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php`, which reads each desk's own
- * printed number and requires the badge to equal it — including the college case, which is the half an
- * unbounded account cannot see. Moving each list onto these methods is the next step, and until then the equality
- * is a tested agreement, not a shared call.
+ * dashboard's badges are built from them, and so now are the Assessment queue, the Registrar queue and the cashier's
+ * queue base — `AssessmentController`, `RegistrarController` and `AccountingController` each call the method below
+ * that names their rows, so the card and the list are one call rather than two copies that a test merely watches.
+ * `ClinicController` and `IDController` were already built this way. `AdmissionController` and `EvaluationController`
+ * still write their own queries, so for those two the agreement is still only tested; the docblock of each method
+ * below says which of the two it is. Moving the rest onto this class is the remaining step, and the reason it is a
+ * step at all is the pair that must NOT be moved: `accounting()` and `clearance()` name the badge's SUBSET (the
+ * owing sheets, the pending rows) while their desks list the owing-and-settled tabs and every clearance status, and
+ * `DashboardQueueCountMatchesDeskTest` compares those two badges to the desk's own tile for exactly that reason —
+ * the card counts a queue, the list counts rows.
  *
  * **Only two of these take a desk, and that is the boundary as it is built, not an oversight.** `admission` and
  * `evaluation` honour `CollegeScope` because `AdmissionController` and `EvaluationController` bound their own
@@ -153,11 +158,15 @@ class DeskQueues
 
     /**
      * Assessment sheets whose enrollment sits in one status. Shared by the two desks that read the same table
-     * from opposite ends.
+     * from opposite ends, and PUBLIC because those desks now build their own lists from here too: until this batch
+     * the agreement between a badge and the list under it was only ever *tested*, and two copies of one predicate
+     * drift the way `DashboardController::queueCounts()` did (§28.3 G-46). The fee-sheet desk asks for `Evaluated`
+     * and the cashier asks for `Assessed`; the cashier's own queue base is this call without the balance filter,
+     * because its page holds both the owing tab and the settled one and its badge names only the first.
      *
      * @return Builder<Studentassessments>
      */
-    private static function assessmentsFor(EnrollmentStatus $status): Builder
+    public static function assessmentsFor(EnrollmentStatus $status): Builder
     {
         return Studentassessments::query()
             ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', $status->value));

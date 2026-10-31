@@ -18,6 +18,7 @@ use App\Models\Studentassessments;
 use App\Models\Studentscholarships;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -44,8 +45,9 @@ class AssessmentController extends Controller
     {
         $this->authorize('viewAny', Studentassessments::class);
 
-        $query = Studentassessments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
-            ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Evaluated))
+        $query = DeskQueues::assessmentsFor(EnrollmentStatus::Evaluated)
+            ->with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term', 'charges.feeType', 'scholarships.scholarshipType'])
+            // the population is the badge's own call now, so the card and the list cannot drift apart (§28.3 G-46)
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Fee summary across the whole filtered set — the summary tiles must

@@ -67,7 +67,13 @@ if (! is_array($rows) || $rows === []) {
 }
 
 $cols = 'studentId,schoolIdNumber,lastName,firstName,middleName';
-$unknown = students_unknown_columns($root, $cols);
+// The name SUFFIX is half of a NAME, not a demographic record, so a page that paints it must carry it in any
+// narrowed list or the desk silently stops printing "Jr." The census answers `readsSuffix` per site (its own
+// suffix line is what makes that a reading rather than a recollection), and BOTH spellings of the list are
+// validated against the `students` migrations below: a column the table never held is a 500 on MySQL and an extra
+// key on SQLite, and neither shows up in a sort assertion.
+$colsWide = $cols.',suffix';
+$unknown = array_merge(students_unknown_columns($root, $cols), students_unknown_columns($root, $colsWide));
 if ($unknown !== []) {
     fwrite(STDERR, 'REFUSED: '.implode(', ', $unknown).' is/are not columns the students migrations declare.'."\n");
 
@@ -83,14 +89,12 @@ if ($targets === []) {
 }
 
 $failures = [];
+$skipped = [];
 $edits = [];
 foreach ($targets as $t) {
-    if (! empty($t['readsSuffix'])) {
-        $failures[] = sprintf('%s %s() paints the name suffix, so the five-column list would drop "Jr." — widen'
-            .' the identity set deliberately, not by accident', $t['file'], $t['action']);
-
-        continue;
-    }
+    // Widen deliberately: the census decides per CALL SITE whether the page under it paints the suffix, so the
+    // list a site gets is derived from that reading rather than from a constant shared by every screen.
+    $use = ! empty($t['readsSuffix']) ? $colsWide : $cols;
     $path = $root.'/'.ltrim($t['file'], '/');
     if (! is_file($path)) {
         $failures[] = 'no file '.$t['file'];
@@ -99,6 +103,16 @@ foreach ($targets as $t) {
     }
     $bytes = (string) file_get_contents($path);
     foreach ($t['literals'] as $lit) {
+        // Only a path that ENDS at the student is a student load. The census records every quoted path holding the
+        // word, so `student.addresses`, `student.guardians` and `student.enrollments.course` arrive here too — and a
+        // column list appended to one of those would ask the ADDRESSES table, or the COURSE table, for `lastName`.
+        // Skipping them is the safe direction: the student itself still loads whole and the census keeps counting it.
+        if (preg_match('/(^|\.)student$/', $lit['path']) !== 1) {
+            $skipped[] = sprintf('%s %s(): %s is a relation ON the student, not the student — left alone',
+                $t['file'], $t['action'], $lit['path']);
+
+            continue;
+        }
         $expect = "'".$lit['path']."'";
         $seen = substr($bytes, (int) $lit['at'], strlen($expect));
         if ($seen !== $expect) {
@@ -108,8 +122,8 @@ foreach ($targets as $t) {
 
             continue;
         }
-        $edits[] = ['file' => $t['file'], 'at' => (int) $lit['at'], 'from' => $expect,
-            'to' => "'".$lit['path'].':'.$cols."'"];
+        $edits[] = ['file' => $t['file'], 'at' => (int) $lit['at'], 'from' => $expect, 'cols' => $use,
+            'to' => "'".$lit['path'].':'.$use."'"];
     }
 }
 
@@ -122,7 +136,15 @@ if ($failures !== []) {
 usort($edits, static fn ($a, $b) => $b['at'] <=> $a['at']);
 printf("%d literal(s) over %d file(s)%s", count($edits), count(array_unique(array_column($edits, 'file'))), PHP_EOL);
 foreach ($edits as $e) {
-    printf("  %-52s @%-6d %s -> %s\n", basename($e['file']), $e['at'], $e['from'], 'student:<5 identity columns>');
+    printf("  %-52s @%-6d %s -> %s\n", basename($e['file']), $e['at'], $e['from'], $e['cols']);
+}
+foreach ($skipped as $s) {
+    echo '  SKIPPED  '.$s."\n";
+}
+if ($edits === []) {
+    echo "NOTHING WRITABLE: every literal this kind holds is a relation on the student rather than the student.\n";
+
+    exit(0);
 }
 if (! $apply) {
     echo "DRY RUN — nothing written. Re-run with --apply.\n";

@@ -22,6 +22,7 @@ use App\Services\EnrollmentStateMachine;
 use App\Services\PrintService;
 use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\EnrollmentReadiness;
 use App\Support\ListSort;
 use App\Support\SchoolTime;
@@ -51,12 +52,14 @@ class RegistrarController extends Controller
     {
         $this->authorize('viewAny', Enrollments::class);
 
-        $query = Enrollments::with([
-            'student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term',
-            'studentassessments', 'enrollmentworkflow.workflowsteps',
-            'enrolledSubjects.subject', 'payments',
-        ])
-            ->whereIn('enrollmentStatus', [EnrollmentStatus::Assessed, EnrollmentStatus::Paid])
+        $query = DeskQueues::registrar()
+            ->with([
+                'student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term',
+                'studentassessments', 'enrollmentworkflow.workflowsteps',
+                'enrolledSubjects.subject', 'payments',
+            ])
+            // Assessed and Paid together: the badge on the dashboard card and this list are one call now, so the
+            // number a desk sees on the home screen cannot outlive the rows its queue actually hands over.
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Prompt §14's density control this repository never built: the queue had exactly one order, newest

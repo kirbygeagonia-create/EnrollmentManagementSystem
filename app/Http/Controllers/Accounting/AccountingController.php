@@ -12,6 +12,7 @@ use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Services\EnrollmentStateMachine;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -45,8 +46,11 @@ class AccountingController extends Controller
 
         $queue = $request->input('queue') === 'no_balance' ? 'no_balance' : 'due';
 
-        $base = Studentassessments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term'])
-            ->whereHas('enrollment', fn ($q) => $q->where('enrollmentStatus', EnrollmentStatus::Assessed))
+        $base = DeskQueues::assessmentsFor(EnrollmentStatus::Assessed)
+            ->with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'enrollment.course', 'enrollment.term'])
+            // This is the badge's own base WITHOUT its balance filter: the page holds the owing tab and the settled
+            // one, and `DeskQueues::accounting()` is the first of the two — a subset, which is why the tab is applied
+            // below rather than the badge being widened to reach this list.
             ->when($request->search, fn ($q, $search) => $q->whereHas('enrollment.student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         $query = (clone $base)

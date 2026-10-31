@@ -52,7 +52,10 @@ $walk = static function ($node) use (&$walk, &$figures): void {
     foreach ($node->children() as $key => $c) {
         if ($key === 'testsuite') {
             $name = (string) $c['name'];
-            if (str_contains($name, 'SortTest')) {
+            // The classes the documents state figures for. This started as a `SortTest` scan, which silently
+            // collected NOTHING for any other class: a needle naming a class outside it looked like an aged
+            // sentence rather than an unread figure. A named watch list makes adding one an explicit act.
+            if (str_contains($name, 'SortTest') || str_contains($name, 'DashboardQueueCountMatchesDeskTest')) {
                 // PHPUnit writes the class suite as `Tests\Feature\Sorting\AssessmentQueueSortTest`; the documents
                 // name the FILE, so the key is the last namespace segment plus `.php`. The first cut of this script
                 // omitted the suffix and therefore refused its own whole-suite junit.
@@ -103,14 +106,18 @@ foreach ($classes as $c) {
 $edits = [
     ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AssessmentQueueSortTest.php` answers 11 cases / 44 assertions', 'AssessmentQueueSortTest.php', 1],
     ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AccountingQueueSortTest.php` answers 12 cases / 47 assertions', 'AccountingQueueSortTest.php', 1],
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AdmissionQueueSortTest.php` 5 cases / 17 assertions', 'AdmissionQueueSortTest.php', 1],
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'ClearanceQueueSortTest.php` answers 9 cases / 32 assertions', 'ClearanceQueueSortTest.php', 1],
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'IDQueueSortTest.php` (11 cases / 41 assertions)', 'IDQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AdmissionQueueSortTest.php` 6 cases / 23 assertions', 'AdmissionQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'ClearanceQueueSortTest.php` answers 10 cases / 38 assertions', 'ClearanceQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'IDQueueSortTest.php` (12 cases / 47 assertions)', 'IDQueueSortTest.php', 1],
     ['AGENTS.md', 'RegistrarQueueSortTest.php` (8 cases, 31 assertions)', 'RegistrarQueueSortTest.php', 1],
     ['AGENTS.md', 'delivered run at 8 cases / 31 assertions', 'RegistrarQueueSortTest.php', 1],
-    ['AGENTS.md', 'AdmissionQueueSortTest.php` (5 cases / 17 assertions)', 'AdmissionQueueSortTest.php', 1],
-    ['AGENTS.md', 'ClinicQueueSortTest.php` (11 cases / 36 assertions)', 'ClinicQueueSortTest.php', 1],
-    ['AGENTS.md', 'IDQueueSortTest.php` (11 cases / 41 assertions)', 'IDQueueSortTest.php', 2],
+    ['AGENTS.md', 'AdmissionQueueSortTest.php` (6 cases / 23 assertions)', 'AdmissionQueueSortTest.php', 1],
+    ['AGENTS.md', 'ClinicQueueSortTest.php` (12 cases / 42 assertions)', 'ClinicQueueSortTest.php', 1],
+    ['AGENTS.md', 'IDQueueSortTest.php` (12 cases / 47 assertions)', 'IDQueueSortTest.php', 2],
+    // Batch 3 added one case to the dashboard agreement class, so its totals moved in two documents. The needle is
+    // the same string in both matrix copies, hence expect=2 there.
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 2],
+    ['AGENTS.md', 'DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 1],
 ];
 
 $failures = [];

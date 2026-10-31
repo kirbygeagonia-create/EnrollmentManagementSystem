@@ -1502,6 +1502,18 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   for any batch that moves lines is: the docx through `lane76`, then **every `.md` file that cites those files**,
   each read at both endpoints rather than shifted by arithmetic — and a number that records what an engine reported
   on a past day is spelled in words instead, which is how it stops being a live pointer at all.
+  **The same cascade came back with a +2/+3/+4 shift and two new shapes of refusal.** `lane76` writes nothing while
+  any item is unresolved, so `--skip=` is what lets the resolvable majority through — and a skipped item is a queue,
+  not a clean result. A deferred bare number whose replacement value ALREADY occurs elsewhere in `document.xml`
+  cannot be fixed by a number needle at all: writing the bare number would have hit another file's citation, and a
+  post-check for the old number's document-wide absence can never pass when the same digits belong to other files.
+  The needle that works is the sentence's own words (the ones reading “box at”, “signature at”, and the file-prefixed pointer into the Accounting handler),
+  each asserted to occur exactly once before the write and each target line proved byte-identical to HEAD's in the
+  working file. Two tokens in that batch were unreachable by any text needle because `document.xml` splits the
+  digits across `<w:t>` runs (the joined form occurs zero times while its leading half occurs twice); they are bounds-clean
+  and stale by four, so no gate will ever flag them, and the honest move is to record them for the engine's `cell`
+  kind — which rewrites a whole block and must not be used to smuggle a styled run — rather than widen the needle
+  until it matches.
 - **A pagination census must join the page's rows expression to the action that renders it** (lane 90, §28.3 G-40's
   second half). `storage/app/scratch/lane90-probe-pagination.php` reads `rows={…}` in every page that uses the shared
   table, finds each `Inertia::render('<that component>')` in `app/Http/Controllers`, attributes it to its enclosing
@@ -1624,7 +1636,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   new cases passed while that relation bug was in the code, because they ran as a staff account whose `unitId` is null and
   every `of*()` method returns the query untouched in that case; only the college-bound fixture executed the line.
   So a count-equality test written solely for an unbounded desk certifies nothing about scoping — pair them.
-  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions) compares each badge to
+  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (7 cases, 45 assertions) compares each badge to
   the number the desk itself prints in **both** directions, and `storage/app/scratch/mutate-g46-dashboard-queues.php`
   (4 legs) is what showed the second direction was missing: its `admission` leg **survived** on the first run,
   because the college case asserted only the `evaluation` badge — the admission half of G-46 had no test until that
