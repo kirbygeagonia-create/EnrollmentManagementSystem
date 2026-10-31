@@ -14,9 +14,11 @@
  * lines contain — that reading is the human half, and no regex here can do it honestly.
  *
  * usage: php storage/app/scratch/repo-file-line-citations.php [file ...]
- *        (defaults to the ten prose files that carry `File.php:NN` citations: AGENTS.md, DEPLOYMENT.md,
- *        the walkthrough, both demo guides, the two third-party assessments, and the three decision and
- *        fidelity sheets the Registrar holds)
+ *        (defaults to the prose files an owner or a desk is actually sent — the instruction files, the guides,
+ *        the two third-party assessments, the dated sheets and packets, and the four long-lived reviews. No
+ *        count is stated, because this list grows with each document issued and a figure in a tool's own header
+ *        is a claim about the day it was written. A dated document that matches the glob but is not on the list
+ *        is a refusal, not an absence.)
  */
 $root = dirname(__DIR__, 3);
 $args = array_values(array_filter(array_slice($argv ?? [], 1), fn ($a) => ! str_starts_with($a, '--')));
@@ -162,10 +164,38 @@ $resolve = function (string $name) use ($root, $buildIndex): array {
 // always knows the path it means — an ambiguous basename here is a defect in the citation, not in the tool.
 $fileRe = '/\b((?:[A-Za-z0-9_.\-]+\/)*[A-Za-z0-9_.\-]+\.(?:php|jsx|js|json|neon|xml|md|sql|ps1)):(\d+)(?:-(\d+))?/';
 
+// Flags are read here and an unknown one is refused by name. The argument filter above silently drops anything
+// starting with `--`, which is how a flag can look honoured while the walk never sees it — the accepted-but-inert
+// defect this repository has met in five of its own tools. `--strict-dated` exists so a harness can prove the
+// rule below is read rather than tolerated: with it, a dated record is judged exactly like live prose.
+$strictDated = false;
+foreach (array_slice($argv ?? [], 1) as $a) {
+    if ($a === '--strict-dated') {
+        $strictDated = true;
+
+        continue;
+    }
+    if (str_starts_with($a, '--')) {
+        fwrite(STDERR, "REFUSED: unknown flag {$a}; this tool reads --strict-dated and named files.\n");
+
+        exit(1);
+    }
+}
+
 $problems = 0;
 $ambiguous = 0;
 $checked = 0;
 $lineCache = [];
+
+// A dated record is a reading, not a claim about today. Two September analysis documents carry a
+// "Pointer currency" note saying their `File.php:NN` numbers are the 2026-09-17 layout — several of the
+// constructs they cite no longer exist because the findings were CLOSED — so re-typing those numbers would
+// make a dated row state a position that was never true on its own day, while leaving them judged makes the
+// gate permanently red and teaches everyone to ignore it. Both readings are wrong; this is the third: the
+// pointers are reported, named, and not counted against the run. lane 72's HISTORY bucket, applied here.
+$DATED_MARKER = 'Pointer currency (2026-10-31)';
+$datedReported = 0;
+$datedDocs = [];
 
 foreach ($targets as $rel) {
     $path = $root.'/'.ltrim($rel, '/');
@@ -176,6 +206,7 @@ foreach ($targets as $rel) {
         continue;
     }
     $text = (string) file_get_contents($path);
+    $isDated = ! $strictDated && str_contains($text, $DATED_MARKER);
     preg_match_all($fileRe, $text, $m, PREG_SET_ORDER);
 
     foreach ($m as $x) {
@@ -192,6 +223,13 @@ foreach ($targets as $rel) {
             continue;
         }
         if ($chosen === null) {
+            if ($isDated) {
+                $datedReported++;
+                $datedDocs[$rel] = true;
+                printf("  DATED         %-46s cited in a dated record (%s) — reported, not judged\n", $token, $rel);
+
+                continue;
+            }
             $problems++;
             printf("  NO SUCH FILE  %-46s cited in %s\n", $token, $rel);
 
@@ -202,19 +240,47 @@ foreach ($targets as $rel) {
         $checked++;
 
         if ($to > count($lines)) {
+            if ($isDated) {
+                $datedReported++;
+                $datedDocs[$rel] = true;
+                printf("  DATED         %-46s cites %d-%d in a %d-line file (%s) — reported, not judged\n", $token, $from, $to, count($lines), $rel);
+
+                continue;
+            }
             printf("  PAST END      %-46s cites %d-%d in a %d-line file  (in %s)\n", $token, $from, $to, count($lines), $rel);
             $problems++;
 
             continue;
         }
         if (trim((string) $lines[$from - 1]) === '') {
+            if ($isDated) {
+                $datedReported++;
+                $datedDocs[$rel] = true;
+                printf("  DATED         %-46s cites a blank line %d (%s) — reported, not judged\n", $token, $from, $rel);
+
+                continue;
+            }
             printf("  EMPTY LINE    %-46s cites a blank line %d  (in %s)\n", $token, $from, $rel);
             $problems++;
         }
     }
 }
 
-printf("\n%d citation(s) resolved and checked across %d file(s); %d problem(s); %d ambiguous basename(s)\n",
-    $checked, count($targets), $problems, $ambiguous);
+printf("\n%d citation(s) resolved and checked across %d file(s); %d problem(s); %d ambiguous basename(s); %d dated-record pointer(s)%s\n",
+    $checked, count($targets), $problems, $ambiguous, $datedReported,
+    $datedDocs === [] ? '' : ' in '.implode(', ', array_keys($datedDocs)));
+
+if ($strictDated && $datedReported > 0) {
+    fwrite(STDERR, "REFUSED: --strict-dated was asked but the dated rule still reported — the flag is not reaching the walk.\n");
+
+    exit(1);
+}
+
+if (! $strictDated && $datedReported > 0 && count($datedDocs) === 0) {
+    // A count with no document behind it is the two-definitions-of-one-word defect arriving in the summary.
+    fwrite(STDERR, "REFUSED: {$datedReported} dated pointer(s) reported but no document named.\n");
+
+    exit(1);
+}
 
 exit($problems === 0 ? 0 : 1);

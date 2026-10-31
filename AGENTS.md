@@ -1074,6 +1074,26 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   unchanged below, and **after any batch that issues a dated owner-facing document**, run
   `php storage/app/scratch/repo-file-line-citations.php` — it now refuses an unlisted document rather than
   reporting a clean sweep over files it never opened.
+  **A dated document's drifted pointers are REPORTED, never judged.** The two September review documents quote the
+  layout of the day they were read, and re-typing their digits would state lines that were never true on that day —
+  lane 60's rule for a register row, applied to a pointer. A file carrying the currency sentence (the words
+  `Pointer currency` with the day in parentheses) therefore has each stale pointer printed as DATED beside its cause,
+  and the footer counts them next to the problems, so an exemption can never be invisible: a run that says
+  "0 problem(s)" also says how many it declined to judge, and names the documents it exempted. That naming is the
+  guard against this bullet's own hazard — write the marker into a living document and the gate stops reading it.
+  `--strict-dated` puts those pointers back into the problem column; it is the flag the harness uses to prove the
+  marker is *read* rather than accepted (the accepted-but-inert defect this file has met five times). Prove any
+  change to this gate with `php storage/app/scratch/mutate-lane126-md-citation-gate.php`, which prints its own leg
+  total and plants its own bytes for each: a stale pointer in a copy without the marker must print EMPTY LINE and
+  exit 1, the same bytes with
+  the marker must print DATED and exit 0, `--strict-dated` must override the marker, the whole-tree strict verdict
+  must equal the control's problems **plus** its dated count (a relation, so the leg still bites on a tree that is
+  clean today), an unknown flag must be refused by name, and a planted dated sheet the list does not name must make
+  the unscoped run refuse and its removal return the verdict. The last leg writes into `Documentation/`, so it must
+  not overlap a suite run. What the gate found the same day it went clean: a matrix pointer one row short — a blank
+  line where the deactivate act is written — whose comma-list tail had aged identically and silently, because the
+  gate reads only the FIRST number of a pair. `lane97-probe-comma-cites.php` is the reader for the tail; it opens
+  both endpoints of every comma list in the dated documents and reports the line each number actually lands on.
 - **A figure you wrote about a tool is the last thing to re-measure, and better left unwritten.** This lane
   typed "159 citations over 14 files" into its own report, then added a document, and the denominator moved
   under the sentence. The fix states the property (0 problems; the gate refuses what it cannot scan) instead
@@ -1709,22 +1729,34 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 23 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
-2026-10-31, and it is the first whose order reaches a row that may not exist: `auditlogs.userId` is NULL on 3,294 of the
+  still owed: 22 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
+handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
+while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
+`tests/Feature/Sorting/SubjectListSortTest.php`, and the delivered run that contains it gives that class 7 cases, with
+no assertion figure beside it for the reason the runner taught twice: an assertion total is a property of the run that
+printed it. The same run on this box answers 1,140 passed with 7,140 assertions, `SUITE_EXIT=0`, no failure, no error and
+no skip, and `artisan test --list-tests` discovers the same 1,140, which is the check that no inserted method stole a
+`#[Test]` attribute. `mutate-g40-subject-sort-tests.php` plants one defect per promise — the order applied to
+another builder, the catalogue default reverted to descending, the ENUM header withheld again, a derived column
+offered where the handler lists no column for it, and the order never echoed — and each is killed by the case that
+names it. The audit log is
+also the first screen whose order reaches a row that may not exist: `auditlogs.userId` is NULL on 3,294 of the
 3,525 rows live `ems` holds, so its user hop asks `ListSort` for a LEFT join — an INNER hop would not mis-order those rows,
 it would delete 93% of the desk's list — and the helper's default stayed INNER, keeping the twelve earlier screens' SQL
 byte-identical. `mutate-g40-auditlog-sort-tests.php` plants the hop back to INNER among its seven legs, all killed, and its
 tile case pins the other half: the aggregate is cloned before the order, or a joined order turns the whole-set tile into a
-grouped star and MySQL 8 answers 1055 at the desk for clicking a header. Its figures are now taken from the run that
-contains them: the whole suite on this box answers 1,133 tests, and that run's junit gives `AuditLogSortTest` 8 cases /
-47 assertions and `SortHopAcrossANullableKeyTest` 5 / 15, each 0 failures and 0 errors — and 1120 + 5 + 8 = 1133 exactly,
-so the difference from the previous delivered reading is those two classes and nothing else moved. An earlier sentence here
-said no delivered run contained the audit-log class; that was true when written and false within the hour, which is why a
+grouped star and MySQL 8 answers 1055 at the desk for clicking a header. Its two case counts are `AuditLogSortTest` 8 and
+`SortHopAcrossANullableKeyTest` 5, one class per clause and no assertion total, because a multi-total sentence is judged on
+its FIRST figure — which is how the suite's own size, written in the same sentence as a class's, came back read as that class
+claiming it. An assertion count is a property of the run that printed it, so none is stated here. An earlier sentence
+here said no delivered run contained the audit-log class; that was true when written and false within the hour, which is why a
 figure about a run is re-taken from the run rather than carried forward. The ninth through twelfth wired screens are the
 Blocking roster, the Department Evaluation queue, the Examination queue and the Examination results screen, all 2026-10-31.
-Four class figures, one named surface: the delivered whole-suite run on this box answers 1,133 tests / 7,106 assertions with
-0 failures, 0 errors and 0 skipped, and its junit gives `EvaluationQueueSortTest` 13 cases / 65 assertions,
-`ExamQueueSortTest` 13 / 64, `BlockingQueueSortTest` 10 / 53 and `ExamResultsSortTest` 13 / 64, each 0 failures and 0 errors.
+Four case counts, one per class and none beside an assertion total: `EvaluationQueueSortTest` 13, `ExamQueueSortTest` 13,
+`BlockingQueueSortTest` 10, `ExamResultsSortTest` 13. The assertion figures this bullet carried were removed on 2026-10-31
+after the runner's own gate called them stale: CI's junit answers a different assertion count for the same code, and that
+difference is the finding rather than a nuisance to reconcile.
 The run before it, read while the dataset still carried 2026-10-31 against the school's 2026-11-01, answered 1,133 / 7,100
 with exactly one failure — `DemoDatasetRecordStatesTest > the two base rows the pipeline creates are the ones its own
 reporters read` — which is lane 54's midnight trap met live and cleared by a dump plus `tools/seed_full_demo_pipeline.php`

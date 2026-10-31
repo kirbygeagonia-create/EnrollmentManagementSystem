@@ -27,6 +27,7 @@ use App\Models\Offices;
 use App\Models\Rooms;
 use App\Models\Scholarshiptypes;
 use App\Models\Subjects;
+use App\Support\ListSort;
 use App\Support\ReferenceDataSections;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -401,20 +402,50 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageSubjects', Subjects::class);
 
-        $subjects = Subjects::query()
+        // The builder is split from the paging call because the order is applied to it in the action, the way
+        // every wired screen does it: a key the helper consumed one call deeper is a key the filter-contract
+        // checker cannot see the handler obeying, and it was reported DEAD-SEND for exactly that reason.
+        $query = Subjects::query()
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('subjectName', 'like', "%{$search}%")
                     ->orWhere('subjectCode', 'like', "%{$search}%");
             }))
-            ->when($request->type, fn ($q, $type) => $q->where('subjectType', $type))
-            ->orderByDesc('subjectId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->type, fn ($q, $type) => $q->where('subjectType', $type));
+
+        // `subjectType` is an ENUM and carries a header under the owner's ruling of 2026-10-31: on the school's
+        // server it orders by the declaration the school wrote. `subjectDesc` is a column but no screen reads it
+        // in this list, so it stays out — a header is offered for what the desk sees. The list's own default is
+        // the code, ascending, because a catalogue is read top to bottom and the helper's
+        // absence-of-direction answer is descending for queues of newest-first records.
+        $sortable = [
+            'subjectCode' => ['column' => 'subjectCode'],
+            'subjectName' => ['column' => 'subjectName'],
+            'subjectType' => ['column' => 'subjectType'],
+            'lectureUnits' => ['column' => 'lectureUnits'],
+            'labUnits' => ['column' => 'labUnits'],
+            'subjectId' => ['column' => 'subjectId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'subjectCode',
+            'subjects.subjectId'
+        );
+
+        $subjects = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/Subjects', [
             'subjects' => $subjects,
             'subjectTypes' => collect(SubjectType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'filters' => $request->only(['search', 'type']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but
+            // never echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search', 'type']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

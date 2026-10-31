@@ -463,7 +463,7 @@ The system manages **62 distinct database tables** organized into the following 
 | **Feature/Print** | Print audit tests | Document generation logging, immutability | ✅ Pass |
 | **Feature/Rbac** | RBAC permission tests | Role-based access control, office boundaries | ✅ Pass |
 
-**Total: 274 tests, 1,638 assertions, 0 failures, 0 errors**
+**No total is stated here.** The measured readings live in §1.1 of `EMS Complete Documentation.docx`, each naming the surface it was read from, because an assertion total is a property of a run rather than of the code — the same code answers a different count on the runner than on a workstation, and a figure in this table that did not name its run would be read as the suite's size by whoever held it.
 
 ---
 

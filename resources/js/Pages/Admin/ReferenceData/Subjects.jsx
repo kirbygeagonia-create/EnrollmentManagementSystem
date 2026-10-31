@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, nextSortDirection, sortParams, formatStatusLabel } from '@/Components/ui';
 
 const typeOptions = [
     { value: '', label: 'All Types' },
@@ -17,9 +17,12 @@ const typeToneMap = {
     both: 'success',
 };
 
-export default function Subjects({ subjects, subjectTypes, filters = {} }) {
+export default function Subjects({ subjects, subjectTypes, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [type, setType] = useState(filters.type || '');
+    // Seeded from the server's echo, so a filter submit keeps the order and an order submit keeps the filter.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -34,26 +37,38 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'subjectCode', label: 'Code', className: 'font-mono text-sm' },
-        { key: 'subjectName', label: 'Title' },
+        { key: 'subjectCode', label: 'Code', sortKey: 'subjectCode', className: 'font-mono text-sm' },
+        { key: 'subjectName', label: 'Title', sortKey: 'subjectName' },
         { key: 'subjectDesc', label: 'Description', className: 'hidden xl:table-cell', render: (row) => (
             <span className="block max-w-xs truncate text-xs text-slate-500" title={row.subjectDesc}>{row.subjectDesc || '—'}</span>
         )},
-        { key: 'subjectType', label: 'Type', render: (row) => (
+        { key: 'subjectType', label: 'Type', sortKey: 'subjectType', render: (row) => (
             <Badge tone={typeToneMap[row.subjectType] || 'neutral'}>
                 {formatStatusLabel(row.subjectType)}
             </Badge>
         )},
-        { key: 'lectureUnits', label: 'Lec Units', className: 'text-center' },
-        { key: 'labUnits', label: 'Lab Units', className: 'text-center' },
+        { key: 'lectureUnits', label: 'Lec Units', sortKey: 'lectureUnits', className: 'text-center' },
+        { key: 'labUnits', label: 'Lab Units', sortKey: 'labUnits', className: 'text-center' },
         { key: 'totalUnits', label: 'Total Units', render: (row) => (parseFloat(row.lectureUnits) + parseFloat(row.labUnits)).toFixed(1), className: 'text-center font-medium' },
     ], []);
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.subjects'), {
+            search: search || undefined,
+            type: type || undefined,
+            ...sortParams('subjectCode', key, direction),
+        }, { preserveState: true, preserveScroll: true });
+    };
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.subjects'), {
             search: search || undefined,
             type: type || undefined,
+            ...sortParams('subjectCode', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -189,6 +204,8 @@ export default function Subjects({ subjects, subjectTypes, filters = {} }) {
                         <DataTable
                             columns={columns}
                             rows={subjects.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No subjects found"
                         />
