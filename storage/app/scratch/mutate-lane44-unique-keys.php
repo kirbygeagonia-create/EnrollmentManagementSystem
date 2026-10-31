@@ -97,15 +97,32 @@ $case('a phantom key added',
         .' | Invented so the checker has to notice a key the server does not hold. | mutant', $original),
     'PHANTOM');
 
-// The count sentence moved back to the pre-pass-140 figure.
-$case('the count reverted to eight',
-    str_replace('Nine keys in seven tables', 'Eight keys in seven tables', $original),
-    'the sentence says eight keys');
+// The count sentence, found by its SHAPE rather than by today's numbers. This harness aged twice for hardcoding
+// "Nine keys in seven tables" — docx pass 349 made the list ten keys in eight tables, both count cases then planted
+// nothing, and each reported itself as a caught defect until the run said MUTANT DID NOT APPLY. An anchor that has to
+// be re-cut every time the document gets truer is an anchor that hides the change it exists to test.
+$sentence = null;
+if (preg_match('/\b(Eight|Nine|Ten|Eleven) keys in (seven|eight|nine) tables\./u', $original, $m) === 1) {
+    $sentence = $m[0];
+    $lower = ['Eight' => 'Seven', 'Nine' => 'Eight', 'Ten' => 'Nine', 'Eleven' => 'Ten'];
+    $fewer = str_replace($m[1], $lower[$m[1]], $sentence);
+}
 
-// The sentence removed entirely — a claim the checker cannot read must not look checked.
-$case('the count sentence unreadable',
-    str_replace('Nine keys in seven tables', 'Keys are listed below', $original),
-    'UNBOUND');
+if ($sentence === null) {
+    echo "\n  BAD the count sentence is unreadable to this harness — no `[number] keys in [word] tables.` sentence is in\n"
+        ."       the dump, so both count cases below cannot be planted. Re-cut the anchor; do not skip the cases.\n";
+    $failures += 2;
+} else {
+    // The count sentence moved one key lower than the server's truth.
+    $case('the count moved one key lower',
+        str_replace($sentence, $fewer, $original),
+        'the sentence says');
+
+    // The sentence removed entirely — a claim the checker cannot read must not look checked.
+    $case('the count sentence unreadable',
+        str_replace($sentence, 'Keys are listed below.', $original),
+        'UNBOUND');
+}
 
 @unlink($copy);
 

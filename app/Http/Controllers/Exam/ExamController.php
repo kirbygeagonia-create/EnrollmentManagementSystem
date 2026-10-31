@@ -16,6 +16,7 @@ use App\Models\Enrollments;
 use App\Models\Examresults;
 use App\Models\Students;
 use App\Support\CollegeScope;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -49,8 +50,7 @@ class ExamController extends Controller
         // list at exam.students still takes stage, and keeps it.
         $query = Examresults::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'verifiedByUser'])
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('examId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Item 4 ownership: Guidance handles and views the School Entrance
         // Examination only — all of its results, pass and failed. Course-specific
@@ -100,6 +100,38 @@ class ExamController extends Controller
             ->where('resultStatus', ExamStatus::Provisional->value)
             ->count();
 
+        // The order is asked of the query, and only AFTER the two tiles were cloned. A surname sort joins
+        // `students` and a program sort joins `courses`, and an aggregate must not learn about a join it never
+        // needed; the select pin a hop adds (§28.3 G-51) would have made the tile's `selectRaw` a grouped star on
+        // MySQL 8, which is `ONLY_FULL_GROUP_BY` 1055 — a 500 at the desk for clicking a header, green on SQLite.
+        //
+        // Student Type and Standing are NOT listed. An exam record is per (student, term) with no `enrollmentId`, so
+        // the handler reads that pair from the matching enrollment after the page is cut — the query holds nothing to
+        // order by, and a header painting for an order the SQL cannot answer is the defect §28.3 owns for filters.
+        $sortable = [
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'examresults.studentId'],
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'examresults.studentId'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'examresults.courseId'],
+            // Ruled 2026-10-31: an ENUM column carries a header, because the order the school's server applies is
+            // the declaration order the school wrote into the migration. `examResult` is nullable, so an unmarked
+            // paper reaches one end of the list rather than reading as a third verdict.
+            'examType' => ['column' => 'examType'],
+            'examResult' => ['column' => 'examResult'],
+            'resultStatus' => ['column' => 'resultStatus'],
+            'examDate' => ['column' => 'examDate'],
+            // The queue's own key is listed because `apply()` looks the fallback up in this array; no column spells
+            // it as a `sortKey`, so it never paints a header, and the page sends nothing while it is the order.
+            'examId' => ['column' => 'examId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'examId',
+            'examresults.examId'
+        );
+
         $exams = $query->paginate(20)->withQueryString();
 
         // An exam record is per (student, term) with no enrollmentId, so the
@@ -122,7 +154,11 @@ class ExamController extends Controller
                 'fail' => (int) ($resultCounts[ExamResult::Fail->value] ?? 0),
                 'pending' => $pendingCount,
             ],
-            'filters' => $request->only(['type', 'search']),
+            'filters' => $request->only(['type', 'search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $canCourseSpecific,
@@ -466,8 +502,7 @@ class ExamController extends Controller
         // the link advertised a narrowing this handler never applied and the page opened on every result.
         $query = Examresults::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'verifiedByUser'])
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
-            ->orderByDesc('examId');
+            ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // Same ownership split as index(): Guidance holds every School Entrance
         // result including failed; the department holds its own course-specific
@@ -510,6 +545,30 @@ class ExamController extends Controller
         $failCount = (int) ($resultCounts[ExamResult::Fail->value] ?? 0);
         $scoredCount = $passCount + $failCount;
 
+        // The results screen is the second list of one table, so it obeys the same order rule as the roster above —
+        // same three hops, same reduction of the direction, and the order asked only after `$resultCounts` was
+        // cloned, because that aggregate must not learn about a join it never needed (§28.3 G-51's PINNED-SELECT
+        // shape, which `lane47-tile-scope.php` judges). Unlike the roster, every column this page paints is a
+        // column of `examresults` or one hop away, so nothing here is withheld: the derived Student Type / Standing
+        // pair is not painted on this screen at all.
+        $resultsSortable = [
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'examresults.studentId'],
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'examresults.studentId'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'examresults.courseId'],
+            'examType' => ['column' => 'examType'],
+            'examResult' => ['column' => 'examResult'],
+            'examDate' => ['column' => 'examDate'],
+            'examId' => ['column' => 'examId'],
+        ];
+        $resultsSort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $resultsSortable,
+            'examId',
+            'examresults.examId'
+        );
+
         $exams = $query->paginate(50)->withQueryString();
 
         return Inertia::render('Exam/Results', [
@@ -521,7 +580,11 @@ class ExamController extends Controller
                 'scored' => $scoredCount,
                 'passRate' => $scoredCount > 0 ? (int) round($passCount / $scoredCount * 100) : null,
             ],
-            'filters' => $request->only(['result', 'search']),
+            'filters' => $request->only(['result', 'search']) + [
+                'sort' => $resultsSort['column'],
+                'direction' => $resultsSort['direction'],
+            ],
+            'sort' => ListSort::present($resultsSort, $resultsSortable),
             'can' => [
                 'recordGeneral' => $canGeneral,
                 'recordCourseSpecific' => $user->hasPermissionTo('exam.record.courseSpecific'),

@@ -3,8 +3,8 @@
 namespace App\Listeners;
 
 use App\Events\EnrollmentStatusChanged;
-use App\Models\Notifications;
 use App\Models\Staffusers;
+use App\Support\NoticeDelivery;
 use App\Support\WorkflowInbox;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -65,12 +65,18 @@ class SendEnrollmentNotification implements ShouldQueue
         ];
 
         foreach (WorkflowInbox::actors(WorkflowInbox::nextOffice($workflow, $event->toStatus)) as $userId) {
-            Notifications::create([
-                'type' => 'enrollment_status_changed',
-                'notifiable_type' => Staffusers::class,
-                'notifiable_id' => $userId,
-                'data' => $data,
-            ]);
+            // One row per recipient, keyed by the transition that produced it: the recipient is part of the identity
+            // because one office legitimately rings several desks, and the history id is what makes a retried job
+            // recognisable as the same delivery (§28.3 G-36).
+            NoticeDelivery::once(
+                $event->historyId === null ? null : "enrollment_status_changed:{$event->historyId}:{$userId}",
+                [
+                    'type' => 'enrollment_status_changed',
+                    'notifiable_type' => Staffusers::class,
+                    'notifiable_id' => $userId,
+                    'data' => $data,
+                ]
+            );
         }
     }
 

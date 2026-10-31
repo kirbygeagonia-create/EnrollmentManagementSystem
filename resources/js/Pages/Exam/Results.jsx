@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
@@ -25,9 +25,11 @@ const typeLabels = {
     courseSpecific: 'Course-Specific',
 };
 
-export default function Results({ exams, stats = {}, filters = {}, can = {} }) {
+export default function Results({ exams, stats = {}, filters = {}, sort = null, can = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [result, setResult] = useState(filters.result || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'examId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     // Item 4: the page frames itself by the viewer's desk, matching the
     // visibility the backend enforces on the results query.
@@ -40,34 +42,51 @@ export default function Results({ exams, stats = {}, filters = {}, can = {} }) {
     // measured one page of 50, and put unscored rows — examResult is a nullable enum — into the rate's
     // denominator, so a screen of unmarked papers read "0%" and the number moved as the desk paged.
 
+    // Every column this screen paints carries a `sortKey`, because every one is a value the handler can order in
+    // SQL — School ID and Name through the `students` hop, Course through `courses`, Exam / Result / Date the
+    // result row's own. The header only paints for a key the server both listed and echoed.
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'examType', label: 'Exam', render: (row) => (
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        { key: 'examType', label: 'Exam', sortKey: 'examType', render: (row) => (
             <Badge tone={typeToneMap[row.examType] || 'neutral'}>
                 {typeLabels[row.examType] || row.examType}
             </Badge>
         )},
-        { key: 'examResult', label: 'Result', render: (row) => (
+        { key: 'examResult', label: 'Result', sortKey: 'examResult', render: (row) => (
             <Badge tone={resultToneMap[row.examResult] || 'neutral'}>
                 {formatStatusLabel(row.examResult)}
             </Badge>
         )},
-        { key: 'examDate', label: 'Date', render: (row) => formatCalendarDay(row.examDate) },
+        { key: 'examDate', label: 'Date', sortKey: 'examDate', render: (row) => formatCalendarDay(row.examDate) },
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextResult, nextSort, nextDir) => {
         router.get(route('exam.results'), {
-            search: search || undefined,
-            result: result || undefined,
+            search: nextSearch || undefined,
+            result: nextResult || undefined,
+            // The screen's own default travels as nothing at all, so the row action that links here with a School
+            // ID stays a short URL rather than arriving as a sort key the handler would call its fallback.
+            ...sortParams('examId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, result, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, result, key, direction);
     };
 
     const subtitle = isGuidance
@@ -174,6 +193,8 @@ export default function Results({ exams, stats = {}, filters = {}, can = {} }) {
                             columns={columns}
                             rows={exams.data}
                             emptyMessage="No exam results found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={exams} />

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard, formatYearLevel, yearLevelChoices } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, FormSection, StatCard, formatYearLevel, yearLevelChoices, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // The filter value travels in the query string, so it stays a string; the label comes from the
@@ -22,11 +22,16 @@ const BlockIcon = () => (
     </svg>
 );
 
-export default function Index({ blocks, stats = {}, courses, terms, filters = {} }) {
-    const [search, setSearch] = useState('');
+export default function Index({ blocks, stats = {}, courses, terms, filters = {}, sort = null }) {
+    // The box must show what the list is filtered by. It used to start empty while `filters.search` still narrowed
+    // the roster, so a desk that paged or re-sorted saw a search field that had lost its own term — the control
+    // resets while the list stays narrowed, which §28.3 owns for every filter key.
+    const [search, setSearch] = useState(filters.search || '');
     const [courseId, setCourseId] = useState(filters.courseId || '');
     const [termId, setTermId] = useState(filters.termId || '');
     const [yearLevel, setYearLevel] = useState(filters.yearLevel || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'blockId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     const createForm = useForm({
@@ -47,17 +52,21 @@ export default function Index({ blocks, stats = {}, courses, terms, filters = {}
         });
     };
 
+    // Four of these six columns carry a `sortKey`. Term is a label the handler assembles from the term's semester
+    // plus its academic year, and Available is `maxStudents` less the block's own seat count — neither is a column
+    // the query can order, so neither gets a header a click would send. The server echoes the set it would obey and
+    // the shared control paints only those.
     const columns = useMemo(() => [
-        { key: 'blockName', label: 'Block Name / Section' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'blockName', label: 'Block Name / Section', sortKey: 'name' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
         { key: 'term', label: 'Term', render: (row) => {
             if (!row.term) return '—';
             const semester = row.term.semester?.value || row.term.semester;
             const yearLabel = row.term.academicYear?.yearLabel || '';
             return `${semester} ${yearLabel}`.trim();
         }},
-        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
-        { key: 'capacity', label: 'Capacity', render: (row) => {
+        { key: 'yearLevel', label: 'Year Level', sortKey: 'yearLevel', render: (row) => formatYearLevel(row.yearLevel) },
+        { key: 'capacity', label: 'Capacity', sortKey: 'capacity', render: (row) => {
             const enrolled = row.students_in_block_count ?? 0;
             const capacity = row.maxStudents;
             return `${enrolled} / ${capacity}`;
@@ -75,17 +84,31 @@ export default function Index({ blocks, stats = {}, courses, terms, filters = {}
         }},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (next) => {
         router.get(route('blocking.index'), {
-            search: search || undefined,
-            courseId: courseId || undefined,
-            termId: termId || undefined,
-            yearLevel: yearLevel || undefined,
+            search: next.search || undefined,
+            courseId: next.courseId || undefined,
+            termId: next.termId || undefined,
+            yearLevel: next.yearLevel || undefined,
+            // The roster's own default travels as nothing at all, so a plain link stays a short URL rather than
+            // arriving as a sort key the handler would have to recognise as its fallback.
+            ...sortParams('blockId', next.sort, next.dir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit({ search, courseId, termId, yearLevel, sort: sortBy, dir: sortDir });
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit({ search, courseId, termId, yearLevel, sort: key, dir: direction });
     };
 
     const renderActions = (row) => (
@@ -236,6 +259,8 @@ export default function Index({ blocks, stats = {}, courses, terms, filters = {}
                                 rows={blocks.data}
                                 children={renderActions}
                                 emptyMessage="No blocks found"
+                                sort={sort}
+                                onSort={handleSort}
                             />
                             <div className="mt-4">
                                 <Pagination paginator={blocks} />

@@ -13,6 +13,7 @@ use App\Models\Roles;
 use App\Models\Settings;
 use App\Models\Shiftingrequests;
 use App\Models\Staffusers;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -503,12 +504,15 @@ class UserManagementController extends Controller
             // every day's audit rows out of the range the officer had just asked for.
             ->when(SchoolTime::dayOrNull($request->dateFrom), fn ($q, $date) => $q->where('createdAt', '>=', SchoolTime::startOfSchoolDay($date)))
             ->when(SchoolTime::dayOrNull($request->dateTo), fn ($q, $date) => $q->where('createdAt', '<', SchoolTime::startOfNextSchoolDay($date)))
-            ->when($request->adminOverride === '1', fn ($q) => $q->where('adminOverride', true))
-            ->orderByDesc('createdAt');
+            ->when($request->adminOverride === '1', fn ($q) => $q->where('adminOverride', true));
 
         // Counts over the whole filtered set, taken before paginate() — paginate() puts the page's
         // LIMIT/OFFSET on the builder it is called on. Client-side these tiles described up to 50 rows while
-        // their labels promised the log.
+        // their labels promised the log. It is also taken before the order below, which matters for a reason the
+        // comment cannot assume a later reader will remember: `user` is ordered through a join, and an aggregate
+        // cloned from a builder that already carries a pinned `select` plus that join would ask MySQL 8 to group
+        // the star — 1055 at the desk for clicking a header, the shape §28.3 G-51's follow-up met on the
+        // admission queue. Cloning first is the clearance queue's ordering and it keeps the tile a plain count.
         $actionCounts = (clone $query)
             ->reorder()
             ->selectRaw('action, count(*) as aggregate')
@@ -519,6 +523,32 @@ class UserManagementController extends Controller
         // current page, which on this box offered 4 tables out of the 43 the log contains — 39 kinds of
         // activity could not be filtered for at all.
         $entityTables = Auditlogs::distinct()->orderBy('entityTable')->pluck('entityTable')->filter()->values();
+
+        // The columns a header may offer, read off `auditlogs` itself. Two are deliberately absent: `description`
+        // is composed from the JSON at read time, so the query holds nothing to order by, and no joined label is
+        // offered either. `user` is the one hop whose key can be NULL — live `ems` holds 3,294 of 3,525 rows with
+        // no account behind them — so it asks for a LEFT join: an INNER hop would not order those rows badly, it
+        // would remove 93% of the log from the desk's list the moment anyone clicked the header, which is the
+        // absence the screen is meant to paint rather than a row that vanished.
+        $sortable = [
+            'createdAt' => ['column' => 'createdAt'],
+            'action' => ['column' => 'action'],
+            'entityTable' => ['column' => 'entityTable'],
+            'entityId' => ['column' => 'entityId'],
+            'auditId' => ['column' => 'auditId'],
+            'user' => ['column' => 'lastName', 'join' => 'staffusers', 'foreign' => 'userId', 'local' => 'auditlogs.userId', 'type' => 'left'],
+        ];
+
+        // Newest-first is this list's own default: an audit log is read from the most recent act downward, so the
+        // helper's `desc` answers the question the desk actually asks and is not widened here.
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'createdAt',
+            'auditlogs.auditId'
+        );
 
         $logs = $query->paginate(50)->withQueryString();
 
@@ -531,7 +561,14 @@ class UserManagementController extends Controller
                 'updated' => (int) ($actionCounts['updated'] ?? 0),
                 'deleted' => (int) ($actionCounts['deleted'] ?? 0),
             ],
-            'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo', 'adminOverride']),
+            // Both keys travel back in `filters` beside the `sort` prop: a control the desk set that the handler
+            // obeyed but never echoed resets on the next render while the list stays narrowed — the defect
+            // lane 46 owns for filters, met from the order side.
+            'filters' => $request->only(['action', 'entityTable', 'dateFrom', 'dateTo', 'adminOverride']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

@@ -46,6 +46,7 @@ use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\CollegeScope;
 use App\Support\DeskQueues;
+use App\Support\ListSort;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use App\Support\YearLevel;
@@ -96,8 +97,7 @@ class EvaluationController extends Controller
         // here: they read what this desk typed, which is the page's business, not the population's.
         $query = DeskQueues::evaluation($desk)
             ->with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term', 'evaluatedByUser'])
-            ->when($request->search, $search)
-            ->orderByDesc('enrollmentId');
+            ->when($request->search, $search);
 
         // The tiles answer for the whole queue, not the 20 rows on the page, and are taken before paginate()
         // — paginate() puts the page's LIMIT/OFFSET on the builder it is called on.
@@ -127,6 +127,36 @@ class EvaluationController extends Controller
             ->when($request->search, $search)
             ->count();
 
+        // The order is asked of the query, and only AFTER the tiles were cloned. A surname sort joins `students` and a
+        // program sort joins `courses`, and an aggregate must not learn about a join it never needed; and the select
+        // that pin adds (§28.3 G-51) would have made the tile's `selectRaw` a grouped star on MySQL 8, which is
+        // `ONLY_FULL_GROUP_BY` 1055 — a 500 at the desk for clicking a header, green on SQLite. Both hops are 1:1
+        // through a NOT NULL foreign key, so neither could have changed a count either way; the ordering is defensive
+        // and the handler says so, because a tile's number should not depend on that fact.
+        $sortable = [
+            'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'enrollments.courseId'],
+            'yearLevel' => ['column' => 'yearLevel'],
+            // Ruled 2026-10-31: an ENUM column carries a header, because the order the school's server applies is the
+            // declaration order the school wrote into the migration — for `studentType` that is firstYear, continuing,
+            // transferee, shifter, which is the order a desk wants, not an accident of the driver.
+            'studentType' => ['column' => 'studentType'],
+            'academicStanding' => ['column' => 'academicStanding'],
+            'enrollmentStatus' => ['column' => 'enrollmentStatus'],
+            // The queue's own key is listed because `apply()` looks the fallback up in this array. No column spells it
+            // as a `sortKey`, so it never paints a header; the page sends nothing at all when it is the order in force.
+            'enrollmentId' => ['column' => 'enrollmentId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'enrollmentId',
+            'enrollments.enrollmentId'
+        );
+
         $enrollments = $query->paginate(20)->withQueryString();
 
         // Ruling 2 (G-1): this desk issues the returning student's enrollment, so the
@@ -144,7 +174,11 @@ class EvaluationController extends Controller
                 'evaluated' => $handled,
                 'transferees' => (int) $queue->transferees,
             ],
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
             'canIssueEnrollment' => $canIssue,
             'returningStudents' => $canIssue ? $this->returningStudents($desk) : [],
             'terms' => $canIssue

@@ -30,10 +30,25 @@ return [
 
     'disks' => [
 
+        /*
+        |--------------------------------------------------------------------------
+        | The private working folder — deliberately NOT served
+        |--------------------------------------------------------------------------
+        |
+        | This disk used to carry 'serve' => true, which made Laravel register
+        | GET|HEAD /storage/{path} and PUT /storage/{path} outside every middleware group, gated
+        | only by an HMAC of the path keyed by APP_KEY. Nothing in app/ or resources/ ever minted
+        | one, so no desk used them, and the folder they reached is where the uploaded papers and
+        | face photos live (§28.3 G-50). Taking the flag off removes the routes rather than
+        | trusting their signature: a path that does not exist cannot be probed, and a blank
+        | APP_KEY can no longer sign a write into this tree. Reads and writes go through the
+        | routes that authorize the record each file belongs to.
+        |
+        */
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
             'throw' => false,
             'report' => false,
         ],
@@ -47,8 +62,9 @@ return [
         | default already is so every path already stored stays valid. Uploads written
         | through config('filesystems.default') would move to a publicly served folder
         | on an operator who set FILESYSTEM_DISK=public and ran storage:link — and the
-        | two routes that read them back are the only thing standing between a stranger
-        | and a named student's documents, because a hashed filename is not a secret.
+        | desk routes that read them back, the applicant's paper and the student's face
+        | photo, are the only thing standing between a stranger and a named student's
+        | documents, because a hashed filename is not a secret.
         | Naming the disk here means one line in .env can no longer expose them.
         | No 'serve' and no 'url': nothing may reach these bytes except through a route
         | that authorizes the record they belong to.

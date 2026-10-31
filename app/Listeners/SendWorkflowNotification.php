@@ -4,9 +4,9 @@ namespace App\Listeners;
 
 use App\Enums\OfficeId;
 use App\Events\WorkflowStepSigned;
-use App\Models\Notifications;
 use App\Models\Staffusers;
 use App\Services\WorkflowService;
+use App\Support\NoticeDelivery;
 use App\Support\WorkflowInbox;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -40,8 +40,15 @@ class SendWorkflowNotification implements ShouldQueue
 
         $progress = WorkflowInbox::progress($workflow);
 
+        // The signing is the act, and its timestamp is what separates this signature from the next one on the same
+        // box: a return re-opens a step and the second signature must ring a bell of its own (§28.3 G-36). With no
+        // signed date there is no act to name, so the key is null and the notice goes out unkeyed rather than lost.
+        $signedAt = $step->signedDate?->getTimestamp();
+        $stepKey = $signedAt === null ? null : "workflow_step_signed:{$step->workflowStepId}:{$signedAt}";
+
         if ($progress['remaining'] === 0 && $progress['total'] > 0) {
             $this->notify(
+                "workflow_completed:{$workflow->workflowId}:{$step->workflowStepId}",
                 'workflow_completed',
                 WorkflowInbox::actors(OfficeId::Registrar->value),
                 $enrollment,
@@ -57,6 +64,7 @@ class SendWorkflowNotification implements ShouldQueue
         $nextLabel = $next ? ($labels[$next->officeId] ?? 'the next desk') : 'the next desk';
 
         $this->notify(
+            $stepKey,
             'workflow_step_signed',
             WorkflowInbox::actors($next?->officeId),
             $enrollment,
@@ -82,22 +90,30 @@ class SendWorkflowNotification implements ShouldQueue
      * queries. Nobody is left waiting on a notification addressed to a reader
      * that does not exist.
      *
+     * The prefix is the ACT's identity — the signing, or the completion, not the notice's text — and the recipient
+     * is appended per row so one office ringing four desks is four deliveries rather than one. A null prefix means
+     * the caller could not name the act, and then the notice is written unkeyed: G-36 exists to stop a retry
+     * duplicating a bell, not to let a missing key lose one.
+     *
      * @param  list<int>  $userIds
      * @param  array<string, mixed>  $extra
      */
-    private function notify(string $type, array $userIds, $enrollment, $workflow, string $message, array $extra): void
+    private function notify(?string $actKey, string $type, array $userIds, $enrollment, $workflow, string $message, array $extra): void
     {
         foreach ($userIds as $userId) {
-            Notifications::create([
-                'type' => $type,
-                'notifiable_type' => Staffusers::class,
-                'notifiable_id' => $userId,
-                'data' => array_merge([
-                    'message' => $message,
-                    'enrollmentId' => $enrollment->enrollmentId,
-                    'workflowId' => $workflow->workflowId,
-                ], $extra),
-            ]);
+            NoticeDelivery::once(
+                $actKey === null ? null : "{$actKey}:{$userId}",
+                [
+                    'type' => $type,
+                    'notifiable_type' => Staffusers::class,
+                    'notifiable_id' => $userId,
+                    'data' => array_merge([
+                        'message' => $message,
+                        'enrollmentId' => $enrollment->enrollmentId,
+                        'workflowId' => $workflow->workflowId,
+                    ], $extra),
+                ]
+            );
         }
     }
 }

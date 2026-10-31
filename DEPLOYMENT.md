@@ -43,8 +43,9 @@ FILESYSTEM_DISK=local          # never `public` — see below
 submits and the face photo captured for an ID are written to the named **`documents`** disk and
 read back only through routes that `authorize()` the owning record first
 (`admission.documents.show`, `id.photo.view`). The `local` disk is rooted at
-`storage/app/private` — the same folder the `documents` disk writes to — and it is reachable
-at `/storage/{path}` for anyone holding a signature; see the two routes below. Setting
+`storage/app/private` — the same folder the `documents` disk writes to — and it asks for no
+serving, so nothing inside it is reachable at any web path (§28.3 G-50, closed 2026-10-31).
+Setting
 `FILESYSTEM_DISK=public` and
 running `php artisan storage:link` would publish that whole folder under
 `/storage/...`, where the framework serves any file whose name is known with no
@@ -55,29 +56,35 @@ folder's own `.gitignore` keeps a machine full of real signed forms from shippin
 papers by accident, and the reference photographs of the physical forms are ignored at
 the repository root for the same reason.
 
-**Two routes answer with no login, and one secret stands in front of them.** Because
-`config/filesystems.php` gives the `local` disk `'serve' => true`, Laravel registers
+**Nothing serves the private folder, and that is the point.** Until 2026-10-31
+`config/filesystems.php` gave the `local` disk `'serve' => true`, so Laravel registered
 `GET|HEAD /storage/{path}` and `PUT /storage/{path}` for it **outside every middleware group** —
-not `auth`, not `web`, no CSRF token. Nothing in the application ever asks for a signature
+not `auth`, not `web`, no CSRF token. Nothing in the application ever asked for a signature
 (`temporarySignedRoute` and `temporaryUrl` appear nowhere in `app/` or `resources/`), so in
-normal use the two are dead doors, and what stops a stranger walking through one is
-`ServeFile::hasValidSignature()` / `ReceiveFile::hasValidSignature()` — an HMAC of the path and
-query, keyed by `APP_KEY`. Measured 2026-10-12 by driving the route through the HTTP kernel
-(`storage/app/scratch/audit-24b-storage-routes.php`, pinned by `ServedUploadPathTest`): unsigned
-→ 403; signed with this install's key → 204; signed with the **empty** secret, on an install
-that never ran `key:generate` → **204, and the file is written**. Two faults follow, and
-`php artisan ems:preflight` now fails the run for each:
+normal use the two were dead doors, and the only thing standing between a stranger and a named
+student's papers was `ServeFile::hasValidSignature()` / `ReceiveFile::hasValidSignature()` — an
+HMAC of the path and query, keyed by `APP_KEY`. Measured 2026-10-12 by driving the route through
+the HTTP kernel (`storage/app/scratch/audit-24b-storage-routes.php`): unsigned → 403; signed with
+this install's key → 204; signed with the **empty** secret, on an install that never ran
+`key:generate` → **204, and the file was written**. §28.3 G-50 closed that by taking the flag off
+rather than trusting the door, because a path with no route cannot be probed. What pins it now is
+`tests/Feature/Files/ServedUploadPathTest.php` (no local disk asks to serve, neither route name is
+registered, no `storage/…` URI in the table, and both verbs answer 404), proved by
+`storage/app/scratch/mutate-g50-served-folder-tests.php`, which puts the flag back and requires
+those cases to go red. Two consequences an operator still has to respect:
 
-- **`APP_KEY` left blank.** That is the state `.env.example` leaves it in, and §3 corrects it with
-  one line. The damage reads as something else: every login throws on cookie encryption, so a
-  keyless server looks like a broken session while `/storage/{path}` — which needs no encryption
-  at all — keeps accepting uploads from anybody who can compute an HMAC over an empty key.
-- **`'visibility' => 'public'` on the served disk.** That single line switches
-  `ServeFile`'s signature check off: the unsigned `GET` this configuration refuses with 403
-  then walks straight through and only a missing file answers 404 (measured the same way by
+- **`APP_KEY` still has to be generated.** The upload door is gone; the cipher is not. A blank key
+  means nothing can be encrypted or signed, and the first login is refused its own cookie, which
+  reads as a broken session driver rather than the skipped line in §3 that it is.
+  `php artisan ems:preflight` FAILs it.
+- **Never put `'serve' => true` back on a disk rooted at `storage/app/private`, and never add
+  `'visibility' => 'public'` to a disk that is served.** The second line switches `ServeFile`'s
+  signature check off entirely: the unsigned `GET` that a signed configuration refused with 403
+  then walked straight through and only a missing file answered 404 (measured the same way by
   `audit-24c-servegate.php`). An operator adding it to chase a broken image would publish every
-  applicant paper and face photo, because the served `local` disk and the `documents` disk are
-  rooted at the same folder.
+  applicant paper and face photo, because the `local` and `documents` disks are rooted at the same
+  folder. `ems:preflight` FAILs a served-and-public disk and WARNs a disk served from the uploads'
+  root, naming this section's ruling in the sentence.
 
 To see what has accumulated there, run `php artisan ems:uploads:prune`. It lists the
 files on the private disk that no record points at — superseded face captures, residue

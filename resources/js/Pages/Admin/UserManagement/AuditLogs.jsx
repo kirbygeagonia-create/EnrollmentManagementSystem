@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, StatCard } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, StatCard, nextSortDirection, sortParams } from '@/Components/ui';
 import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 
 const actionOptions = [
@@ -35,21 +35,25 @@ const actionToneMap = {
     logout: 'neutral',
 };
 
-export default function AuditLogs({ logs, stats = {}, entityTables = [], filters = {} }) {
+export default function AuditLogs({ logs, stats = {}, entityTables = [], filters = {}, sort = null }) {
     const [action, setAction] = useState(filters.action || '');
     const [entityTable, setEntityTable] = useState(filters.entityTable || '');
     const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
     const [dateTo, setDateTo] = useState(filters.dateTo || '');
     const [adminOverride, setAdminOverride] = useState(filters.adminOverride || '');
     const [viewingLog, setViewingLog] = useState(null);
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at
+    // instead of silently reverting to newest-first while the list stays narrowed.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
 
     const columns = useMemo(() => [
-        { key: 'timestamp', label: 'Timestamp', render: (row) => row.createdAt ? (
+        { key: 'timestamp', label: 'Timestamp', sortKey: 'createdAt', render: (row) => row.createdAt ? (
             <span className="font-mono text-xs text-brand-600">
                 {formatSchoolMoment(row.createdAt, { dateStyle: 'short', timeStyle: 'medium' })}
             </span>
         ) : '—' },
-        { key: 'user', label: 'User', render: (row) => row.user ? (
+        { key: 'user', label: 'User', sortKey: 'user', render: (row) => row.user ? (
             <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-3xs font-semibold flex-shrink-0">
                     {row.user.firstName?.[0]}{row.user.lastName?.[0]}
@@ -62,7 +66,7 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
         ) : (
             <span className="text-xs text-brand-400 italic">System</span>
         )},
-        { key: 'action', label: 'Action', render: (row) => (
+        { key: 'action', label: 'Action', sortKey: 'action', render: (row) => (
             <div className="flex items-center gap-1.5">
                 <Badge tone={actionToneMap[row.action] || 'neutral'} className="capitalize">
                     {row.action?.replace(/_/g, ' ')}
@@ -75,10 +79,10 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
                 )}
             </div>
         )},
-        { key: 'entityTable', label: 'Entity', render: (row) => (
+        { key: 'entityTable', label: 'Entity', sortKey: 'entityTable', render: (row) => (
             <span className="font-mono text-xs text-brand-700">{row.entityTable || '—'}</span>
         )},
-        { key: 'entityId', label: 'Entity ID', className: 'font-mono text-xs text-brand-500' },
+        { key: 'entityId', label: 'Entity ID', sortKey: 'entityId', className: 'font-mono text-xs text-brand-500' },
         { key: 'description', label: 'Description', render: (row) => {
             if (!row.oldValues && !row.newValues) return <span className="text-brand-400">—</span>;
             const changes = [];
@@ -111,10 +115,27 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
             dateFrom: dateFrom || undefined,
             dateTo: dateTo || undefined,
             adminOverride: adminOverride || undefined,
+            // The order travels with the filters, or a submit that reads as narrowing the list
+            // quietly re-sorts it back to the default underneath the desk.
+            ...sortParams('createdAt', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.users.audit-logs'), {
+            action: action || undefined,
+            entityTable: entityTable || undefined,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+            adminOverride: adminOverride || undefined,
+            ...sortParams('createdAt', key, direction),
+        }, { preserveState: true, preserveScroll: true });
     };
 
     // The Entity pick-list used to be assembled from `logs.data`, which on this box offered 4 of the 43
@@ -239,6 +260,8 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
                 {logs?.data?.length > 0 ? (
                     <>
                         <DataTable
+                            sort={sort}
+                            onSort={handleSort}
                             columns={columns}
                             rows={logs.data}
                             children={renderActions}

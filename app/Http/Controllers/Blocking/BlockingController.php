@@ -21,6 +21,7 @@ use App\Models\Staffusers;
 use App\Models\Subjects;
 use App\Services\PrintService;
 use App\Services\WorkflowService;
+use App\Support\ListSort;
 use App\Support\TimetableConflicts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -60,13 +61,38 @@ class BlockingController extends Controller
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
-            ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level))
-            ->orderByDesc('blockId');
+            ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level));
 
         // The tiles describe the whole filtered set, not the 20 rows on the page — the desk decides how many
         // places it has left from these numbers, and a page sum changes with the page it is read on. Cloned
         // before paginate(), because paginate() puts the page's LIMIT/OFFSET on the builder it is called on.
         $setRows = (clone $query)->reorder()->get();
+
+        // The order is asked of the query only AFTER the tiles were taken. A program sort joins `courses`, and the
+        // four numbers above are summed over a collection the desk must not lose rows from; the join is 1:1 through
+        // a NOT NULL `blocks.courseId`, so it could not have changed one either way, and the ordering is still
+        // deliberate because a tile's number should not depend on that fact.
+        //
+        // Term and Available are deliberately absent. Term prints a two-part label — the semester plus its academic
+        // year's `yearLabel` — so ordering by `terms.semester` alone would not be the order the desk reads, and
+        // Available is `maxStudents` less a per-row count, which is no column the query can name. A header for a
+        // value the handler cannot order is the defect §28.3 owns for filters.
+        $sortable = [
+            'name' => ['column' => 'blockName'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'blocks.courseId'],
+            'yearLevel' => ['column' => 'yearLevel'],
+            'capacity' => ['column' => 'maxStudents'],
+            // The roster's own key: listed because `apply()` looks the fallback up here, never painted as a header.
+            'blockId' => ['column' => 'blockId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'blockId',
+            'blocks.blockId'
+        );
 
         $blocks = $query->paginate(20)->withQueryString();
 
@@ -80,7 +106,11 @@ class BlockingController extends Controller
             ],
             'courses' => Courses::all(['courseId', 'courseName', 'courseCode']),
             'terms' => Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']),
-            'filters' => $request->only(['search', 'courseId', 'termId', 'yearLevel']),
+            'filters' => $request->only(['search', 'courseId', 'termId', 'yearLevel']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

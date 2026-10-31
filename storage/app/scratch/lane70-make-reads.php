@@ -339,12 +339,48 @@ $read31c = [
     'WorkflowService.php:54-73' => 'stepsFor()’s seven box entries and the array_filter() that makes six — the "stages and boxes counted separately" row (no line moved; the neighbouring re-number moved its window)',
 ];
 
+// Rows re-opened on 2026-10-31 by lane 116 (G-36's write sites). The listeners grew, `lane76-shift-cites.php`
+// re-numbered their windows — including two it could not match byte for byte because the construct itself was edited,
+// which is why they came through `--map` after both endpoints were read in both files. This span was opened today with
+// lane70-read-span.php; the verdict is what those lines say.
+$read31d = [
+    'SendWorkflowNotification.php:66-83' => 'the step-signed `$this->notify(` call through its `lastDesk` payload field — the row §19 cites for "one row per signature, type workflow_step_signed"; the completion half moved to :49-60 in the same read',
+    // 2026-10-31, lane 118: the Examination desk became the tenth sortable table, so `ExamController.php` grew 36
+    // lines and `lane76-shift-cites.php` re-numbered every window written against it. This pointer is the one the
+    // shift left for a reader (`:524` is a bare tail of a comma list), and it was opened before being recorded:
+    // live line 560 is `'filters' => $request->only(['result', 'search'])`, the echo the G-15 row's second claim
+    // names. The ten siblings moved whole — each new window was read against its claim by
+    // `lane118-read-the-moved-windows.php`, which prints the first and last line beside the sentence's own words.
+    'ExamController.php:583-586' => 'the `filters` echo of results() — §28.3 G-15\'s second claim, "and echoes both keys", a four-line block since the sort keys joined it; re-taken by reading both endpoints in `refresh-docx-pass356.php`, because wiring results() itself moved this pointer by 25 lines. The first half of that sentence rides :338-347',
+    // The same pointer under the other spelling the checker uses: the document writes some keys with their path, and
+    // a record that covers only the basename leaves the row unread — the direction that under-reports, never the one
+    // that clears falsely, but a read that cannot be found is a read the next session does again.
+    'app/Http/Controllers/Exam/ExamController.php:583-586' => 'the `filters` echo of results() — §28.3 G-15\'s second claim, "and echoes both keys", a four-line block since the sort keys joined it; the same read under the path spelling the document also uses',
+    // 2026-10-31, lane 119: the Blocking roster became the eleventh sortable table, so `BlockingController.php` grew
+    // 30 lines and `lane76-shift-cites.php` re-numbered 36 tokens in the authority document. These are the recorded
+    // reads whose windows moved with them, and each was RE-READ before being re-recorded — which changed the verdict
+    // text rather than copying it. Line 361 is the editing path's room warning whose own words §26 quotes
+    // ("Schedule was still updated"), and 473-478 is the seat guard that REFUSES: it throws, so it is not the
+    // warn-and-proceed the 2026-10-28 record called it. A shifted pointer inherits its line number, never its claim.
+    'BlockingController.php:358-364' => 'the editing path\'s capacity warn-and-proceed: `$block->maxStudents > $room->capacity` at :361 and the "Schedule was still updated" string it returns — §26\'s room-capacity row',
+    'BlockingController.php:468-478' => 'the assign-students seat guard: a distinct-student count over `enrolledsubjects` (dropped rows excluded) and the ValidationException that refuses when current + requested exceeds `maxStudents` — §26\'s "over capacity is refused" half',
+    'app/Http/Controllers/Blocking/BlockingController.php:358-364' => 'the editing path\'s capacity warn-and-proceed: `$block->maxStudents > $room->capacity` at :361 and the "Schedule was still updated" string it returns — §26\'s room-capacity row',
+    'app/Http/Controllers/Blocking/BlockingController.php:468-478' => 'the assign-students seat guard: a distinct-student count over `enrolledsubjects` (dropped rows excluded) and the ValidationException that refuses when current + requested exceeds `maxStudents` — §26\'s "over capacity is refused" half',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read31d as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span lane 116’s listener growth left it in: '.$t];
+
+            break;
+        }
+    }
     foreach ($read31c as $p => $t) {
         if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span lane 114’s one import line left it in: '.$t];

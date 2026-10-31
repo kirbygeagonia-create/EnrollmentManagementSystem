@@ -79,12 +79,46 @@ $run = function (array $env = []) use ($php, $root, $checker): array {
 };
 
 $restore = function () use ($targets, $original, $hash0, &$failures): void {
+    $locked = [];
     foreach ($targets as $k => $path) {
-        file_put_contents($path, $original[$k]);
+        // A lock is not a mismatch, so it is retried before it is named: OneDrive releases a file within a second
+        // or two, and on 2026-10-31 this write returned false while a hand rewrite of the very same path succeeded
+        // moments later. Ignoring the return value entirely was worse — the hash check then reported "did not
+        // produce the original bytes", which reads as bookkeeping when the truth is that the tree still holds
+        // another leg's defect.
+        $written = false;
+        foreach ([0, 400_000, 1_200_000] as $wait) {
+            if ($wait > 0) {
+                usleep($wait);
+            }
+            $written = @file_put_contents($path, $original[$k]);
+            if ($written === strlen($original[$k])) {
+                break;
+            }
+        }
+        if ($written !== strlen($original[$k])) {
+            // Record it and KEEP GOING. Aborting here skips the restore of every target that comes after, which is
+            // exactly how this guard made the problem bigger on 2026-10-31: the refusing file was `students-jsx`
+            // while the leftover mutant was in `Students/Index.jsx`, a later target that never got restored.
+            $locked[] = $k;
+
+            continue;
+        }
         if (hash('sha256', (string) file_get_contents($path)) !== $hash0[$k]) {
             printf("  BAD  restore of %s did not produce the original bytes\n", $k);
             $failures++;
         }
+    }
+    if ($locked !== []) {
+        fwrite(STDERR, sprintf(
+            "REFUSED: the restore write failed for %s after three tries, so the tree still holds that leg's defect.\n"
+            ."  Every other target WAS restored. Repair by hand, then re-run:  git checkout -- %s\n"
+            ."  Confirm with `git status --porcelain app resources` before believing anything this harness reported.\n",
+            implode(', ', $locked),
+            implode(' ', array_map(static fn ($k) => $targets[$k], $locked))
+        ));
+
+        exit(1);
     }
 };
 
@@ -114,7 +148,21 @@ $case = function (string $name, string $needle, array $plants, bool $expectFail 
             return;
         }
         $GLOBALS['__current'][$k] = $mutated;
-        file_put_contents($GLOBALS['__paths'][$k], $mutated);
+        // A locked file is not an instrument hole. Without this check the leg measures a tree that was never
+        // changed and prints "needle MISSING", which reads as the checker being blind. Met on 2026-10-31 against
+        // `app/Http/Controllers/Clearance/ClearanceController.php`: `file_put_contents` warned "Permission denied"
+        // (OneDrive holding the file), returned false, and the leg blamed `lane46` for a defect it had not been
+        // shown. The distinction is the whole finding — BAD-because-unplanted and BAD-because-survived are
+        // different debts, and only one of them means the checker owes a repair.
+        $written = @file_put_contents($GLOBALS['__paths'][$k], $mutated);
+        if ($written !== strlen($mutated)) {
+            printf("  BAD  %-42s PLANT FAILED — the write returned %s, so this leg measured an untouched tree\n",
+                $name, var_export($written, true));
+            $failures++;
+            $restore();
+
+            return;
+        }
     }
     [$code, $out] = $run();
     $ok = $expectFail ? ($code !== 0 && str_contains($out, $needle)) : ($code === 0);

@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, StatCard, formatStatusLabel, studentTypeTone, academicStandingLabel, academicStandingToneFor, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
@@ -28,9 +28,11 @@ const typeLabels = {
     courseSpecific: 'Course-Specific',
 };
 
-export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
+export default function Index({ exams, stats = {}, filters = {}, sort = null, can = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [type, setType] = useState(filters.type || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'examId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
 
     // Item 4: recording scopes arrive from the backend — Guidance holds
     // exam.record.general (School Entrance, Stage 1); the owning academic
@@ -58,12 +60,18 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
 
     // The tiles are the server's counts over the whole filtered set. Counting `exams.data` here described the
     // 20 rows on this page under labels that promised the queue, and the number moved when the desk paged.
+    // Seven of these nine columns carry a `sortKey`, because seven are values this query can order in SQL: School
+    // ID and Name reach `students` through one hop, Course reaches `courses`, and Exam, Result, Registrar and Date
+    // are `examresults` columns of its own. Student Type and Standing carry none, and the handler says the same
+    // thing in its allow-list: an exam record is per (student, term) with no enrollmentId, so the desk's standing
+    // column is read from the matching enrollment AFTER the page is cut. A header is painted only for a key the
+    // server both listed and echoed, so a screen cannot offer an order the query would ignore.
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
         { key: 'studentType', label: 'Student Type', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}
@@ -74,17 +82,17 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                 {academicStandingLabel(row.academicStanding)}
             </Badge>
         )},
-        { key: 'examType', label: 'Exam', render: (row) => (
+        { key: 'examType', label: 'Exam', sortKey: 'examType', render: (row) => (
             <Badge tone={typeToneMap[row.examType] || 'neutral'}>
                 {typeLabels[row.examType] || row.examType}
             </Badge>
         )},
-        { key: 'examResult', label: 'Result', render: (row) => (
+        { key: 'examResult', label: 'Result', sortKey: 'examResult', render: (row) => (
             <Badge tone={resultToneMap[row.examResult] || 'neutral'}>
                 {formatStatusLabel(row.examResult)}
             </Badge>
         )},
-        { key: 'resultStatus', label: 'Registrar', render: (row) => (
+        { key: 'resultStatus', label: 'Registrar', sortKey: 'resultStatus', render: (row) => (
             <div className="flex flex-col items-start gap-1">
                 <Badge tone={verificationToneMap[row.resultStatus] || 'neutral'}>
                     {formatStatusLabel(row.resultStatus)}
@@ -99,18 +107,32 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                 )}
             </div>
         )},
-        { key: 'examDate', label: 'Date', render: (row) => formatCalendarDay(row.examDate) },
+        { key: 'examDate', label: 'Date', sortKey: 'examDate', render: (row) => formatCalendarDay(row.examDate) },
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextType, nextSort, nextDir) => {
         router.get(route('exam.index'), {
-            search: search || undefined,
-            type: type || undefined,
+            search: nextSearch || undefined,
+            type: nextType || undefined,
+            // The queue's own default travels as nothing at all, so a plain link stays a short URL rather than
+            // arriving as a sort key the handler would have to recognise as its fallback.
+            ...sortParams('examId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, type, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, type, key, direction);
     };
 
     const renderActions = (row) => (
@@ -282,6 +304,8 @@ export default function Index({ exams, stats = {}, filters = {}, can = {} }) {
                             rows={exams.data}
                             children={renderActions}
                             emptyMessage="No exam records found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={exams} />

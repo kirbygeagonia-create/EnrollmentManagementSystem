@@ -78,7 +78,7 @@ class EnrollmentStateMachine
             $enrollment->enrollmentStatus = $newStatus;
             $enrollment->save();
 
-            Enrollmentstatushistory::create([
+            $history = Enrollmentstatushistory::create([
                 'enrollmentId' => $enrollment->enrollmentId,
                 'fromStatus' => $fromStatus->value,
                 'toStatus' => $newStatus->value,
@@ -87,12 +87,16 @@ class EnrollmentStateMachine
                 'changedAt' => now(),
             ]);
 
+            // The history row is the act, so its id travels with the event: the listeners' dedupe key is built from
+            // it (§28.3 G-36), which is what lets a retried job be recognised as the same delivery while a genuine
+            // second move through the same pair of statuses stays a different one.
             event(new EnrollmentStatusChanged(
                 $enrollment,
                 $fromStatus->value,
                 $newStatus->value,
                 $changedBy,
-                $remarks
+                $remarks,
+                $history->historyId
             ));
         });
 

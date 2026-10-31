@@ -107,9 +107,10 @@ class PreflightTest extends TestCase
     public function a_server_that_never_generated_its_key_fails_and_names_the_command(): void
     {
         // `.env.example` ships `APP_KEY=` blank, and DEPLOYMENT.md §3 generates it with one line
-        // between `npm run build` and `migrate`. Skipping that line does not look like a storage
-        // problem — it looks like a broken login — while /storage/{path}, which needs no session
-        // encryption, keeps answering. Measured end to end by ServedUploadPathTest.
+        // between `npm run build` and `migrate`. The row used to be about a served upload route that
+        // needed no session encryption and kept answering while the logins broke; §28.3 G-50 took the
+        // serve flag off, so the sentence is now about what a blank key still does — nothing can be
+        // encrypted or signed, and the first login is refused its own cookie.
         config(['app.key' => '']);
 
         $this->assertSame(1, $this->callPreflight());
@@ -117,7 +118,7 @@ class PreflightTest extends TestCase
         $out = $this->commandOutput();
         $this->assertStringContainsString('FAIL  Application key', $out);
         $this->assertStringContainsString('php artisan key:generate', $out);
-        $this->assertStringContainsString('/storage upload', $out);
+        $this->assertStringContainsString('signed with an empty secret', $out);
     }
 
     #[Test]
@@ -140,7 +141,13 @@ class PreflightTest extends TestCase
         // (403, measured in audit-24c-servegate.php); with the flag set it walks through and only
         // a missing file answers 404. The served `local` disk is rooted at storage/app/private —
         // the same root as the documents disk — so that one line publishes every uploaded paper.
-        config(['filesystems.disks.local.visibility' => 'public']);
+        // The `serve` flag is set here because the shipped config no longer sets it (§28.3 G-50):
+        // the row can only be reached by an install that asks for the folder to be served, and a
+        // case that planted the flag no longer needed would be asserting a verdict nothing produces.
+        config([
+            'filesystems.disks.local.serve' => true,
+            'filesystems.disks.local.visibility' => 'public',
+        ]);
 
         $this->assertSame(1, $this->callPreflight());
 
@@ -151,16 +158,41 @@ class PreflightTest extends TestCase
     }
 
     #[Test]
-    public function a_server_that_serves_no_folder_reports_the_uploads_as_having_one_door(): void
+    public function a_disk_served_from_somewhere_else_is_reported_without_crediting_the_uploads(): void
     {
-        config(['filesystems.disks.local.serve' => false]);
+        // The OK branch that names disks. A served folder that is NOT the uploads' root needs a signature and
+        // nothing more, so the row says exactly that and stops — claiming the uploads were also protected by that
+        // signature would be the false half of the sentence G-50 closed.
+        config(['filesystems.disks.scratchpad' => [
+            'driver' => 'local',
+            'root' => storage_path('app/scratchpad'),
+            'serve' => true,
+        ]]);
 
         $this->assertSame(0, $this->callPreflight());
 
-        $this->assertStringContainsString(
-            'no local disk asks Laravel to serve',
-            $this->commandOutput()
-        );
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('OK  Served folder', $out);
+        $this->assertStringContainsString('disk(s) scratchpad served private: every read needs a signature', $out);
+        $this->assertStringNotContainsString('rooted where the uploads live', $out);
+    }
+
+    #[Test]
+    public function a_served_disk_rooted_at_the_uploads_warns_and_names_the_door_it_leaves_open(): void
+    {
+        // §28.3 G-50's own row. The shipped config serves nothing, so this is the shape an operator can still
+        // create by putting the flag back — and the honest verdict is WARN, never FAIL: the preflight cannot tell
+        // an intentional served folder from the accident, and nothing stored moves either way. It must not be
+        // called an agreement, because an HMAC over a path, keyed by a secret the desk never hands out, is the
+        // only thing between a stranger and every uploaded paper.
+        config(['filesystems.disks.local.serve' => true]);
+
+        $this->assertSame(0, $this->callPreflight());
+
+        $out = $this->commandOutput();
+        $this->assertStringContainsString('WARN  Served folder', $out);
+        $this->assertStringContainsString('rooted where the uploads live', $out);
+        $this->assertStringContainsString('§28.3 G-50', $out);
     }
 
     #[Test]
@@ -172,9 +204,9 @@ class PreflightTest extends TestCase
 
         $out = $this->commandOutput();
         $this->assertStringContainsString('OK  Application key', $out);
-        $this->assertStringContainsString('answers only to a signature made with it', $out);
+        $this->assertStringContainsString('the session cookie and any signed URL', $out);
         $this->assertStringContainsString('OK  Served folder', $out);
-        $this->assertStringContainsString('served private: every read needs a signature', $out);
+        $this->assertStringContainsString('no local disk asks Laravel to serve', $out);
     }
 
     #[Test]

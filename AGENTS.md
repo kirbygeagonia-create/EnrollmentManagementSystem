@@ -835,7 +835,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `git show HEAD:<file>` with the working copy and, for each cited range, accepts only a shift under which
   *every* cited line is byte-identical — the 32 citations into `ExamController.php` all resolved at +2 and none
   needed re-reading, which is a stronger claim than "the file grew by two rows". It also surfaces the bare
-  continuations (`ExamController.php:179-245 , :239 , :251-262`) that every `File.php:NN` checker misses — and
+  continuations (`ExamController.php` 179 to 245, 239, 251 to 262, spelled in words because that was the layout the
+  probe read on 2026-10-21) that every `File.php:NN` checker misses — and
   one of those bare numbers belonged to a *different* file's citation, so a global replace would have corrupted it.
 - **A register row added to the docx must move every place that counts the register.** §28.3's size was stated
   twice, in the §29.4 family table (28) and in the arithmetic sentence beside it (30, the truth), and pass 138
@@ -1708,7 +1709,34 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 28 of the 36 pages that render `DataTable` offer no order, while the pagination half has been weighed
+  still owed: 23 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+2026-10-31, and it is the first whose order reaches a row that may not exist: `auditlogs.userId` is NULL on 3,294 of the
+3,525 rows live `ems` holds, so its user hop asks `ListSort` for a LEFT join — an INNER hop would not mis-order those rows,
+it would delete 93% of the desk's list — and the helper's default stayed INNER, keeping the twelve earlier screens' SQL
+byte-identical. `mutate-g40-auditlog-sort-tests.php` plants the hop back to INNER among its seven legs, all killed, and its
+tile case pins the other half: the aggregate is cloned before the order, or a joined order turns the whole-set tile into a
+grouped star and MySQL 8 answers 1055 at the desk for clicking a header. Its figures are now taken from the run that
+contains them: the whole suite on this box answers 1,133 tests, and that run's junit gives `AuditLogSortTest` 8 cases /
+47 assertions and `SortHopAcrossANullableKeyTest` 5 / 15, each 0 failures and 0 errors — and 1120 + 5 + 8 = 1133 exactly,
+so the difference from the previous delivered reading is those two classes and nothing else moved. An earlier sentence here
+said no delivered run contained the audit-log class; that was true when written and false within the hour, which is why a
+figure about a run is re-taken from the run rather than carried forward. The ninth through twelfth wired screens are the
+Blocking roster, the Department Evaluation queue, the Examination queue and the Examination results screen, all 2026-10-31.
+Four class figures, one named surface: the delivered whole-suite run on this box answers 1,133 tests / 7,106 assertions with
+0 failures, 0 errors and 0 skipped, and its junit gives `EvaluationQueueSortTest` 13 cases / 65 assertions,
+`ExamQueueSortTest` 13 / 64, `BlockingQueueSortTest` 10 / 53 and `ExamResultsSortTest` 13 / 64, each 0 failures and 0 errors.
+The run before it, read while the dataset still carried 2026-10-31 against the school's 2026-11-01, answered 1,133 / 7,100
+with exactly one failure — `DemoDatasetRecordStatesTest > the two base rows the pipeline creates are the ones its own
+reporters read` — which is lane 54's midnight trap met live and cleared by a dump plus `tools/seed_full_demo_pipeline.php`
+(every `Ledger —` line 0, 5 held receipts dated the school's today, the folder then answering 8 passed / 208 assertions);
+the case was not softened, and both readings stand as dated records of their own minute. The figures of the earlier run
+(1,120 and 7,044, and 1120 = 1097 + 10 + 13) are likewise that run's record rather than re-typed into this one, which is
+lane 60's rule that a re-aged row states a figure that was never true on its own day; proved by
+`mutate-g40-evaluation-sort-tests.php` and `mutate-g40-exam-sort-tests.php` at seven legs each, all killed — every column that desk paints carries a header,
+because every one is a column the handler can reach: two through the `students` hop, one through `courses`, four on
+the enrollment itself, and the ENUM pair is offered under the owner's ruling of the same day. The order is applied
+AFTER the five tiles are cloned and the handler says why: the select pin that a hop adds would have made the tiles'
+`selectRaw` a grouped star on MySQL 8, which is 1055 at the desk for clicking a header), while the pagination half has been weighed
   and needs no work, so §28.3 keeps G-40 leading `Open` on purpose — closing a register row on one wired screen is the overclaim this
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
@@ -2613,7 +2641,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   143 net lines:** the create array is AdmissionController.php lines 266 to 275 as the file stood that day, the selection is `:305-322` (the
   `where`/`orWhere` at :305-307, the insert loop at :314-322), and pass 250 re-pointed the document's two copies to
   `:305-322` — still exactly twice, which is what made `expect=2` the right instruction then and now. **The queue is not drained by stopping at one find: opening the 10 rows that survived the
-  rewrite found ten more wrong targets** (passes 224, 225 and 226). §28's exam row cited `ExamController.php:311-314`
+  rewrite found ten more wrong targets** (passes 224, 225 and 226). §28's exam row cited `ExamController.php` 311 to 314 (spelled in words: that was the layout pass 224 read)
   for the *departmental* paper while those lines are the head of the **general** upsert (`'examType' =>
   ExamType::General` at :317) — the condition the aside describes is `recordCourseSpecific`'s own
   `if ($course->requiresEntranceExam)` at :366, under the BR9/C-4/C-5 comment at :358, so the citation is now
@@ -2639,7 +2667,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   clause of the same sentence (`endorse` charged to `decide()`'s :71, `stepOrder` charged to `stepLabel`'s :64,
   `settleNoBalance` charged to the payment's `signStepByOffice()` at :243, `array_filter` charged to the `stepOrder`
   write at :97), a register row's column label (`coverageType`, `maxStudents`, `totalAssessedAmount`), and a word the
-  cited file never contains (`decideStanding` on `BlockingController.php:116`, which is exactly
+  cited file never contains (`decideStanding` on `BlockingController.php` line 116 as that file then stood, which is exactly
   `->where('yearLevel', $block->yearLevel)`; `firstYear` on an `AdmissionPolicy` range). **A row that reads like
   mis-attribution is still worth opening** — the AdmissionPolicy complaint was that shape, and it led to thirteen
   false pointers. **A queue of "instrument-side" is a claim, not a measurement, until the rows have been opened; it
@@ -2918,7 +2946,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `:311-317` zero, with the sweep unchanged at 728 citations / 0 line problems.
   **Pass 231 is the twenty-sixth, and it shows what a *range* citation can hide at a method boundary.** §10.4's
   board-course row claims "non-board programs are never examined at either stage" and cites
-  `ExamController.php:181-247 and :311-343`. Neither half of that property lives in `:311-343`: it is the tail of
+  `ExamController.php` 181 to 247 and 311 to 343 — the layout pass 231 read, spelled in words so this file carries
+no pointer to a retired line. Neither half of that property lives in `:311-343`: it is the tail of
   `recordGeneral()`'s upsert (`firstOrNew` at :312) and the *first lines* of `recordCourseSpecific()`'s signature
   (:339-343). What keeps both stages from running is the pair of guards — `if (! $course->requiresEntranceExam)` at
   :306 returning "This course does not require an entrance exam" at :307, and `if ($course->requiresEntranceExam)` at
@@ -2958,7 +2987,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   7 MOVED + 2 NO-ANCHOR + **108 UNBOUND** + 1 BLIND, `lane37` 908 references / 0 problems, `lane32` 5 distinct pairs /
   8 flags, OOXML CLEAN, `verify-docx` CONSISTENT.
   **Passes 233-234 took the §13 examination cluster, and a refusal is what found the third shape.** Six copies of
-  `ExamController.php:181-247` all named the *passer transfer* while the branch closes at :241 and `} else {` is :244 —
+  `ExamController.php` 181 to 247 (the layout pass 234 read, spelled in words) all named the *passer transfer* while the branch closes at :241 and `} else {` is :244 —
   so each range reached six lines into the comment that explains the **opposite** case (:245-249) — now `:181-241`.
   The row's two bare continuations were loose the same way: `:225` (one line inside the waived query) became the whole
   guarded block `:210-240`, and `:239-250` (opened on the waived row's closing bracket) became the else arm
@@ -3338,12 +3367,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   box the tool signs, dated into the record's own term and skipped where a desk already wrote one — not in
   dropping rows twice. When a count you closed comes back, name the code that writes those rows before you touch
   the data again.
-- Two routes answer with **no login at all**: `GET|HEAD /storage/{path}` and `PUT /storage/{path}`, registered
-  by Laravel because `config/filesystems.php` marks the `local` disk `serve => true`. Their only gate is an
-  HMAC of the path and query keyed by `APP_KEY` — nothing in `app/` or `resources/` ever mints one, so no desk
-  uses them. Never add `'visibility' => 'public'` to a served disk (that switches the check off, measured) and
-  never deploy with `APP_KEY=` blank (the empty secret signs a write that `storage/app/private` accepts — and
-  `local` and `documents` share that root). `ems:preflight` fails both, `ServedUploadPathTest` pins the gate.
+- **The private uploads folder is not served, and that absence is the guard.** Until 2026-10-31
+  `config/filesystems.php` marked the `local` disk `serve => true`, so Laravel registered
+  `GET|HEAD /storage/{path}` and `PUT /storage/{path}` outside every middleware group and their only gate was an
+  HMAC of the path and query keyed by `APP_KEY` — a signature nothing in `app/` or `resources/` ever minted, while
+  `local` and `documents` shared `storage/app/private`. §28.3 G-50 took the flag off rather than moving either root:
+  the routes are not registered, so a path with no route cannot be probed. `ServedUploadPathTest` pins that, and
+  `storage/app/scratch/mutate-g50-served-folder-tests.php` proves the pins by putting the flag back — run both after
+  any batch that touches the disk config or the preflight's `Served folder` / `Application key` rows. What *does*
+  reach those bytes stays measurable, not merely closed: `StoredFileAccessTest` reads an applicant's paper and a
+  student's face photo through the routes that `authorize()` the record, and asserts 403 for a desk that may not view
+  it. Two rules still bind an operator: never add `'visibility' => 'public'` to a disk that is served (that switches
+  the signature check off, measured by `audit-24c-servegate.php`), and never deploy with `APP_KEY=` blank — the
+  upload door is gone, but a blank key still means nothing can be encrypted or signed and the first login is refused
+  its own cookie, which reads as a broken session driver. `ems:preflight` FAILs the key, FAILs a served-and-public
+  disk and WARNs any disk served from the uploads' root, naming the ruling in the sentence.
 - **HSTS is emitted only when this app sees HTTPS itself, and the address it will believe is a setting.**
   `SecurityHeaders` gates the header on `$request->isSecure()`; `bootstrap/app.php` never calls `trustProxies()`, so
   `Illuminate\Http\Middleware\TrustProxies` — which is already in the global stack — falls back to
@@ -3427,6 +3465,34 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   other reason: `escapeshellarg()` wraps in single quotes and `cmd.exe` does not strip them, so `--filter` selected
   no test at all. A leg that cannot fail is decoration, and a leg that selects nothing is a green over nothing.
 
+- **A notice is one row per act per recipient, and the act has to be named by something that changes only when the act
+  does** (lane 116, prompt §8, §28.3 G-36 closed). `App\Support\NoticeDelivery::once()` is now the only path either
+  queued listener takes, and four rules came out of building it. **The index is the guard, the pre-check is only the
+  fast path:** `exists()` answers the ordinary retry, but two workers can pass an `exists()` check at once, so the
+  unique key `uq_notifications_dedupe` on `notifications.dedupeKey` is what actually refuses — a dedupe built on a
+  check alone is a race that reads as working. **A null key delivers.** The catch is on the duplicate code (MySQL
+  1062, SQLite `UNIQUE constraint failed`), not on `QueryException` at large, and an unkeyed notice — a hand-built
+  event with no history row — is written rather than swallowed; a guard that loses a bell is the same loss in the other
+  costume, which is what the class's last two cases pin from opposite directions. **The act identity is a row, not a
+  string:** `EnrollmentStatusChanged` now carries the `enrollmentstatushistory.historyId` that
+  `EnrollmentStateMachine::transition()` writes in the same transaction, and a signature is keyed on its step id plus
+  its `signedDate`, because a return re-opens a box and the second signing must ring — a key built from the message, the
+  type or the addressee alone deletes a real notice. **Both drivers word a refusal differently** and the case was
+  written after a scratch-schema rehearsal, not from the SQLite message: MySQL 8 says `Column 'notifiable_id' cannot
+  be null`, SQLite says `NOT NULL constraint failed`.
+  The instruments: `php artisan test tests/Feature/Notification/NoticeDedupeTest.php` and
+  `php storage/app/scratch/mutate-g36-notice-dedupe-tests.php` — whose first run reported one leg **SURVIVED**, the leg
+  that plants a state machine which stops naming the act, because the case it pointed at hands the event its own history
+  id and can never see that defect; the class gained a case that runs a real transition and retries it, which is the
+  harness naming a missing test rather than a guard that failed. **And §23.6.1's own tally is a boundary claim, not a
+  summary:** the list says it holds *every* unique index in the domain tables, so this migration re-cut that count
+  sentence to ten keys in eight tables and `lane44-unique-keys.php` refused until the row existed — while
+  `mutate-lane44-unique-keys.php` had hardcoded the old sentence, so two of its cases planted nothing and reported
+  themselves as failures. Locate a count sentence by its shape; an anchor that has to be re-cut every time the document
+  gets truer hides the change it exists to test. After any batch that touches a notification write, the
+  `notifications` schema, or §23.6.1: run that class, that harness, and `lane44-unique-keys.php` proved by its harness,
+  then re-take §24's `notifications` column count and the census sentence (lane 60 names them; a new column moves
+  columns, indexes and table constraints together).
 - **A refusal that answers success is the same lie as a zero the server never sent** (lane 97, prompt §8, G-47's
   ownership half). `NotificationController::markRead()` already declined to write another desk's notice — inside an
   `if` — and then returned `{"ok": true}` regardless. Nothing in the front end calls that route today (the bell

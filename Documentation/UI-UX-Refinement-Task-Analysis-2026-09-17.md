@@ -6,6 +6,8 @@
 
 > **Status update (2026-09-24):** this analysis guided the refinement pass that followed — the headline items have since landed in the codebase (GZEL removal, the two-stage exam split, the ID-validation desk conversion dropping card-making in `ced3b0a`, and the return-to-evaluation hold state). The item-by-item verdicts below are kept as the analysis record.
 
+> **Pointer currency (2026-10-31):** the record above stands, and the line numbers in it are commit `46c6916`'s layout, not today's. `repo-file-line-citations.php` began opening this file on 2026-10-31 and reports `EvaluationController.php:89-90` as a blank-line hit; that is the age of a dated citation, not a claim about the current code, and the numbers are left as written for the same reason the September verdicts are left as written. Open the file before quoting any row here as the build's state.
+
 > **Status update (2026-10-02):** item 2's recommendation — "keep validation + release" — was overruled by the owner on 2026-09-30 in favour of validation only. `id.release` no longer exists as a route, permission, gate or status; recording the validating officer and timestamp is the desk's last act, and the fourth step on the desk screen is now the mismatch remark (`id.remarkRequest`, `idrequests.mismatchRemark`). Read lines 85 and 88 as the state on 2026-09-17.
 
 ## Verdict up front

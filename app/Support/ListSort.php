@@ -69,12 +69,27 @@ final class ListSort
             }
             foreach ($joins as $n => $join) {
                 $alias = 'srt'.$n;
-                $query->join(
-                    $join['join'].' as '.$alias,
-                    $alias.'.'.$join['foreign'],
-                    '=',
-                    $join['local']
-                );
+                // A hop whose key is nullable is not the same question as a hop that always exists. Measured on
+                // live `ems`: 3,294 of 3,525 `auditlogs` rows carry no `userId`, and `staffusers.unitId` is null on
+                // 15 of 21 accounts — so an INNER join asked to order by the thing on the far side of such a key
+                // removes those rows from the desk's list instead of ordering them, which is the absence the screen
+                // is supposed to paint rather than a row that vanished. `left` is therefore opt-in per hop and
+                // INNER stays the default, so every screen wired before this rule keeps the SQL it was proved on.
+                if (($join['type'] ?? 'inner') === 'left') {
+                    $query->leftJoin(
+                        $join['join'].' as '.$alias,
+                        $alias.'.'.$join['foreign'],
+                        '=',
+                        $join['local']
+                    );
+                } else {
+                    $query->join(
+                        $join['join'].' as '.$alias,
+                        $alias.'.'.$join['foreign'],
+                        '=',
+                        $join['local']
+                    );
+                }
             }
             // A handler that names a column of the table it reached last does not have to spell the alias: the
             // chain's own end is where that column lives. An already-qualified name is obeyed as written, which is
@@ -103,7 +118,7 @@ final class ListSort
      * join is how a screen ends up ordering by a join its handler never wrote.
      *
      * @param  array<string, mixed>  $spec
-     * @return list<array{join: string, foreign: string, local: string}>
+     * @return list<array{join: string, foreign: string, local: string, type?: string}>
      */
     private static function joins(array $spec): array
     {
@@ -112,7 +127,7 @@ final class ListSort
         }
 
         return isset($spec['join'])
-            ? [['join' => $spec['join'], 'foreign' => $spec['foreign'], 'local' => $spec['local']]]
+            ? [['join' => $spec['join'], 'foreign' => $spec['foreign'], 'local' => $spec['local'], 'type' => $spec['type'] ?? 'inner']]
             : [];
     }
 

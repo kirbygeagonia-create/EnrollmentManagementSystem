@@ -43,6 +43,15 @@ $targets = $args !== [] ? $args : [
     // carries each behaviour it classifies, so it is a document an owner is sent — and a pointer that lands on a
     // live line belonging to something else is exactly what this sweep exists to refuse.
     'Documentation/Prompt-Requirement-Matrix-2026-10-26.md',
+    // The four long-lived review documents. Measured 2026-10-31: 25 `File.php:NN` pointers sit in them — 18 in the
+    // UI/Workflow conformance audit, 4 each in the UI/UX refinement analysis and the system-design quality review —
+    // and none was ever read, because this list named only the owner-facing sheets. They cite
+    // `ReferenceDataController.php` and `UserManagementController.php` by line, so wiring one more sortable table
+    // ages their pointers in silence: the hand-kept-list blind spot, arriving in the gate that exists to catch it.
+    'Documentation/UI-Workflow-Conformance-Audit-2026-09-17.md',
+    'Documentation/UI-UX-Refinement-Task-Analysis-2026-09-17.md',
+    'Documentation/System-Design-Quality-Review.md',
+    'Documentation/Functional-Decomposition-Diagram.md',
     // The §16 final report and the sheet issued with the prompt audit of 2026-10-29. Both are sent to
     // an owner, so both are read; the guard below is what stops the next dated document from being
     // silently left out of this list, which is how the 2026-10-11 sheet's three drifted pointers and
@@ -64,7 +73,7 @@ if ($args === []) {
         }
     }
     if ($unlisted !== []) {
-        fwrite(STDERR, 'REFUSED: '.count($unlisted)." dated owner-facing document(s) exist but are not scanned: "
+        fwrite(STDERR, 'REFUSED: '.count($unlisted).' dated owner-facing document(s) exist but are not scanned: '
             .implode(', ', $unlisted)."\n  Add the file to the list above, or delete it. An unread document cannot be a clean one.\n");
 
         exit(1);
@@ -104,10 +113,26 @@ $buildIndex = function () use ($root, &$index): array {
  * @return array{0: ?string, 1: list<string>} the chosen path (null when unresolvable) and every candidate
  */
 $resolve = function (string $name) use ($root, $buildIndex): array {
-    if (str_contains($name, '/')) {
-        return [is_file($root.'/'.ltrim($name, '/')) ? $name : null, []];
+    if (str_contains($name, '/') && is_file($root.'/'.ltrim($name, '/'))) {
+        return [ltrim($name, '/'), []];
     }
-    $hits = $buildIndex()[basename($name)] ?? [];
+
+    // A name with a slash is not always a repository path. The September review documents write
+    // `Assessment/Show.jsx` and `ID/Index.jsx` for files under `resources/js/Pages`, and taking those literally
+    // answered NO SUCH FILE for five files that all exist — the citation charged to the document for the reader's
+    // own gap, which is lane 70's unresolved-key lesson met from the other side. Resolve a slashed name by
+    // suffix, and keep the rule that only one hit may be inferred: zero is NOT-FOUND, several are AMBIGUOUS,
+    // exactly one is the file the prose means.
+    $tail = str_contains($name, '/') ? '/'.ltrim($name, '/') : null;
+    $hits = [];
+    foreach ($buildIndex() as $basename => $paths) {
+        foreach ($paths as $p) {
+            $normalised = '/'.ltrim(str_replace('\\', '/', $p), '/');
+            if ($tail === null ? $basename === $name : str_ends_with($normalised, $tail)) {
+                $hits[] = $p;
+            }
+        }
+    }
 
     // A HEAD export copied under `storage/app/scratch/` (the lane 51/53/55/56/57/79 harnesses take them by
     // hand because `shell_exec` cannot reach git from PHP here, and `storage/app/.gitignore` hides them from

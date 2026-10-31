@@ -1,10 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, yearLevelChoices } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, yearLevelChoices, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
-export default function Index({ enrollments, stats = {}, filters = {}, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
+export default function Index({ enrollments, stats = {}, filters = {}, sort = null, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [sortBy, setSortBy] = useState(sort?.column || 'enrollmentId');
+    const [sortDir, setSortDir] = useState(sort?.direction || 'desc');
     const [issueOpen, setIssueOpen] = useState(false);
 
     // Ruling 2 (G-1): the returning student's cycle starts at this desk, so the desk
@@ -69,38 +71,55 @@ export default function Index({ enrollments, stats = {}, filters = {}, canIssueE
     // it compared `enrollmentStatus` to 'evaluated' in a list the handler restricts to pending +
     // returnedToEvaluation, so it could never leave 0 while this desk's finished work moved on to Registrar.
 
+    // Every column on this list carries a `sortKey`, because every one of them is a column the handler can reach:
+    // two through the `students` hop, one through `courses`, four on the enrollment itself. A header is painted only
+    // where its key sits in the set the server echoed, so a screen cannot offer an order the query would ignore.
     const columns = useMemo(() => [
-        { key: 'student.schoolIdNumber', label: 'School ID', className: 'font-mono text-sm' },
-        { key: 'studentName', label: 'Student Name', render: (row) => (
+        { key: 'student.schoolIdNumber', label: 'School ID', sortKey: 'schoolId', className: 'font-mono text-sm' },
+        { key: 'studentName', label: 'Student Name', sortKey: 'name', render: (row) => (
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'yearLevel', label: 'Year Level', render: (row) => formatYearLevel(row.yearLevel) },
-        { key: 'studentType', label: 'Student Type', render: (row) => (
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        { key: 'yearLevel', label: 'Year Level', sortKey: 'yearLevel', render: (row) => formatYearLevel(row.yearLevel) },
+        { key: 'studentType', label: 'Student Type', sortKey: 'studentType', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}
             </Badge>
         )},
-        { key: 'academicStanding', label: 'Proposed Standing', render: (row) => (
+        { key: 'academicStanding', label: 'Proposed Standing', sortKey: 'academicStanding', render: (row) => (
             <Badge tone={academicStandingToneFor(row.academicStanding)}>
                 {academicStandingLabel(row.academicStanding)}
             </Badge>
         )},
-        { key: 'enrollmentStatus', label: 'Status', render: (row) => (
+        { key: 'enrollmentStatus', label: 'Status', sortKey: 'enrollmentStatus', render: (row) => (
             <Badge tone={enrollmentStatusTone[row.enrollmentStatus] || 'neutral'}>
                 {formatStatusLabel(row.enrollmentStatus)}
             </Badge>
         )},
     ], []);
 
-    const handleFilter = (e) => {
-        e.preventDefault();
+    const visit = (nextSearch, nextSort, nextDir) => {
         router.get(route('evaluation.index'), {
-            search: search || undefined,
+            search: nextSearch || undefined,
+            // The queue's own default travels as nothing at all, so a plain link stays a short URL rather than
+            // arriving as a sort key the handler would have to recognise as its fallback.
+            ...sortParams('enrollmentId', nextSort, nextDir),
         }, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        visit(search, sortBy, sortDir);
+    };
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        visit(search, key, direction);
     };
 
     const renderActions = (row) => (
@@ -233,6 +252,8 @@ export default function Index({ enrollments, stats = {}, filters = {}, canIssueE
                                 rows={enrollments.data}
                                 children={renderActions}
                                 emptyMessage="No enrollments pending evaluation"
+                                sort={sort}
+                                onSort={handleSort}
                             />
                             <div className="mt-4">
                                 <Pagination paginator={enrollments} />

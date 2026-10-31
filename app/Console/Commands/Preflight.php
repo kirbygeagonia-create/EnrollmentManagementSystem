@@ -210,18 +210,19 @@ class Preflight extends Command
     }
 
     /**
-     * The one secret standing between a stranger and an unauthenticated write into the upload
-     * folder. `config/filesystems.php` gives the `local` disk `'serve' => true`, and Laravel
-     * registers `GET|HEAD /storage/{path}` and `PUT /storage/{path}` for it with **no auth
-     * middleware at all** — measured with `storage/app/scratch/audit-24b-storage-routes.php`,
-     * driving the route through the HTTP kernel: a genuine relative signature returns 204, and
-     * a signature computed with the *empty* secret returns 204 on a server whose APP_KEY was
-     * never generated, which is the state `.env.example` leaves it in. The same forgery against
-     * this install returns 403, and so does an unsigned request: the key is the gate.
+     * The secret every encrypted cookie and every signed URL is keyed by.
      *
-     * A blank key is not a hypothetical. It is one skipped line in DEPLOYMENT.md §3, and the
-     * symptom it produces elsewhere — every login throwing on cookie encryption — reads like a
-     * broken session driver, while the route that needs no encryption keeps answering.
+     * Until 2026-10-31 this row existed for a narrower reason: `config/filesystems.php` gave the `local` disk
+     * `'serve' => true`, Laravel registered `GET|HEAD /storage/{path}` and `PUT /storage/{path}` with **no auth
+     * middleware at all**, and the only credential was an HMAC of the path under this key. Measured with
+     * `storage/app/scratch/audit-24b-storage-routes.php`, driving the route through the HTTP kernel: a genuine
+     * relative signature returned 204, and a signature computed with the *empty* secret also returned 204 on a
+     * server whose APP_KEY was never generated — the state `.env.example` leaves it in. §28.3 G-50 took the flag
+     * off, so those routes are not registered and the forgery has nowhere to land; the row stays because a blank or
+     * short key still breaks the install outright.
+     *
+     * A blank key is not a hypothetical. It is one skipped line in DEPLOYMENT.md §3, and the symptom it produces —
+     * every login throwing on cookie encryption — reads like a broken session driver.
      *
      * @return array{0: string, 1: string, 2: string}
      */
@@ -230,7 +231,7 @@ class Preflight extends Command
         $key = (string) config('app.key');
 
         if ($key === '') {
-            return ['Application key', 'FAIL', 'APP_KEY is blank, so anyone can sign their own /storage upload — run: php artisan key:generate, then php artisan config:clear if §3 cached the config'];
+            return ['Application key', 'FAIL', 'APP_KEY is blank, so nothing can be encrypted or signed — the session cookie is refused at the first login and any signed URL is signed with an empty secret — run: php artisan key:generate, then php artisan config:clear if §3 cached the config'];
         }
 
         $raw = str_starts_with($key, 'base64:') ? base64_decode(substr($key, 7), true) : $key;
@@ -239,17 +240,17 @@ class Preflight extends Command
             return ['Application key', 'FAIL', 'APP_KEY is not a 32-byte key ('.strlen($raw).'), and AES-256 will refuse it at the first login — run: php artisan key:generate'];
         }
 
-        return ['Application key', 'OK', '32 bytes, so /storage/{path} answers only to a signature made with it'];
+        return ['Application key', 'OK', '32 bytes, so the session cookie and any signed URL this application mints answer only to a signature made with it'];
     }
 
     /**
-     * The other door into the same folder, and the one an operator opens by accident.
-     * `ServeFile::hasValidSignature()` waves the signature check through when the served disk
+     * The other door into the upload folder, and the one an operator can still open by accident.
+     * `ServeFile::hasValidSignature()` waves the signature check through when a served disk
      * declares `'visibility' => 'public'` — measured with `audit-24c-servegate.php`: the unsigned
-     * `GET /storage/{path}` that this configuration refuses with 403 walks straight past the gate
-     * against that single line, and only the missing file stops it with 404. Someone adding it to
+     * `GET /storage/{path}` that a signed configuration refused with 403 walked straight past the gate
+     * against that single line, and only the missing file stopped it with 404. Someone adding it to
      * fix a broken image URL would be publishing every applicant paper and face photo, because the
-     * served `local` disk is rooted at `storage/app/private` — the same root the `documents` disk
+     * `local` disk is rooted at `storage/app/private` — the same root the `documents` disk
      * writes to. Unlike a leaked key, this is a change made on purpose, which is why it gets its
      * own row instead of a paragraph.
      *
@@ -280,8 +281,18 @@ class Preflight extends Command
             return ['Served folder', 'OK', 'no local disk asks Laravel to serve /storage, so the uploads have only the routes that authorize them'];
         }
 
-        return ['Served folder', 'OK', 'disk(s) '.implode(', ', $names).' served private: every read needs a signature'
-            .($sharesUploadRoot ? ' — and it is rooted where the uploads live, so that signature is the door' : '')];
+        // §28.3 G-50: this repository ships the folder unserved on purpose. A disk that asks to be served
+        // AND is rooted where the uploads live puts every face photo and signed paper behind one HMAC of the
+        // path keyed by APP_KEY — the door the desk routes were supposed to be the only way through. WARN,
+        // never FAIL, because a preflight cannot tell an intentional serving setup from the accident, and
+        // nothing stored moves either way.
+        if ($sharesUploadRoot) {
+            return ['Served folder', 'WARN', 'disk(s) '.implode(', ', $names).' served private, and rooted where the uploads live — '
+                .'every byte in storage/app/private is then reachable through /storage/{path} with a signature this '
+                .'application never mints. Take the serve flag off, or root that disk elsewhere (§28.3 G-50)'];
+        }
+
+        return ['Served folder', 'OK', 'disk(s) '.implode(', ', $names).' served private: every read needs a signature'];
     }
 
     /**

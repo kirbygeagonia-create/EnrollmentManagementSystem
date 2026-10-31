@@ -62,25 +62,25 @@
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: the 'enrollmentType' => $enrollmentType write in approve() — BR31's derived type, as §24's row states it"
         },
-        "ExamController.php:302-311#b7612dce": {
-            "read": "2026-10-27",
+        "ExamController.php:338-347#00cb259a": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: entranceApplicants() end to end (signature :302, closing brace :311)"
+            "by": "passes 231-234 and 241 asserted :306-308, :358-366, :210-240, :244-251, :279-288 and :397-404 before writing them; :325-332 read directly"
         },
-        "ExamController.php:233-263#0f2e9039": {
-            "read": "2026-10-27",
+        "ExamController.php:269-299#86c52b9c": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: students(): the transferee-waived roster, marked `generalExamWaived` at :261"
+            "by": "passes 231-234 and 241 asserted :306-308, :358-366, :210-240, :244-251, :279-288 and :397-404 before writing them; :325-332 read directly"
         },
-        "ExamController.php:267-274#0f2e9039": {
-            "read": "2026-10-27",
+        "ExamController.php:303-310#86c52b9c": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: students(): the else arm — a program with no general paper lists its own applicants"
+            "by": "passes 231-234 and 241 asserted :306-308, :358-366, :210-240, :244-251, :279-288 and :397-404 before writing them; :325-332 read directly"
         },
-        "EvaluationController.php:703-713#6875fe52": {
-            "read": "2026-10-31",
+        "EvaluationController.php:737-747#f76e141f": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 114’s one import line left it in: the mandatory-block diff inside the proposal, gated on irregular standing and on transferee/shifter — the §13 row’s \"proposed subjects must cover the mandatory block\""
+            "by": "read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes"
         },
         "AssessmentController.php:493-504#707f05cc": {
             "read": "2026-10-31",
@@ -112,10 +112,10 @@
             "verdict": "true",
             "by": "read 2026-10-31 in the span this batch's re-number left it in: the 'bloodType' => $validated['bloodType'] write — §30's self-declared medical fact, one source"
         },
-        "SendWorkflowNotification.php:59-75#fbc15783": {
+        "SendWorkflowNotification.php:66-83#c394e151": {
             "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span this batch's re-number left it in: the notify() call and its payload fields: addressed from WorkflowInbox::actors(), stepOrder/stepLabel/signedBy/phase/signed/total/lastDesk"
+            "by": "read 2026-10-31 in the span lane 116’s listener growth left it in: the step-signed `$this->notify(` call through its `lastDesk` payload field — the row §19 cites for \"one row per signature, type workflow_step_signed\"; the completion half moved to :49-60 in the same read"
         },
         "NotificationController.php:33-34#becb93d0": {
             "read": "2026-10-27",
@@ -147,50 +147,50 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s whole update, including the `read_at` write at :68"
         },
-        "RegistrarController.php:423-423#be6feeb3": {
+        "RegistrarController.php:423-423#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: printClassCards()'s signature — the second desk page, and §25.1's Class Card row's own page pointer"
         },
-        "RegistrarController.php:454-454#be6feeb3": {
+        "RegistrarController.php:454-454#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: printSubjectLoad()'s signature — the third desk page"
         },
-        "RegistrarController.php:478-478#be6feeb3": {
+        "RegistrarController.php:478-478#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadCertificate()'s signature — §25.1's certificate PDF sibling, and one of the four generated PDFs"
         },
-        "RegistrarController.php:493-493#be6feeb3": {
+        "RegistrarController.php:493-493#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadEnrollmentForm()'s signature — a generated PDF"
         },
-        "RegistrarController.php:505-505#be6feeb3": {
+        "RegistrarController.php:505-505#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadClassCard()'s signature, opened on its multi-line parameter list — §25.1's one-card download"
         },
-        "RegistrarController.php:531-531#be6feeb3": {
+        "RegistrarController.php:531-531#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadSubjectLoad()'s signature — the last generated PDF of the four"
         },
-        "ClearanceController.php:438-438#be6feeb3": {
+        "ClearanceController.php:438-438#7e2afc1f": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadSlip()'s signature — the slip's PDF sibling, moved here by this batch's +3 lines above it"
         },
-        "BlockingController.php:571-571#be6feeb3": {
-            "read": "2026-10-31",
+        "BlockingController.php:601-601#7e2afc1f": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule (no line moved; the sentence around it was re-worded)"
+            "by": "read this session: :616 is downloadBlockSchedule's signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230"
         },
-        "ExamController.php:439-446#90395818": {
-            "read": "2026-10-27",
+        "ExamController.php:475-482#05783208": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: recordCourseSpecific(): the G-8 comment and the redirect that writes no admission status"
+            "by": "passes 231-234 and 241 asserted :306-308, :358-366, :210-240, :244-251, :279-288 and :397-404 before writing them; :325-332 read directly"
         },
         "AuditRecordStates.php:305-327#48f498e3": {
             "read": "2026-10-25",
@@ -232,25 +232,25 @@
             "verdict": "true",
             "by": "direct read: :147-167 and :170-236 are the cases the row names"
         },
-        "EvaluationController.php:193-195#bd4558cf": {
-            "read": "2026-10-31",
+        "EvaluationController.php:227-229#b8c55ee1": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 114’s one import line left it in: Item 7’s pin comment and the resolveCurriculum() call — the row §13 cites for \"which curriculum the proposal is measured against\""
+            "by": "read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes"
         },
-        "EvaluationController.php:715-739#bd4558cf": {
-            "read": "2026-10-31",
+        "EvaluationController.php:749-773#b8c55ee1": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 114’s one import line left it in: the prerequisite auto-gate comment through its ValidationException — §13’s proposal row and §21’s min–max neighbour"
+            "by": "read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes"
         },
         "WorkflowService.php:255-255#c82a113d": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "BlockingController.php:450-462#d336bacf": {
-            "read": "2026-10-27",
+        "BlockingController.php:480-492#c1014b38": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: assignStudents()'s room check — §22's room-capacity row cites exactly this span"
+            "by": "read this session: :616 is downloadBlockSchedule's signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230"
         },
         "DevReferenceDataSeeder.php:141-141#7f472199": {
             "read": "2026-10-27",
@@ -317,17 +317,17 @@
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadSlip()'s signature — the slip's PDF sibling, moved here by this batch's +3 lines above it"
         },
-        "BlockingController.php:571-571#2c47e654": {
-            "read": "2026-10-31",
+        "BlockingController.php:601-601#9caf64f1": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule (no line moved; the sentence around it was re-worded)"
+            "by": "read this session: :616 is downloadBlockSchedule's signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230"
         },
-        "RegistrarController.php:423-423#60b349c7": {
+        "RegistrarController.php:423-423#78acb1ae": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: printClassCards()'s signature — the second desk page, and §25.1's Class Card row's own page pointer"
         },
-        "RegistrarController.php:469-469#60b349c7": {
+        "RegistrarController.php:469-469#78acb1ae": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: the Inertia::render('Registrar/PrintSubjectLoad') line — the component that page answers with (the clause names render, whose owner is Inertia.php, so this pairing had to be read)"
@@ -422,45 +422,45 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "ExamController.php:388-396#5d19b004": {
-            "read": "2026-10-27",
+        "ExamController.php:424-432#083bc841": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: recordCourseSpecific(): the BR9/C-4/C-5 comment and the `if ($course->requiresEntranceExam)` it ends on"
+            "by": "passes 231-234 and 241 asserted :306-308, :358-366, :210-240, :244-251, :279-288 and :397-404 before writing them; :325-332 read directly"
         },
         "RegistrarController.php:331-331#34984a32": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: the 'enrollmentType' => $enrollmentType write in approve() — BR31's derived type, as §24's row states it"
         },
-        "RegistrarController.php:423-423#23d54268": {
+        "RegistrarController.php:423-423#5eba7d66": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: printClassCards()'s signature — the second desk page, and §25.1's Class Card row's own page pointer"
         },
-        "RegistrarController.php:454-454#23d54268": {
+        "RegistrarController.php:454-454#5eba7d66": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 113's +2/+3 left it in: printSubjectLoad()'s signature — the third desk page"
         },
-        "BlockingController.php:328-334#9bd17ab5": {
-            "read": "2026-10-27",
+        "BlockingController.php:358-364#f06eecef": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: updateSchedule()'s room-capacity warning block, whose quoted string the E-11 row prints"
+            "by": "read 2026-10-31 in the span lane 116’s listener growth left it in: the editing path's capacity warn-and-proceed: `$block->maxStudents > $room->capacity` at :361 and the \"Schedule was still updated\" string it returns — §26's room-capacity row"
         },
-        "BlockingController.php:438-448#9bd17ab5": {
-            "read": "2026-10-27",
+        "BlockingController.php:468-478#f06eecef": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: assignStudents()'s block-capacity refusal (distinct students, not subject rows)"
+            "by": "read 2026-10-31 in the span lane 116’s listener growth left it in: the assign-students seat guard: a distinct-student count over `enrolledsubjects` (dropped rows excluded) and the ValidationException that refuses when current + requested exceeds `maxStudents` — §26's \"over capacity is refused\" half"
         },
-        "BlockingController.php:287-288#bd6d9a0f": {
-            "read": "2026-10-27",
+        "BlockingController.php:317-318#9b21141e": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: storeSchedule()'s warn-and-proceed return — the ternary that answers the warning when one exists"
+            "by": "read this session: :616 is downloadBlockSchedule's signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230"
         },
-        "BlockingController.php:457-457#bd6d9a0f": {
-            "read": "2026-10-27",
+        "BlockingController.php:487-487#9b21141e": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: the `if ($roomEnrolled + $requestedCount > $room->capacity)` line the E-11 row names"
+            "by": "read this session: :616 is downloadBlockSchedule's signature, :483-493 and :495-507 are the block and room caps, :286-287 the filing warn-and-proceed return, :502 the room-cap line inside it; :327-333 was asserted by passes 229-230"
         },
         "EnrollmentStateMachine.php:48-50#672b2590": {
             "read": "2026-10-27",
@@ -472,22 +472,22 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: pass 271 asserted these before writing: SUBJECT_TRANSITIONS — proposed → confirmed/dropped, confirmed → dropped"
         },
-        "EvaluationController.php:566-566#db847699": {
-            "read": "2026-10-31",
+        "EvaluationController.php:600-600#7f2a8318": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 114’s one import line left it in: the 'evaluatedBy' => Auth::user()->userId write inside captureProfile() — the evaluator the walkthrough’s Department Evaluation step records"
+            "by": "read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes"
         },
         "WorkflowService.php:261-272#c78909bc": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): the BR13 step-order check the T-1 row cites"
         },
-        "EvaluationController.php:353-380#230854e7": {
-            "read": "2026-10-31",
+        "EvaluationController.php:387-414#1ef42de2": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-31 in the span lane 114’s one import line left it in: satisfiedPrerequisites() whole: the passing ceiling, the passed and credited merge, and its return — T-5’s shifter credit row"
+            "by": "read this session: :93-95 the returned-to-evaluation queue filter and :631-641 the mandatory-block completeness rule; the rest of the cluster was asserted by passes 232-234 before those writes"
         },
-        "WorkflowService.php:54-73#d15a889f": {
+        "WorkflowService.php:54-73#08486cdb": {
             "read": "2026-10-31",
             "verdict": "true",
             "by": "read 2026-10-31 in the span lane 114’s one import line left it in: stepsFor()’s seven box entries and the array_filter() that makes six — the \"stages and boxes counted separately\" row (no line moved; the neighbouring re-number moved its window)"
@@ -502,10 +502,10 @@
             "verdict": "true",
             "by": "direct read: :49 echoes both filter keys the row names"
         },
-        "app/Http/Controllers/Exam/ExamController.php:524-524#c5962d39": {
-            "read": "2026-10-27",
+        "app/Http/Controllers/Exam/ExamController.php:583-586#8df29e12": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: results() echoing both filter keys — the same claim §28's G-15 row makes at :476, spelled with the path here"
+            "by": "read 2026-10-31 in the span lane 116’s listener growth left it in: the `filters` echo of results() — §28.3 G-15's second claim, \"and echoes both keys\", a four-line block since the sort keys joined it; the same read under the path spelling the document also uses"
         },
         "AssessmentController.php:221-229#a5ef545d": {
             "read": "2026-10-31",

@@ -2,78 +2,82 @@
 
 namespace Tests\Feature\Files;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * The two routes that answer with no login at all.
+ * The private uploads folder is not served by any route.
  *
- * `config/filesystems.php` gives the `local` disk `'serve' => true`, so Laravel registers
- * `GET|HEAD /storage/{path}` and `PUT /storage/{path}` for it outside every middleware group —
- * `audit-24-routes` printed their gathered middleware as `(NONE)`. Neither route is linked from
- * the application: nothing in `app/` or `resources/` ever calls `temporarySignedRoute` or
- * `temporaryUrl`, so no desk is handed a signature. What these two tests pin is the gate itself,
- * because DEPLOYMENT.md §2 used to claim `storage/app/private` is a folder "which no web path
- * reaches" — that sentence is wrong, and the truth is narrower: a web path reaches it and a
- * signature is what turns the handle.
+ * Until 2026-10-31 `config/filesystems.php` gave the `local` disk `'serve' => true`, and Laravel therefore
+ * registered `GET|HEAD /storage/{path}` and `PUT /storage/{path}` outside every middleware group — their gathered
+ * middleware read `(NONE)`. Nothing in `app/` or `resources/` ever called `temporarySignedRoute` or `temporaryUrl`,
+ * so no desk was handed a signature, and the only credential standing between a stranger and a named student's
+ * papers was an HMAC of the path keyed by `APP_KEY`. That is §28.3 G-50, and the fix took the flag off rather than
+ * trusting the door: a path with no route cannot be probed, and a blank key can no longer sign a write into the tree
+ * that holds the uploads.
  *
- * The fake disk keeps the probe out of the folder holding real signed forms; the gate logic runs
- * against the real config, since `ServeFile`/`ReceiveFile` captured their disk array when the
- * routes were registered and only resolve bytes through `Storage::disk('local')`.
+ * What the bytes are reached through is `tests/Feature/Files/StoredFileAccessTest.php` — the applicant's paper and
+ * the student's face photo, each authorized by the record it belongs to, each refused for a desk that may not view
+ * it. Those cases are why this file may assert an absence without leaving the surface unmeasured.
+ *
+ * `storage/app/scratch/mutate-g50-served-folder-tests.php` proves all three: it puts `'serve' => true` back in the
+ * config and requires the named case to go red, because a guard that only passes on the fixed tree proves nothing.
  */
 class ServedUploadPathTest extends TestCase
 {
     private const PROBE = 'lane24-signed-upload-probe.txt';
 
     #[Test]
-    public function a_stranger_with_no_signature_cannot_put_a_file_into_the_served_folder(): void
+    public function no_local_disk_asks_the_framework_to_serve_its_folder(): void
     {
-        Storage::fake('local');
+        $disks = (array) config('filesystems.disks');
+        $served = [];
+        foreach ($disks as $name => $disk) {
+            if (is_array($disk) && ($disk['driver'] ?? null) === 'local' && ($disk['serve'] ?? false)) {
+                $served[] = (string) $name;
+            }
+        }
 
-        // `upload=1` is the flag ReceiveFile requires of every write; without a signature behind
-        // it the request is refused before a byte is written.
-        $this->put('/storage/'.self::PROBE.'?upload=1')->assertForbidden();
-
-        $this->assertFalse(
-            Storage::disk('local')->exists(self::PROBE),
-            'An unsigned upload wrote into the served folder, so the application key is the only thing left.'
+        $this->assertSame(
+            [],
+            $served,
+            'disk(s) '.implode(', ', $served).' ask Laravel to serve their folder — the uploads live in one of them (§28.3 G-50)'
         );
     }
 
     #[Test]
-    public function a_request_signed_with_the_application_key_is_enough_on_its_own(): void
+    public function the_two_storage_routes_are_not_registered_at_all(): void
     {
-        Storage::fake('local');
+        // The names Laravel gives the served-disk routes. Asserting the absence of the route *names* as well as the
+        // URIs matters: a future registration under a different URI shape would pass a URI-only check.
+        $this->assertFalse(Route::has('storage.local'), 'the read route for a served disk is registered');
+        $this->assertFalse(Route::has('storage.local.upload'), 'the upload route for a served disk is registered');
 
-        // The counterpart that makes the refusal above mean something: the route does answer, and
-        // the sole credential is an HMAC under APP_KEY. No session, no permission, no CSRF token —
-        // which is exactly why `ems:preflight` fails a server whose key was never generated, and
-        // why a leaked key is a leaked upload folder. Measured the same way in
-        // storage/app/scratch/audit-24b-storage-routes.php (204 signed, 403 unsigned).
-        $signed = URL::temporarySignedRoute('storage.local.upload', now()->addMinutes(5), [
-            'path' => self::PROBE,
-            'upload' => 1,
-        ], false);
+        $uris = collect(Route::getRoutes()->getRoutes())
+            ->map(fn ($route): string => (string) $route->uri())
+            ->filter(fn (string $uri): bool => str_starts_with($uri, 'storage/'))
+            ->values()
+            ->all();
 
-        $this->put($signed, [], ['Content' => 'signed upload probe'])->assertNoContent();
-
-        $this->assertTrue(Storage::disk('local')->exists(self::PROBE));
+        $this->assertSame([], $uris, 'these paths are served straight from disk: '.implode(', ', $uris));
     }
 
     #[Test]
-    public function reading_the_served_folder_also_needs_a_signature(): void
+    public function a_stranger_cannot_put_a_file_into_the_uploads_folder_or_read_one_out_of_it(): void
     {
         Storage::fake('local');
-        Storage::disk('local')->put(self::PROBE, 'an applicant paper');
 
-        $this->get('/storage/'.self::PROBE)->assertForbidden();
+        // Both verbs, each with the flag the write route used to require. Before the flag came off these were 403
+        // (a route that answered and refused for want of a signature); now there is nothing to refuse, which is the
+        // stronger claim and the one the register carries.
+        $this->put('/storage/'.self::PROBE.'?upload=1')->assertNotFound();
+        $this->get('/storage/'.self::PROBE)->assertNotFound();
 
-        $signed = URL::temporarySignedRoute('storage.local', now()->addMinutes(5), [
-            'path' => self::PROBE,
-        ], false);
-
-        $this->get($signed)->assertOk()->assertStreamed();
+        $this->assertFalse(
+            Storage::disk('local')->exists(self::PROBE),
+            'An upload reached the private folder without a session, a permission, or a route that exists.'
+        );
     }
 }
