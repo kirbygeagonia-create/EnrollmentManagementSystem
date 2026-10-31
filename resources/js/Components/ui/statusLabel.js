@@ -114,6 +114,15 @@ export const idRequestStatusTone = {
     cancelled: 'danger',
 };
 
+// An account is active or it is not, and that word is the same word on the staff directory and the student
+// directory. Two pages carried their own copy of this pair, so one edit could make `inactive` read as a hold on
+// one desk and silence on another — the tone-map defect §28.3 G-39 closed for enrollment statuses, met again in
+// the vocabulary the enrollment guard does not cover.
+export const accountStatusTone = {
+    active: 'success',
+    inactive: 'neutral',
+};
+
 // The workflow statuses whose badge is simply named after them: .badge-pending, .badge-approved,
 // .badge-rejected, .badge-waived, .badge-incomplete. Six desk files each carried their own copy of
 // exactly this list, which is how one word can end up two colours after someone edits one copy.

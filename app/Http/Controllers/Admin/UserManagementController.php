@@ -38,8 +38,40 @@ class UserManagementController extends Controller
         $query = Staffusers::with(['office', 'unit', 'roles'])
             ->when($request->officeId, fn ($q, $id) => $q->where('officeId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
-            ->when($request->search, fn ($q, $search) => $q->where('firstName', 'like', "%{$search}%")->orWhere('lastName', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%")->orWhere('employeeNo', $search))
-            ->orderByDesc('userId');
+            // The search's own alternatives belong inside a group of their own. Chained onto the builder they are
+            // ORed with the filters above, so filtering one office for a name answers every office that has someone
+            // matching: measured on live `ems` before the parentheses went in, office 1 for "Sta" returned 11 of the
+            // 21 accounts while that office holds 3. The twelve desk searches that use `whereHas` already scope their
+            // alternatives inside the subquery; this was the only one that did not.
+            ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
+                $sq->where('firstName', 'like', "%{$search}%")
+                    ->orWhere('lastName', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('employeeNo', $search);
+            }));
+
+        // Every column here is one the screen paints. `officeName` lives on another table, so it is reached through
+        // a hop, and that hop is LEFT: `staffusers.officeId` is nullable in the migration, and an INNER join added
+        // only to order would delete an office-less account from the list rather than mis-order it. `role` and the
+        // Spatie role badges are assembled from a to-many relation, so no header is offered for them — an order
+        // over a set the row does not hold is a number the query cannot answer. A directory reads top to bottom,
+        // so the list's own default is the surname ascending, stated here rather than assumed by the helper — and
+        // the fallback is the desk's key, not the column behind it, so what the handler echoes is a key the header
+        // can recognise as its own and paint the arrow on.
+        $sortable = [
+            'name' => ['column' => 'lastName'],
+            'username' => ['column' => 'username'],
+            'office' => ['column' => 'officeName', 'join' => 'offices', 'foreign' => 'officeId', 'local' => 'staffusers.officeId', 'type' => 'left'],
+            'status' => ['column' => 'status'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'name',
+            'staffusers.userId'
+        );
 
         $users = $query->paginate(20)->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
@@ -52,7 +84,13 @@ class UserManagementController extends Controller
             'offices' => $offices,
             'units' => $units,
             'roles' => $roles,
-            'filters' => $request->only(['officeId', 'status', 'search']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['officeId', 'status', 'search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
             'staffRoles' => collect(StaffRole::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
             'staffStatuses' => collect(StaffStatus::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
         ]);

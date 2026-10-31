@@ -1624,7 +1624,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   §10, each verified by opening the named file rather than trusting the sweep: **G-48** `Students` declares no
   `$hidden` where `Staffusers.php:30-33` hides `passwordHash`, and `StudentController::show()` passes the whole model,
   so a student's credential hash ships in every Student-360 payload; **G-49** the same action eager-loads
-  `enrollments.clinicrecords` and `resources/js/Pages/Students/Show.jsx:506-519` prints `cr.findings`, with no field-level gate — the
+  `enrollments.clinicrecords` and `resources/js/Pages/Students/Show.jsx:499-512` prints `cr.findings`, with no field-level gate — the
   prompt's own worked example of what must not be shared; **G-45** `afterCommit` appears 0 times while both
   notification listeners are `ShouldQueue` and `notifications` has only a non-unique index (`:20`); **G-46**
   `DashboardController::queueCounts()` counted institution-wide `Pending` while the page behind it was
@@ -1729,7 +1729,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 22 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+  still owed: 21 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
 2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
 handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
 while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
@@ -1740,7 +1740,18 @@ no skip, and `artisan test --list-tests` discovers the same 1,140, which is the 
 `#[Test]` attribute. `mutate-g40-subject-sort-tests.php` plants one defect per promise — the order applied to
 another builder, the catalogue default reverted to descending, the ENUM header withheld again, a derived column
 offered where the handler lists no column for it, and the order never echoed — and each is killed by the case that
-names it. The audit log is
+names it. The fifteenth wired screen is the staff directory, also 2026-10-31: its Office header reaches `offices`
+through the LEFT hop, because `staffusers.officeId` is nullable in the migration, and its case writes one account with
+no office and requires it to stay on the list — an INNER hop answers four rows where the desk expects five, which is
+the absence the screen exists to paint; its order opens ascending like the catalogue's; and its class is
+`tests/Feature/Admin/StaffDirectorySortTest.php`, proved by `mutate-g40-staff-directory-tests.php` at six legs, one per
+promise; the delivered run gives that class 9 cases, with no assertion figure beside it. The delivered run that carries
+the fifteenth table answers 1,153 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
+`artisan test --list-tests` discovers the same 1,153, which is the check that no inserted method stole a `#[Test]`
+attribute; the difference over the run above is exactly the two classes this batch added, counted out of that run's own
+junit. The account-status guard is `tests/Feature/Admin/AccountStatusToneVocabularyTest.php`, four cases, and its
+assertion total is deliberately not stated here because it moved between a single-file run and the delivered whole run
+on this same box — lane 58's rule met from a surface nobody had seen it bite on. The audit log is
 also the first screen whose order reaches a row that may not exist: `auditlogs.userId` is NULL on 3,294 of the
 3,525 rows live `ems` holds, so its user hop asks `ListSort` for a LEFT join — an INNER hop would not mis-order those rows,
 it would delete 93% of the desk's list — and the helper's default stayed INNER, keeping the twelve earlier screens' SQL
@@ -1773,6 +1784,36 @@ AFTER the five tiles are cloned and the handler says why: the select pin that a 
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
   database's mood, not a defect.
+- **A desk search's own alternatives must be grouped, or they widen the filters set beside them** (this batch, the
+staff directory). `UserManagementController::index()` chained `->where('firstName','like',…)->orWhere('lastName','like',…)`
+inside the same `when()` closure that carries the office and status filters, and Laravel puts every one of those at the
+same boolean level — so `officeId=1&search=Sta` compiled to `officeId = ? and firstName like ? or lastName like ?` and
+answered **11 of the 21 accounts on live `ems`** while the office named holds 3. The census says the family is one site:
+thirteen desk searches chain `orWhere`, but twelve scope their alternatives inside a `whereHas` closure, where the OR
+belongs to the exists-subquery and the filter beside it survives. So the rule for a new search is `->where(fn ($q) =>
+…)` around the alternatives, and the rule for reading a search claim is to ask which builder each `orWhere` lands on.
+Measured, not argued, is what made that sentence safe to write: `storage/app/scratch/lane126-probe-search-precedence.php`
+compiles both shapes and picks its discriminating pair from the rows (an office that holds someone, a term belonging to
+someone else), so the verdict is a row difference rather than an opinion about the grammar. The fix is pinned by a case
+in `StaffDirectorySortTest.php` and the leg `search-alternatives-ungrouped` puts the old bytes back and requires that
+case to go red. **The finding is registered as §28.3 G-53**, which moved two boundary cells — §28.1's G-family index
+row and §29.4's count of the G/D/U/X/N family — by the documented cascade: the row was cloned in its own pass and
+the two counts in a second pass, because `docxApply()` re-reads the archive and would discard a row written in memory.
+- **One vocabulary, one map — and the guard has to read the far end of the pairing** (this batch, §28.3 G-39's class in
+the account words). The staff directory, the student directory and the Student 360 each carried their own copy of
+`{active:'success', inactive:'neutral'}`; all three rendered correctly, so the suite and ESLint and a person looking at
+the screen each saw nothing. `accountStatusTone` in `resources/js/Components/ui/statusLabel.js` is now the only
+definition, and `tests/Feature/Admin/AccountStatusToneVocabularyTest.php` reads the sources the way the enrollment-tone
+guard does. **One of its legs survived on the first run and the guard was the defect**: renaming the export inside
+`statusLabel.js` left every page's import text untouched, so a case that only reads the pages could not see the far end
+move — the class now asserts the module exports what the pages import, proved by `mutate-account-tone-tests.php`.
+- **Markdown pointers move by byte-matching HEAD's line against the working file, never by adding the delta** (this
+batch). `lane76-shift-cites.php` edits `word/document.xml` only, so the `.md` files age in silence and the citation gate
+sees just the one that lands on a blank line: of the four docx pointers and the eleven matrix pointers this batch aged,
+the gate flagged **one**. `storage/app/scratch/lane127-resolve-lines.php` answers "where does HEAD's line N live now"
+by exact bytes and refuses to guess when a line matches several rows; `lane127-repoint-md-cites.php` walks the prose
+documents for pointers into files you name; both were written before the re-point, and the two *ranges* were then
+proved by comparing the whole window in both versions, which is the only claim a re-point is allowed to make.
 - **A sort default is the list's own decision, and the screen half of a mechanism needs one definition too** (this
   batch, prompt §14, G-40's third wired screen). `ListSort` answers `desc` when a request carries no direction —
   right for a queue of newest-first records, wrong for a directory of surnames, where opening at Z is a defect a desk

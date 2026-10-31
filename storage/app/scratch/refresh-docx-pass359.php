@@ -27,7 +27,10 @@ if ($zip->open($docx) !== true) {
 $xml = (string) $zip->getFromName('word/document.xml');
 $zip->close();
 
-// The replacement figure comes from the checker's own footer, read here rather than typed from memory.
+// The replacement figure comes from the checker's own footer, read here rather than typed from memory — and the
+// CURRENT figure is located by its shape, not by a literal this pass froze. A pass anchored on the number it last
+// wrote is a pass that refuses its own correct output the next time the tree moves (lane 79's verifier-expectations
+// rule, met inside my own instrument).
 $cmd = escapeshellarg(PHP_BINARY).' '.escapeshellarg($root.'/storage/app/scratch/lane49-zero-shown-as-absence.php').' 2>&1';
 $toolOut = (string) shell_exec($cmd);
 if (! preg_match('/Not a money\/percent figure the guard itself prints:\s*(\d+)/', $toolOut, $m)) {
@@ -37,14 +40,22 @@ if (! preg_match('/Not a money\/percent figure the guard itself prints:\s*(\d+)/
 }
 $today = (int) $m[1];
 
-if ($today === 355) {
-    echo "ALREADY CURRENT — lane 49 answers 355 operand lines, so the sentence holds and nothing is written.\n";
+if (! preg_match('/(\d+) lines where the tested operand/', $xml, $mm)) {
+    fwrite(STDERR, "REFUSED: the document holds no `N lines where the tested operand` claim to re-take.\n");
+
+    exit(1);
+}
+$inDoc = (int) $mm[1];
+$needle = $inDoc.' lines where the tested operand';
+
+if ($inDoc === $today) {
+    echo "ALREADY CURRENT — lane 49 answers {$today} operand lines, so the sentence holds and nothing is written.\n";
 
     exit(0);
 }
 
 $edits = [
-    ['355 lines where the tested operand', $today.' lines where the tested operand'],
+    [$needle, $today.' lines where the tested operand'],
 ];
 
 foreach ($edits as $i => $edit) {
@@ -75,13 +86,13 @@ $after = (string) $zip->getFromName('word/document.xml');
 $zip->close();
 
 foreach ([
-    ['355 lines where the tested operand', 0],
+    [$needle, 0],
     [$today.' lines where the tested operand', 1],
     ['21 guards whose dash', 1],
-] as [$needle, $want]) {
-    $got = substr_count($after, $needle);
+] as [$check, $want]) {
+    $got = substr_count($after, $check);
     if ($got !== $want) {
-        echo sprintf("BAD  [%s] occurs %d, wanted %d — restoring.\n", substr($needle, 0, 44), $got, $want);
+        echo sprintf("BAD  [%s] occurs %d, wanted %d — restoring.\n", substr($check, 0, 44), $got, $want);
         copy($backup, $docx);
 
         exit(1);

@@ -1,12 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
-
-const statusToneMap = {
-    active: 'success',
-    inactive: 'neutral',
-};
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, Modal, CauseEffectModal, EmptyState, FormSection, RadioCards, formatStatusLabel, nextSortDirection, sortParams, accountStatusTone } from '@/Components/ui';
 
 const roleBadgeMap = {
     admin: 'role-badge-admin',
@@ -17,7 +12,11 @@ const roleBadgeMap = {
     staff: 'role-badge-staff',
 };
 
-export default function Index({ users, offices, units, roles, filters = {}, staffRoles, staffStatuses = [] }) {
+export default function Index({ users, offices, units, roles, filters = {}, sort = null, staffRoles, staffStatuses = [] }) {
+    // The order the server says it applied, read back so the arrow survives a filter submit and a page reload.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || 'asc');
+
     // Built from the StaffStatus list the server shares, the way staffRoleOptions below is built
     // from staffRoles. A screen that hard-codes an enum's members goes stale the day the enum
     // grows, and nothing in the suite notices. The empty value is this filter's "show everything".
@@ -72,7 +71,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
     });
 
     const columns = useMemo(() => [
-        { key: 'name', label: 'Staff Member & Position', render: (row) => (
+        { key: 'name', label: 'Staff Member & Position', sortKey: 'name', render: (row) => (
             <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-seait-100 text-seait-700 ring-1 ring-seait-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {row.firstName?.[0]?.toUpperCase()}{row.lastName?.[0]?.toUpperCase()}
@@ -88,8 +87,8 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                 </div>
             </div>
         )},
-        { key: 'username', label: 'Username', className: 'font-mono text-sm text-brand-600' },
-        { key: 'office', label: 'Office / Department', render: (row) => (
+        { key: 'username', label: 'Username', sortKey: 'username', className: 'font-mono text-sm text-brand-600' },
+        { key: 'office', label: 'Office / Department', sortKey: 'office', render: (row) => (
             <div>
                 <div className="font-medium text-brand-800 text-sm">{row.office?.officeName || '—'}</div>
                 {row.unit?.unitName && <div className="text-2xs text-brand-500">{row.unit.unitName}</div>}
@@ -111,12 +110,24 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                 </div>
             );
         }},
-        { key: 'status', label: 'Status', render: (row) => (
-            <Badge tone={statusToneMap[row.status] || 'neutral'}>
+        { key: 'status', label: 'Status', sortKey: 'status', render: (row) => (
+            <Badge tone={accountStatusTone[row.status] || 'neutral'}>
                 {formatStatusLabel(row.status)}
             </Badge>
         )},
     ], []);
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.users.index'), {
+            search: search || undefined,
+            officeId: officeId || undefined,
+            status: status || undefined,
+            ...sortParams('name', key, direction),
+        }, { preserveState: true, preserveScroll: true });
+    };
 
     const handleFilter = (e) => {
         e.preventDefault();
@@ -124,6 +135,7 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
             search: search || undefined,
             officeId: officeId || undefined,
             status: status || undefined,
+            ...sortParams('name', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -345,6 +357,8 @@ export default function Index({ users, offices, units, roles, filters = {}, staf
                             columns={columns}
                             rows={users.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No users found"
                         />
                         <div className="mt-4">

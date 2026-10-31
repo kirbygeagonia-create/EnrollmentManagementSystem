@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel, nextSortDirection, sortParams } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Select, formatStatusLabel, nextSortDirection, sortParams, accountStatusTone } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // students.status is enum('active','inactive') — the two options this dropdown may offer. It used to list
@@ -11,11 +11,6 @@ const statusOptions = [
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
 ];
-
-const statusToneMap = {
-    active: 'success',
-    inactive: 'neutral',
-};
 
 function formatName(row) {
     if (!row) return '—';
@@ -45,7 +40,7 @@ export default function Index({ students, filters = {}, sort = null }) {
         )},
         { key: 'gender', label: 'Gender', sortKey: 'gender', render: (row) => row.gender ? formatStatusLabel(row.gender) : '—' },
         { key: 'status', label: 'Status', sortKey: 'status', render: (row) => (
-            <Badge tone={statusToneMap[row.status] || 'neutral'}>
+            <Badge tone={accountStatusTone[row.status] || 'neutral'}>
                 {formatStatusLabel(row.status)}
             </Badge>
         )},

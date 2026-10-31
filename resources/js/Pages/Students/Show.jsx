@@ -1,16 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone, statusToneFor } from '@/Components/ui';
+import { PageHeader, Card, Badge, WorkflowStepper, EmptyState, StatCard, FormSection, formatStatusLabel, enrollmentStatusTone, idRequestReasonLabel, idRequestStatusTone, accountStatusTone, statusToneFor } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 import { collegeLogoFor } from '@/officeBranding';
 import { formatCalendarDay, formatSchoolDay } from '@/Components/ui/calendarDay';
-
-// Only the two values students.status can hold. The map once carried graduated and dropped tones for a
-// column that is enum('active','inactive'), so those two lines could never be reached.
-const studentStatusToneMap = {
-    active: 'success',
-    inactive: 'neutral',
-};
 
 
 
@@ -207,7 +200,7 @@ export default function Show({ student }) {
                                 <p className="font-medium text-brand-900 truncate">{student.email || '—'}</p>
                             </FormSection>
                             <FormSection label="Status">
-                                <Badge tone={studentStatusToneMap[student.status] || 'neutral'}>
+                                <Badge tone={accountStatusTone[student.status] || 'neutral'}>
                                     {formatStatusLabel(student.status)}
                                 </Badge>
                             </FormSection>
