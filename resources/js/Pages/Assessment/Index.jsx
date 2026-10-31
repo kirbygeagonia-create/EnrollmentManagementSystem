@@ -41,16 +41,17 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
             return s ? `${s.lastName}, ${s.firstName}` : '—';
         }},
         { key: 'course', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
-        // Course, Student Type and Standing carry no sortKey: the first is reachable but not how this queue is
-        // worked, and the other two are read off the enrollment the sheet already points at. Payment Status is
-        // derived from the balance against the total on the screen, so ordering by balance orders it too. A key
-        // the handler does not list is a header that would reset while the queue stayed ordered.
-        { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
+        // Course carries no sortKey: it is reachable but not how this queue is worked. Payment Status is derived from
+        // the balance against the total on the screen, so ordering by balance orders it too. Student Type and Standing
+        // HAD no header until the owner ruled 2026-10-31 that an ENUM may be sorted, because on the school's server it
+        // orders by the declaration the school itself wrote — and the handler reaches both through the enrollment hop
+        // a name sort already builds.
+        { key: 'enrollment.studentType', label: 'Student Type', sortKey: 'studentType', render: (row) => (
             <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
                 {formatStatusLabel(row.enrollment?.studentType)}
             </Badge>
         )},
-        { key: 'enrollment.academicStanding', label: 'Standing', render: (row) => (
+        { key: 'enrollment.academicStanding', label: 'Standing', sortKey: 'academicStanding', render: (row) => (
             <Badge tone={academicStandingToneFor(row.enrollment?.academicStanding)}>
                 {academicStandingLabel(row.enrollment?.academicStanding)}
             </Badge>

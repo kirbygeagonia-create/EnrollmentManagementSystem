@@ -85,6 +85,21 @@ class AccountingController extends Controller
             'amount' => ['column' => 'studentassessments.totalAssessedAmount'],
             'balance' => ['column' => 'studentassessments.remainingBalance'],
             'date' => ['column' => 'studentassessments.assessmentDate'],
+            // Ruled 2026-10-31: an ENUM may carry a header. Both columns sit on the enrollment one hop away, spelled
+            // BARE so ListSort qualifies them with that hop's own alias rather than asking this query for an
+            // `enrollments` table it joined under a different name.
+            'studentType' => [
+                'column' => 'studentType',
+                'join' => 'enrollments',
+                'foreign' => 'enrollmentId',
+                'local' => 'studentassessments.enrollmentId',
+            ],
+            'academicStanding' => [
+                'column' => 'academicStanding',
+                'join' => 'enrollments',
+                'foreign' => 'enrollmentId',
+                'local' => 'studentassessments.enrollmentId',
+            ],
             'assessmentId' => ['column' => 'studentassessments.assessmentId'],
         ];
 

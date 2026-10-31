@@ -37,35 +37,35 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the enrollment-status badge and its formatted label"
         },
-        "AdmissionController.php:545-545#6be97461": {
-            "read": "2026-10-29",
+        "AdmissionController.php:566-566#de4a01f3": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: EnrollmentIssuer::seatHolder() consulted inside approve() — the one-seat-per-term check §13 cites"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: EnrollmentIssuer::seatHolder() consulted in approve() — the one-seat-per-term check"
         },
-        "AdmissionController.php:573-573#6be97461": {
-            "read": "2026-10-29",
+        "AdmissionController.php:594-594#de4a01f3": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the return Enrollments::create of the same action — the enrollment the approval issues"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the return Enrollments::create of the same action — the enrollment the approval issues"
         },
         "EvaluationController.php:97-99#807502a6": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: index()'s queue filter `whereIn('enrollmentStatus', [Pending, ReturnedToEvaluation])`"
         },
-        "RegistrarController.php:339-339#2cb2a9e8": {
-            "read": "2026-10-28",
+        "RegistrarController.php:368-368#6fab9279": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-28 in the file the shift moved it to: drop(): the `dropReason => required|string|min:10|max:500` rule the §13 status row names (\"the reason rule at :339\")"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the 'dropReason' => required|string|min:10|max:500 rule §13 cites for a reasoned drop"
         },
         "WorkflowService.php:255-255#5326ea5c": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: signStep(): `if (! self::maySignAcrossOffices($signedBy, (int) $step->officeId))` — the office-scope test"
         },
-        "RegistrarController.php:297-297#3e6f6b85": {
-            "read": "2026-10-29",
+        "RegistrarController.php:326-326#38768269": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the enrollmentType write — BR31's derived type, which §24 cites as written here"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the 'enrollmentType' => $enrollmentType write — BR31's derived type as §24 states it"
         },
         "ExamController.php:302-311#b7612dce": {
             "read": "2026-10-27",
@@ -87,40 +87,40 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: proposeSubjects(): the flexible-student test and the mandatory-block refusal inside it"
         },
-        "AssessmentController.php:433-444#1f7939d9": {
-            "read": "2026-10-29",
+        "AssessmentController.php:491-502#d99890c0": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: finalize()'s transaction: the stateMachine->transition at :435 and signStepByOffice at :442 — the two acts the sentence says computation alone does not perform"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: finalize()'s transaction: the transition at :493 and signStepByOffice at :500, the office-3 record name being Scholarship while the workflow label is Assessment"
         },
-        "AssessmentController.php:181-181#1f7939d9": {
-            "read": "2026-10-29",
+        "AssessmentController.php:239-239#d99890c0": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the commented-out transition inside compute() — the absence \"computation alone does not advance the enrollment\" points at"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the COMMENTED-OUT transition inside compute() — the absence \"computation alone does not advance the enrollment\" points at"
         },
-        "AccountingController.php:290-290#4945f947": {
-            "read": "2026-10-27",
+        "AccountingController.php:345-345#85b51e31": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: settleNoBalance() signs the Accounting box — the act the paragraph says the payment writes"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: settleNoBalance()'s signStepByOffice call — the signature a collected payment would have earned"
         },
-        "Registrar/Index.jsx:93-93#fea217db": {
-            "read": "2026-10-27",
+        "Registrar/Index.jsx:109-109#ed30e736": {
+            "read": "2026-10-25",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: phaseBadge=\"Phase 5 · Registrar Central Desk\" — the badge the sentence quotes, re-read with a numbered reader after pass 243 refused itself"
+            "by": "direct read: :93 is the phaseBadge the sentence quotes (:92 subtitle, :94 officeBadge) and :134-135 the summary control; the suspected off-by-one was disproved by opening the file"
         },
         "AuthServiceProvider.php:198-198#2c502043": {
             "read": "2026-10-27",
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: the clinic gate's body: `return app(ClinicPolicy::class)->record($user, $enrollment);`"
         },
-        "IDController.php:185-185#1b411261": {
-            "read": "2026-10-29",
+        "IDController.php:219-219#9061c4a2": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the 'bloodType' => $validated['bloodType'] write in create() — §30's self-declared medical fact, one source"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the 'bloodType' => $validated['bloodType'] write — §30's self-declared medical fact, one source"
         },
-        "SendWorkflowNotification.php:54-70#a08029e1": {
-            "read": "2026-10-27",
+        "SendWorkflowNotification.php:59-75#fbc15783": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: the signature notification's notify() call, from its key through the progress payload"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the notify() call and its payload fields: addressed from WorkflowInbox::actors(), stepOrder/stepLabel/signedBy/phase/signed/total/lastDesk"
         },
         "NotificationController.php:33-34#becb93d0": {
             "read": "2026-10-27",
@@ -137,15 +137,10 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s Staffusers filter"
         },
-        "SendWorkflowNotification.php:57-57#64dcc49e": {
-            "read": "2026-10-25",
+        "NotificationSeeder.php:39-43#91e82c56": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "direct read: :54-70 is the signature notification and :57 sits in its argument list (WorkflowInbox::actors, the enrollment, the workflow, the message)"
-        },
-        "NotificationSeeder.php:39-43#30c84933": {
-            "read": "2026-10-25",
-            "verdict": "true",
-            "by": "direct read: :28-31 and :39-43 pass a real array, which is the row's claim"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the seeded notice row: message, enrollmentId null, stepLabel, signedBy — the shape §19.4's bell-row sentence reads off"
         },
         "AuthenticatedLayout.jsx:85-113#e4d4c5cb": {
             "read": "2026-10-27",
@@ -157,45 +152,45 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: markAllRead()'s whole update, including the `read_at` write at :68"
         },
-        "RegistrarController.php:389-389#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:418-418#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: printClassCards()'s signature — §23's print-log row lists it among the three desk pages"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printClassCards()'s signature — one of the three desk pages §25.1 lists"
         },
-        "RegistrarController.php:420-420#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:449-449#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: printSubjectLoad()'s signature — the third of the three desk pages"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printSubjectLoad()'s signature — the third desk page"
         },
-        "RegistrarController.php:444-444#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:473-473#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadCertificate()'s signature — one of the four generated PDFs §23 names"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadCertificate()'s signature — one of the four generated PDFs"
         },
-        "RegistrarController.php:459-459#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:488-488#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadEnrollmentForm()'s signature"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadEnrollmentForm()'s signature"
         },
-        "RegistrarController.php:471-471#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:500-500#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadClassCard()'s signature, opened on the multi-line parameter list"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadClassCard()'s signature, opened on its multi-line parameter list"
         },
-        "RegistrarController.php:497-497#8692f3aa": {
-            "read": "2026-10-29",
+        "RegistrarController.php:526-526#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadSubjectLoad()'s signature"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadSubjectLoad()'s signature"
         },
-        "ClearanceController.php:412-412#8692f3aa": {
-            "read": "2026-10-29",
+        "ClearanceController.php:435-435#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadSlip()'s signature — moved from 411 by this batch's +1 line above it"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadSlip()'s signature — moved here by this batch's +1 line above it in an earlier pass and +0 now"
         },
-        "BlockingController.php:571-571#8692f3aa": {
-            "read": "2026-10-29",
+        "BlockingController.php:571-571#a4255a73": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule"
         },
         "ExamController.php:439-446#90395818": {
             "read": "2026-10-27",
@@ -297,50 +292,50 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: approvalBlockers() end to end: signature :67, `return $blockers;` :158 — the method grew past its old :152 with the G-4 examination conditions"
         },
-        "RegistrarController.php:444-444#4b94cf32": {
-            "read": "2026-10-29",
+        "RegistrarController.php:473-473#42377d37": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadCertificate()'s signature — one of the four generated PDFs §23 names"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadCertificate()'s signature — one of the four generated PDFs"
         },
-        "PrintService.php:115-115#4b94cf32": {
-            "read": "2026-10-27",
+        "PrintService.php:115-115#42377d37": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: recordIssue()'s signature — the one writer behind every desk print"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: recordIssue()'s signature — the one writer behind every desk print"
         },
-        "RegistrarController.php:471-471#5cded496": {
-            "read": "2026-10-29",
+        "RegistrarController.php:500-500#7ea26f78": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadClassCard()'s signature, opened on the multi-line parameter list"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadClassCard()'s signature, opened on its multi-line parameter list"
         },
-        "PrintService.php:254-254#5cded496": {
-            "read": "2026-10-27",
+        "PrintService.php:254-254#7ea26f78": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-27 from the numbered span the checker printed: printClassCard()'s signature, the per-subject render the class-card row names"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printClassCard()'s signature — the class-card paper"
         },
-        "RegistrarController.php:497-497#743ed2eb": {
-            "read": "2026-10-29",
+        "RegistrarController.php:526-526#87a9165a": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadSubjectLoad()'s signature"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadSubjectLoad()'s signature"
         },
-        "ClearanceController.php:412-412#5eae01ea": {
-            "read": "2026-10-29",
+        "ClearanceController.php:435-435#a6a60eb3": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadSlip()'s signature — moved from 411 by this batch's +1 line above it"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadSlip()'s signature — moved here by this batch's +1 line above it in an earlier pass and +0 now"
         },
         "BlockingController.php:571-571#2c47e654": {
-            "read": "2026-10-29",
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: downloadBlockSchedule()'s signature — §23's print action for the block schedule"
         },
-        "RegistrarController.php:412-412#86bf64f9": {
-            "read": "2026-10-29",
+        "RegistrarController.php:418-418#13bb7fa6": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the Inertia render of Registrar/PrintClassCards — the component the desk page answers with"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printClassCards()'s signature — one of the three desk pages §25.1 lists"
         },
-        "RegistrarController.php:435-435#86bf64f9": {
-            "read": "2026-10-29",
+        "RegistrarController.php:464-464#13bb7fa6": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the Inertia render of Registrar/PrintSubjectLoad"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the Inertia render of Registrar/PrintSubjectLoad — the component that page answers with"
         },
         "PrintCertificate.jsx:119-119#981ad6e8": {
             "read": "2026-10-25",
@@ -407,10 +402,10 @@
             "verdict": "true",
             "by": "lane70-read-span: :49 setChromePath, :115 recordIssue signature, :254 printClassCard signature"
         },
-        "Studentclearances.php:87-93#9facce2b": {
-            "read": "2026-10-29",
+        "Studentclearances.php:87-93#a5c304db": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the P-17 ruled comment and termEnrollment()'s single first() branch — a slip names its own term's enrollment or nothing"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the P-17 ruled comment and termEnrollment()'s single first() branch — a slip names its own term's enrollment or nothing"
         },
         "enrollment-form.blade.php:164-173#aefa3200": {
             "read": "2026-10-25",
@@ -437,20 +432,20 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: recordCourseSpecific(): the BR9/C-4/C-5 comment and the `if ($course->requiresEntranceExam)` it ends on"
         },
-        "RegistrarController.php:297-297#f3cea463": {
-            "read": "2026-10-29",
+        "RegistrarController.php:326-326#7e899cc5": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the unread-list tool printed: the enrollmentType write — BR31's derived type, which §24 cites as written here"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the 'enrollmentType' => $enrollmentType write — BR31's derived type as §24 states it"
         },
-        "RegistrarController.php:389-389#a97e9c52": {
-            "read": "2026-10-29",
+        "RegistrarController.php:418-418#232bb39b": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: printClassCards()'s signature — §23's print-log row lists it among the three desk pages"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printClassCards()'s signature — one of the three desk pages §25.1 lists"
         },
-        "RegistrarController.php:420-420#a97e9c52": {
-            "read": "2026-10-29",
+        "RegistrarController.php:449-449#232bb39b": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: printSubjectLoad()'s signature — the third of the three desk pages"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: printSubjectLoad()'s signature — the third desk page"
         },
         "BlockingController.php:328-334#9bd17ab5": {
             "read": "2026-10-27",
@@ -502,12 +497,12 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: stepsFor(): $includesAssessment, the seven-box list and the array_filter that makes six"
         },
-        "AccountingController.php:172-232#db332040": {
-            "read": "2026-10-25",
+        "AccountingController.php:227-287#c0927c6a": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "lane70-read-span: :172-232 is record() and :188 is `amount => required|numeric|min:0.01`, the zero rule the sentence quotes; :290 is settleNoBalance() signing the box"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: record()'s whole body, from its signature at :227 to the 'remainingBalance' => $newBalance write at :287 — both endpoints byte-checked against the previous layout"
         },
-        "app/Http/Controllers/StudentController.php:49-49#a2e43dca": {
+        "app/Http/Controllers/StudentController.php:73-73#48e41c25": {
             "read": "2026-10-25",
             "verdict": "true",
             "by": "direct read: :49 echoes both filter keys the row names"
@@ -517,15 +512,15 @@
             "verdict": "true",
             "by": "read 2026-10-27 from the numbered span the checker printed: results() echoing both filter keys — the same claim §28's G-15 row makes at :476, spelled with the path here"
         },
-        "AssessmentController.php:161-169#df1b8df4": {
-            "read": "2026-10-29",
+        "AssessmentController.php:219-227#2be91b36": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the remainingBalance arithmetic and Studentassessments::create's four money columns — §24's row names the columns the server holds"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the remainingBalance arithmetic and Studentassessments::create's money columns"
         },
-        "AssessmentController.php:153-159#df1b8df4": {
-            "read": "2026-10-29",
+        "AssessmentController.php:211-217#2be91b36": {
+            "read": "2026-10-31",
             "verdict": "true",
-            "by": "read 2026-10-29 in the numbered span the G43 re-point left it in: the BR19 note with $totalScholarshipCoverage and $totalWaived written as 0 — the grant is not auto-awarded here"
+            "by": "read 2026-10-31 in the span this batch's re-number left it in: the same BR19 comment and the two zero writes in compute() — the row the §24 columns claim cites"
         }
     }
 }

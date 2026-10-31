@@ -260,12 +260,55 @@ $read30 = [
     'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single first() branch — a slip names its own term\'s enrollment or nothing',
 ];
 
+// Rows re-opened on 2026-10-31 by lane 107. Two causes again: this batch added lines to RegistrarController.php
+// (+6), AssessmentController.php (+17) and AccountingController.php (+15), so the shift tool re-numbered every cited
+// window below the insert — and re-numbering rewrites the 240-character window a NEIGHBOURING pointer hashes, which
+// is why rows in ten files this batch never opened aged with no line moving under them. Every span below was opened
+// today through lane70-read-unread.php / lane70-read-span.php and the verdict is what that line says; none was
+// carried from an earlier date without looking.
+$read31 = [
+    'RegistrarController.php:326-326' => 'the \'enrollmentType\' => $enrollmentType write — BR31\'s derived type as §24 states it',
+    'RegistrarController.php:368-368' => 'the \'dropReason\' => required|string|min:10|max:500 rule §13 cites for a reasoned drop',
+    'RegistrarController.php:418-418' => 'printClassCards()\'s signature — one of the three desk pages §25.1 lists',
+    'RegistrarController.php:449-449' => 'printSubjectLoad()\'s signature — the third desk page',
+    'RegistrarController.php:464-464' => 'the Inertia render of Registrar/PrintSubjectLoad — the component that page answers with',
+    'RegistrarController.php:473-473' => 'downloadCertificate()\'s signature — one of the four generated PDFs',
+    'RegistrarController.php:488-488' => 'downloadEnrollmentForm()\'s signature',
+    'RegistrarController.php:500-500' => 'downloadClassCard()\'s signature, opened on its multi-line parameter list',
+    'RegistrarController.php:526-526' => 'downloadSubjectLoad()\'s signature',
+    'AssessmentController.php:153-159' => 'the BR19 note with $totalScholarshipCoverage and $totalWaived written as 0 — the grant is not auto-awarded here',
+    'AssessmentController.php:211-217' => 'the same BR19 comment and the two zero writes in compute() — the row the §24 columns claim cites',
+    'AssessmentController.php:219-227' => 'the remainingBalance arithmetic and Studentassessments::create\'s money columns',
+    'AssessmentController.php:239-239' => 'the COMMENTED-OUT transition inside compute() — the absence "computation alone does not advance the enrollment" points at',
+    'AssessmentController.php:491-502' => 'finalize()\'s transaction: the transition at :493 and signStepByOffice at :500, the office-3 record name being Scholarship while the workflow label is Assessment',
+    'AccountingController.php:227-287' => 'record()\'s whole body, from its signature at :227 to the \'remainingBalance\' => $newBalance write at :287 — both endpoints byte-checked against the previous layout',
+    'AccountingController.php:345-345' => 'settleNoBalance()\'s signStepByOffice call — the signature a collected payment would have earned',
+    'AdmissionController.php:566-566' => 'EnrollmentIssuer::seatHolder() consulted in approve() — the one-seat-per-term check',
+    'AdmissionController.php:594-594' => 'the return Enrollments::create of the same action — the enrollment the approval issues',
+    'BlockingController.php:571-571' => 'downloadBlockSchedule()\'s signature — §23\'s print action for the block schedule',
+    'ClearanceController.php:435-435' => 'downloadSlip()\'s signature — moved here by this batch\'s +1 line above it in an earlier pass and +0 now',
+    'IDController.php:219-219' => 'the \'bloodType\' => $validated[\'bloodType\'] write — §30\'s self-declared medical fact, one source',
+    'NotificationSeeder.php:39-43' => 'the seeded notice row: message, enrollmentId null, stepLabel, signedBy — the shape §19.4\'s bell-row sentence reads off',
+    'PrintService.php:115-115' => 'recordIssue()\'s signature — the one writer behind every desk print',
+    'PrintService.php:254-254' => 'printClassCard()\'s signature — the class-card paper',
+    'SendWorkflowNotification.php:59-75' => 'the notify() call and its payload fields: addressed from WorkflowInbox::actors(), stepOrder/stepLabel/signedBy/phase/signed/total/lastDesk',
+    'StudentController.php:73-73' => 'the \'filters\' => [ echo in the directory payload — search, the applied status, and the applied order',
+    'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single first() branch — a slip names its own term\'s enrollment or nothing',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read31 as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span this batch\'s re-number left it in: '.$t];
+
+            break;
+        }
+    }
     foreach ($read30 as $p => $t) {
         if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-29', 'by' => 'read 2026-10-29 in the numbered span the G43 re-point left it in: '.$t];

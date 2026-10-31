@@ -22,12 +22,14 @@ export default function Index({ enrollments, readiness = {}, filters = {}, sort 
         )},
         { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
         { key: 'yearLevel', label: 'Year Level', sortKey: 'yearLevel', render: (row) => formatYearLevel(row.yearLevel) },
-        { key: 'studentType', label: 'Student Type', render: (row) => (
+        // Student Type and Standing are sortable even though both are ENUM columns: on the school's server an ENUM
+        // sorts in the order the values were declared, which is the order the school wrote down.
+        { key: 'studentType', label: 'Student Type', sortKey: 'studentType', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType?.value || row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType?.value || row.studentType)}
             </Badge>
         )},
-        { key: 'academicStanding', label: 'Final Standing', render: (row) => (
+        { key: 'academicStanding', label: 'Final Standing', sortKey: 'academicStanding', render: (row) => (
             <Badge tone={academicStandingToneFor(row.academicStanding?.value || row.academicStanding)}>
                 {academicStandingLabel(row.academicStanding?.value || row.academicStanding)}
             </Badge>

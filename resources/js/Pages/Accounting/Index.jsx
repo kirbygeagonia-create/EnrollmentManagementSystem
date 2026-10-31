@@ -37,15 +37,17 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
             const s = row.enrollment?.student;
             return s ? `${s.lastName}, ${s.firstName} ${s.middleName ? s.middleName.charAt(0) + '.' : ''}` : '—';
         }},
-        // Course, Student Type and Standing carry no sortKey: the first names a relation the cashier does not work
-        // by, and the other two belong to the enrollment the sheet points at rather than to the row listed here.
+        // Course carries no sortKey: it names a relation the cashier does not work by. Student Type and Standing did
+        // withhold a header until the owner ruled 2026-10-31 that an ENUM may be sorted — the school's server orders
+        // it by the declaration the school wrote — and the handler reaches both through the enrollment hop a name
+        // sort already builds. Payment Status stays out because the screen derives it from the balance.
         { key: 'enrollment.course.name', label: 'Course', render: (row) => row.enrollment?.course?.courseName || '—' },
-        { key: 'enrollment.studentType', label: 'Student Type', render: (row) => (
+        { key: 'enrollment.studentType', label: 'Student Type', sortKey: 'studentType', render: (row) => (
             <Badge tone={studentTypeTone[row.enrollment?.studentType] || 'neutral'}>
                 {formatStatusLabel(row.enrollment?.studentType)}
             </Badge>
         )},
-        { key: 'enrollment.academicStanding', label: 'Standing', render: (row) => (
+        { key: 'enrollment.academicStanding', label: 'Standing', sortKey: 'academicStanding', render: (row) => (
             <Badge tone={academicStandingToneFor(row.enrollment?.academicStanding)}>
                 {academicStandingLabel(row.enrollment?.academicStanding)}
             </Badge>

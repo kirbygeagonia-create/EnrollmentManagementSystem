@@ -21,6 +21,7 @@ use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -110,6 +111,8 @@ class AccountingQueueSortTest extends TestCase
         float $balance,
         string $date,
         float $covered = 0,
+        string $studentType = 'firstYear',
+        string $academicStanding = 'regular',
     ): Studentassessments {
         $student = Students::create([
             'schoolIdNumber' => $schoolId,
@@ -137,9 +140,9 @@ class AccountingQueueSortTest extends TestCase
             'courseId' => $this->course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => 1,
-            'studentType' => StudentType::FirstYear,
+            'studentType' => $studentType,
             'enrollmentType' => EnrollmentType::New,
-            'academicStanding' => 'regular',
+            'academicStanding' => $academicStanding,
             'enrollmentStatus' => EnrollmentStatus::Assessed,
             'evaluatedBy' => $this->cashier->userId,
         ]);
@@ -321,13 +324,45 @@ class AccountingQueueSortTest extends TestCase
 
         $available = $this->sort($this->actingAs($this->cashier)->get(route('accounting.index')))['available'];
 
-        // 'Covered By' prints a SUM of two columns, and Course, Student Type and Standing belong to the enrollment
-        // or the program rather than to the row the cashier collects against. Absent from the list rather than
-        // offered and ignored, because a header the handler would not obey is the same defect §28.3 owns for filters.
-        foreach (['coveredBy', 'course', 'studentType', 'academicStanding'] as $derived) {
+        // 'Covered By' prints a SUM of two columns and Course names a program the cashier does not work by, so the
+        // query cannot answer either. Student Type and Standing left this list on 2026-10-31, when the owner ruled
+        // that an ENUM may be sorted: they sit on the enrollment one hop away, and the hop is what the surname sort
+        // already builds. Absent rather than offered-and-ignored is still the rule for what remains here.
+        foreach (['coveredBy', 'course'] as $derived) {
             $this->assertNotContains($derived, $available, "{$derived} is not a column this query orders");
         }
-        $this->assertSame(['name', 'schoolId', 'amount', 'balance', 'date', 'assessmentId'], $available);
+        $this->assertSame(
+            ['name', 'schoolId', 'amount', 'balance', 'date', 'studentType', 'academicStanding', 'assessmentId'],
+            $available
+        );
+    }
+
+    #[Test]
+    public function the_enum_headers_order_the_words_this_connection_sorts_them_in(): void
+    {
+        // Same shape as the assessment desk: a bare column plus the enrollments hop, so the sequence the screen
+        // shows is the one this connection holds rather than the one whoever wrote the test had in mind.
+        $this->sheet('Zulueta', 'AC-010', 7000, 1000, '2026-09-01', 0, 'transferee', 'irregular');
+        $this->sheet('Bautista', 'AC-011', 5000, 3000, '2026-09-02', 0, 'firstYear', 'regular');
+        $this->sheet('Magsaysay', 'AC-012', 6000, 2000, '2026-09-03', 0, 'continuing', 'irregular');
+
+        $types = $this->actingAs($this->cashier)
+            ->get(route('accounting.index', ['sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'studentType', [
+                StudentType::FirstYear->value,
+                StudentType::Continuing->value,
+                StudentType::Transferee->value,
+            ]),
+            array_map(fn (array $r): string => (string) ($r['enrollment']['studentType'] ?? ''), $this->rows($types))
+        );
+
+        $standings = $this->actingAs($this->cashier)
+            ->get(route('accounting.index', ['sort' => 'academicStanding', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'academicStanding', ['regular', 'irregular', 'irregular']),
+            array_map(fn (array $r): string => (string) ($r['enrollment']['academicStanding'] ?? ''), $this->rows($standings))
+        );
     }
 
     #[Test]
@@ -370,5 +405,35 @@ class AccountingQueueSortTest extends TestCase
 
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
+    }
+
+    #[Test]
+    public function an_order_that_joins_a_relation_ships_the_rows_own_columns_and_nothing_else(): void
+    {
+        // The cashier queue joins the same two hops under a Name order, over the row a receipt is written against.
+        // The join exists only to order the page, and a builder with no select list emits `select *`, which then
+        // answers the hop's columns too: this row used to arrive carrying the student's passwordHash, birthdate
+        // and contact number, and no $hidden on the Students model can withhold them, because the value is not
+        // riding on a Students model — it is an attribute of the row being listed. The screen reads those fields
+        // off its own eager load, so pinning the select changes nothing the desk asks for and everything it ships.
+        $this->sheet('Zulueta', 'AC-020', 7000, 1000, '2026-09-01');
+        $this->sheet('Bautista', 'AC-021', 5000, 3000, '2026-09-02');
+
+        $plain = $this->rows($this->actingAs($this->cashier)->get(route('accounting.index')));
+        $twoHop = $this->rows($this->actingAs($this->cashier)->get(route('accounting.index', ['sort' => 'name', 'direction' => 'asc'])));
+        $oneHop = $this->rows($this->actingAs($this->cashier)->get(route('accounting.index', ['sort' => 'studentType', 'direction' => 'asc'])));
+
+        $keys = function (array $rows): array {
+            $out = array_keys($rows[0]);
+            sort($out);
+
+            return $out;
+        };
+
+        $this->assertSame($keys($plain), $keys($twoHop), 'a Name order must not change which columns a fee-sheet row carries');
+        $this->assertSame($keys($plain), $keys($oneHop), 'a Student Type order must not change which columns a fee-sheet row carries');
+        foreach (['passwordHash', 'birthdate', 'contactNumber'] as $leaked) {
+            $this->assertArrayNotHasKey($leaked, $twoHop[0], "{$leaked} reached the payload through the join");
+        }
     }
 }

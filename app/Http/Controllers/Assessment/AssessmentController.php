@@ -84,6 +84,23 @@ class AssessmentController extends Controller
             ],
             'amount' => ['column' => 'studentassessments.totalAssessedAmount'],
             'balance' => ['column' => 'studentassessments.remainingBalance'],
+            // Ruled 2026-10-31: a desk may sort an ENUM — on the school's server it orders by the declaration the
+            // school wrote. These two live on the enrollment a fee sheet points at, so they travel through the hop
+            // the surname sort already builds. The column is spelled BARE on purpose: a hop is joined under an alias
+            // (`srt0`) and ListSort obeys an already-qualified name as written, so `enrollments.studentType` here
+            // would ask this query for a table it never joined — a 500 at the desk, not a wrong order.
+            'studentType' => [
+                'column' => 'studentType',
+                'join' => 'enrollments',
+                'foreign' => 'enrollmentId',
+                'local' => 'studentassessments.enrollmentId',
+            ],
+            'academicStanding' => [
+                'column' => 'academicStanding',
+                'join' => 'enrollments',
+                'foreign' => 'enrollmentId',
+                'local' => 'studentassessments.enrollmentId',
+            ],
             'assessmentId' => ['column' => 'studentassessments.assessmentId'],
         ];
 

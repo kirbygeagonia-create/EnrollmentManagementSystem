@@ -21,6 +21,7 @@ use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -100,8 +101,14 @@ class AssessmentQueueSortTest extends TestCase
     /**
      * One student, one Evaluated enrollment, one fee sheet with its own two amounts.
      */
-    private function sheet(string $lastName, string $schoolId, float $assessed, float $owing): Studentassessments
-    {
+    private function sheet(
+        string $lastName,
+        string $schoolId,
+        float $assessed,
+        float $owing,
+        string $studentType = 'firstYear',
+        string $academicStanding = 'regular',
+    ): Studentassessments {
         $student = Students::create([
             'schoolIdNumber' => $schoolId,
             'lastName' => $lastName,
@@ -128,9 +135,9 @@ class AssessmentQueueSortTest extends TestCase
             'courseId' => $this->course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => 1,
-            'studentType' => StudentType::FirstYear,
+            'studentType' => $studentType,
             'enrollmentType' => EnrollmentType::New,
-            'academicStanding' => 'regular',
+            'academicStanding' => $academicStanding,
             'enrollmentStatus' => EnrollmentStatus::Evaluated,
             'evaluatedBy' => $this->officer->userId,
         ]);
@@ -298,14 +305,47 @@ class AssessmentQueueSortTest extends TestCase
 
         $available = $this->sort($this->actingAs($this->officer)->get(route('assessment.index')))['available'];
 
-        // Payment Status is painted on the screen from the balance against the total, Course is a name the desk
-        // reads but does not work the queue by, and Student Type and Standing belong to the enrollment rather than
-        // to the sheet. A header the handler would not obey is the defect §28.3 owns for filters, so the keys are
-        // absent rather than quietly ignored.
-        foreach (['paymentStatus', 'course', 'studentType', 'academicStanding'] as $notOffered) {
+        // Payment Status is painted on the screen from the balance against the total, so no order over the sheet can
+        // answer it, and Course is a name the desk reads but does not work the queue by. Student Type and Standing
+        // WERE in this list until the owner ruled 2026-10-31 that an ENUM may be sorted: they live on the enrollment
+        // the sheet points at, which is one hop the surname sort already builds — reachability was the rule all
+        // along, and the driver was never a good reason.
+        foreach (['paymentStatus', 'course'] as $notOffered) {
             $this->assertNotContains($notOffered, $available, "{$notOffered} is not a column this query orders");
         }
-        $this->assertSame(['name', 'schoolId', 'amount', 'balance', 'assessmentId'], $available);
+        $this->assertSame(
+            ['name', 'schoolId', 'amount', 'balance', 'studentType', 'academicStanding', 'assessmentId'],
+            $available
+        );
+    }
+
+    #[Test]
+    public function the_enum_headers_reach_the_enrollment_through_the_same_hop_and_order_the_words_this_connection_holds(): void
+    {
+        // A bare column name with a hop is the shape here: ListSort qualifies it with the join's own alias, so this
+        // case is also the only thing that proves the handler did not spell `enrollments.studentType` and ask the
+        // query for a table it never joined — which would be a 500 at the desk, not a wrong sequence.
+        $this->sheet('Zulueta', 'AS-010', 7000, 1000, 'transferee', 'irregular');
+        $this->sheet('Bautista', 'AS-011', 5000, 3000, 'firstYear', 'regular');
+        $this->sheet('Magsaysay', 'AS-012', 6000, 2000, 'continuing', 'irregular');
+
+        $types = $this->actingAs($this->officer)
+            ->get(route('assessment.index', ['sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'studentType', [
+                StudentType::FirstYear->value,
+                StudentType::Continuing->value,
+                StudentType::Transferee->value,
+            ]),
+            array_map(fn (array $r): string => (string) ($r['enrollment']['studentType'] ?? ''), $this->rows($types))
+        );
+
+        $standings = $this->actingAs($this->officer)
+            ->get(route('assessment.index', ['sort' => 'academicStanding', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'academicStanding', ['regular', 'irregular', 'irregular']),
+            array_map(fn (array $r): string => (string) ($r['enrollment']['academicStanding'] ?? ''), $this->rows($standings))
+        );
     }
 
     #[Test]
@@ -339,5 +379,35 @@ class AssessmentQueueSortTest extends TestCase
 
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
+    }
+
+    #[Test]
+    public function an_order_that_joins_a_relation_ships_the_rows_own_columns_and_nothing_else(): void
+    {
+        // The fee sheet is the row and the student sits two hops away — the widest join this helper builds.
+        // The join exists only to order the page, and a builder with no select list emits `select *`, which then
+        // answers the hop's columns too: this row used to arrive carrying the student's passwordHash, birthdate
+        // and contact number, and no $hidden on the Students model can withhold them, because the value is not
+        // riding on a Students model — it is an attribute of the row being listed. The screen reads those fields
+        // off its own eager load, so pinning the select changes nothing the desk asks for and everything it ships.
+        $this->sheet('Zulueta', 'AS-020', 7000, 1000);
+        $this->sheet('Bautista', 'AS-021', 5000, 3000);
+
+        $plain = $this->rows($this->actingAs($this->officer)->get(route('assessment.index')));
+        $twoHop = $this->rows($this->actingAs($this->officer)->get(route('assessment.index', ['sort' => 'name', 'direction' => 'asc'])));
+        $oneHop = $this->rows($this->actingAs($this->officer)->get(route('assessment.index', ['sort' => 'studentType', 'direction' => 'asc'])));
+
+        $keys = function (array $rows): array {
+            $out = array_keys($rows[0]);
+            sort($out);
+
+            return $out;
+        };
+
+        $this->assertSame($keys($plain), $keys($twoHop), 'a Name order must not change which columns a fee-sheet row carries');
+        $this->assertSame($keys($plain), $keys($oneHop), 'a Student Type order must not change which columns a fee-sheet row carries');
+        foreach (['passwordHash', 'birthdate', 'contactNumber'] as $leaked) {
+            $this->assertArrayNotHasKey($leaked, $twoHop[0], "{$leaked} reached the payload through the join");
+        }
     }
 }

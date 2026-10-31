@@ -1653,7 +1653,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   header button renders only when `sort.available` contains its key, so a screen cannot offer an order the save
   ignores. `$stable` (the row's own key) is a tie-break, not decoration: without it two rows equal on Year Level can
   shuffle between pages, which reads to a desk as a record duplicated or lost. Pin:
-  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (6 cases, 21 assertions), proved by
+  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (8 cases, 28 assertions), proved by
   `php storage/app/scratch/mutate-g40-list-sort-tests.php` (4 legs: allow-list bypassed, direction passed through,
   sort never echoed, sort never applied — each must make its named case report `1 failed`). **One leg survived on
   its first run and the fixture was the defect**: the three students were created Zulueta, Magsaysay, Bautista, so
@@ -1738,8 +1738,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   model), offer the ENUM, and never type its order. The cases the ruling added, each named on the same line as the
   figures its delivered run reported: `ClinicQueueSortTest.php` (11 cases / 36 assertions) for type and standing,
   `IDQueueSortTest.php` (11 cases / 41 assertions) for the same two on the ID desk, and
-  `RegistrarQueueSortTest.php` (6 cases / 21 assertions) for the Status header that had been offered since the first
-  wiring and answered by nothing. Two of the eleven legs of
+  `RegistrarQueueSortTest.php`, whose figure was re-taken from the delivered run at 8 cases / 28 assertions and now
+  carries three things rather than one — the Status header that had been offered since the first wiring and answered
+  by nothing, that queue's own Student Type and Final Standing headers under the same ruling, and the payload case
+  for its one-hop join (§28.3 G-51). Two of the eleven legs of
   `mutate-g40-clinic-sort-tests.php` plant the JOIN rather than a column (`one-hop-spec-read-as-no-join`,
   `surname-spec-loses-its-join`), which is the shape a wrong-column-only harness never sees: a surname ordered with no
   join does not print a wrong sequence, it fails to build a list at all. **And the browser read was bounded rather
@@ -1792,6 +1794,39 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   scratch MySQL schema with `DB_CONNECTION` pinned, the way lane 79 records, every sort class passes on MySQL 8 as
   well as here — and no total is quoted for that rehearsal, because it is a surface the runner cannot read (lane 58's
   one-surface rule, which this file has been caught by before).
+- **A sort that joins a relation widens the row it lists, unless the select is pinned** (lane 107, §28.3 G-51).
+  `ListSort` joins the table that holds an ordered column so the ORDER can be taken from it — and a builder with no
+  select list emits `select *`, which then answers the joined table's columns too. On the Assessment and Accounting
+  queues the surname order joins `enrollments` and `students`, so every fee-sheet row shipped the student's
+  `passwordHash`, `birthdate` and `contactNumber` to the desk. `Students::$hidden` hides the hash on its own model,
+  and that is precisely why G-48 read as closed while this stayed invisible: the value was not riding on a `Students`
+  model, it was an attribute of the row being listed. The helper now pins the select to the base model's own columns
+  whenever it adds a hop, so a desk row is one shape whatever header was clicked. Three readings worth keeping.
+  **(a)** Two of this batch's own ENUM sequence cases had been GREEN because they read the leaked top-level column;
+  they went red the moment the pin landed and were re-cut to read `enrollment.studentType` — where the screen already
+  reads it — so the leak, not the order, was what had made them pass. **(b)** The claim was in a docblock: "the
+  select list stays the model's own (`table.*`)" was written as a property of the mechanism and nothing made it true,
+  which is lane 71's class reached from the helper side. **(c)** A column on a hopped screen is spelled BARE, because
+  a hop is joined under a private alias (`srt0`) and `ListSort` obeys an already-qualified name as written —
+  `'column' => 'enrollments.studentType'` on those screens asks the query for a table it never joined and answers a
+  500 at the desk, not a wrong sequence; `mutate-g40-enum-offer-and-select-pin.php` plants that spelling too. Pinned
+  by a case on each of the three queues whose order can join, and by the same harness's legs that withhold the ENUM
+  key again on each. **A harness must restore between legs**: the first cut planted a mutation, ran the next leg
+  against the mutated file, reported "needle matched 0" on its own second pin leg, and came back with a red final
+  control over a clean tree — one plant poisoning its sibling's measurement, in the instrument rather than the suite.
+  **The class is bounded, and that was measured rather than assumed:** no other join in `app/` feeds a *model payload*
+  without naming its columns — the ID desk's first-request counts, the years-completed scope on `Enrollments` and the
+  standing service's grade-history read each state their own select, and every other `->join(` in the tree sits
+  inside an aggregate or a `whereHas` subquery — so pinning the select in the shared helper is the whole repair, not
+  one instance of a family. **Prove a payload claim on the wire, not only in the suite**:
+  `storage/app/scratch/lane107-probe-live-queue-payload.php` asks the three queues through the HTTP stack on live
+  `ems` and reports WHERE each sensitive field sits, because the first version searched `json_encode($rows)` and
+  called the queue's own eager-loaded `enrollment.student.birthdate` a G-51-shaped leak — it is not, and the two
+  claims must be printed apart (lane 62's "no ID on this paper" is not "this record's ID is absent"). That read
+  confirmed `passwordHash` absent everywhere and one column set under every order, and it is what found **G-52**,
+  registered open: the queues load the whole student to paint a name, so a cashier receives birthdate and contact
+  number that no screen of theirs reads — three `with` clauses, no school ruling needed, deferred out of this batch
+  only because each handler moved ages its citations again.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never
@@ -2423,11 +2458,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **Printing the queue is what made it readable, and it found the twenty-third wrong target immediately.** §28's
   row 9 and §27's zero-balance deadlock row both name a checklist key **`registrar_ready`** — a key that exists
   nowhere in `app/`, `resources/`, `routes/`, `tools/`, `tests/`, the guides or CI. The array at
-  `RegistrarController.php:151-162` holds exactly seven keys and the one they mean is
-  `registrarApprovalPending` at **:156**, false precisely when the next pending box is another office — so the
+  `RegistrarController.php:211-223` holds exactly seven keys and the one they mean is
+  `registrarApprovalPending` at **:216**, false precisely when the next pending box is another office — so the
   *claim* was right and the identifier it quoted was invented, which no bounds check can see because both line
   numbers are live in the named file. Pass 227 renamed both occurrences (`expect=2`, and it asserts the seven-key
-  count before writing). The reading aid that turned the row up is
+  count before writing). **That pointer was re-taken twice, and the second time says more than the first.** The
+  batch that added six lines to this controller made it land on a blank line, which is the one shape
+  `repo-file-line-citations.php` refuses — but a blank line is not why the number was wrong: the array had already
+  moved some fifty-nine lines down through earlier batches while the document still named its old position, so every
+  run between then and now cleared a pointer that sat on live code belonging to `show()`'s render array. A bounds
+  check reports the accident, not the age. The reading aid that turned the row up is
   `storage/app/scratch/lane70-read-queue.php`: for a pointer the checker cannot bind, it prints the enclosing
   `public function` of the cited line next to the document's own sentence, which is the check to run when the
   prose names no identifier at all.

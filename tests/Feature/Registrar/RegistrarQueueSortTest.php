@@ -93,8 +93,13 @@ class RegistrarQueueSortTest extends TestCase
      * The status is a parameter because the queue holds two of them: the Registrar works `assessed` and `paid`
      * records together, and the Status header is only meaningful if a fixture can put both in one list.
      */
-    private function assessed(string $lastName, int $yearLevel = 1, EnrollmentStatus $status = EnrollmentStatus::Assessed): Enrollments
-    {
+    private function assessed(
+        string $lastName,
+        int $yearLevel = 1,
+        EnrollmentStatus $status = EnrollmentStatus::Assessed,
+        string $studentType = 'firstYear',
+        string $academicStanding = 'regular',
+    ): Enrollments {
         $student = Students::create([
             'schoolIdNumber' => 'SORT-'.strtoupper(substr(uniqid(), -6)),
             'lastName' => $lastName,
@@ -119,8 +124,9 @@ class RegistrarQueueSortTest extends TestCase
             'courseId' => $this->course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => $yearLevel,
-            'studentType' => StudentType::FirstYear,
+            'studentType' => $studentType,
             'enrollmentType' => EnrollmentType::New,
+            'academicStanding' => $academicStanding,
             'enrollmentStatus' => $status,
             'evaluatedBy' => $this->registrar->userId,
         ]);
@@ -291,6 +297,70 @@ class RegistrarQueueSortTest extends TestCase
         // reset while the list is still ordered by something the officer chose.
         $this->assertSame('yearLevel', $sort['column']);
         $this->assertSame('asc', $sort['direction']);
-        $this->assertSame(['name', 'schoolId', 'yearLevel', 'status', 'enrollmentId'], $sort['available']);
+        $this->assertSame(
+            ['name', 'schoolId', 'yearLevel', 'status', 'studentType', 'academicStanding', 'enrollmentId'],
+            $sort['available']
+        );
+    }
+
+    #[Test]
+    public function the_enum_headers_order_the_words_this_connection_sorts_them_in(): void
+    {
+        // Three types and two standings, seated so the ENUM sequence matches neither id order: Bautista is created
+        // second yet sorts first by type, and Magsaysay shares Zulueta's standing while differing in type. The
+        // sequence is ASKED of the connection, because MySQL reads an ENUM by its declaration index while the suite's
+        // varchar-with-CHECK reads the stored word — a literal typed here would be a reading of whichever server
+        // answered, which is exactly what CI named on the clearance queue.
+        $this->assessed('Zulueta', 1, EnrollmentStatus::Assessed, 'transferee', 'irregular');
+        $this->assessed('Bautista', 2, EnrollmentStatus::Paid, 'firstYear', 'regular');
+        $this->assessed('Magsaysay', 1, EnrollmentStatus::Assessed, 'continuing', 'irregular');
+
+        $types = $this->actingAs($this->registrar)
+            ->get(route('registrar.index', ['sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'studentType', [
+                StudentType::FirstYear->value,
+                StudentType::Continuing->value,
+                StudentType::Transferee->value,
+            ]),
+            array_map(fn (array $r): string => is_array($r['studentType'] ?? null) ? (string) $r['studentType']['value'] : (string) ($r['studentType'] ?? ''), $this->rows($types))
+        );
+
+        $standings = $this->actingAs($this->registrar)
+            ->get(route('registrar.index', ['sort' => 'academicStanding', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'academicStanding', ['regular', 'irregular', 'irregular']),
+            array_map(fn (array $r): string => is_array($r['academicStanding'] ?? null) ? (string) $r['academicStanding']['value'] : (string) ($r['academicStanding'] ?? ''), $this->rows($standings))
+        );
+    }
+
+    #[Test]
+    public function an_order_that_joins_a_relation_ships_the_rows_own_columns_and_nothing_else(): void
+    {
+        // An enrollment row carries its own columns; the student it belongs to arrives only through the name join.
+        // The join exists only to order the page, and a builder with no select list emits `select *`, which then
+        // answers the hop's columns too: this row used to arrive carrying the student's passwordHash, birthdate
+        // and contact number, and no $hidden on the Students model can withhold them, because the value is not
+        // riding on a Students model — it is an attribute of the row being listed. The screen reads those fields
+        // off its own eager load, so pinning the select changes nothing the desk asks for and everything it ships.
+        $this->assessed('Zulueta');
+        $this->assessed('Bautista');
+
+        $plain = $this->rows($this->actingAs($this->registrar)->get(route('registrar.index')));
+        $twoHop = $this->rows($this->actingAs($this->registrar)->get(route('registrar.index', ['sort' => 'name', 'direction' => 'asc'])));
+        $oneHop = $this->rows($this->actingAs($this->registrar)->get(route('registrar.index', ['sort' => 'studentType', 'direction' => 'asc'])));
+
+        $keys = function (array $rows): array {
+            $out = array_keys($rows[0]);
+            sort($out);
+
+            return $out;
+        };
+
+        $this->assertSame($keys($plain), $keys($twoHop), 'a Name order must not change which columns a enrollment row carries');
+        $this->assertSame($keys($plain), $keys($oneHop), 'a Student Type order must not change which columns a enrollment row carries');
+        foreach (['passwordHash', 'birthdate', 'contactNumber'] as $leaked) {
+            $this->assertArrayNotHasKey($leaked, $twoHop[0], "{$leaked} reached the payload through the join");
+        }
     }
 }

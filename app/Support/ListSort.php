@@ -18,8 +18,9 @@ use Illuminate\Database\Eloquent\Builder;
  * `asc` or `desc` rather than passed through.
  *
  * A relation column is sorted by joining it under a private alias, because the row's own eager-loaded relation is a
- * separate query and the join exists only to order the page. The select list stays the model's own (`table.*`), so
- * an aliased join adds no ambiguous column to the payload. One hop is written `join`/`foreign`/`local`; a column two
+ * separate query and the join exists only to order the page. The select list is then pinned to the base table's own
+ * columns — see `apply()` — so an aliased join adds no column to the payload and a desk row is one shape whatever
+ * header was clicked. One hop is written `join`/`foreign`/`local`; a column two
  * tables away — a fee sheet ordered by the student's surname, which sits on `students` and is reached through
  * `enrollments` — is written `joins` as a list of the same triples, and is the same mechanism with one more hop.
  */
@@ -56,6 +57,16 @@ final class ListSort
         $orderColumn = $spec['column'];
 
         if ($joins !== []) {
+            // The join exists only to order rows, so it may not reach the payload. A builder with no select list
+            // emits `select *`, and once a hop is joined that star covers the hop too: a fee sheet ordered by Name
+            // arrived carrying the student's `passwordHash`, `birthdate` and `contactNumber` on the sheet's own row,
+            // where `Students::$hidden` has no say because the value is not on a Students model. This also made the
+            // shape of a desk row depend on which header the person clicked. Pinned to the base table's own columns,
+            // the payload is one shape whatever the order, and a relation a page needs still comes from its eager
+            // load — which is where the screen already reads it from.
+            if ($query->getQuery()->getColumns() === []) {
+                $query->select($query->getModel()->qualifyColumn('*'));
+            }
             foreach ($joins as $n => $join) {
                 $alias = 'srt'.$n;
                 $query->join(

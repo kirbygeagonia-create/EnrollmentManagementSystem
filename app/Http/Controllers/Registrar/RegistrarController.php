@@ -68,6 +68,12 @@ class RegistrarController extends Controller
             'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
             'yearLevel' => ['column' => 'enrollments.yearLevel'],
             'status' => ['column' => 'enrollments.enrollmentStatus'],
+            // Ruled 2026-10-31: a desk may sort an ENUM, because on the school's MySQL the order is the declaration
+            // order the school itself wrote into the migration. Both columns sit on the row this queue reads, so the
+            // only reason ever given to leave them out — that a header would ask this query for something it cannot
+            // answer — does not apply here. The case asks the connection which order its column has.
+            'studentType' => ['column' => 'enrollments.studentType'],
+            'academicStanding' => ['column' => 'enrollments.academicStanding'],
             'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
         ];
         $sort = ListSort::apply(

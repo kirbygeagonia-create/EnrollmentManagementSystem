@@ -15,10 +15,11 @@ use PHPUnit\Framework\TestCase;
  * orders the stored word, so the two surfaces answer two sequences for one header. CI named that split on the
  * clearance queue when this box was green, and the answer was to ask the connection.
  *
- * This is the ONE definition of that question. Three desk screens now read it (clearance, registrar, clinic, ID), and
- * a second copy of the parse is how one sentence ends up true on one driver and false on another depending on which
- * test was run — the two-answers-for-one-word defect this project has already removed for year levels, status tones
- * and citation attribution.
+ * This is the ONE definition of that question. Every desk screen that offers an ENUM header asks it — the classes
+ * under `tests/Feature/Sorting` and the Registrar queue — and a second copy of the parse would be the
+ * two-answers-for-one-word defect this document has already removed for year levels, status tones and citation
+ * attribution. It deliberately states no count of those screens: one more wired queue would make the figure wrong
+ * in a comment no test reads, which is the shape this file exists to refuse.
  */
 final class EnumColumnOrder
 {
