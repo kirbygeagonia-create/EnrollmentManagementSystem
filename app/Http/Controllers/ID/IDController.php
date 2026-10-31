@@ -71,18 +71,22 @@ class IDController extends Controller
                 ->where('officeId', OfficeId::IdOffice->value)
             ));
 
-        // Student Type and Standing are deliberately absent from this set, and so is the ID Status column — three
-        // different reasons, each written here rather than left to be rediscovered. The first two are ENUM columns:
-        // the school's MySQL orders an ENUM by the index each value was declared with while the test schema's
-        // `enum()` is a varchar with a CHECK and orders the stored word, so a header over either would answer a
-        // different sequence depending on which machine replied (the same split CI reported for the clearance
-        // queue, recorded in §28.3 G-40). ID Status is not a column at all: the row paints the status of its FIRST
-        // request, which a list over enrollments cannot order without deciding what an enrollment with two requests
-        // means — a question the desk has never been asked and the school has not answered.
+        // Student Type and Standing ARE offered, though both are ENUM columns. Ruled 2026-10-31: an ENUM may be
+        // sorted at the desk, because the school's MySQL orders it by the index each value was declared with, and the
+        // declaration order is the one the school wrote into the migration. The consequence falls on the test: the
+        // suite compiles the same enum() into a varchar with a CHECK and orders the stored word, so the expectation
+        // is read from the connection by Tests\Support\EnumColumnOrder rather than typed into a case.
+        //
+        // ID Status is the one column left out, and for a reason no ENUM column raises: it is not a column of this
+        // row at all. The screen paints the status of the enrollment's FIRST request, so ordering by it would mean
+        // deciding what an enrollment with two requests amounts to — a question the desk has never been asked and
+        // the school has not answered. It stays absent rather than invented.
         $sortable = [
             'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
             'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
             'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'enrollments.courseId'],
+            'studentType' => ['column' => 'enrollments.studentType'],
+            'academicStanding' => ['column' => 'enrollments.academicStanding'],
             'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
         ];
 

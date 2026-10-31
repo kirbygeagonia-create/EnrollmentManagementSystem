@@ -285,6 +285,22 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   one claim to the checker, and a multi-total sentence is judged on its FIRST figure — green on this box, STALE on the
   runner, which compared 5,220 with its own junit's 5,013. A revision row that must outlive the run it was read from
   names one surface, or states no total at all.
+  **The same rule met from the class side, and the checker's own two defects found by reading its blind list.** The matrix
+  paired two classes with one figure, naming the accounting queue first and putting the assessment queue's own case count
+  and assertion count beside both; the delivered run answers ten and thirty-eight for the first, nine and thirty-five for
+  the second, so the sentence was false about one of them while lane 58 judged only its first figure — which is why that
+  blind spot is now a row, not a number. Three readings came from opening it.
+  **(a)** The footer tallied multi-total sentences and printed none, the lane 68 defect inside my own instrument, and its
+  comment even claimed the blind spot was printed. **(b)** The counter was a second definition of the same thing as the
+  rows: the matrix is in the live list AND matches the dated glob, so one document walked twice and inflated the tally —
+  the tally is now `count()` of the de-duplicated rows, the same convention the claims themselves already use.
+  **(c)** The harness's ground-truth leg read a hand-kept junit filename frozen at an earlier day's capture, so it judged
+  today's sentences against a run ten days old and passed because it asserted only "three or more" class claims while
+  its own name promised every one binds. It now takes the NEWEST `*-junit.xml` in scratch, refuses unless that junit's
+  root `tests` equals the `Tests:` line of the log named beside it (a pair must be proved one run before it stands as
+  ground truth), and requires the checker's exit code 0. Prove any change to the print path with the two new legs: a
+  sentence carrying two true pairs must print the row (document, line, the figure it did not judge), and the same bytes
+  split into two sentences must print no blind spot at all — a row that cannot disappear is decoration.
 - **After any batch that edits a figure one of these tools prints** — a rule count, a citation total, a tile or cell count,
   a blind-spot tally — run `php storage/app/scratch/lane59-collect-readings.php` and then
   `php storage/app/scratch/lane59-instrument-counts.php --readings=storage/app/scratch/lane59-readings.json`, and prove it with
@@ -1637,7 +1653,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   header button renders only when `sort.available` contains its key, so a screen cannot offer an order the save
   ignores. `$stable` (the row's own key) is a tie-break, not decoration: without it two rows equal on Year Level can
   shuffle between pages, which reads to a desk as a record duplicated or lost. Pin:
-  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (5 cases, 17 assertions), proved by
+  `tests/Feature/Registrar/RegistrarQueueSortTest.php` (6 cases, 21 assertions), proved by
   `php storage/app/scratch/mutate-g40-list-sort-tests.php` (4 legs: allow-list bypassed, direction passed through,
   sort never echoed, sort never applied — each must make its named case report `1 failed`). **One leg survived on
   its first run and the fixture was the defect**: the three students were created Zulueta, Magsaysay, Bautista, so
@@ -1709,15 +1725,21 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   whose application-key rule runs from 228 to 243, and `ClearanceController.php:290-304`), so a map by number would
   have rewritten a true pointer into a different file — the prefix-of-a-longer-citation defect met from the tail side,
   and the reason `--skip=N` is a queue handed to a reader rather than a clean run.
-  **The seventh table turned that server-dependent ordering into a rule about what a screen may OFFER.** The clinic
-  queue's `studentType` and `academicStanding` are both ENUM and both already sit on the enrollment row the desk
-  reads, so the usual reason to leave a column unsortable — the query cannot reach it — does not apply. They are left
-  out anyway, with the reason in the handler beside the allow-list, and `ClinicQueueSortTest.php` (10 cases / 35
-  assertions) asserts
-  `sort.available` rather than trusting the comment: a header whose sequence changes with the machine that answered is
-  not an order a desk can be given. Apply this to the remaining 28 tables before writing a sortable set — check the
-  column's MySQL type (`information_schema.COLUMNS.DATA_TYPE`, not the model) and leave an ENUM out unless the
-  expectation can be derived per connection, the way the clearance case now does. Two of the eleven legs of
+  **The seventh table turned that server-dependent ordering into a rule about what a screen may OFFER, and the owner
+  reversed that rule the same week.** The clinic queue's `studentType` and `academicStanding` are both ENUM and both
+  already sit on the enrollment row the desk reads, so the usual reason to leave a column unsortable — the query cannot
+  reach it — did not apply, and they were left out anyway. **Ruled 2026-10-31: an ENUM column may carry a header,**
+  because the order the school's server applies is the declaration order the school itself wrote into the migration
+  (`firstYear, continuing, transferee, shifter`) — which is the order a desk wants, not an accident of the driver. What
+  the ruling moves is the expectation: the suite compiles the same `enum()` into a varchar with a CHECK and sorts the
+  stored word, so a case asks the connection through `tests/Support/EnumColumnOrder.php` — one parse, four screens, and
+  it refuses a column that names no enum on the mysql driver rather than guessing at an order. The rule for the
+  remaining 28 tables is therefore: read the column's MySQL type (`information_schema.COLUMNS.DATA_TYPE`, not the
+  model), offer the ENUM, and never type its order. The cases the ruling added, each named on the same line as the
+  figures its delivered run reported: `ClinicQueueSortTest.php` (11 cases / 36 assertions) for type and standing,
+  `IDQueueSortTest.php` (11 cases / 41 assertions) for the same two on the ID desk, and
+  `RegistrarQueueSortTest.php` (6 cases / 21 assertions) for the Status header that had been offered since the first
+  wiring and answered by nothing. Two of the eleven legs of
   `mutate-g40-clinic-sort-tests.php` plant the JOIN rather than a column (`one-hop-spec-read-as-no-join`,
   `surname-spec-loses-its-join`), which is the shape a wrong-column-only harness never sees: a surname ordered with no
   join does not print a wrong sequence, it fails to build a list at all. **And the browser read was bounded rather
@@ -1735,14 +1757,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **The eighth table, the ID desk, made a TAB the third control an order must survive.** Its queue tab is not a filter:
   it chooses which population the list is built from — the enrollments whose first open box is office 22 against the
   ones whose ID box is already signed — so `ListSort` runs on the clone of the base the tab chose, and the two tiles
-  and both tab counts still clone the bases themselves. Pinned by `IDQueueSortTest.php` (10 cases / 39 assertions), and a
+  and both tab counts still clone the bases themselves. Pinned by `IDQueueSortTest.php` (11 cases / 41 assertions), and a
   harness can now plant the swap directly
   (`order-applied-to-the-other-base` in `mutate-g40-id-sort-tests.php`, thirteen legs, all killed) and require the
   tab's own case to go red while the order stays perfectly formed. The tab must also come BACK: the filter echo carries
   four keys now, and an un-echoed tab is lane 46's NO-RETURN seen from the side a desk switches rather than types. Its
-  withheld column adds a THIRD reason, different from the ENUM one and from "the query cannot reach it": ID Status
-  paints the status of the row's FIRST request, and ordering by it would decide what two requests on one enrollment
-  amount to — a question the school has never been asked, so no header is painted rather than an invented one. This
+  withheld column is painted rather than stored: ID Status
+  is the status of the row's FIRST request, and ordering by it would decide what two requests on one enrollment
+  amount to — a question the school has never been asked, so no header is painted rather than an invented one. (The
+  ENUM columns it withholds at the same time were given headers by the 2026-10-31 ruling below, and the case that
+  asserts `sort.available` was re-cut to match.) This
   queue is also the first wired screen whose browser read could show a sequence at all: live `ems` holds two
   enrollments waiting at the ID office, and the running screen swapped them (Alcantara at rest, Sotto ascending, back
   again on the second click). Two instrument readings from the same batch. **A comma-list citation is one token and the

@@ -226,23 +226,60 @@ $say(str_contains($r['out'], 'named no document'), 'empty-scope — an empty doc
 $r = $runOn('pair-wrong.clean.txt', ' --junit=storage/app/scratch/lane58-mut/does-not-exist.xml');
 $say($r['code'] === 2, 'missing-junit — a reading one flag short is refused, so a case cannot pass by not loading');
 
+// ------------------------------------------------------------------ the multi-total blind spot prints its own rows
+
+// Both figures here are TRUE, so nothing is STALE: the whole finding is that a sentence carrying two pairs is judged
+// on its FIRST, and the run used to report that as a bare count with no row — the lane 68 defect (a tally that asks
+// the reader to trust evidence the run withheld), met now in my own instrument.
+file_put_contents($dir.'/multi-one-sentence.txt',
+    "ROW 1: Register | Pinned by tests/Feature/DeskSummaryScopeTest.php (7 cases / 173 assertions) and tests/Feature/DeskTileNumberSourceTest.php (4 cases / 290 assertions).\n");
+file_put_contents($dir.'/multi-two-sentences.txt',
+    "ROW 1: Register | Pinned by tests/Feature/DeskSummaryScopeTest.php (7 cases / 173 assertions). And tests/Feature/DeskTileNumberSourceTest.php answers 4 cases / 290 assertions.\n");
+
+$one = $runOn('multi-one-sentence.txt');
+$say($one['code'] === 0
+    && str_contains($one['out'], 'Blind spot')
+    && str_contains($one['out'], 'docx :1')
+    && str_contains($one['out'], 'beside 290 assertions'),
+    'multi-total-row — the unread second figure is printed as a row (document, line, figure), not as a count alone');
+
+$two = $runOn('multi-two-sentences.txt');
+$say($two['code'] === 0 && ! str_contains($two['out'], 'Blind spot'),
+    'multi-total-split — one pair per sentence retires the blind spot, so the row tracks the sentence shape and is not decoration');
+
 // ------------------------------------------------------------------ ground truth against the real run
 
 echo "\n";
-$real = '/storage/app/scratch/lane58-junit-full.xml';
-if (is_file($root.$real) && (int) filesize($root.$real) > 0) {
+// The newest whole-suite JUnit on this box, not a frozen filename: the leg once read the 2026-10-20 capture while the
+// documents described a run five days newer, and passed because it only asked for three matches out of twenty-nine.
+$junits = glob($root.'/storage/app/scratch/*-junit.xml') ?: [];
+usort($junits, static fn (string $a, string $b): int => (int) filemtime($b) <=> (int) filemtime($a));
+$real = $junits[0] ?? null;
+$realLog = $real === null ? null : preg_replace('/-junit\.xml$/', '.txt', $real);
+if ($real !== null && is_file((string) $realLog) && (int) filesize($real) > 0) {
+    $rel = static fn (string $p): string => str_replace($root.'/', '', $p);
+    // Prove the pair is ONE run before letting it stand as ground truth: a junit and a log from different days would
+    // otherwise bind today's sentences to a reading that never produced them.
+    $jroot = (string) (simplexml_load_file($real)->testsuite[0]['tests'] ?? '');
+    $logOut = (string) file_get_contents((string) $realLog);
+    $logTests = preg_match('/Tests:\s+([\d,]+)\s+passed/', preg_replace('/\e\[[0-9;]*m/', '', $logOut), $mm) === 1
+        ? (int) str_replace(',', '', $mm[1]) : -1;
+    $say($jroot !== '' && $logTests === (int) $jroot,
+        'real-pair — the JUnit and the log named beside it are one run (junit '.$jroot.', log '.$logTests.', from '.$rel($real).')');
+
     // No --discovered here: the checker measures the case count itself, so this leg cannot pass on a remembered number.
     $gt = $run($php.' '.$checker.' --flat=storage/app/scratch/docx-flat.txt'
-        .' --junit=storage/app/scratch/lane58-junit-full.xml'
-        .' --local-suite=storage/app/scratch/lane58-suite.txt');
+        .' --junit='.$rel($real)
+        .' --local-suite='.$rel((string) $realLog));
     $out = $gt['out'];
     $code = $gt['code'];
     $classLines = preg_grep('/CLASS/', preg_split('/\n/', $out) ?: []);
     // The verdict prints on the line after each claim, so matching is counted from the whole output, not from the
     // claim lines — counting MATCHES inside a CLASS line reported 0 bound while the run bound all three.
     $matched = preg_match_all('/MATCHES class /', $out);
-    $say(count($classLines) >= 3 && $matched >= 3,
-        'real-junit — every class figure the document states binds to the run’s own JUnit ('.$matched.'/'.count($classLines).' class claims, exit '.$code.')');
+    $say(count($classLines) >= 3 && $matched >= 3 && $code === 0,
+        'real-junit — the documents bind to the newest run with no stale and no unbound present-tense claim '
+            .'('.$matched.'/'.count($classLines).' class claims matched, exit '.$code.', junit '.$rel($real).')');
     echo str_replace("\n", "\n     ", rtrim($out))."\n";
 } else {
     $say(false, 'real-junit — no whole-suite JUnit on disk; the fixture legs prove the parsing, this leg proves the binding');

@@ -26,6 +26,7 @@ use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -124,7 +125,7 @@ class ClinicQueueSortTest extends TestCase
      * and Clinic itself is the lowest-pending `stepOrder` — the same predicate `DeskQueues::waitingAtFirstPendingBox`
      * asks and the dashboard badge is built from.
      */
-    private function waitingAtClinic(Courses $course, string $lastName, string $schoolId): Enrollments
+    private function waitingAtClinic(Courses $course, string $lastName, string $schoolId, string $studentType = 'firstYear', string $academicStanding = 'regular'): Enrollments
     {
         $student = Students::create([
             'schoolIdNumber' => $schoolId,
@@ -152,9 +153,9 @@ class ClinicQueueSortTest extends TestCase
             'courseId' => $course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => 1,
-            'studentType' => StudentType::FirstYear,
+            'studentType' => $studentType,
             'enrollmentType' => EnrollmentType::New,
-            'academicStanding' => 'regular',
+            'academicStanding' => $academicStanding,
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
             'evaluatedBy' => $this->nurse->userId,
         ]);
@@ -336,19 +337,56 @@ class ClinicQueueSortTest extends TestCase
     }
 
     #[Test]
-    public function the_enum_columns_and_the_derived_status_are_not_offered(): void
+    public function the_enum_columns_are_offered_and_the_derived_status_is_not(): void
     {
         $this->trio();
 
         $available = $this->sort($this->actingAs($this->nurse)->get(route('clinic.index')))['available'];
 
-        // studentType and academicStanding are ENUM columns whose sequence depends on which server answers;
-        // clinicStatus is painted from whether a record exists on the row. Absent rather than offered and ignored,
+        // Ruled 2026-10-31: an ENUM column is sortable at the desk, because the school's server orders it in the
+        // declaration order the school itself wrote. Only Clinic Status is withheld — it is painted from whether a
+        // record exists on the row, so the query holds nothing to order by. Absent rather than offered and ignored,
         // because a header the handler would not obey is the defect §28.3 owns for filters.
-        foreach (['studentType', 'academicStanding', 'clinicStatus'] as $unorderable) {
-            $this->assertNotContains($unorderable, $available, "{$unorderable} is not a column this query orders");
-        }
-        $this->assertSame(['name', 'schoolId', 'course', 'enrollmentId'], $available);
+        $this->assertSame(['name', 'schoolId', 'course', 'studentType', 'academicStanding', 'enrollmentId'], $available);
+        $this->assertNotContains('clinicStatus', $available, 'clinicStatus is painted from a relation, not ordered from a column');
+    }
+
+    #[Test]
+    public function the_enum_headers_order_the_words_this_connection_sorts_them_in(): void
+    {
+        // Three different types and two different standings, seated so that neither ENUM order coincides with either
+        // id order: the sequence is asked of the connection, because MySQL reads an ENUM by its declaration index and
+        // the suite's varchar-with-CHECK reads the stored word. A literal typed here would be a reading of whichever
+        // server answered it — the defect CI named on the clearance queue.
+        $this->waitingAtClinic($this->accountancy, 'Zulueta', 'CL-002', StudentType::Transferee->value, 'irregular');
+        $this->assess($this->waitingAtClinic($this->nursing, 'Bautista', 'CL-003', StudentType::FirstYear->value, 'regular'));
+        $this->waitingAtClinic($this->informationTechnology, 'Magsaysay', 'CL-001', StudentType::Continuing->value, 'irregular');
+
+        $types = $this->actingAs($this->nurse)
+            ->get(route('clinic.index', ['sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'studentType', [
+                StudentType::FirstYear->value,
+                StudentType::Continuing->value,
+                StudentType::Transferee->value,
+            ]),
+            array_map(fn (array $r): string => (string) $r['studentType'], $this->rows($types))
+        );
+
+        $standings = $this->actingAs($this->nurse)
+            ->get(route('clinic.index', ['sort' => 'academicStanding', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'academicStanding', ['regular', 'irregular', 'irregular']),
+            array_map(fn (array $r): string => (string) $r['academicStanding'], $this->rows($standings))
+        );
+
+        // And reversing the same header reverses exactly that sequence.
+        $down = $this->actingAs($this->nurse)
+            ->get(route('clinic.index', ['sort' => 'studentType', 'direction' => 'desc']));
+        $this->assertSame(
+            array_reverse(array_map(fn (array $r): string => (string) $r['studentType'], $this->rows($types))),
+            array_map(fn (array $r): string => (string) $r['studentType'], $this->rows($down))
+        );
     }
 
     #[Test]

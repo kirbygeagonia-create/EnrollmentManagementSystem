@@ -47,14 +47,20 @@ class ClinicController extends Controller
         $queueSize = (clone $query)->reorder()->count();
         $assessed = (clone $query)->reorder()->has('clinicrecords')->count();
 
-        // Student Type and Standing are deliberately absent: both are ENUM columns, so the school's MySQL orders
-        // them by the index each was declared with while the suite's `enum()` is a varchar with a CHECK and orders
-        // the stored word. A header whose sequence depends on which server answered is not an order the desk can
-        // be given, and the vocabulary question those two columns raise is the school's, not a query's.
+        // Student Type and Standing ARE offered, although both are ENUM columns. Ruled 2026-10-31: an ENUM may be
+        // sorted at the desk, because the school's MySQL orders it by the index each value was declared with —
+        // `firstYear, continuing, transferee, shifter` and `regular, irregular` — and that declaration order is the
+        // one the school wrote into the migration. The consequence falls on the test, not the screen: the suite
+        // compiles the same enum() into a varchar with a CHECK and orders the stored word, so the expectation is read
+        // from the connection by Tests\Support\EnumColumnOrder rather than typed here. One column stays out for a
+        // different reason: Clinic Status is painted from whether a record exists on this row, so the query holds
+        // nothing to order by.
         $sortable = [
             'name' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
             'schoolId' => ['column' => 'schoolIdNumber', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
             'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'enrollments.courseId'],
+            'studentType' => ['column' => 'enrollments.studentType'],
+            'academicStanding' => ['column' => 'enrollments.academicStanding'],
             'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
         ];
 

@@ -27,6 +27,7 @@ use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -123,7 +124,7 @@ class IDQueueSortTest extends TestCase
      * `$idSigned = false` leaves ID the FIRST open box, which is the queue tab; `true` signs it, which is the
      * Issued tab. The seven boxes are the firstYear order the workflow service itself lays out.
      */
-    private function deskRow(Courses $course, string $lastName, string $schoolId, bool $idSigned = false): Enrollments
+    private function deskRow(Courses $course, string $lastName, string $schoolId, bool $idSigned = false, string $studentType = 'firstYear', string $academicStanding = 'regular'): Enrollments
     {
         $student = Students::create([
             'schoolIdNumber' => $schoolId,
@@ -151,9 +152,9 @@ class IDQueueSortTest extends TestCase
             'courseId' => $course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => 1,
-            'studentType' => StudentType::FirstYear,
+            'studentType' => $studentType,
             'enrollmentType' => EnrollmentType::New,
-            'academicStanding' => 'regular',
+            'academicStanding' => $academicStanding,
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
             'evaluatedBy' => $this->officer->userId,
         ]);
@@ -232,6 +233,12 @@ class IDQueueSortTest extends TestCase
     private function courses($response): array
     {
         return array_map(fn (array $row): string => (string) ($row['course']['courseName'] ?? ''), $this->rows($response));
+    }
+
+    /** @return list<string> */
+    private function column($response, string $key): array
+    {
+        return array_map(fn (array $row): string => (string) ($row[$key] ?? ''), $this->rows($response));
     }
 
     private function props($response): array
@@ -351,20 +358,57 @@ class IDQueueSortTest extends TestCase
     }
 
     #[Test]
-    public function the_enum_columns_and_the_derived_request_status_are_not_offered(): void
+    public function the_enum_columns_are_offered_and_the_derived_request_status_is_not(): void
     {
         $this->fourRows();
 
         $available = $this->sort($this->actingAs($this->officer)->get(route('id.index')))['available'];
 
-        // studentType and academicStanding are ENUM columns whose sequence depends on which server answers;
-        // idStatus is the status of this row's FIRST request, painted from a relation rather than ordered by a
-        // column. Absent rather than offered and ignored — a header the handler would not obey is the defect §28.3
-        // owns for filters.
-        foreach (['studentType', 'academicStanding', 'idStatus'] as $unorderable) {
-            $this->assertNotContains($unorderable, $available, "{$unorderable} is not a column this query orders");
-        }
-        $this->assertSame(['name', 'schoolId', 'course', 'enrollmentId'], $available);
+        // Ruled 2026-10-31: an ENUM column is sortable at the desk, because the school's server orders it in the
+        // declaration order the school itself wrote. idStatus stays out: it is painted from the row's FIRST request,
+        // so ordering it would decide what two requests on one enrollment amount to. Absent rather than offered and
+        // ignored — a header the handler would not obey is the defect §28.3 owns for filters.
+        $this->assertSame(['name', 'schoolId', 'course', 'studentType', 'academicStanding', 'enrollmentId'], $available);
+        $this->assertNotContains('idStatus', $available, 'idStatus is a relation read, not a column this query orders');
+    }
+
+    #[Test]
+    public function the_enum_headers_order_the_words_this_connection_sorts_them_in(): void
+    {
+        // Three types and two standings across the queue, with one signed row on the other tab. The sequence is
+        // ASKED OF THE CONNECTION: MySQL reads an ENUM by its declaration index and the suite's varchar-with-CHECK
+        // reads the stored word, so a literal typed here would be a reading of whichever server answered it.
+        $this->deskRow($this->accountancy, 'Zulueta', 'ID-002', false, StudentType::Transferee->value, 'irregular');
+        $this->deskRow($this->nursing, 'Bautista', 'ID-003', false, StudentType::FirstYear->value, 'regular');
+        $this->deskRow($this->informationTechnology, 'Magsaysay', 'ID-001', false, StudentType::Continuing->value, 'irregular');
+        $this->deskRow($this->nursing, 'Roxas', 'ID-004', true, StudentType::Shifter->value, 'regular');
+
+        $types = $this->actingAs($this->officer)
+            ->get(route('id.index', ['sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'studentType', [
+                StudentType::FirstYear->value,
+                StudentType::Continuing->value,
+                StudentType::Transferee->value,
+            ]),
+            $this->column($types, 'studentType')
+        );
+
+        $standings = $this->actingAs($this->officer)
+            ->get(route('id.index', ['sort' => 'academicStanding', 'direction' => 'asc']));
+        $this->assertSame(
+            EnumColumnOrder::ascending('enrollments', 'academicStanding', ['regular', 'irregular', 'irregular']),
+            $this->column($standings, 'academicStanding')
+        );
+
+        // Reversing the header reverses exactly that sequence, and the issued tab keeps its own set while doing it.
+        $down = $this->actingAs($this->officer)
+            ->get(route('id.index', ['sort' => 'studentType', 'direction' => 'desc']));
+        $this->assertSame(array_reverse($this->column($types, 'studentType')), $this->column($down, 'studentType'));
+
+        $issued = $this->actingAs($this->officer)
+            ->get(route('id.index', ['tab' => 'issued', 'sort' => 'studentType', 'direction' => 'asc']));
+        $this->assertSame([StudentType::Shifter->value], $this->column($issued, 'studentType'));
     }
 
     #[Test]

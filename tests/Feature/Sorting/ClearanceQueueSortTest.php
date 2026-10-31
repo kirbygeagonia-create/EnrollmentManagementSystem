@@ -14,9 +14,9 @@ use App\Models\Studentclearances;
 use App\Models\Students;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -226,7 +226,7 @@ class ClearanceQueueSortTest extends TestCase
         $response = $this->actingAs($this->officer)
             ->get(route('clearance.index', ['sort' => 'status', 'direction' => 'asc']));
 
-        $expected = $this->statusOrderFromTheColumnItself([
+        $expected = EnumColumnOrder::ascending('studentclearances', 'overallStatus', [
             ClearanceOverallStatus::Pending->value,
             ClearanceOverallStatus::Rejected->value,
             ClearanceOverallStatus::Approved->value,
@@ -245,39 +245,6 @@ class ClearanceQueueSortTest extends TestCase
             ->get(route('clearance.index', ['sort' => 'studentClearanceId', 'direction' => 'asc']));
         $this->assertNotSame($this->statuses($newest), $this->statuses($response));
         $this->assertNotSame($this->statuses($oldest), $this->statuses($response));
-    }
-
-    /**
-     * The sequence this connection really answers for an ascending sort on `overallStatus`.
-     *
-     * Asked of the server, not recalled: MySQL is read through `SHOW COLUMNS`, because an ENUM's order is the index
-     * the column was declared with; the SQLite suite holds a varchar with a CHECK, so its order is the strings'
-     * alphabetical one. A third answer — a sequence typed into this file — is the defect CI named.
-     *
-     * @param  list<string>  $values
-     * @return list<string>
-     */
-    private function statusOrderFromTheColumnItself(array $values): array
-    {
-        sort($values);
-
-        if (DB::connection()->getDriverName() !== 'mysql') {
-            return $values;
-        }
-
-        $row = DB::selectOne("SHOW COLUMNS FROM studentclearances LIKE 'overallStatus'");
-        $type = (string) ($row->Type ?? '');
-        if ($type === '' || ! preg_match("/^enum\('(.*)'\)$/s", $type, $m)) {
-            $this->fail("overallStatus came back as [{$type}], which names no enum order to compare with");
-        }
-
-        $rank = array_flip(array_map(
-            fn (string $v): string => str_replace("''", "'", $v),
-            explode("','", $m[1])
-        ));
-        usort($values, fn (string $a, string $b): int => ($rank[$a] ?? PHP_INT_MAX) <=> ($rank[$b] ?? PHP_INT_MAX));
-
-        return $values;
     }
 
     #[Test]

@@ -15,19 +15,20 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
             row.student ? `${row.student.lastName}, ${row.student.firstName}` : '—'
         )},
         { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
-        // Student Type and Standing are not offered: both are ENUM columns, and the school's MySQL orders an ENUM by
-        // the index it was declared with while the test suite's varchar orders the word — one header, two sequences.
-        // ID Status is the status of this row's FIRST request, which no order over enrollments can answer.
-        { key: 'studentType', label: 'Student Type', render: (row) => (
+        // Student Type and Standing are sortable even though both are ENUM columns: on the school's server an ENUM
+        // sorts in the order the values were declared, which is the order the school wrote down.
+        { key: 'studentType', label: 'Student Type', sortKey: 'studentType', render: (row) => (
             <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                 {formatStatusLabel(row.studentType)}
             </Badge>
         )},
-        { key: 'academicStanding', label: 'Standing', render: (row) => (
+        { key: 'academicStanding', label: 'Standing', sortKey: 'academicStanding', render: (row) => (
             <Badge tone={academicStandingToneFor(row.academicStanding)}>
                 {academicStandingLabel(row.academicStanding)}
             </Badge>
         )},
+        // Not sortable: this is the status of the row's FIRST request, and ordering by it would mean deciding what an
+        // enrollment with two requests amounts to — a question the school has not answered.
         { key: 'idStatus', label: 'ID Status', render: (row) => {
             const status = row.idrequests?.[0]?.status;
 

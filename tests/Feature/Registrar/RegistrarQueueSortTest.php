@@ -18,6 +18,7 @@ use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\EnumColumnOrder;
 use Tests\TestCase;
 
 /**
@@ -86,8 +87,13 @@ class RegistrarQueueSortTest extends TestCase
         $this->registrar = $staff;
     }
 
-    /** Surnames deliberately inverse to the order the rows are created in. */
-    private function assessed(string $lastName, int $yearLevel = 1): Enrollments
+    /**
+     * Surnames deliberately inverse to the order the rows are created in.
+     *
+     * The status is a parameter because the queue holds two of them: the Registrar works `assessed` and `paid`
+     * records together, and the Status header is only meaningful if a fixture can put both in one list.
+     */
+    private function assessed(string $lastName, int $yearLevel = 1, EnrollmentStatus $status = EnrollmentStatus::Assessed): Enrollments
     {
         $student = Students::create([
             'schoolIdNumber' => 'SORT-'.strtoupper(substr(uniqid(), -6)),
@@ -115,9 +121,15 @@ class RegistrarQueueSortTest extends TestCase
             'yearLevel' => $yearLevel,
             'studentType' => StudentType::FirstYear,
             'enrollmentType' => EnrollmentType::New,
-            'enrollmentStatus' => EnrollmentStatus::Assessed,
+            'enrollmentStatus' => $status,
             'evaluatedBy' => $this->registrar->userId,
         ]);
+    }
+
+    /** @return list<string> */
+    private function statuses($response): array
+    {
+        return array_map(fn (array $row): string => (string) ($row['enrollmentStatus'] ?? ''), $this->rows($response));
     }
 
     /** @return list<array<string, mixed>> */
@@ -144,6 +156,44 @@ class RegistrarQueueSortTest extends TestCase
         $this->assessed('Bautista');
         $this->assessed('Zulueta');
         $this->assessed('Magsaysay');
+    }
+
+    #[Test]
+    public function the_status_header_orders_the_statuses_this_connection_sorts_them_in(): void
+    {
+        // Two statuses, interleaved so that neither id order produces the status sequence: the Status header has
+        // been offered by this handler since it was wired and no case had ever said what it returns.
+        //
+        // The expectation is ASKED of the connection. `enrollments.enrollmentStatus` is an ENUM, which MySQL orders
+        // by its declaration index (pending, evaluated, assessed, paid, …) while the suite compiles the same
+        // declaration into a varchar with a CHECK and orders the stored word — so a sequence typed into this file
+        // would be a reading of whichever server answered, which is what CI named on the clearance queue.
+        $this->assessed('Bautista', 1, EnrollmentStatus::Paid);
+        $this->assessed('Zulueta', 2);
+        $this->assessed('Magsaysay', 3, EnrollmentStatus::Paid);
+        $this->assessed('Aquino', 4);
+
+        $statuses = EnumColumnOrder::ascending('enrollments', 'enrollmentStatus', [
+            EnrollmentStatus::Assessed->value,
+            EnrollmentStatus::Assessed->value,
+            EnrollmentStatus::Paid->value,
+            EnrollmentStatus::Paid->value,
+        ]);
+
+        $asc = $this->actingAs($this->registrar)
+            ->get(route('registrar.index', ['sort' => 'status', 'direction' => 'asc']));
+        $this->assertSame($statuses, $this->statuses($asc));
+
+        $desc = $this->actingAs($this->registrar)
+            ->get(route('registrar.index', ['sort' => 'status', 'direction' => 'desc']));
+        $this->assertSame(array_reverse($statuses), $this->statuses($desc));
+
+        // And on this fixture the status order is neither id order, which is what lets the two assertions above fail.
+        $newest = $this->actingAs($this->registrar)->get(route('registrar.index'));
+        $oldest = $this->actingAs($this->registrar)
+            ->get(route('registrar.index', ['sort' => 'enrollmentId', 'direction' => 'asc']));
+        $this->assertNotSame($this->statuses($newest), $this->statuses($asc));
+        $this->assertNotSame($this->statuses($oldest), $this->statuses($asc));
     }
 
     #[Test]

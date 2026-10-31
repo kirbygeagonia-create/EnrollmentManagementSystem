@@ -214,8 +214,8 @@ $DATED_RE = '/('.$DATE_BODY.')/';
 // A sentence containing the word "assertions" that the patterns reject is how a parser hides a claim; --trace prints
 // every such sentence so the blind spot is readable instead of silent.
 $trace = $flag('--trace');
-$multiTotals = 0;
-$claimsFrom = static function (string $label, string $path, string $kind) use ($root, $runRe, $assertMention, $toNum, $LABEL_RE, $CLASS_RE, $trace, $DATE_BODY, &$multiTotals): array {
+$multiRows = [];
+$claimsFrom = static function (string $label, string $path, string $kind) use ($root, $runRe, $assertMention, $toNum, $LABEL_RE, $CLASS_RE, $trace, $DATE_BODY, &$multiRows): array {
     $bytes = (string) @file_get_contents($root.'/'.$path);
     if ($bytes === '') {
         return [];
@@ -241,7 +241,14 @@ $claimsFrom = static function (string $label, string $path, string $kind) use ($
                 // The blind spot is printed, not counted clean: a sentence carrying two totals is judged on its FIRST
                 // pair, which is what a dated narrative sentence like §1.1's row does all day.
                 if (preg_match_all($assertMention, $sentence, $multi) > 1) {
-                    $multiTotals++;
+                    $multiRows[] = sprintf(
+                        "  %s :%d  judged on \"%s\", beside %s  |  %s\n",
+                        $label,
+                        $idx + 1,
+                        $multi[0][0],
+                        implode(', ', array_slice($multi[0], 1)),
+                        substr(trim(preg_replace('/\s+/', ' ', $sentence)), 0, 96)
+                    );
                 }
                 if ($hasAssertions && $assertions === null) {
                     continue;
@@ -522,8 +529,14 @@ printf(
     "\n%d claim(s) read from %d live document(s): %d judged, %d history, %d dated-report figures not judged.\n",
     count($claims) + count($datedClaims), count($live), $judged, $history, count($datedClaims)
 );
-if ($multiTotals > 0) {
-    printf("Blind spot, printed rather than passed: %d sentence(s) state more than one total and were judged on their first figure.\n", $multiTotals);
+// The tally is read off the rows themselves: a document that both walks visit (the matrix is live AND matches the
+// dated glob) would otherwise be counted twice, which is the two-definitions-of-one-word defect in my own footer.
+$multiRows = array_values(array_unique($multiRows));
+if ($multiRows !== []) {
+    printf("Blind spot, printed rather than passed: %d sentence(s) state more than one total and were judged on their first figure.\n", count($multiRows));
+    foreach ($multiRows as $row) {
+        fwrite(STDOUT, $row);
+    }
 }
 
 if ($claims === []) {

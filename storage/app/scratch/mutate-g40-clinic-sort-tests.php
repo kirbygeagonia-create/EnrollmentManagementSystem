@@ -12,7 +12,7 @@
  * is not a wrong sequence; it is a list the desk would never have rendered.
  *
  * Seven legs sit in the handler (the order never applied, the applied order and the sortable set never handed to the
- * page, the search-and-order echo lost, an ENUM key listed anyway, and three misbound keys — the course header
+ * page, the search-and-order echo lost, an invented key listed anyway, and three misbound keys — the course header
  * ordering the surname and the school-number header ordering the surname are the pairs this fixture was built to
  * tell apart, and the surname spec losing its join is the third); four sit in `ListSort` itself (the one-hop spelling
  * read as no join, an unchecked direction, a bypassed allow-list, and `available` answered from the applied pair
@@ -48,7 +48,7 @@ $plantedShapes = [
     "// mutant: the course header orders the surname",
     "// mutant: the school number header orders the surname",
     "// mutant: the asked column is dropped before the allow-list sees it",
-    "// mutant: a sortable ENUM column offered beside the derived ones",
+    "// mutant: a header invented for a column this screen never had",
     "// mutant: trust the request",
     "// mutant: unchecked",
     "// mutant: available answered from the applied pair",
@@ -85,7 +85,7 @@ $legs = [
         'file' => $sortFile,
         'from' => "        return \$applied + ['available' => array_keys(\$allowed)];",
         'to' => "        return \$applied + ['available' => array_keys(\$applied)]; // mutant: available answered from the applied pair",
-        'case' => 'the_enum_columns_and_the_derived_status_are_not_offered',
+        'case' => 'the_enum_columns_are_offered_and_the_derived_status_is_not',
         'promise' => 'the screen is offered the handler\'s own set, never a set it guessed',
     ],
     [
@@ -119,7 +119,7 @@ $legs = [
         'file' => $ctrlFile,
         'from' => "            'sort' => ListSort::present(\$sort, \$sortable),\n",
         'to' => '',
-        'case' => 'the_enum_columns_and_the_derived_status_are_not_offered',
+        'case' => 'the_enum_columns_are_offered_and_the_derived_status_is_not',
         'promise' => 'the page is told the applied order and the sortable set',
     ],
     [
@@ -131,12 +131,12 @@ $legs = [
         'promise' => 'every key the desk sent comes back, so no control resets while its list stays narrowed',
     ],
     [
-        'name' => 'enum-key-listed',
+        'name' => 'invented-key-listed',
         'file' => $ctrlFile,
         'from' => "            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],",
-        'to' => "            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],\n            'studentType' => ['column' => 'enrollments.enrollmentId'], // mutant: a sortable ENUM column offered beside the derived ones",
-        'case' => 'the_enum_columns_and_the_derived_status_are_not_offered',
-        'promise' => 'an ENUM column stays out of the offered set, because its sequence depends on which server answers',
+        'to' => "            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],\n            'cohort' => ['column' => 'enrollments.cohortId'], // mutant: a header invented for a column this screen never had",
+        'case' => 'the_enum_columns_are_offered_and_the_derived_status_is_not',
+        'promise' => 'a header exists only for a column the handler really holds — an invented key is the same offered-and-ignored defect',
     ],
     [
         'name' => 'course-misbound-to-surname',
