@@ -36,7 +36,7 @@ class ClinicController extends Controller
         // The queue's population comes from App\Support\DeskQueues, which is the same builder the dashboard's
         // clinic badge counts — one definition of "waiting at the clinic box", not two that must be kept in step.
         $query = DeskQueues::clinic()
-            ->with(['student', 'course', 'term', 'clinicrecords'])
+            ->with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'clinicrecords'])
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)));
 
         // The tiles describe the whole queue, not the 20 rows on the page: "how many of these students still

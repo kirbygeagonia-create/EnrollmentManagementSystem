@@ -92,7 +92,7 @@ class WorkflowMonitorController extends Controller
         // anywhere. It stays reachable by name through the search, which is what an
         // administrator needs when they are looking for one student's history.
         $query = Enrollments::with([
-            'student',
+            'student:studentId,schoolIdNumber,lastName,firstName,middleName',
             'course',
             'term.academicYear',
             'enrollmentworkflow.workflowsteps',

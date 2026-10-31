@@ -14,6 +14,15 @@
  *                — so the clone carries "LIMIT 20 OFFSET 20" and answers with nothing from page 2 onward.
  *                Page 1 always looks right, which is why this survives a demo. AccountingController is the one
  *                desk that clones before paginating.
+ *   PINNED-SELECT a controller takes its aggregate from `(clone $query)` AFTER `ListSort::apply()` ran on that
+ *                builder, and the aggregate appends with `selectRaw()`. The order joins the table an ordered
+ *                column sits on and, for a hop, pins the select to the base model's own columns; `select()`
+ *                REPLACES and `selectRaw()` APPENDS, so the aggregate carries `table.*` beside its own column and
+ *                MySQL 8's ONLY_FULL_GROUP_BY answers 1055 — a 500 at the desk for clicking a header — while
+ *                SQLite answers the query. This is the one verdict here that the local suite cannot prove; the
+ *                surface that sees it is a scratch MySQL schema, with `DB_CONNECTION` pinned as well as
+ *                `E2E_DB_DATABASE` (lane 87's rule). Naming the aggregate's own columns with `select()` first is
+ *                what the admission queue's status tile does now, and that shape is counted clean.
  *   PAGE-TILE    a StatCard whose value reduces over `props.data` (the page) while its label names no scope.
  *   MIXED-SET    a screen where one tile reads the paginator total and another reads only the page rows, so the
  *                tiles disagree with each other and nothing tells the desk which is which.
@@ -569,6 +578,10 @@ foreach ($pages as $rel => $src) {
 printf("\nController aggregate order — is the summary taken before or after the page LIMIT?\n");
 
 $ordered = 0;
+// Counted separately from the total so a harness can require THIS verdict to move. A leg that asserts only
+// "%d problem(s)" cannot tell a new rule that fires from an old rule that fired twice.
+$pinnedSelect = 0;
+$pinnedGuarded = 0;
 $seen = [];
 foreach ($pageOwner as $pageName => $o) {
     $body = $o['body'];
@@ -602,6 +615,29 @@ foreach ($pageOwner as $pageName => $o) {
                     ."                 with nothing from page 2 onward. Page 1 cannot show this.\n");
                 $problems++;
             }
+
+            // The second half of the same ordering question, and the one that reached a desk as a 500 rather than
+            // as a wrong number. `ListSort` joins the table an ordered column sits on and, for a hop, pins the
+            // builder's select to the base model's own columns; `selectRaw()` APPENDS. So an aggregate cloned
+            // after that call carries `table.*` beside its own column and `ONLY_FULL_GROUP_BY` refuses it on the
+            // school's MySQL, while SQLite answers it — which is why this verdict cannot be proved by the suite
+            // alone and `mutate-lane47-checker.php` is run against a scratch MySQL schema as well.
+            $chain = $c[1][0];
+            $orderAt = strpos($body, 'ListSort::apply(');
+            $inheritsOrder = $orderAt !== false && $orderAt < $cloneAt;
+            $appends = preg_match('/selectRaw\(/', $chain) === 1;
+            // `select()` REPLACES the column list, so a chain that names its own columns before appending is safe
+            // even when the order ran first — that is the shape the admission queue's status tile now uses.
+            $replacesFirst = preg_match('/->select\([^)]*\)\s*(->selectRaw|\->groupBy|\->pluck|\->first|\->count|\->sum)/', $chain) === 1;
+            if ($inheritsOrder && $appends && ! $replacesFirst) {
+                printf("    PINNED-SELECT — the order already ran on this builder, so its pinned `table.*` rides\n"
+                    ."                 into the aggregate that `selectRaw()` appends to. MySQL 8 answers 1055;\n"
+                    ."                 SQLite answers the query. Name the columns with `select()` first.\n");
+                $pinnedSelect++;
+                $problems++;
+            } elseif ($inheritsOrder && $appends && $replacesFirst) {
+                $pinnedGuarded++;
+            }
         }
     }
 }
@@ -620,6 +656,8 @@ if ($judged === 0) {
     exit(1);
 }
 
-printf("\nScreens judged: %d.  Tiles traced: %d.\n  %d problem(s).\n", $screens, $judged, $problems);
+printf("\nScreens judged: %d.  Tiles traced: %d.  Aggregates cloned off a paginated builder: %d"
+    ." (PINNED-SELECT %d, plus %d that name their own columns first and are clean).\n  %d problem(s).\n",
+    $screens, $judged, $ordered, $pinnedSelect, $pinnedGuarded, $problems);
 
 exit($problems === 0 ? 0 : 1);

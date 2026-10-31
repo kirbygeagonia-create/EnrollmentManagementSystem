@@ -66,7 +66,7 @@ class ShiftRequestController extends Controller
         // one-sided list would leave the receiving desk blind to a student it is about to receive.
         $requests = CollegeScope::ofShiftRequests(
             Shiftingrequests::with([
-                'student', 'currentCourse', 'targetCourse', 'term.academicYear',
+                'student:studentId,schoolIdNumber,lastName,firstName,middleName', 'currentCourse', 'targetCourse', 'term.academicYear',
                 'currentEnrollment.course', 'grantedEnrollment',
                 'requestedByUser', 'departmentSignedByUser', 'decisionByUser',
             ]),

@@ -41,7 +41,7 @@ class DashboardController extends Controller
         $progressTracking = [];
         $user = $request->user();
         if ($user !== null && $user->role->value === 'admin' && $user->can('viewAny', Students::class)) {
-            $progressTracking = Enrollments::with(['student', 'course', 'enrollmentworkflow.workflowsteps'])
+            $progressTracking = Enrollments::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'enrollmentworkflow.workflowsteps'])
                 ->latest('enrollmentId')
                 ->limit(8)
                 ->get()

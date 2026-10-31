@@ -225,4 +225,31 @@ class AdmissionQueueSortTest extends TestCase
         $this->assertSame('desc', $sort['direction'], 'anything but asc reduces to desc, and nothing else reaches the order clause');
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
     }
+
+    #[Test]
+    public function the_queue_loads_the_student_for_the_identity_columns_and_nothing_else(): void
+    {
+        $this->applicantTrio();
+
+        // Signed in first: without this the queue answers 302 to the login screen, and `assertOk()` below is the
+        // check that says so rather than a case quietly reading the shape of a redirect.
+        $this->actingAs($this->desk());
+        $plain = $this->get(route('admission.index'));
+        $ordered = $this->get(route('admission.index', ['sort' => 'name', 'direction' => 'asc']));
+        $plain->assertOk();
+        $ordered->assertOk();
+
+        foreach ([[$plain, 'unsorted'], [$ordered, 'ordered by surname']] as [$response, $label]) {
+            $row = $this->rows($response)[0] ?? null;
+            $this->assertNotNull($row, "the {$label} queue answered no row, so the payload says nothing");
+
+            $keys = array_keys($row['student'] ?? []);
+            sort($keys);
+            $this->assertSame(
+                ['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'],
+                $keys,
+                "the admission queue paints a name and a school number on the {$label} list, so those five are the whole payload"
+            );
+        }
+    }
 }

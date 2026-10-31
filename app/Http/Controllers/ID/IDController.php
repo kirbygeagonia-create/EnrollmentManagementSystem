@@ -94,7 +94,7 @@ class IDController extends Controller
         // computed from these same bases afterwards — so the order is applied to this clone and never to the bases
         // the counts are taken from.
         $list = (clone ($tab === 'issued' ? $issuedBase : $queueBase))
-            ->with(['student', 'course', 'term', 'idrequests', 'enrollmentworkflow']);
+            ->with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'idrequests', 'enrollmentworkflow']);
 
         $sort = ListSort::apply(
             $list,

@@ -364,7 +364,7 @@ class AccountingController extends Controller
 
         // Money still in the drawer: a settled receipt and an installment are both cash
         // taken; a void and a refund are not.
-        $payments = Payments::with(['enrollment.student', 'processedBy'])
+        $payments = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'processedBy'])
             ->whereDate('paymentDate', $date)
             ->held()
             ->orderByDesc('paymentId')
@@ -377,7 +377,7 @@ class AccountingController extends Controller
         // `refundedAt` is a real instant, so the day is the school's: UTC midnight would hand back a refund
         // processed in the school's morning onto the previous sheet. `paymentDate` above is left as `whereDate`
         // on purpose — every one of its rows is midnight from a date-only input, so its stored date *is* the day.
-        $refunds = Payments::with(['enrollment.student', 'refundedByUser'])
+        $refunds = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'refundedByUser'])
             ->where('paymentStatus', PaymentStatus::Refunded)
             ->where('refundedAt', '>=', SchoolTime::startOfSchoolDay($date))
             ->where('refundedAt', '<', SchoolTime::startOfNextSchoolDay($date))

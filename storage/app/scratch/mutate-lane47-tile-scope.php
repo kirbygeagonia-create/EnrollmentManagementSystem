@@ -89,7 +89,9 @@ $case = function (string $name, string $file, string $from, string $to, string $
 
 echo "=== case 0: the unmutated tree has to look clean, or the scoped cases prove nothing\n";
 [$code, $out] = $run();
-$clean = $code === 0 && str_contains($out, 'problem(s)');
+// The clean tree must ALSO show the new verdict reading the one site that guards itself: an instrument that
+// stopped computing this line would report the same 0 problems as one that had fixed everything.
+$clean = $code === 0 && str_contains($out, 'problem(s)') && str_contains($out, 'PINNED-SELECT 0, plus 1');
 printf("  %s %-34s exit=%d  %s\n", $clean ? 'ok  ' : 'BAD ', 'clean tree', $code,
     $clean ? 'as expected' : 'the baseline is red — every case below would still "pass"');
 if (! $clean) {
@@ -99,23 +101,48 @@ if (! $clean) {
 
 echo "\n=== planted defects ===\n";
 
-// A summary taken after the page LIMIT, which is the shape the three desks had.
-$case('aggregate cloned after paginate()', $controllers.'/Clearance/ClearanceController.php',
-    '        $statusCounts = (clone $query)
+// A summary taken after the page LIMIT, which is the shape three desks had. This needle was re-cut on 2026-10-31:
+// the clearance desk's tile now sits BEFORE its order and its paginate call, so the old two-statement anchor
+// matched nothing and the case reported itself asleep — a mutant that cannot be planted is the harness's age, not
+// a rule that does not fire. The plant is now a true permutation of the handler's own lines: tiles after the page.
+$clearTile = '        $statusCounts = (clone $query)
             ->reorder()
             ->selectRaw(\'overallStatus, count(*) as aggregate\')
             ->groupBy(\'overallStatus\')
             ->pluck(\'aggregate\', \'overallStatus\');
 
-        $clearances = $query->paginate(20)->withQueryString();',
-    '        $clearances = $query->paginate(20)->withQueryString();
+';
+$clearTail = '        // The order is asked of the query, and only after the tiles were cloned: a name sort joins `students`, and
+        // an aggregate must not learn about a join it never needed. The join is 1:1 through a NOT NULL foreign key,
+        // so it could not have changed a count either way — but a tile\'s number should not depend on that fact.
+        $sortable = [
+            \'name\' => [\'column\' => \'lastName\', \'join\' => \'students\', \'foreign\' => \'studentId\', \'local\' => \'studentclearances.studentId\'],
+            \'schoolId\' => [\'column\' => \'schoolIdNumber\', \'join\' => \'students\', \'foreign\' => \'studentId\', \'local\' => \'studentclearances.studentId\'],
+            \'status\' => [\'column\' => \'overallStatus\'],
+            \'received\' => [\'column\' => \'receivedDate\'],
+            \'studentClearanceId\' => [\'column\' => \'studentClearanceId\'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input(\'sort\', \'\'),
+            (string) $request->input(\'direction\', \'\'),
+            $sortable,
+            \'studentClearanceId\',
+            \'studentclearances.studentClearanceId\'
+        );
 
-        $statusCounts = (clone $query)
-            ->reorder()
-            ->selectRaw(\'overallStatus, count(*) as aggregate\')
-            ->groupBy(\'overallStatus\')
-            ->pluck(\'aggregate\', \'overallStatus\');',
-    'SILENT-ZERO');
+        $clearances = $query->paginate(20)->withQueryString();';
+$case('aggregate cloned after paginate()', $controllers.'/Clearance/ClearanceController.php',
+    $clearTile.$clearTail, $clearTail."\n\n".$clearTile, 'SILENT-ZERO');
+
+// The other half of the ordering question, and the one that reached a desk as a 500 rather than as an empty tile:
+// an aggregate cloned after `ListSort::apply()` inherits the select the order pinned, and `selectRaw()` appends to
+// it. The pre-fix bytes are restored here — the admission tile's own `select()` removed — so the NEW verdict must
+// be the one that fires: the clone still precedes `paginate()`, which is why SILENT-ZERO staying silent matters.
+$case('aggregate inherits the order\'s pinned select', $controllers.'/Admission/AdmissionController.php',
+    "->select('admissionStatus')->selectRaw('count(*) as aggregate')",
+    "->selectRaw('admissionStatus, count(*) as aggregate')",
+    'PINNED-SELECT');
 
 // A tile that counts the rows on the page under a label that promises the queue. The mutation replaces the
 // handler's number with the page reduce this screen had before, in the local the tile reads.

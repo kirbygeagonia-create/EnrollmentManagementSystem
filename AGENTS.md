@@ -1539,7 +1539,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `PAGINATED 1; UNBOUND 32`, a clean-looking verdict over rows it never read.
 - **A second queue wired to the same mechanism is where the contract's other half bit** (lane 91, prompt §14). The
   Admission queue now sorts through `ListSort` exactly as the Registrar one does — five allowed columns, four
-  sortable headers, `tests/Feature/Admission/AdmissionQueueSortTest.php` (5 cases / 17 assertions) — and
+  sortable headers, `tests/Feature/Admission/AdmissionQueueSortTest.php` (6 cases / 23 assertions) — and
   `lane46-filter-contract.php` answered **NO-RETURN** on it: the handler consulted `direction` and never echoed it,
   so the control resets while the list stays narrowed. Both queues now echo `sort` and `direction` in `filters`
   beside the `sort` prop, which is the honest shape: a key the desk sent must come back. Three consequences travelled
@@ -1707,8 +1707,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   process reported the case green, while the identical mutation applied from a shell fails it on its first
   assertion. A leg that cannot fail is decoration; a leg that reports a real guard as surviving is worse, so it is
   stated rather than folded into the tally (task #47 carries the revisit). The same session wired the campus
-  clearance queue as the fourth sortable table — `ClearanceQueueSortTest.php` at nine cases and thirty-two
-  assertions (the figure the 2026-10-30 run answers; the case was re-cut when CI's MySQL job refused the sequence it
+  clearance queue as the fourth sortable table — `ClearanceQueueSortTest.php`, whose case and assertion totals are
+  re-taken beside its class name by `lane107-retake-class-figures.php` rather than carried here in prose, because a
+  figure in a sentence no instrument reads is the one that rots (the case itself was re-cut when CI's MySQL job
+  refused the sequence it
   had been remembering, so the class grew three assertions), five legs
   all killed — which added two shapes the other three do not have: the tiles are cloned from the builder BEFORE a
   name sort can introduce a join, and Academic Term, Student Type and Standing are derived per page, so their keys
@@ -1742,8 +1744,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   it refuses a column that names no enum on the mysql driver rather than guessing at an order. The rule for the
   remaining 28 tables is therefore: read the column's MySQL type (`information_schema.COLUMNS.DATA_TYPE`, not the
   model), offer the ENUM, and never type its order. The cases the ruling added, each named on the same line as the
-  figures its delivered run reported: `ClinicQueueSortTest.php` (11 cases / 36 assertions) for type and standing,
-  `IDQueueSortTest.php` (11 cases / 41 assertions) for the same two on the ID desk, and
+  figures its delivered run reported: `ClinicQueueSortTest.php` (12 cases / 42 assertions) for type and standing,
+  `IDQueueSortTest.php` (12 cases / 47 assertions) for the same two on the ID desk, and
   `RegistrarQueueSortTest.php`, whose figure was re-taken from the delivered run at 8 cases / 31 assertions and now
   carries three things rather than one — the Status header that had been offered since the first wiring and answered
   by nothing, that queue's own Student Type and Final Standing headers under the same ruling, and the payload case
@@ -1765,7 +1767,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **The eighth table, the ID desk, made a TAB the third control an order must survive.** Its queue tab is not a filter:
   it chooses which population the list is built from — the enrollments whose first open box is office 22 against the
   ones whose ID box is already signed — so `ListSort` runs on the clone of the base the tab chose, and the two tiles
-  and both tab counts still clone the bases themselves. Pinned by `IDQueueSortTest.php` (11 cases / 41 assertions), and a
+  and both tab counts still clone the bases themselves. Pinned by `IDQueueSortTest.php` (12 cases / 47 assertions), and a
   harness can now plant the swap directly
   (`order-applied-to-the-other-base` in `mutate-g40-id-sort-tests.php`, thirteen legs, all killed) and require the
   tab's own case to go red while the order stays perfectly formed. The tab must also come BACK: the filter echo carries
@@ -1856,6 +1858,44 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   and Assessment queues (four sites, including Assessment's pending-evaluation list). What is not: the list, detail
   and print sites above, because a print view is judged on paper rather than source and a queue page is judged in the
   browser — so the register row leads `Open`, and the census is the instrument that will show it falling.
+  **(d)** That reading was the page file alone, and both halves of its claim were the instrument's. A desk paints
+  through shared components, so `Evaluation/Show` — which renders the profile form that edits gender, birthplace,
+  birthdate, citizenship, religion, civil status, contact number, telephone, semesters completed and years in
+  institution — was filed as name-only, and narrowing from that reading would have emptied a form on the screen while
+  every payload test stayed green, because those cases assert the keys the SERVER sent, not the keys the screen reads.
+  The graph reader then showed its own hole: it recorded only the FIRST student column named on a line, so the
+  Registrar queue's row (surname, given name and middle initial in one expression) reported a surname alone, and the
+  figure that moved was the census's suffix line, which it now prints beside its split. So a page's read set is
+  walk-the-import-graph work, and `lane108c-check-the-narrowed-lists.php` re-audits the narrowing the first reading
+  already applied: it binds each narrowed column list to the page its own action renders, refuses a page whose walk
+  reached a single file, and exits 1 naming any column the page still paints. Its first cut filled
+  `WHOLE-LOAD-IN-SAME-ACTION` by matching any quoted `student` string — `whereHas('student', …)` is a search clause and
+  `withErrors(['student' => …])` a validation key, and neither loads a row — which swallowed twelve of the fifteen
+  actions unread while the run still printed `MISSING 0`; the bucket is anchored on the load call now, and prints the
+  literal it decided on. `lane108c-probe-walk-depth.php` then measured the walker's depth bound instead of trusting
+  it, taking its population from the audit's own `--json=` rather than re-deriving the binding (its first cut did
+  re-derive it, walked nine wrong pages, printed NO-PAGE for every one, and still reported "inadequate on 0 page(s)" —
+  a clean verdict over rows it never read); it now refuses when it opened fewer pages than the audit judges. A green
+  answer from a new reader is not evidence: prove it with `mutate-lane108c-narrowed-audit.php`, which plants a
+  one-column list, a planted suffix read, a planted non-demographic read, an `email` read that must NOT classify, and
+  a real whole load that must reach its own bucket.
+  **(e)** Two defects came out of that harness's first three runs, and neither was in the tool it was written to
+  prove. *The mutant's own bytes:* the plant was built as `"row?.student?->{$col}"`, and PHP's interpolation put a
+  **property arrow** into JavaScript — `student?->suffix` — which the classifier is correct to ignore, so two legs
+  reported "the tool cannot see my plant" across three runs while the tool was right and the mutant was unreadable.
+  A plant must now be verified against the exact text the leg claims to have written: `lane108c-child-sees.php` is
+  run by a fresh child BEFORE the measurement, and a leg that cannot make that child see the read is reported as the
+  harness's failure, never as a surviving defect. The same reflexion tested and **disproved** the other suspicion —
+  a parent-then-child file-visibility problem on this OneDrive-backed tree: `lane108c-probe-child-read.php` prints
+  the parent's read, a child's read and the auditor's own verdict together, and the child sees the plant.
+  *The no-op that is not an error:* a docx pass whose replacement **embeds its own needle** (an append) can never
+  make the needle disappear, so a read-back demanding `old count == before − 1` refuses a correct write and restores
+  its own backup — pass 335 did exactly that on its first run, and the fix is a per-edit residual expectation plus a
+  marker for the clause that was added. `lane107-retake-class-figures.php` learned the sibling rule the same day: a
+  class figure the delivered run already equals is a SKIP, and a batch that moves four classes while three are
+  already true must still write the four — refusing the whole run on a byte-identical pair made the tool unusable on
+  exactly the case it exists for, and what remains guarded is an empty plan with no skips at all, which means the
+  needle list has aged.
 - **A builder's pinned select travels into every clone of it, and `selectRaw()` appends** (lane 108, found only by
   CI's MySQL job). The G-51 pin put `admissions.*` on the admission queue's builder, so the status tile's
   `(clone $query)->reorder()->selectRaw('admissionStatus, count(*) as aggregate')` was no longer a two-column
@@ -1869,10 +1909,62 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   counts can drop out. Say that reason where the clone is written, or the next reader cannot tell a safe late clone
   from a leak. `lane108-tile-replaces-its-columns.php` applies the change line-neutrally and now reports ALREADY
   APPLIED on a re-run, because a one-shot patcher whose needles this batch consumed refuses with "needle matched 0"
-  and reads like a broken tool; `lane47` still owes the durable rule (an aggregate inheriting a pinned select is a
-  second SILENT-ZERO shape) and does not carry it yet. The reproducible surface is a scratch MySQL schema —
+  and reads like a broken tool. `lane47` now carries the durable rule as its own verdict: **PINNED-SELECT** fires
+  when an aggregate is cloned off a builder that `ListSort::apply()` already ran and appends with `selectRaw()`
+  without naming its columns first, and the tree today answers `PINNED-SELECT 0, plus 1 that name their own columns
+  first`. Its harness plants both halves — the admission pre-fix bytes for the new verdict, and a true permutation
+  of the clearance handler's lines for SILENT-ZERO, whose old two-statement anchor had silently stopped matching
+  the day that desk moved its tile ahead of the order; the case reported itself asleep rather than pretending to
+  kill anything. `lane47b-probe-the-pinned-verdict.php` is the no-write version: it refuses unless the three
+  expressions it mirrors are still verbatim in the checker, then judges the real chain and the same chain with the
+  `select()` removed in memory — the separation a harness leg would otherwise only claim.
+  The reproducible surface for the original defect is a scratch MySQL schema —
   `E2E_DB_DATABASE` **plus** a pinned `DB_CONNECTION`, lane 87's rule, or Laravel opens a SQLite file named after the
   MySQL schema — driven against the header that joins, not a reasoning about which driver is stricter.
+- **A desk list is narrowed by byte offset, and the evidence that it is safe lives past the page's own file**
+  (lane 108b, §28.3 G-52's continuation). Thirteen more queue sites came down the same way, and three things made
+  that possible rather than reckless. **(a) One reader decides which sites are next.**
+  `lane108-census-whole-student-loads.php --json=` emits every whole-student load with the byte offset of its own
+  literal and the bucket the page falls in (`LIST` / `DETAIL` / `PRINT`);
+  `lane108b-narrow-the-list-loads.php` consumes that JSON and rewrites at those offsets. It refuses if the bytes at
+  an offset are not exactly the quoted relation path — which is what happened first, because the census recorded the
+  capture-group offset (one byte past the opening quote) while its comment claimed it had added one: every row was
+  refused and nothing was written. A needle list for this job would have matched `whereHas('student', …)` and
+  `'student.aliases'` too, which is lane 69's rule arriving in a rewriter. **(b) The census counts one row per CALL
+  SITE, not per action** — Accounting's daily report loads the student twice — so the figures it had just written
+  into the register moved (26 sites over 25 controllers, 13 list, 8 detail, 4 print) and docx pass 331 re-took them
+  from the instrument rather than patching the prose. **(c) "This page reads nothing beyond the name" cannot be
+  decided by reading the page.** `lane108b-page-read-set.php` walks the page's import graph and prints every line
+  that names a `students` column; its first run resolved exactly one file per page — the separator style differed
+  between `dirname()`, `realpath()` and the hand-built root — and printed a clean-looking verdict over a tree it
+  had not read, which is why the tool now REFUSES when any page resolves no local import at all. What that reader
+  found: no desk list paints a student-only column, and a suffix is half of a NAME, so a five-column list on the
+  four detail screens that paint one would have dropped "Jr." — the rewriter refuses any site whose page reads a
+  suffix instead of widening the set on its own. **Prove the offset formula against the bytes, not against the
+  plan:** applying highest-offset-first means each literal you already wrote is later shifted by every edit below
+  it, so the first read-back reported three FAILs on a diff that was perfectly correct.
+  `lane108b-check-the-offset-shift.php` recomputes plan-plus-shift for each literal and additionally requires that
+  the *unshifted* offset does NOT hold the new text — a shift that cannot be falsified is a story, not a
+  measurement. **(d) The column guard is one module now** (`students-column-guard.php`, read off the `students`
+  migrations and bound per `Schema::` block so another table created in the same file cannot lend it a name);
+  `lane108-narrow-the-queue-student-loads.php` and the new rewriter both require it, and two answers to "is this a
+  students column" is the defect this file has refused in lanes 6, 46, 69 and 90.
+- **A bad column shows a different face on each driver, so one case must carry both guards** (lane 108b, measured
+  on both surfaces rather than inferred). With `id` in a student column list — a column `students` has never held —
+  MySQL 8 throws and the feature case dies on `The response is not a view`, while SQLite answers 200 and puts an
+  EXTRA KEY on the nested student, so only the exact key-set assertion refuses. The pass 330 row said "all three
+  queues answered 500", which was the MySQL half only; pass 331 states both. Pinning is now: the four queue classes
+  that already had fixtures gained a case each (`the_queue_loads_the_student_for_the_identity_columns_and_nothing_else`)
+  and the three money queues carry the same assertions inside their existing join case. The debt is held in
+  `tests/Feature/DeskQueue/DeskStudentLoadColumnsTest.php`, which lists the twelve still-open detail and print
+  actions and FAILS both ways — a new bare load anywhere, or a listed site that has quietly been narrowed — the
+  `AssertNoSilentSkips::ALLOWED` shape applied to a payload rule. `mutate-g52-desk-payload-tests.php` kills the leak
+  (Clinic reverted to a bare load: the queue case AND the source guard both go red, naming
+  `ClinicController::index`) and the bad column (Accounting widened with `id`), and it refused itself three times
+  before it was honest: its filter named a case the money queues do not have (they were extended in place, and
+  "No tests found" must be BAD, never a kill), its tally regex could not read a failures-only `Tests:` line, and
+  its tree-clean check demanded no bare `'student'` remain in a controller whose detail screen legitimately still
+  has one.
 - **A presentation vocabulary has one map, and a page-local copy is a defect even when it renders fine** (lane 86,
   G-39 closed). `resources/js/Components/ui/statusLabel.js` owns the enrollment-tone map (`enrollmentStatusTone`,
   lines 13 to 26); the certificate screen was the last surface carrying its own six-key copy, which had never

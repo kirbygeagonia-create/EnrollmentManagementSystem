@@ -57,7 +57,7 @@ class AdmissionController extends Controller
         // Ruled 2026-10-13: the department also receives the applicants to its own college — an
         // application is the only record a not-yet-enrolled student has, and it names a course.
         $query = CollegeScope::ofAdmissions(
-            Admissions::with(['student', 'course', 'term.academicYear', 'evaluatedByUser']),
+            Admissions::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term.academicYear', 'evaluatedByUser']),
             $request->user()
         )
             ->when($request->status, fn ($q, $status) => $q->where('admissionStatus', $status))

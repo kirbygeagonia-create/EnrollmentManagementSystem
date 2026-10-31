@@ -24,6 +24,9 @@
  * `students` migrations, because a list naming a column the table lacks is a 500 at the desk rather than a wrong value.
  */
 $root = dirname(__DIR__, 3);
+// The column guard lives in ONE module shared with `lane108b-narrow-the-list-loads.php`; two files answering
+// "is this a students column" differently is the defect this repository has refused in lanes 6, 46, 69 and 90.
+require __DIR__.'/students-column-guard.php';
 $apply = in_array('--apply', $argv, true);
 
 foreach (array_slice($argv, 1) as $arg) {
@@ -51,10 +54,10 @@ foreach (array_slice($argv, 1) as $arg) {
     }
 }
 
-$declared = studentsColumnsFromMigrations($root);
+$declared = students_columns_from_migrations($root);
 if ($declared === []) {
-    fwrite(STDERR, "REFUSED: no `students` column was read out of the migrations, so the guard below would pass"
-        ." on an empty set — the accepted-and-inert-flag defect, arrived from the schema side.\n");
+    fwrite(STDERR, "REFUSED: no `students` column was read out of the migrations, so the guard below would pass on"
+        ." an empty set — the accepted-and-inert-flag defect, arrived from the schema side.\n");
 
     exit(1);
 }
@@ -176,52 +179,3 @@ if ($bad > 0) {
     exit(1);
 }
 echo 'written, re-read: every queue now loads the identity columns and nothing else.'."\n";
-
-/**
- * Every column the migrations declare on `students`, read out of `database/migrations` rather than recalled.
- *
- * `Blueprint::dropColumn` is excluded, because a dropped name is not a column a select list may ask for, and the
- * read is a whole-file scan rather than an `up()`-only one for the same reason lane 60 names: a create migration
- * carries its own rollback, and the DROP lives below the CREATE it belongs to.
- *
- * @return string[]
- */
-function studentsColumnsFromMigrations(string $root): array
-{
-    $cols = [];
-    foreach (glob($root.'/database/migrations/*.php') ?: [] as $file) {
-        $src = (string) file_get_contents($file);
-        // Bind per BLOCK, not per file: a migration that touches `students` and also creates another table would
-        // otherwise lend that table's columns to this list, and a guard that accepts a name belonging to a
-        // different table is no guard at all. A block runs from `Schema::` to the first `});`, which is where
-        // Laravel's own closure ends — the rollback's `Schema::dropIfExists` sits below it and is never read.
-        $at = 0;
-        while (($start = strpos($src, 'Schema::', $at)) !== false) {
-            $close = strpos($src, '});', $start);
-            if ($close === false) {
-                break;
-            }
-            $block = substr($src, $start, $close - $start);
-            $at = $close + 3;
-            if (! preg_match("/^Schema::(?:create|table)\(\s*'students'/", $block)) {
-                continue;
-            }
-            if (preg_match_all('/\$table->dropColumn\(\s*\'([a-zA-Z0-9_]+)\'/', $block, $dm)) {
-                foreach ($dm[1] as $c) {
-                    unset($cols[$c]);
-                }
-            }
-            if (preg_match_all('/\$table->\w+(?:\([^)]*\))?\(\'([a-zA-Z0-9_]+)\'/', $block, $cm)) {
-                foreach ($cm[1] as $c) {
-                    $cols[$c] = true;
-                }
-            }
-        }
-    }
-
-    if ($cols === []) {
-        return [];
-    }
-
-    return array_keys($cols);
-}

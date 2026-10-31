@@ -441,4 +441,28 @@ class ClinicQueueSortTest extends TestCase
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
     }
+
+    #[Test]
+    public function the_queue_loads_the_student_for_the_identity_columns_and_nothing_else(): void
+    {
+        $this->trio();
+
+        $plain = $this->actingAs($this->nurse)->get(route('clinic.index'));
+        $ordered = $this->actingAs($this->nurse)->get(route('clinic.index', ['sort' => 'name', 'direction' => 'asc']));
+        $plain->assertOk();
+        $ordered->assertOk();
+
+        foreach ([[$plain, 'unsorted'], [$ordered, 'ordered by surname']] as [$response, $label]) {
+            $row = $this->rows($response)[0] ?? null;
+            $this->assertNotNull($row, "the {$label} clinic queue answered no row, so the payload says nothing");
+
+            $keys = array_keys($row['student'] ?? []);
+            sort($keys);
+            $this->assertSame(
+                ['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'],
+                $keys,
+                "the health queue lists a name and a school number on the {$label} page; birthdate and contact number are the clinic's record to read, not this row's"
+            );
+        }
+    }
 }

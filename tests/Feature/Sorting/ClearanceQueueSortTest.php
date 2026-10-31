@@ -330,4 +330,28 @@ class ClearanceQueueSortTest extends TestCase
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
     }
+
+    #[Test]
+    public function the_queue_loads_the_student_for_the_identity_columns_and_nothing_else(): void
+    {
+        $this->trio();
+
+        $plain = $this->actingAs($this->officer)->get(route('clearance.index'));
+        $ordered = $this->actingAs($this->officer)->get(route('clearance.index', ['sort' => 'name', 'direction' => 'asc']));
+        $plain->assertOk();
+        $ordered->assertOk();
+
+        foreach ([[$plain, 'unsorted'], [$ordered, 'ordered by surname']] as [$response, $label]) {
+            $row = $this->rows($response)[0] ?? null;
+            $this->assertNotNull($row, "the {$label} clearance queue answered no row, so the payload says nothing");
+
+            $keys = array_keys($row['student'] ?? []);
+            sort($keys);
+            $this->assertSame(
+                ['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'],
+                $keys,
+                "the campus clearance list paints a name and a school number on the {$label} page, so those five are the whole student payload"
+            );
+        }
+    }
 }

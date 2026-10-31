@@ -89,7 +89,7 @@ class EvaluationController extends Controller
         // belonging to no college (Registrar, Guidance, Accounting, the clinic) is bounded by nothing and
         // keeps the whole queue, which is what the ruling says about those desks.
         $query = CollegeScope::ofEnrollments(
-            Enrollments::with(['student', 'course', 'major', 'term', 'evaluatedByUser']),
+            Enrollments::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term', 'evaluatedByUser']),
             $desk
         )
             // Item 8: enrollments returned by the Registrar land back on this

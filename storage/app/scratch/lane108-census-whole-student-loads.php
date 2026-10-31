@@ -23,32 +23,29 @@
 $root = dirname(__DIR__, 3);
 
 $showIdentity = false;
+$jsonTo = null;
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--show-identity') {
         $showIdentity = true;
 
         continue;
     }
-    fwrite(STDERR, "REFUSED: unknown argument {$arg}; this census reads only --show-identity.\n");
+    if (str_starts_with($arg, '--json=')) {
+        $jsonTo = substr($arg, strlen('--json='));
+
+        continue;
+    }
+    fwrite(STDERR, "REFUSED: unknown argument {$arg}; this census reads --show-identity and --json=.\n");
 
     exit(1);
 }
 
-// Every column `students` holds beyond what a queue paints as a name. `passwordHash` is in the list because
-// `$hidden` withholds it on the model, and a reader must be able to see that this census does not rely on it.
-$SENSITIVE = [
-    'birthdate', 'birthplace', 'citizenship', 'civilStatus', 'contactNumber', 'email', 'gender',
-    'passwordHash', 'religionId', 'semestersCompleted', 'telephoneNumber', 'username',
-    'yearsInInstitution',
-];
-
-// A suffix is not a demographic record, it is half of a NAME: a page that paints it must carry it in any narrowed
-// column list, or the desk silently stops printing "Jr." Classifying it with the sensitive set would have called
-// nine name-painting screens legitimate for the wrong reason.
-$NAME_ONLY = ['suffix'];
-
-/** The columns the identity set is made of — a page reading only these needs no more than the six. */
-$IDENTITY = ['studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix'];
+// Which `students` columns are a name and which are not lives in ONE module, shared with
+// `lane108b-page-read-set.php`: this census once kept its own list and read only the page file, so it filed
+// `Evaluation/Show` — which renders a profile form that edits birthdate, citizenship and contact number — as a
+// screen reading "nothing beyond the name". Two readers answering one question differently is the defect this
+// repository refuses in lanes 6, 46, 69, 70 and 90; this was the second definition, in my own instrument.
+require __DIR__.'/page-read-graph.php';
 
 $files = [];
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/app/Http/Controllers'));
@@ -88,18 +85,21 @@ foreach ($files as $abs) {
             }
         }
 
-        // Relation paths inside this with()/load() call only. A path is a whole-student load when one of its
-        // DOT-SEPARATED SEGMENTS is exactly `student` — `studentassessments` is a fee sheet and `student.addresses`
-        // still selects the student itself with no column list, because a constraint below the parent does not
-        // narrow the parent.
+        // Relation paths inside this with()/load() call only, each with ITS OWN byte offset: a later rewriter must
+        // change the literal where it sits, because a short needle like `'student'` occurs all over the tree —
+        // lane 69's rule that a needle list corrupts, applied to this class.
         $paths = [];
-        preg_match_all("/'([a-zA-Z0-9_.]*)'/", $m[1][0], $pm);
+        preg_match_all("/'([a-zA-Z0-9_.]*)'/", $m[1][0], $pm, PREG_OFFSET_CAPTURE);
         foreach ($pm[1] as $p) {
-            if (in_array('student', explode('.', $p), true) && ! str_contains($p, ':')) {
-                $paths[] = $p;
+            if (in_array('student', explode('.', $p[0]), true) && ! str_contains($p[0], ':')) {
+                // The capture group begins AFTER the opening quote, so minus one is the quote itself. The first cut
+                // recorded the group offset while its comment claimed it had added one; the rewriter then read
+                // `enrollment.student',` where it expected `'enrollment.student'` and refused every row it was
+                // handed — the refusal worked, the census had not.
+                $paths[] = ['path' => $p[0], 'at' => $m[1][1] + $p[1] - 1];
             }
         }
-        $whole = array_values(array_unique($paths));
+        $whole = array_values(array_unique(array_column($paths, 'path')));
         if ($whole === []) {
             continue; // every load here already names its columns, or loads no student
         }
@@ -112,12 +112,9 @@ foreach ($files as $abs) {
             $component = $rm[1];
         }
 
-        $key = $rel.'|'.$action.'|'.implode(',', $whole);
-        if (isset($seen[$key])) {
-            continue; // two loads of the same set in one action is one row
-        }
-        $seen[$key] = true;
-        $rows[] = ['file' => $rel, 'action' => $action, 'paths' => $whole, 'component' => $component];
+        // One row per CALL SITE, not per (file, action): an action may hold two whole-student loads (the daily
+        // report does), and merging them would hide the second one's offsets from the rewriter that reads this JSON.
+        $rows[] = ['file' => $rel, 'action' => $action, 'paths' => $whole, 'literals' => $paths, 'component' => $component];
     }
 }
 
@@ -137,7 +134,8 @@ $splits = ['LIST' => 0, 'DETAIL' => 0, 'PRINT' => 0];
 $identityOnly = [];
 $prints = [];
 
-foreach ($rows as $r) {
+foreach ($rows as $ri => $r) {
+    $rows[$ri]['kind'] = '';
     if ($r['component'] === null) {
         $counts['NO-COMPONENT']++;
 
@@ -153,19 +151,28 @@ foreach ($rows as $r) {
 
         continue;
     }
-    $js = (string) file_get_contents($page);
-    $read = [];
-    foreach ($SENSITIVE as $col) {
-        if (preg_match('/[.\?\]]'.$col.'\b/', $js)) {
-            $read[] = $col;
-        }
+    $js = null; // read through the shared graph walker below, never from the page file alone
+    $walk = page_reachable_files($root, $page);
+    $reachable = $walk['files'];
+    if ($reachable === []) {
+        $counts['NO-COMPONENT']++;
+
+        $prints[] = sprintf("NO-COMPONENT   %-58s %-30s %s  (the page resolved no source at all)", $r['file'], $r['action'].'()', implode(', ', $r['paths']));
+
+        continue;
     }
-    $nameExtras = [];
-    foreach ($NAME_ONLY as $col) {
-        if (preg_match('/[.\?\]]'.$col.'\b/', $js)) {
-            $nameExtras[] = $col;
-        }
+    $reads = page_student_column_reads($reachable);
+    $unresolvedNotes = [];
+    if ($reads['ambiguous'] !== []) {
+        // A shared name (`email`, `status`, `username`, `remarks`) is printed, never classified: the signed-in
+        // staff member's email sits in the layout every page imports, and classifying on it would call every
+        // screen in the application a student read.
+        $unresolvedNotes[] = 'shared-name hits to read: '.implode(', ', $reads['ambiguous'])
+            .' across '.count($reads['lines']).' line(s) in '.count($reachable).' reachable file(s)';
     }
+    $r['unresolvedNotes'] = $unresolvedNotes;
+    $read = $reads['nondemographic'];
+    $nameExtras = array_values(array_intersect($reads['names'], ['suffix']));
     if ($read !== []) {
         $counts['READS-SENSITIVE']++;
 
@@ -181,6 +188,8 @@ foreach ($rows as $r) {
         $kind = 'DETAIL';
     }
     $splits[$kind]++;
+    $rows[$ri]['kind'] = $kind;
+    $rows[$ri]['readsSuffix'] = $nameExtras !== [];
     $tag = $nameExtras === [] ? '' : '  (+'.implode(',', $nameExtras).' — a narrowed list there must carry it)';
     $identityOnly[] = sprintf('%s  %s %s() [%s] -> %s%s', $kind, $r['file'], $r['action'], implode(', ', $r['paths']), $r['component'], $tag);
 
@@ -224,12 +233,52 @@ echo "\nthe identity-only rows, by what the site is:\n";
 foreach ($splits as $kind => $n) {
     printf("  %-7s %d\n", $kind, $n);
 }
+// The suffix tally is printed as its own line because the register states it: a figure a document attributes to a
+// tool has to be answerable by a line that tool writes (lane 59), and per-row `+suffix` tags are not a total.
+$suffixByKind = ['LIST' => 0, 'DETAIL' => 0, 'PRINT' => 0];
+foreach ($rows as $r) {
+    if (($r['kind'] ?? '') !== '' && ! empty($r['readsSuffix'])) {
+        $suffixByKind[$r['kind']]++;
+    }
+}
+echo "\nrows whose page also paints the name SUFFIX (a five-column name list would drop it):\n";
+foreach ($suffixByKind as $kind => $n) {
+    printf("  %-7s %d of %d\n", $kind, $n, $splits[$kind]);
+}
+if (array_sum($suffixByKind) > $counts['IDENTITY-ONLY']) {
+    fwrite(STDERR, sprintf("REFUSED: %d suffix-painting rows counted over %d identity-only rows.\n",
+        array_sum($suffixByKind), $counts['IDENTITY-ONLY']));
+
+    exit(1);
+}
 if ($showIdentity) {
     echo "\nIDENTITY-ONLY sites, spelled for a patcher:\n";
     foreach ($identityOnly as $i) {
         echo '  '.$i."\n";
     }
 }
+if ($jsonTo !== null) {
+    // The rewriter reads this instead of re-deriving "which site is a LIST queue" — two definitions of one
+    // vocabulary is this file's recurring defect (lanes 6, 46, 69, 90).
+    $out = [];
+    foreach ($rows as $r) {
+        $out[] = [
+            'file' => $r['file'],
+            'action' => $r['action'],
+            'component' => $r['component'],
+            'kind' => $r['kind'],
+            'readsSuffix' => $r['readsSuffix'] ?? false,
+            'literals' => $r['literals'],
+        ];
+    }
+    if (file_put_contents($jsonTo, json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
+        fwrite(STDERR, "REFUSED: could not write --json={$jsonTo}, so a downstream rewriter would read a stale file.\n");
+
+        exit(1);
+    }
+    printf("json written: %s (%d row(s))%s", $jsonTo, count($out), PHP_EOL);
+}
+
 echo "\nNote: `READS-SENSITIVE` is judged on the PAGE, and a page that reads a column through a local alias or a\n"
     ."shared component can still be missed — the bucket is a floor, not a ceiling. `Students::\$hidden` withholds\n"
     ."passwordHash on the nested model, so no row here claims that field reaches a desk.\n";

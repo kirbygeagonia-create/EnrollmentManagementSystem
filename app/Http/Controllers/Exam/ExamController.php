@@ -47,7 +47,7 @@ class ExamController extends Controller
         // No `stage` branch: the desk's stage filter was removed when a department's list became its own
         // course's results (see Exam/Index.jsx), and nothing else links here with that key. The candidate
         // list at exam.students still takes stage, and keeps it.
-        $query = Examresults::with(['student', 'course', 'term', 'verifiedByUser'])
+        $query = Examresults::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'verifiedByUser'])
             ->when($request->type, fn ($q, $type) => $q->where('examType', $type))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');
@@ -201,7 +201,7 @@ class ExamController extends Controller
             // Item 4 — the passer transfer (BR9): these are the School Entrance
             // Examination passers. Students are not applicants at this stage —
             // only names and results are shown.
-            $passers = Examresults::with('student')
+            $passers = Examresults::with('student:studentId,schoolIdNumber,lastName,firstName,middleName')
                 ->where('courseId', $request->courseId)
                 ->where('termId', $request->termId)
                 ->where('examStage', ExamStage::Entrance->value)
@@ -464,7 +464,7 @@ class ExamController extends Controller
         // The desk's row action links here with the student's School ID, so `search` is honoured the same
         // way index() honours it — the same three matches, the same exact-number alternative. Before this,
         // the link advertised a narrowing this handler never applied and the page opened on every result.
-        $query = Examresults::with(['student', 'course', 'term', 'verifiedByUser'])
+        $query = Examresults::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'term', 'verifiedByUser'])
             ->when($request->result, fn ($q, $result) => $q->where('examResult', $result))
             ->when($request->search, fn ($q, $search) => $q->whereHas('student', fn ($sq) => $sq->where('lastName', 'like', "%{$search}%")->orWhere('firstName', 'like', "%{$search}%")->orWhere('schoolIdNumber', $search)))
             ->orderByDesc('examId');

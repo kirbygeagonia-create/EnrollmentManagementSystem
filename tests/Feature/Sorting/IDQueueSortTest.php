@@ -449,4 +449,30 @@ class IDQueueSortTest extends TestCase
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['Zulueta', 'Magsaysay', 'Bautista'], $this->surnames($response));
     }
+
+    #[Test]
+    public function the_queue_loads_the_student_for_the_identity_columns_and_nothing_else(): void
+    {
+        $this->fourRows();
+
+        // Both requests go to the SAME action, which builds one base query and lets the tab choose the population
+        // from it, so one narrowed student load serves both tabs; the ordered request is read beside the plain one
+        // because an order that joins a relation is the shape that used to widen the row (G-51).
+        $queue = $this->actingAs($this->officer)->get(route('id.index', ['tab' => 'queue']));
+        $ordered = $this->actingAs($this->officer)->get(route('id.index', ['tab' => 'queue', 'sort' => 'name', 'direction' => 'asc']));
+        $queue->assertOk();
+        $ordered->assertOk();
+
+        foreach ([[$queue, 'queue tab'], [$ordered, 'queue tab ordered by surname']] as [$response, $label]) {
+            $rows = $this->rows($response);
+            $this->assertNotEmpty($rows, "the {$label} answered no row, so the payload says nothing");
+            $keys = array_keys($rows[0]['student'] ?? []);
+            sort($keys);
+            $this->assertSame(
+                ['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'],
+                $keys,
+                "the ID desk paints a name and a school number on the {$label}, and no other column of the student"
+            );
+        }
+    }
 }

@@ -101,13 +101,20 @@ foreach ($classes as $c) {
  * refusal rather than a silent no-op.
  */
 $edits = [
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AssessmentQueueSortTest.php` answers 11 cases / 40 assertions', 'AssessmentQueueSortTest.php', 1],
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AccountingQueueSortTest.php` answers 12 cases / 43 assertions', 'AccountingQueueSortTest.php', 1],
-    ['AGENTS.md', 'RegistrarQueueSortTest.php` (8 cases, 28 assertions)', 'RegistrarQueueSortTest.php', 1],
-    ['AGENTS.md', 'delivered run at 8 cases / 28 assertions', 'RegistrarQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AssessmentQueueSortTest.php` answers 11 cases / 44 assertions', 'AssessmentQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AccountingQueueSortTest.php` answers 12 cases / 47 assertions', 'AccountingQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'AdmissionQueueSortTest.php` 5 cases / 17 assertions', 'AdmissionQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'ClearanceQueueSortTest.php` answers 9 cases / 32 assertions', 'ClearanceQueueSortTest.php', 1],
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'IDQueueSortTest.php` (11 cases / 41 assertions)', 'IDQueueSortTest.php', 1],
+    ['AGENTS.md', 'RegistrarQueueSortTest.php` (8 cases, 31 assertions)', 'RegistrarQueueSortTest.php', 1],
+    ['AGENTS.md', 'delivered run at 8 cases / 31 assertions', 'RegistrarQueueSortTest.php', 1],
+    ['AGENTS.md', 'AdmissionQueueSortTest.php` (5 cases / 17 assertions)', 'AdmissionQueueSortTest.php', 1],
+    ['AGENTS.md', 'ClinicQueueSortTest.php` (11 cases / 36 assertions)', 'ClinicQueueSortTest.php', 1],
+    ['AGENTS.md', 'IDQueueSortTest.php` (11 cases / 41 assertions)', 'IDQueueSortTest.php', 2],
 ];
 
 $failures = [];
+$skipped = [];
 $plan = [];
 $byFile = [];
 foreach ($edits as [$file, $needle, $class, $want]) {
@@ -128,7 +135,10 @@ foreach ($edits as [$file, $needle, $class, $want]) {
         $needle
     );
     if ($new === $needle) {
-        $failures[] = "{$file}: the replacement is byte-identical to the needle — the delivered run answered exactly what the document already states for {$class}";
+        // The document already carries the delivered figure for this class. That is a SKIP, not a refusal: one
+        // batch moves four classes and leaves three untouched, and a tool that aborts the whole run because some
+        // figures are already true is a tool that cannot be used to check that they are.
+        $skipped[] = "{$file}: already states {$class} ".$figures[$class]['tests'].'/'.$figures[$class]['assertions'];
         continue;
     }
     $plan[] = ['file' => $file, 'from' => $needle, 'to' => $new, 'class' => $class];
@@ -139,6 +149,25 @@ if ($failures !== []) {
     fwrite(STDERR, "REFUSED — nothing written:\n".implode("\n", $failures)."\n");
 
     exit(1);
+}
+if ($plan === []) {
+    // Nothing to write is a legitimate outcome — but only when every needle still resolves. If the plan is empty
+    // because no needle matched at all, the list has aged and the run must say so rather than report a clean pass.
+    if ($skipped === []) {
+        fwrite(STDERR, "REFUSED: no needle produced either a replacement or an already-correct figure, so this list"
+            ." reads nothing — re-cut the needles against the documents as they now stand.\n");
+
+        exit(1);
+    }
+    echo "nothing to write: every class figure the list names already equals the delivered run.\n";
+    foreach ($skipped as $s) {
+        echo '  skip: '.$s."\n";
+    }
+
+    exit(0);
+}
+foreach ($skipped as $s) {
+    echo '  skip: '.$s."\n";
 }
 
 printf('%d replacement(s) planned over %d file(s).', count($plan), count($byFile));
