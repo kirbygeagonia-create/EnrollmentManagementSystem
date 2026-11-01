@@ -110,6 +110,18 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   same failure as a register row that stopped growing. Beware the repair that consumes its anchor — replacing a
   `Preconditions` row with a `Test data` row silently deleted `Steps` until the census was re-run, which is
   `old_string` eating the next line, met in a markdown table instead of an Edit call.
+  **Two instruments were passing for the wrong reason on the way out** (same batch, `cb2f595`).
+  `lane189-weigh-column-claims.php` guarded `new mysqli(…)` with `if ($mysqli->connect_error)` — dead code under
+  PHP 8's mysqli driver, which **throws** on a failed connection, so `--schema=ems_no_such_schema` fataled with an
+  uncaught `mysqli_sql_exception` while the harness leg still read the output as a refusal: a guard written below the
+  call it protects is not a guard, which is `ZipArchive::open` and `filesize()` again one function over. The refusal
+  now lives in a `catch`. And `mutate-lane58-suite-claims.php` reported *"no whole-suite JUnit on disk"* while a
+  delivered 1,224-case junit sat in the very directory it globs — it derived the paired log by swapping
+  `-junit.xml` for `.txt`, and the suite step had written `.log`, so the newest junit was found and thrown away for
+  want of a sibling spelled differently. It now tries `.txt` then `.log` and separates *"no junit"* from *"a junit
+  whose run cannot be named"*, because those two call for different next actions. The lesson generalises: a harness
+  that cannot find its artefact must be read as a claim about **its own** path assumptions before it is read as a
+  claim about missing evidence.
 - **After any migration that adds a UNIQUE index, or any edit to §23.6.1**, run
   `php storage/app/scratch/lane44-unique-keys.php` and prove it with
   `php storage/app/scratch/mutate-lane44-unique-keys.php`. §23.6.1 claims to list *every* unique index in the

@@ -556,10 +556,14 @@ not be read from code it says so, and no requirement is marked Verified without 
   forms, 0 blocks over capacity. That schema carries the seat key: it was cloned from live `ems` on the day the key was
   first live, and the withdrawal migration ran against live `ems` alone, so `information_schema.STATISTICS` still
   answers `uq_enrollments_active_seat` over `studentId, termId, seatKey` there — which is why today's `dup-seats 0` is a
-  reading taken on a schema where the server really does refuse, not only the audit's arithmetic. Measured while the key
-  was live the first time, that run logged 12 refusals that all carried driver code 1062. The contention phase has not
-  been re-run since the return, and re-running it is owed so the refusal count is a reading of this build rather than of
-  the earlier one; the distinction is stated rather than papered over. No partial records from failed
+  reading taken on a schema where the server really does refuse, not only the audit's arithmetic. **The whole run has
+  since been re-taken on this build** (`--keep`, 10 workers over 1,000 issues, then 10 workers at one deliberately
+  single-seated student): the volume phase created 1,000, refused 0 and errored 0 in 16.45 s; contention on one seat
+  gave exactly one winner and 9 refusals; and the run's own driver breakdown attributes **8 of the refusals to code
+  1062 — the server's unique key — and 3 to `EnrollmentIssuer::seatHolder()`**, so both layers are seen refusing on
+  one schema instead of one being claimed for the other. The cancel-against-enroll pair alongside it cancelled 5,
+  created 3 and refused 2 with no error, which is a drop releasing a seat while another writer is asking for it. The
+  12-refusals reading belongs to the day the key was first live and is left as written rather than re-aged. No partial records from failed
   transactions — `orphan workflow forms 0` and `committed acts without a form 0`. Committed records still there — the
   server's own count of load enrollments reconciles with the workers' tallies. Authorization enforced — the acts
   run as a real office-4 desk account through the service the desks call. Database up and consistent — the run
