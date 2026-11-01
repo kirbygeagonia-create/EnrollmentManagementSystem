@@ -32,6 +32,8 @@ class RetakeAttemptTest extends TestCase
 
     private int $termId;
 
+    private int $academicYearId;
+
     private int $courseId;
 
     private int $majorId;
@@ -56,14 +58,14 @@ class RetakeAttemptTest extends TestCase
     private function seedReferenceData(): void
     {
         // Academic year & term
-        $year = DB::table('academicyears')->insertGetId([
+        $this->academicYearId = DB::table('academicyears')->insertGetId([
             'yearLabel' => '2024-2025',
             'startDate' => '2024-08-01',
             'endDate' => '2025-05-31',
         ]);
 
         $this->termId = DB::table('academicterms')->insertGetId([
-            'academicYearId' => $year,
+            'academicYearId' => $this->academicYearId,
             'semester' => '1st',
             'startDate' => '2024-08-01',
             'endDate' => '2024-12-31',
@@ -163,13 +165,41 @@ class RetakeAttemptTest extends TestCase
         ], $overrides));
     }
 
-    private function createEnrollment(Students $student, string $studentType = 'firstYear', int $yearLevel = 1): Enrollments
+    private int $termCursor = 0;
+
+    /**
+     * A later term than the one `setUp` seeded, new on every call.
+     *
+     * A retake is a second seating in a LATER term — that is what the cases' own comments say — and the database key
+     * that returns with this batch (`uq_enrollments_active_seat`) refuses one student holding two ACTIVE enrollments
+     * in the SAME term, which is the state the product forbids and the state these fixtures used to write twice.
+     * `EnrollmentService::determineAttemptNumber()` scopes its lookback on studentId and subjectId and never on the
+     * term, so spreading the seating across terms changes nothing the assertions claim.
+     */
+    private function nextTerm(): int
+    {
+        $this->termCursor++;
+        $yearId = DB::table('academicyears')->insertGetId([
+            'yearLabel' => 'RETAKE-'.$this->termCursor,
+            'startDate' => '2025-06-01',
+            'endDate' => '2026-05-31',
+        ]);
+
+        return (int) DB::table('academicterms')->insertGetId([
+            'academicYearId' => $yearId,
+            'semester' => '1st',
+            'startDate' => '2025-06-01',
+            'endDate' => '2025-10-31',
+        ]);
+    }
+
+    private function createEnrollment(Students $student, string $studentType = 'firstYear', int $yearLevel = 1, ?int $termId = null): Enrollments
     {
         return Enrollments::create([
             'studentId' => $student->studentId,
             'courseId' => $this->courseId,
             'majorId' => $this->majorId,
-            'termId' => $this->termId,
+            'termId' => $termId ?? $this->termId,
             'admissionId' => null,
             'yearLevel' => $yearLevel,
             'studentType' => $studentType,
@@ -220,7 +250,7 @@ class RetakeAttemptTest extends TestCase
             ->firstOrFail();
 
         // Second enrollment (simulating retake in a later term)
-        $enrollment2 = $this->createEnrollment($student);
+        $enrollment2 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $this->actingAs($this->evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment2), [
                 'subjects' => [['subjectId' => $this->subjectId]],
@@ -255,7 +285,7 @@ class RetakeAttemptTest extends TestCase
             ->firstOrFail();
 
         // Second enrollment
-        $enrollment2 = $this->createEnrollment($student);
+        $enrollment2 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $this->actingAs($this->evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment2), [
                 'subjects' => [['subjectId' => $this->subjectId]],
@@ -263,7 +293,7 @@ class RetakeAttemptTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Third enrollment
-        $enrollment3 = $this->createEnrollment($student);
+        $enrollment3 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $this->actingAs($this->evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment3), [
                 'subjects' => [['subjectId' => $this->subjectId]],
@@ -300,7 +330,7 @@ class RetakeAttemptTest extends TestCase
         $droppedAttempt->save();
 
         // Second enrollment - should be attempt 1 again (since prior was dropped)
-        $enrollment2 = $this->createEnrollment($student);
+        $enrollment2 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $this->actingAs($this->evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment2), [
                 'subjects' => [['subjectId' => $this->subjectId]],
@@ -337,7 +367,7 @@ class RetakeAttemptTest extends TestCase
         $confirmedAttempt->save();
 
         // Second enrollment - should be attempt 2
-        $enrollment2 = $this->createEnrollment($student);
+        $enrollment2 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $this->actingAs($this->evaluator)
             ->post(route('evaluation.subjects.propose', $enrollment2), [
                 'subjects' => [['subjectId' => $this->subjectId]],
@@ -387,7 +417,7 @@ class RetakeAttemptTest extends TestCase
         ]);
 
         // Second enrollment - test service directly
-        $enrollment2 = $this->createEnrollment($student);
+        $enrollment2 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $result = EnrollmentService::determineAttemptNumber($enrollment2->enrollmentId, $this->subjectId);
 
         $this->assertEquals(2, $result['attempt']);
@@ -403,7 +433,7 @@ class RetakeAttemptTest extends TestCase
         ]);
 
         // Third enrollment
-        $enrollment3 = $this->createEnrollment($student);
+        $enrollment3 = $this->createEnrollment($student, 'firstYear', 1, $this->nextTerm());
         $result = EnrollmentService::determineAttemptNumber($enrollment3->enrollmentId, $this->subjectId);
 
         $this->assertEquals(3, $result['attempt']);

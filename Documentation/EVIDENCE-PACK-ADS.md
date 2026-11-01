@@ -83,15 +83,17 @@ SELECT TABLE_NAME, INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) c
  WHERE TABLE_SCHEMA = 'ems' AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
  GROUP BY TABLE_NAME, INDEX_NAME ORDER BY TABLE_NAME, INDEX_NAME;
 
--- the generated column, as the server defined it while the key was live. This answers ZERO ROWS today: the
--- column was withdrawn on the day it was added, and the query is kept here because a defence that hides its own
--- retreat is not evidence. `down()` in the withdrawal migration restores both column and index.
+-- the generated column, as the server defines it now. Re-read on live `ems` 2026-11-01 after the return migration:
+-- one row, `EXTRA = VIRTUAL GENERATED`, its expression the case that NULLs a dropped row or an unnamed term. The
+-- query is kept with its own history beside it because the column was withdrawn on the day it was added and returned
+-- on that same day, and a defence that hides its own retreat is not evidence.
 SELECT COLUMN_NAME, DATA_TYPE, EXTRA, GENERATION_EXPRESSION
   FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = 'ems' AND TABLE_NAME = 'enrollments' AND COLUMN_NAME = 'seatKey';
 
--- the request key that answers an interrupted enrollment act (guide problem 17). Read it on a schema the batch's
--- migrations have reached; on live `ems` today both answer zero rows, because the migration has not been run there.
+-- the request key that answers an interrupted enrollment act (guide problem 17), and the seat key beside it. Read on
+-- live `ems` 2026-11-01 after `artisan migrate`: `requestKey` is `varchar(64) NULL` with a one-column unique index,
+-- and `uq_enrollments_active_seat` is the three-column unique index over `studentId, termId, seatKey`.
 SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE
   FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = 'ems' AND TABLE_NAME = 'enrollments' AND COLUMN_NAME = 'requestKey';

@@ -369,6 +369,14 @@ class ShiftRequestFlowTest extends TestCase
     {
         $request = $this->endorsed();
 
+        // The seat the paper leaves is retired, which is what a grant does to the record it names. The pair this case
+        // used to write — two ACTIVE enrollments for one student in one term — is the G-4 defect the guard refuses
+        // to compound, and it is also the state `uq_enrollments_active_seat` now rejects at the table, so it cannot
+        // be planted at all. The release happens through an ACT, which no static reader can follow, so this line is
+        // the marker `lane187-census-fixture-seats.php` reads:
+        // seat-released-by-act: granting_is_refused_when_a_different_record_holds_the_seat
+        $this->current->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
+
         // Another enrollment in the receiving term that this paper says nothing about.
         $other = Enrollments::create([
             'studentId' => $this->student->studentId,

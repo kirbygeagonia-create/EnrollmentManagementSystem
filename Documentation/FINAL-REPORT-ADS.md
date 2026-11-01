@@ -61,13 +61,16 @@ question attached, not as not-applicable.
 - `uq_enrollments_active_seat (studentId, termId, seatKey)` with `seatKey` a **virtual** generated column that is
   non-null exactly when the row holds a seat. MySQL ignores NULLs, so `dropped` releases the seat without a trigger
   and without deleting the record. Both were refused-to-add guards first: the migration names the violating rows
-  rather than skipping the key. **This key was withdrawn the same day it was delivered**, by
-  `2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php`: six test files each wrote
+  rather than skipping the key. **This key was withdrawn the same day it was delivered and returned the same day**, by
+  `2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php` and then
+  `2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php`: test files each wrote
   two active seats for one student and one term, which the key refuses and the product forbids, and only CI's MySQL
   job could see it, because SQLite compiles no `ADD COLUMN … GENERATED` and the suite had therefore been green over
-  a rule it never exercised. The seat rule is application-enforced again (`EnrollmentIssuer::seatHolder()`, the row
-  locks around the capacity check, and the audit's reconciliation), the withdrawal is reversible in `down()`, and the
-  fixture repair that lets the key return is a registered task rather than a forgotten one.
+  a rule it never exercised. The census that then read every fixture call site answered eight files rather than the six
+  CI reached, each was repaired, the repaired files rehearsed green on a scratch MySQL schema, and the key went back
+  behind a duplicate guard that names any pair it finds. The seat rule is enforced by `EnrollmentIssuer::seatHolder()`
+  on every desk path, by the row locks around the capacity check, by the audit's reconciliation, and now by the server
+  on the school's engine; it stays MySQL-only, and that limit is asserted by the test rather than skipped.
 - Chosen over a stored generated column for a measured reason: a stored column rebuilds `enrollments`, which eleven
   child tables reference, and MySQL 8.4 answers `1215 Cannot add foreign key constraint` for it — with
   `foreign_key_checks` off as well.
@@ -109,13 +112,16 @@ before it paints, so a refusal cannot render as a zero.
   `storage/app/scratch/l170-suite-junit.xml`. Per-class case and assertion figures are re-taken from that junit by
   `php storage/app/scratch/lane107-retake-class-figures.php`, and no total is typed into this file: an assertion
   count is a property of the run that printed it, and CI's two jobs answer different ones for the same code.
-- New classes: `BlockCapacityAtomicityTest` (12 cases) and `DatabaseLevelEnrollmentRulesTest` (4 cases), the latter
-  rehearsed on MySQL as well as SQLite.
+- New classes: `BlockCapacityAtomicityTest` (12 cases) and `DatabaseLevelEnrollmentRulesTest` (5 cases), the latter
+  rehearsed on MySQL as well as SQLite, and every one of its five runs on both drivers — the server-refusal half
+  branches on the connection instead of skipping, because a skipped check cannot fail and this repository's own CI
+  step refuses a skip that no ruling allows.
 - Gates: PHPStan `[OK] No errors` on this tree; Pint, ESLint, the Vite build, the docx sweeps and the mutation
   harnesses are listed with their verdicts in `IMPLEMENTATION-CHANGELOG-ADS.md` section 3 and the delivery notes below.
 - Failures and limits, stated: the seat key does not exist on SQLite (no generated `ALTER`), so that half is judged
-  on the MySQL job; no academic-load or faculty ceiling can be tested because no number is defined; the thousand-
-  request run has not been made; and the two measured performance gaps (P08, P09) are unfixed by decision.
+  on the MySQL job; no academic-load or faculty ceiling can be tested because no number is defined; the thousand-issue
+  creation bench is delivered and a thousand concurrent *assigns* is not; and the two measured performance gaps (P08,
+  P09) are unfixed by decision.
 - Performance measurements: the seven-row table in `DEFENCE-EVIDENCE-ADS.md` part 11, each figure beside its `EXPLAIN`.
 
 ## 8. Migration and safety information

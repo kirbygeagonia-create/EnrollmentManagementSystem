@@ -10,11 +10,20 @@
 `database/migrations/2026_11_01_1100000000_add_database_level_enrollment_rules.php`, and lost it the same day:
 `2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php` takes the key and its VIRTUAL
 `seatKey` back out, because six test files hold two active seats for one student and term and CI's MySQL job was the
-only surface that could see them. So the one-active-seat rule is enforced where it was enforced before that key was
-proposed — by `EnrollmentIssuer::seatHolder()` and the locking around the capacity check, not by an index — and the
-server-side half is a recorded intention with a reversible migration behind it, not a delivered fact. No row of the
-table below is closed by the withdrawn key: the four closures above stand on the fee-sheet index, the counting unit
-and the row locks. **What is still open is stated, not smoothed:** the room check counts the rows stamped with one `scheduleId`, so a hall shared by ten sections is never weighed as a hall, and no `version` column exists to stop a lost update — both registered as problems P04 and P05 in `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md`, with the first a question about what `rooms.capacity` means and the second unbuilt on purpose.
+only surface that could see them. So for the rest of that day the one-active-seat rule was enforced where it had been
+before the key was proposed — by `EnrollmentIssuer::seatHolder()` and the locking around the capacity check, not by an
+index. **That half changed the same day, too**: the census that then read every enrollment call site in `tests/` found
+eight files holding the habit rather than the six CI reached first, each was repaired to name a later term, drop the
+prior seat or take a second student, the repaired files rehearsed green on a scratch MySQL schema with the connection
+pinned, and `2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php` put the
+index back — so the server does refuse a second active seat on MySQL, and cannot on SQLite, which compiles no
+`ALTER TABLE … ADD COLUMN … GENERATED`. No row of the table below is closed by that key alone: the four closures above
+stand on the fee-sheet index, the counting unit and the row locks. **What is still open is stated, not smoothed:** the
+room check counts the rows stamped with one `scheduleId`, so a hall shared by ten sections is never weighed as a hall
+(P04, which is a question about what `rooms.capacity` means), and the lost-update risk P05 named is now built on the
+person record itself — `students.rowVersion`, with a stale save refused and both versions named — while the address,
+guardian and educational-background rows the same screen writes stay unversioned, which is the remainder the
+traceability row carries.
 
 ---
 

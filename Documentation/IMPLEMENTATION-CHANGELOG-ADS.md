@@ -29,7 +29,8 @@ measured before writing:
 - `uq_studentassessments_enrollment` on `studentassessments(enrollmentId)`. Closes DI-2, open since 2026-09-15.
 - `uq_enrollments_active_seat` on `enrollments(studentId, termId, seatKey)`, where `seatKey` is a **VIRTUAL**
   generated column, non-null exactly when `enrollmentStatus <> 'dropped'` and a term is named. **Withdrawn the same
-  day by the next migration in this file's list**, so the delivered schema keeps only the fee-sheet key.
+  day by the next migration in this file's list and returned the same day by the one after that**, so the delivered
+  schema carries the fee-sheet key on both drivers and the seat key on the school's.
 
 Live `ems` was dumped to `C:\Users\ADMIN\ems-backups\ems-pre-db-enforcement-2026-11-01.sql` first (64 tables,
 1.42 MB, `INSERT INTO enrollments` verified present), then migrated, then re-read: 37 enrollments, 24 students,
@@ -45,11 +46,34 @@ only surface able to see them — the suite's `:memory:` schema compiles no `ALT
 the key never existed where the suite runs and every local green was silent about it. The fee-sheet key is left
 standing because it is portable: SQLite enforces it and its case passes on both drivers.
 
+`database/migrations/2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php` —
+the walk-back `down()` promised, taken the same day. The population is the census's, not the failure message's:
+`storage/app/scratch/lane187-census-fixture-seats.php` reads every enrollment call site in `tests/`, binds each student
+and term to where the value actually came from (a helper that mints its own person makes the call's own line the
+identity; a person the caller minted once is shared by every line below the assignment, and keying it on the call line
+is what reported one violation where CI refused six), classifies a row as released when its status is `dropped`, and
+answers eight files writing two active seats for one student in one term, and **exits 1 rather than reporting a count**
+while any call site's provenance it cannot bind — which is how the ten sites it could not bind came to a reader instead
+of disappearing into a clean number. Its falsifier
+`storage/app/scratch/mutate-lane187-provenance.php` carries one leg per promise — a clean helper that mints its own
+student, a shared pair that must be reported, a caller-minted person that must be, a memoising maker that must not, a
+`replicate()` maker classified as a maker, a name collision across two files that must not collapse, and refusals for
+an unknown maker, an unresolvable name, an empty population and an unread flag. Each of the eight was repaired to name
+a later term, drop the prior seat, or take a second student, and the six that CI first reached were rehearsed green on
+a scratch MySQL schema with `DB_CONNECTION` pinned before the key went back. The migration's `up()` refuses a schema
+that already holds the key, runs the duplicate guard first and names the student and term of any pair it finds, adds
+the column as VIRTUAL because STORED answers `1215` on a table eleven others point at, and drops the column again if
+the index add throws, so a half-applied schema cannot be left behind. Live `ems` was dumped first to
+`C:\Users\ADMIN\ems-backups\ems-pre-seat-key-return-20261101-072527.sql` (1.42 MB, 64 `CREATE TABLE`, no
+`DROP DATABASE` line), then migrated, then re-read: 37 enrollments, 24 students and 14 fee sheets, identical to the
+counts taken before the write, with `SHOW INDEX` answering the three-column unique key and `information_schema`
+answering `VIRTUAL GENERATED` for the column.
+
 `database/migrations/2026_11_01_1800000000_add_request_key_to_enrollments_table.php` — additive, and deliberately the
 *other* shape. `enrollments.requestKey` is a nullable varchar(64) with `uq_enrollments_request_key` over it, which
 both drivers build, so the guide's problem 17 is guarded by the server on the suite as well as on CI. Nullable means
 NULLs stay outside the rule (MySQL and SQLite both treat them as distinct), so a seeder, a backfill and every caller
-that has not been given a key keep working untouched — which is what makes this safe to add while the seat key is
+that has not been given a key keep working untouched — which is what made this safe to add while the seat key was
 still being repaired. Its guard runs before the ALTER and names a duplicate rather than skipping the key.
 
 ### 2b. Services and screens for problems 17 and 5
@@ -58,7 +82,8 @@ still being repaired. Its guard runs before the ALTER and names a duplicate rath
 unsignedInteger NOT NULL default 1. Guide problem 5 asks that two desks editing one student not silently overwrite,
 and the schema default makes every row already on file version 1 rather than invalid. Portable on purpose: the
 withdrawn seat key needed a generated column SQLite could not build, so the suite could never violate it and never
-proved it either; a plain column with a comparison is enforced and exercised on both drivers. `Students` also declares
+proved it either, and the key that returned is MySQL-only for the same reason; a plain column with a comparison is
+enforced and exercised on both drivers. `Students` also declares
 `protected $attributes = ['rowVersion' => 1];` because a schema default is **not** handed back to a model that was
 just created — without it the object in memory carried null, the screen posted null, and the guard refused a desk that
 had done nothing wrong. The column is deliberately outside `$fillable`: a client that can set its own version can walk

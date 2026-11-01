@@ -136,6 +136,29 @@ class ClearanceWindowGateTest extends TestCase
     }
 
     /**
+     * A second person, because the window asks about RECORDS and a case that posts about three
+     * different student types is three seatings, not one student seated three times.
+     *
+     * `uq_enrollments_active_seat` refuses one student holding two ACTIVE enrollments in one term, which is the
+     * state these loops used to write; `schoolIdNumber` is unique on the table, so it is re-minted rather than
+     * copied, and every other column travels with the record it clones.
+     */
+    private function anotherStudent(): Students
+    {
+        // `schoolIdNumber` and `username` are both UNIQUE on the table (§23.6.1 lists `uq_students_schoolid` and
+        // `uq_students_username`), so a clone has to re-mint both — the first draft re-minted one and SQLite refused
+        // the insert with 19, which is the constraint doing its job rather than a fixture to work around.
+        $copy = $this->student->replicate(['studentId', 'schoolIdNumber', 'username', 'email', 'created_at', 'updated_at']);
+        $tag = uniqid();
+        $copy->schoolIdNumber = 'ALT-'.$tag;
+        $copy->username = 'alt_'.$tag;
+        $copy->email = 'alt_'.$tag.'@example.com';
+        $copy->save();
+
+        return $copy;
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides
      */
     private function enrollment(array $overrides = []): Enrollments
@@ -266,7 +289,10 @@ class ClearanceWindowGateTest extends TestCase
     public function a_student_who_owes_no_clearance_is_not_held_by_the_window(): void
     {
         foreach ([StudentType::FirstYear, StudentType::Transferee] as $type) {
-            $verdict = EnrollmentReadiness::clearanceVerdict($this->enrollment(['studentType' => $type]));
+            $verdict = EnrollmentReadiness::clearanceVerdict($this->enrollment([
+                'studentId' => $this->anotherStudent()->studentId,
+                'studentType' => $type,
+            ]));
 
             $this->assertTrue($verdict['passed'], $type->value.' students do not clear the offices.');
             $this->assertNull($verdict['reason']);
@@ -274,7 +300,10 @@ class ClearanceWindowGateTest extends TestCase
 
         // A shifter does owe one — the same obligation as a continuing student.
         $this->assertFalse(
-            EnrollmentReadiness::clearanceVerdict($this->enrollment(['studentType' => StudentType::Shifter]))['passed']
+            EnrollmentReadiness::clearanceVerdict($this->enrollment([
+                'studentId' => $this->anotherStudent()->studentId,
+                'studentType' => StudentType::Shifter,
+            ]))['passed']
         );
     }
 
@@ -286,9 +315,14 @@ class ClearanceWindowGateTest extends TestCase
 
         $slip->update(['receivedBy' => null, 'receivedDate' => null]);
 
+        // One record read at two slip states. A second seating was never the point of this case — the desk needs
+        // the right SENTENCE for the same paper — and two active rows for one student in one term is the state
+        // `uq_enrollments_active_seat` now refuses at the table.
+        $enrollment = $this->enrollment();
+
         $this->assertStringContainsString(
             'never received at the Registrar desk',
-            EnrollmentReadiness::clearanceVerdict($this->enrollment())['reason']
+            EnrollmentReadiness::clearanceVerdict($enrollment)['reason']
         );
 
         // Still with the offices is a different sentence, and the desk needs the right one.
@@ -300,7 +334,7 @@ class ClearanceWindowGateTest extends TestCase
 
         $this->assertStringContainsString(
             'still with the offices',
-            EnrollmentReadiness::clearanceVerdict($this->enrollment())['reason']
+            EnrollmentReadiness::clearanceVerdict($enrollment)['reason']
         );
     }
 

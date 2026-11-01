@@ -131,12 +131,28 @@ foreach (array_keys($listed) as $name) {
 }
 
 $claimed = null;
+// The count sentence is a claim about THIS register, so it is read from the window that holds the register:
+// from the table's `Key | Columns` header to the next `23.6.2` heading. Searching the whole document made the
+// FIRST `[number] keys in [word] tables.` win, and a §1.1 revision row that quotes the figure shadowed the
+// register it quotes — the checker weighed a sentence in another section and stayed silent while §23.6.1's own
+// claim rotted. A window it cannot find is a refusal, not a guess.
+$headAt = strpos($dump, 'Key | Columns | The rule it enforces');
+if ($headAt === false) {
+    fwrite(STDERR, "REFUSED: the §23.6.1 table header (`Key | Columns | The rule it enforces`) is not in the dump, so the\n"
+        ."          count sentence has no section to be read from. Re-dump, or name the heading this checker anchors on.\n");
+    exit(1);
+}
+$windowEnd = strlen($dump);
+if (preg_match('/P \d+: 23\.6\.2/u', $dump, $mh, PREG_OFFSET_CAPTURE) === 1) {
+    $windowEnd = (int) $mh[0][1];
+}
+$sentenceWindow = substr($dump, $headAt, $windowEnd - $headAt);
 // The word list used to stop at `Ten`, so the checker went UNBOUND the first day the register grew past it — the
 // right behaviour (an unread claim refuses), but a boundary claim has to survive its own getting truer. Spelled
 // out through twenty and digits accepted, so the next key is a document edit rather than a code edit.
 if (preg_match(
     '/(Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty|\d+)\s+keys?\s+in\s+(six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|\d+)\s+tables?/i',
-    $dump,
+    $sentenceWindow,
     $c
 )) {
     $claimed = [strtolower($c[1]), strtolower($c[2])];
@@ -154,9 +170,10 @@ if ($claimed === null) {
 } else {
     $okKeys = $asNumber($claimed[0]) === count($domain);
     $okTables = $asNumber($claimed[1]) === $tables;
-    printf("  %s the sentence says %s keys in %s tables; the server holds %d keys across %d tables\n",
+    printf("  %s the sentence says %s keys in %s tables; the server holds %d keys across %d tables "
+            ."(read from the §23.6.1 window, %d bytes)\n",
         $okKeys && $okTables ? 'ok  ' : 'MISS',
-        $claimed[0], $claimed[1], count($domain), $tables);
+        $claimed[0], $claimed[1], count($domain), $tables, strlen($sentenceWindow));
     if (! ($okKeys && $okTables)) {
         $problems++;
     }

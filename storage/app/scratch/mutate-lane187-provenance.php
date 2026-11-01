@@ -47,6 +47,13 @@ $run = static function (string $leg, array $files, string $extra = '') use ($roo
     }
     $madeDirs[] = $dir;
     foreach ($files as $name => $src) {
+        // A fixture written in a nowdoc must not carry `\$`: it lands in the file as a literal backslash, the reader
+        // then judges bytes no PHP file contains, and the leg reports the INSTRUMENT as wrong. Found in leg 9c,
+        // whose census verdict was correct and whose plant was not.
+        if (str_contains($src, '\\$')) {
+            throw new RuntimeException("the fixture {$name} in leg {$leg} holds a literal backslash-dollar — "
+                .'a nowdoc does not interpolate, so the escape belongs in the source, not the plant');
+        }
         if (file_put_contents($dir.'/'.$name, $src) === false) {
             throw new RuntimeException("the fixture {$name} could not be written to {$leg}");
         }
@@ -253,7 +260,162 @@ $say('inserting_maker_inside_the_helper_is_not_one_person',
     'exit '.$rc.', sites='.$sites($out).' (keyed on the course argument the census called these one student and '
     .'reported five clean Dashboard methods)');
 
+// ── leg 6b (the classifier's other blind half): a maker that uses the RAW query builder ────────────────
+// Found the moment the retake fixture was repaired: `nextTerm()` inserts through `DB::table(…)->insertGetId(…)`,
+// which matches none of `::create`/`::factory`/`->create(`, so the census called it unclassifiable and UNBOUND rose
+// from 20 to 35. A builder insert is an insert.
+$f6b = sprintf($open, 'RawInsertTest').<<<'PHP'
+    private int $cursor = 0;
+
+    private function nextTerm(): int
+    {
+        $this->cursor++;
+        $yearId = DB::table('academicyears')->insertGetId(['yearLabel' => 'R'.$this->cursor]);
+
+        return (int) DB::table('academicterms')->insertGetId(['academicYearId' => $yearId, 'semester' => '1st']);
+    }
+
+    private function enroll($student, $termId): Enrollments
+    {
+        return Enrollments::create([
+            'studentId' => $student->studentId,
+            'termId' => $termId,
+            'enrollmentStatus' => 'enrolled',
+        ]);
+    }
+
+    #[Test]
+    public function one_seating_per_term_through_the_builder(): void
+    {
+        $s = Students::create(['lastName' => 'A', 'schoolIdNumber' => 'R'.uniqid()]);
+        $a = $this->enroll($s, $this->nextTerm());
+        $b = $this->enroll($s, $this->nextTerm());
+    }
+}
+PHP;
+[$rc, $out] = $run('raw-insert-maker', ['RawInsertTest.php' => $f6b]);
+$say('a_builder_insert_is_an_insert',
+    $rc === 0 && str_contains($out, 'CLEAN:') && str_contains($out, 'sites read: 2')
+    && ! str_contains($out, 'not classified'),
+    'exit '.$rc.', sites='.$sites($out).', '.(str_contains($out, 'not classified')
+        ? 'STILL UNCLASSIFIED (the defect that raised UNBOUND from 20 to 35)' : 'classified'));
+
+// ── leg 6d: a maker that clones with replicate()->save() is an insert too ──────────────────────────────
+// The repairs themselves introduced this shape (`anotherStudent()`), and the classifier did not know it, so four
+// repaired rows came back NOT-PROVABLE: a fixture the census cannot read is a fixture it must not clear.
+$f6d = sprintf($open, 'ReplicateTest').<<<'PHP'
+    private function anotherStudent(): Students
+    {
+        $copy = $this->student->replicate(['studentId', 'schoolIdNumber']);
+        $copy->schoolIdNumber = 'ALT-'.uniqid();
+        $copy->save();
+
+        return $copy;
+    }
+
+    private function enroll($overrides = []): Enrollments
+    {
+        return Enrollments::create(array_merge([
+            'studentId' => $this->student->studentId,
+            'termId' => $this->term->termId,
+            'enrollmentStatus' => 'pending',
+        ], $overrides));
+    }
+
+    #[Test]
+    public function two_records_two_people(): void
+    {
+        $a = $this->enroll(['studentId' => $this->anotherStudent()->studentId]);
+        $b = $this->enroll(['studentId' => $this->anotherStudent()->studentId]);
+    }
+}
+PHP;
+[$rc, $out] = $run('replicate-maker', ['ReplicateTest.php' => $f6d]);
+$say('a_replicate_and_save_maker_is_an_insert',
+    $rc === 0 && str_contains($out, 'CLEAN:') && ! str_contains($out, 'NOT-PROVABLE'),
+    'exit '.$rc.', sites='.$sites($out).', '.(str_contains($out, 'NOT-PROVABLE')
+        ? 'STILL UNREAD (the repaired fixture the census could not see)' : 'read and cleared'));
+
+// ── leg 6c: a coalesced class property is the SHARED record when the caller passes nothing ──────────────
+
+// `($term ?? $this->term)->termId` held eleven ScholarshipWithdrawalTest sites in UNBOUND, which made the census
+// refuse on a tree it had in fact read. The default half of a `??` written on a property IS the class's record —
+// the shared case, not an unknown one — and a caller that fills the slot still overrides it.
+$f6c = sprintf($open, 'CoalesceTest').<<<'PHP'
+    private function sheet($term = null): Enrollments
+    {
+        return Enrollments::create([
+            'studentId' => $this->student->studentId,
+            'termId' => ($term ?? $this->term)->termId,
+            'enrollmentStatus' => 'enrolled',
+        ]);
+    }
+
+    #[Test]
+    public function two_rows_on_the_class_term(): void
+    {
+        $a = $this->sheet();
+        $b = $this->sheet();
+    }
+}
+PHP;
+[$rc, $out] = $run('coalesce-prop', ['CoalesceTest.php' => $f6c]);
+$say('a_coalesced_class_property_is_the_shared_record',
+    $rc === 0 && str_contains($out, 'TWO ACTIVE SEATS'),
+    'exit '.$rc.', '.(str_contains($out, 'TWO ACTIVE SEATS') ? 'reported' : 'silent or refused')
+    .', sites='.$sites($out));
+
+// ── leg 9c: a coalesce WITHOUT parentheses is still the class's record when the slot is empty ──────────
+// Repairing RetakeAttemptTest and ElectiveValidationTest turned `'termId' => $termId ?? $this->termId` into eighteen
+// NOT-PROVABLE rows: the refusal branch fires on any `??`, so the coalesce form the fixtures actually use was read as
+// an unknown while the parenthesised form was resolved. Eighteen sites the census could not see is eighteen seats it
+// would clear by accident.
+$f9c = sprintf($open, 'CoalesceParamTest').<<<'PHP'
+    private function enroll($student, $termId = null): Enrollments
+    {
+        return Enrollments::create([
+            'studentId' => $student->studentId,
+            'termId' => $termId ?? $this->termId,
+            'enrollmentStatus' => 'enrolled',
+        ]);
+    }
+
+    #[Test]
+    public function two_calls_that_pass_no_term_share_the_class_term(): void
+    {
+        $s = Students::create(['lastName' => 'A', 'schoolIdNumber' => 'C'.uniqid()]);
+        $a = $this->enroll($s);
+        $b = $this->enroll($s);
+    }
+
+    #[Test]
+    public function two_calls_that_pass_the_same_minted_term_are_two_terms(): void
+    {
+        $s = Students::create(['lastName' => 'B', 'schoolIdNumber' => 'D'.uniqid()]);
+        $a = $this->enroll($s, $this->later());
+        $b = $this->enroll($s, $this->later());
+    }
+
+    private function later(): int
+    {
+        return (int) DB::table('academicterms')->insertGetId(['semester' => '2nd']);
+    }
+}
+PHP;
+[$rc, $out] = $run('coalesce-param', ['CoalesceParamTest.php' => $f9c]);
+$say('an_unparenthesised_coalesce_is_read_both_ways',
+    $rc === 0 && ! str_contains($out, 'NOT-PROVABLE')
+    && str_contains($out, 'TWO ACTIVE SEATS') && str_contains($out, 'sites read: 4')
+    && str_contains($out, 'two_calls_that_pass_no_term'),
+    'exit '.$rc.', sites='.$sites($out)
+    .', not-provable='.(preg_match('/(\d+) site\(s\) not provable/', $out, $u) ? $u[1] : '?')
+    .', shared-term case named='.(str_contains($out, 'two_calls_that_pass_no_term') ? 'yes' : 'NO')
+    .', minted-term case reported='.(str_contains($out, 'two_calls_that_pass_the_same_minted_term')
+        ? 'YES (wrong — a fresh term per call is not a pair)' : 'no'));
+
 // ── leg 7 (the clobbering defect): a SIBLING file declares the same helper name ──────────────────────────
+
+
 $f7b = sprintf($open, 'OtherTest').$makers.<<<'PHP'
     private function enroll($student): Enrollments
     {
@@ -327,6 +489,40 @@ $say('dropped-status-argument-releases-the-seat',
     $rc === 0 && str_contains($out, 'RELEASED') && ! str_contains($out, 'TWO ACTIVE SEATS')
     && str_contains($out, 'sites read: 2'),
     'exit '.$rc.', sites='.$sites($out).', '.(str_contains($out, 'RELEASED') ? 'released' : 'not released'));
+
+// ── leg 9b: a seat dropped through an OVERRIDES ARRAY is still a released seat ──────────────────────────
+// Found while repairing AcademicStandingOwnershipTest: the helper writes `'enrollmentStatus' => Pending` as its
+// default and the call passes `['enrollmentStatus' => EnrollmentStatus::Dropped]`, which no positional-slot scan can
+// see. A reader blind to that shape keeps accusing a fixture it has already repaired.
+$f9b = sprintf($open, 'OverrideDropTest').<<<'PHP'
+    private function makeEnrollment(array $overrides = []): Enrollments
+    {
+        return Enrollments::create(array_merge([
+            'studentId' => $this->student->studentId,
+            'termId' => $this->term->termId,
+            'enrollmentStatus' => 'pending',
+        ], $overrides));
+    }
+
+    #[Test]
+    public function a_dropped_row_written_over_two_lines_and_a_live_one(): void
+    {
+        // The override is on the line BELOW the call, which is how the real fixture writes it and the reason the
+        // drop check reads a bracket window: a single-line scan passed this leg's first draft while still accusing
+        // the file it was written for.
+        $a = $this->makeEnrollment([
+            'enrollmentStatus' => 'dropped',
+        ]);
+        $b = $this->makeEnrollment();
+    }
+}
+PHP;
+[$rc, $out] = $run('override-drop', ['OverrideDropTest.php' => $f9b]);
+$say('a_dropped_row_written_through_an_overrides_array_is_released',
+    $rc === 0 && str_contains($out, 'RELEASED') && ! str_contains($out, 'TWO ACTIVE SEATS')
+    && str_contains($out, 'sites read: 2'),
+    'exit '.$rc.', sites='.$sites($out).', '.(str_contains($out, 'RELEASED')
+        ? 'released' : 'STILL ACCUSED (the shape-blindness that outlives a correct repair)'));
 
 // ── leg 10: an unclassifiable maker refuses rather than guessing ────────────────────────────────────────
 $f10 = sprintf($open, 'OpaqueMakerTest').<<<'PHP'
@@ -425,7 +621,27 @@ exec(escapeshellarg($php).' '.escapeshellarg($root.'/'.$census).' --tests-dir='.
 $say('unknown-flag-refused-by-name', $rcU === 1 && str_contains(implode("\n", $outU), '--no-such-flag-at-all'),
     'exit '.$rcU);
 
+// ── leg 21: the plant guard fires — a fixture carrying `\$` is refused before it is ever written ─────────
+$guardFired = false;
+try {
+    $run('plant-guard', ['GuardTest.php' => sprintf($open, 'GuardTest').<<<'PHP'
+    #[Test]
+    public function a_backslash_dollar_in_the_plant(): void
+    {
+        \$e = Enrollments::create(['studentId' => \$this->s->studentId, 'termId' => \$this->t->termId]);
+    }
+}
+PHP]);
+} catch (RuntimeException $e) {
+    $guardFired = str_contains($e->getMessage(), 'backslash-dollar');
+    $guardMsg = $e->getMessage();
+}
+$say('the_plant_guard_refuses_an_escaped_nowdoc', $guardFired,
+    $guardFired ? 'refused: '.substr((string) ($guardMsg ?? ''), 0, 60)
+        : 'the guard never fired — a leg that plants `\$` would judge a file no PHP source contains');
+
 $bad = count(array_filter($legs, static fn ($l) => ! $l[1]));
+
 printf("\n%d leg(s), %d bad.\n", count($legs), $bad);
 if ($bad > 0) {
     exit(1);

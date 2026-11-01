@@ -136,7 +136,7 @@ erDiagram
 
 - tables in `ems`: **64** — domain **56**, framework **8** (the `0001_` migrations plus `migrations`, derived from the migration files rather than recalled)
 - foreign keys: **105**; edges drawn between domain tables: **105**
-- domain columns: **438**
+- domain columns: **440**
 
 ## Domain tables and their keys
 
@@ -164,7 +164,7 @@ erDiagram
 | educationalinstitutions | 5 | institutionId | 1 |
 | enrolledsubjects | 9 | enrolledSubjectId | 4 |
 | enrollmentreturns | 15 | returnId | 1 |
-| enrollments | 24 | enrollmentId | 4 |
+| enrollments | 25 | enrollmentId | 5 |
 | enrollmentstatushistory | 7 | historyId | 1 |
 | enrollmentworkflow | 4 | workflowId | 1 |
 | examresults | 11 | examId | 1 |
@@ -193,13 +193,15 @@ erDiagram
 | studentclearances | 8 | studentClearanceId | 3 |
 | studenteducationalbackgrounds | 8 | backgroundId | 1 |
 | studentrequirementsubmissions | 6 | submissionId | 1 |
-| students | 22 | studentId | 3 |
+| students | 23 | studentId | 3 |
 | studentscholarships | 10 | studentScholarshipId | 4 |
 | subjects | 7 | subjectId | 1 |
 | transferacademicrecords | 10 | transferRecordId | 1 |
 | workflowsteps | 7 | workflowStepId | 1 |
 
+
 <!-- generated:end ERD -->
+
 ## Concurrency and load test design and result (guide problems 23 and 24) — run on 2026-11-01
 
 This section was the plan `TESTING-AND-VERIFICATION-ADS.md` pointed at. Three of its four stages have now been run
@@ -222,7 +224,7 @@ rather than folded into the result.
 | Stage | What it drives | What is measured |
 |---|---|---|
 | warm | 20 sequential assigns | that the stage is legal at all, before any concurrency number is taken |
-| contention | 1,000 assigns across N workers against blocks whose seats are deliberately fewer than the requests | assigned, refused on `capacity`, refused by `EnrollmentIssuer::seatHolder()` in the worker, deadlocks retried, deadlocks that reached a desk. The third category was `refused by the seat key` while `uq_enrollments_active_seat` was live; the key is withdrawn, so that half of the guarantee is now application-side and the server refuses nothing on it |
+| contention | 1,000 assigns across N workers against blocks whose seats are deliberately fewer than the requests | assigned, refused on `capacity`, refused by `EnrollmentIssuer::seatHolder()` in the worker, deadlocks retried, deadlocks that reached a desk. The third category was `refused by the seat key` while `uq_enrollments_active_seat` was live the first time; the key was withdrawn that same day and returned that same day after the fixtures were repaired, so the server refuses a second active seat again — and a refusal reached through `seatHolder()` is still the desk's rule, which is why the two figures are printed apart rather than summed. |
 | mixed | the same writers plus the reports `Registrar/Index` and `Accounting/Index` | whether a report's row count changes mid-flight, which is problem 20's question in a load run |
 | settle | every invariant rule of `ems:audit:record-states` | block seats against `maxStudents`, one sheet per enrollment, one active seat per student and term |
 

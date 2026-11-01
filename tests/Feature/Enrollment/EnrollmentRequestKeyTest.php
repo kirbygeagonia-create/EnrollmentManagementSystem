@@ -33,7 +33,8 @@ use Tests\TestCase;
  * commit?" and get an answer.
  *
  * `enrollments.requestKey` names the ACT, and `EnrollmentIssuer::issue()` answers the existing record when it sees a
- * key it has already honoured. Unlike the withdrawn active-seat key, this one is a plain nullable column with an
+ * key it has already honoured. Unlike the active-seat key, which needs a generated column SQLite cannot compile,
+ * this one is a plain nullable column with an
  * ordinary UNIQUE index, so it exists on the suite's SQLite driver too — which is the point of cases like
  * `the_index_refuses_a_second_row_carrying_one_key_on_this_driver`: the suite is a witness, not a bystander.
  *
@@ -116,7 +117,7 @@ class EnrollmentRequestKeyTest extends TestCase
     /**
      * The read at the top of `issue()` is the fast path; the index is the guard. This asks the server the question
      * the two-request race would ask it, and it must be refused on the driver the suite runs on — the claim the
-     * withdrawn seat key could never make locally.
+     * generated-column seat key can never make locally.
      */
     #[Test]
     public function the_index_refuses_a_second_row_carrying_one_key_on_this_driver(): void

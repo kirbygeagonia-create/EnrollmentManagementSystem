@@ -131,6 +131,25 @@ class ClearancePassSlipConfirmationTest extends TestCase
     }
 
     /**
+     * A second person, because each refusal this case walks through is about a RECORD the desk points at, not
+     * about one student seated three times. `schoolIdNumber` and `username` are both UNIQUE on the table
+     * (§23.6.1 lists `uq_students_schoolid` and `uq_students_username`), so a clone re-mints both; the reason is
+     * the active-seat key returning underneath this file, which refuses one student holding two ACTIVE
+     * enrollments in one term.
+     */
+    private function anotherStudent(): Students
+    {
+        $copy = $this->student->replicate(['studentId', 'schoolIdNumber', 'username', 'email', 'created_at', 'updated_at']);
+        $tag = uniqid();
+        $copy->schoolIdNumber = 'ALT-'.$tag;
+        $copy->username = 'alt_'.$tag;
+        $copy->email = 'alt_'.$tag.'@example.com';
+        $copy->save();
+
+        return $copy;
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides
      */
     private function enrollment(array $overrides = []): Enrollments
@@ -317,14 +336,20 @@ class ClearancePassSlipConfirmationTest extends TestCase
         // A first-year owes no clearance, so there is nothing for this control to confirm —
         // and a confirmation written on their record would assert a slip that never existed.
         $this->actingAs($this->evaluator)
-            ->post(route('evaluation.clearance.confirm', $this->enrollment(['studentType' => StudentType::FirstYear])), ['confirmed' => true])
+            ->post(route('evaluation.clearance.confirm', $this->enrollment([
+                'studentId' => $this->anotherStudent()->studentId,
+                'studentType' => StudentType::FirstYear,
+            ])), ['confirmed' => true])
             ->assertForbidden();
 
         // Once the Registrar has approved, or a drop has closed the record, the answer here
         // must not be rewritable.
         foreach ([EnrollmentStatus::Enrolled, EnrollmentStatus::Dropped] as $settled) {
             $this->actingAs($this->evaluator)
-                ->post(route('evaluation.clearance.confirm', $this->enrollment(['enrollmentStatus' => $settled])), ['confirmed' => true])
+                ->post(route('evaluation.clearance.confirm', $this->enrollment([
+                    'studentId' => $this->anotherStudent()->studentId,
+                    'enrollmentStatus' => $settled,
+                ])), ['confirmed' => true])
                 ->assertForbidden();
         }
 

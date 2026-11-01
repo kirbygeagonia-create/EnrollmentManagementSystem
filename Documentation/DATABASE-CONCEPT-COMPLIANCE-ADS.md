@@ -99,13 +99,17 @@ answers the enrollment that already holds a student's seat in a term. Notificati
 The block and the room are read with `lockForUpdate()` and re-counted *inside* one transaction
 (`app/Http/Controllers/Blocking/BlockingController.php:485` and `:500`), retried only on the two conditions that mean
 "somebody held it first" (`app/Support/RetryOnDeadlock.php:76-79`), and a second fee sheet for one enrollment is
-refused by `uq_studentassessments_enrollment`. The active-seat rule was given a database key the same morning and
-**took it back the same day**: CI's MySQL 8 job showed six test files creating two active enrollments for one student
-in one term, so `uq_enrollments_active_seat` was withdrawn by
-`database/migrations/2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php` and the
-seat is held by `EnrollmentIssuer::seatHolder()` — which every desk path calls — until those fixtures are repaired and
-rehearsed on a MySQL schema. The repository had recorded this gap itself: DI-5 in
-`Documentation/System-Design-Quality-Review.md:79` named the blocking race open on 2026-09-15, and DI-2 the missing
+refused by `uq_studentassessments_enrollment`. The active-seat rule was given a database key the same morning,
+**took it back the same day and returned it the same day**: CI's MySQL 8 job showed six test files creating two active
+enrollments for one student in one term, so `uq_enrollments_active_seat` was withdrawn by
+`database/migrations/2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php`. The census
+that then read every fixture call site (`storage/app/scratch/lane187-census-fixture-seats.php`, proved by
+`storage/app/scratch/mutate-lane187-provenance.php`) answered eight files holding the habit, each was repaired to name a
+later term, drop the prior seat or take a second student, the repaired files rehearsed green on a scratch MySQL schema,
+and `database/migrations/2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php`
+put the key back. `EnrollmentIssuer::seatHolder()` is still the guard every desk path calls; the key is what refuses a
+row written straight to the table. The repository had recorded this gap itself: DI-5 in
+`Documentation/System-Design-Quality-Review.md:98` named the blocking race open on 2026-09-15, and DI-2 the missing
 fee-sheet key in the same table.
 
 **What is still missing, named rather than smoothed.** The profile capture now carries `students.rowVersion`, so a
@@ -163,11 +167,13 @@ application defers address, guardian and background, never the person); enums fo
 (`enrollments.enrollmentStatus`, `enrolledsubjects.status`, `payments.paymentStatus`, …); and 13 unique constraints
 listed in §23.6.1, of which the enrollment-relevant ones are `uq_students_schoolid`, `uq_staff_username`,
 `uq_enrollment_subject_attempt`, `uq_student_clearanceperiod`, `uq_payments_ornumber`, `uq_student_scholarship_term`,
-`uq_documentprintlog_issue`, `uq_notifications_dedupe`.
+`uq_documentprintlog_issue`, `uq_notifications_dedupe`, `uq_enrollments_active_seat`, `uq_enrollments_request_key`.
 
-**Applicability.** Applies. Of the two keys the enrollment rules needed, one is on the schema and one is not:
-`uq_studentassessments_enrollment` travels on both drivers, while the active-seat key was withdrawn on 2026-11-01
-after CI showed six test files holding the state it forbids — a STORED spelling of it also answers
+**Applicability.** Applies. Of the two keys the enrollment rules needed, one travels on both drivers and one only on
+the school's: `uq_studentassessments_enrollment` is an ordinary unique index, while the active-seat key was withdrawn on
+2026-11-01 after CI showed the fixtures holding the state it forbids and **returned the same day** once eight fixture
+files were repaired and rehearsed on a scratch MySQL schema — and it can only exist on MySQL, because SQLite compiles no
+`ALTER TABLE … ADD COLUMN … GENERATED`. A STORED spelling of it also answers
 `1215 Cannot add foreign key constraint`, because rebuilding a table eleven others point at is what STORED does. Both
 were safe to consider additively because `php storage/app/scratch/lane154-probe-duplicate-keys.php` answered 0
 duplicate groups on live `ems` for each before either was written.
@@ -237,15 +243,18 @@ findings on live `ems` today. The identifier rules the guide cares about — a s
 clearance per student per period, one OR number — are unique constraints, not application checks.
 
 **What changed with this batch.** The one-fee-sheet-per-enrollment rule is a database constraint now, not only an
-application check: `uq_studentassessments_enrollment`. The seat rule (one active enrollment per student per term) is
-**still application code**: a generated-column key was written, measured against the real constraint error, and
-withdrawn the same day because the repository's own fixtures create two active seats for one student and term. A
-dropped enrollment releases the seat in `seatHolder()`'s read, which is ruling 17's behaviour.
+application check: `uq_studentassessments_enrollment`. The seat rule (one active enrollment per student per term) is a
+database constraint too: the generated-column key was written, measured against the real constraint error, withdrawn the
+same day because the repository's own fixtures create two active seats for one student and term, and returned the same
+day after eight fixture files were repaired and rehearsed on a scratch MySQL schema. A dropped enrollment releases the
+seat through the NULL the generated column writes for it, which is ruling 17's behaviour enforced without a trigger.
 
-**Remaining limitation.** Until the six fixture files name a later term or drop the prior seat first, and the suite
-is rehearsed against a scratch MySQL schema with `DB_CONNECTION` pinned, nothing below the application refuses a
-second active seat. `DatabaseLevelEnrollmentRulesTest` asserts the key's absence on both drivers so its return
-without that rehearsal is visible. Capacity and unit ranges still have no `CHECK`.
+**Remaining limitation.** The seat key is MySQL-only by construction, so the SQLite suite cannot violate it and
+`DatabaseLevelEnrollmentRulesTest` asserts the driver-appropriate fact on each surface instead of skipping. A fixture
+that writes two active seats for one student in one term will therefore be refused by CI's MySQL job and not by this box
+— which is why `storage/app/scratch/lane187-census-fixture-seats.php` is run before any driver-specific key is proposed,
+and why its reading is proved by `storage/app/scratch/mutate-lane187-provenance.php`. Capacity and unit ranges still have
+no `CHECK`.
 
 ---
 

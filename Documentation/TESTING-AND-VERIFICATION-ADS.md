@@ -52,14 +52,14 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Field | |
 |---|---|
 | Description | The same student enrolled twice in one term, including by a route that never asks the application rule. |
-| Preconditions | A migrated schema. **`uq_enrollments_active_seat` is not on it today**: the key was delivered on 2026-11-01 and withdrawn the same day, so this row records both the measurement that was taken while it was live and the assertion the suite can actually make now. |
+| Preconditions | A migrated schema. `uq_enrollments_active_seat` is on MySQL and cannot be on SQLite: the key was delivered on 2026-11-01, **withdrawn the same day** when CI's MySQL job showed the fixtures writing the state it forbids, and **returned the same day** after the census found eight fixture files holding that habit, each was repaired, and the repaired files rehearsed green on a scratch MySQL schema. |
 | Test data | One student, one term, one course; the second row written with `enrollmentStatus` `pending` so no code path vetoes it. |
 | Steps | `DatabaseLevelEnrollmentRulesTest`: insert the held seat, ask `EnrollmentIssuer::seatHolder()` about it, set it to `dropped`, ask again, then write the second row. |
 | Expected | The application rule answers the held row and answers nothing once it is dropped, and the re-enrollment succeeds. A server-side refusal is expected **only** on a driver whose schema holds a key. |
-| Actual | While the key was live, on 2026-11-01: MySQL (`ems_l170_a`, and live `ems` after that migration) refused the second insert with `uq_enrollments_active_seat` and accepted it after the drop, both directions measured. On the schema today, **neither driver holds the key**: the case asserts the fee-sheet index exists on both, asserts the seat index is absent on both, and asserts the application predicate plus the drop-and-retry. SQLite could never have held it anyway — `ALTER TABLE … ADD COLUMN … GENERATED` is unsupported there, which is the asymmetry that made CI the only witness and the withdrawal necessary. |
-| Logs / query output | the server's own words from the day the key was live, quoted in the enforcement migration's docblock and again in `l171-suite.log`: `SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1487-11-1487:11' for key 'enrollments.uq_enrollments_active_seat'` — the shape that made the walkthrough fixture's double-mint visible after months of green. `SHOW INDEX FROM enrollments` on a schema migrated today answers no row for that name, and the withdrawal is proved by `storage/app/scratch/lane174-rehearsal-seat-key-withdrawal.php`. |
-| Result | **Partly demonstrated.** The duplicate-refusal half was a Pass on MySQL while the key was live and is now an assertion about an absent index plus a present application rule; the drop-releases-the-seat half passes on both drivers. Stated as a retreat rather than left reading as a current server guarantee. |
-| Evidence | `php storage/app/scratch/lane154-probe-duplicate-keys.php` (0 duplicate groups before the key, which is what made it safe to add), the two `1062` messages quoted in the enforcement migration's docblock, `DatabaseLevelEnrollmentRulesTest`'s own three cases, and the withdrawal migration's `down()`, which is the proof the key can come back. |
+| Actual | Both directions, twice. While the key was live the first time, MySQL (`ems_l170_a`, and live `ems` after that migration) refused the second insert with `uq_enrollments_active_seat` and accepted it after the drop. After the return the same pair was re-measured on a scratch MySQL schema with the connection pinned — the delivered rehearsal answers the refusal by key name and then the re-enrollment succeeding — and live `ems` carries the index today. On SQLite the case asserts the fee-sheet index present and the seat index absent, and says out loud that no database refusal is being claimed there. SQLite could never have held it — `ALTER TABLE … ADD COLUMN … GENERATED` is unsupported there, which is the asymmetry that made CI the only witness and the withdrawal necessary. |
+| Logs / query output | the server's own words from the day the key was first live, quoted in the enforcement migration's docblock and again in `l171-suite.log`: `SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1487-11-1487:11' for key 'enrollments.uq_enrollments_active_seat'` — the shape that made the walkthrough fixture's double-mint visible after months of green. `SHOW INDEX FROM enrollments WHERE Key_name='uq_enrollments_active_seat'` on live `ems` after the return answers three rows, `studentId`, `termId`, `seatKey`, and `information_schema.COLUMNS` answers `VIRTUAL GENERATED` for the column; the withdrawal's own zero-row reading is kept in `storage/app/scratch/lane174-rehearsal-seat-key-withdrawal.php`, which is what proved the retreat reversible. |
+| Result | **Demonstrated on MySQL, asserted absent on SQLite.** The duplicate-refusal half passes on the school's engine, the drop-releases-the-seat half passes on both drivers, and the application predicate is pinned where the suite can execute it. Both the retreat and the return are in the record rather than smoothed into one tense. |
+| Evidence | `php storage/app/scratch/lane154-probe-duplicate-keys.php` (0 duplicate groups before the key, which is what made it safe to add), the two `1062` messages quoted in the enforcement migration's docblock, `DatabaseLevelEnrollmentRulesTest`'s cases on both drivers, `storage/app/scratch/lane187-census-fixture-seats.php` for the eight fixture files and its falsifier `storage/app/scratch/mutate-lane187-provenance.php`, and the withdrawal migration's `down()`, which is the proof the key could come back and did. |
 | Notes | Deliberately NOT a trigger: the guide allows either, and a generated column keeps the rule in the schema without a stored procedure to lose on restore. |
 
 ### T05 — capacity reached
@@ -75,6 +75,7 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Logs / query output | the case names as the suite prints them — `a request larger than the seats left seats nobody`, `the audit names a block holding more students than it declares` — and the rule's own line from `php artisan ems:audit:record-states`: `ok A block holding more students than it declares 0`, with the command's footer `Rules run: 20`. |
 | Result | **Pass**. |
 | Evidence | `php storage/app/scratch/mutate-g-ads-capacity-tests.php` legs `dropped-rows-consume-a-seat`, `requested-ids-not-sorted`, `room-row-not-locked`. |
+| Notes | Deliberately not a `CHECK` constraint: the ceiling is held by the block row lock, the re-count under it, the room lock taken second in one fixed order, and the bounded `RetryOnDeadlock`; the range constraints the guide asks for stay matrix P11's open question, and `lane168` is what shows the race in both directions rather than this row asserting it. |
 
 ### T08 — controlled deadlock
 
@@ -161,6 +162,7 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 |---|---|
 | Description | One student's whole history, and a 20-row page of it, against hundreds of thousands of rows. |
 | Preconditions | Same schema. |
+| Test data | The synthetic scale schema `storage/app/scratch/lane163-build-scale-schema.php` builds (100,000 students) on this box, one student holding a joined enrollment history and five confirmed subject lines, and the 20-row Registrar queue page the probe reads twice — once per row, once batched. |
 | Steps | Join history for one student; read subject lines for one student; then the same two reads once per row for 20 rows versus batched. |
 | Expected | A single record reads from an index; the page does not multiply queries per row. |
 | Actual | Newest run: one student joined `41.22 ms rows=1`; their lines `13.05 ms rows=5`; per-row loop `57.16 ms / 40 queries`; batched `6.23 ms / 2 queries`. The first run of the same command answered 0.80, 0.49, 8.31 and 0.77 ms. Both agree on what matters: every single-record read is an index seek, and the page costs 40 queries where 2 will do. |
@@ -207,11 +209,13 @@ than a technical error — the distinction prompt part 40 asks for.
 |---|---|
 | Description | A dump taken from the live schema is restored and the rows compared. |
 | Preconditions | `mysqldump` and `mysql` binaries; a scratch target named `ems_drill[_a-z]`. |
+| Test data | A `--single-transaction` dump of live `ems` as it stands on this box — 64 tables, the 1.42 MB the drill's own footer reports — restored into a scratch schema the tool was told to own, never into the source. |
 | Steps | `php tools/ems-backup-drill.php --target=ems_drill` — dump `--single-transaction`, refuse any dump carrying `DROP DATABASE`, restore, compare every base table by `COUNT(*)`, then three ordered digests. |
 | Expected | Every table matches, and the durability settings the recovery promise depends on are printed. |
 | Actual | 64 tables compared; `students`, `enrollments` and `payments` digests `MATCHES`; `innodb_flush_log_at_trx_commit = 1`, `sync_binlog = 1`. |
 | Logs / query output | the drill's own footer, quoted where it is kept in `Documentation/SECURITY-AND-RECOVERY-ADS.md` §2: `VERDICT: 0 table(s) missing, 0 row-count or checksum difference(s), dump 1,415,647 bytes, restore exit 0`, above the two durability lines `innodb_flush_log_at_trx_commit  1` and `sync_binlog  1`. |
 | Result | **Pass**, as an executed drill — recorded in `SECURITY-AND-RECOVERY-ADS.md`. |
+| Evidence | `php tools/ems-backup-drill.php --target=ems_drill` prints the verdict quoted above and refuses the run rather than proceeding when the dump carries a `DROP DATABASE`, when the target is a name it was not told to own, or when the file it wrote holds no `CREATE TABLE` for the schema it claims to copy; its output is kept in `Documentation/SECURITY-AND-RECOVERY-ADS.md` §2 rather than re-typed here. |
 | Notes | No scheduled job and no point-in-time recovery exist; the document says so rather than implying the drill is a policy. |
 
 ### T17 DB exception mid-flow, T18 interruption and retry — **executed for the retry half**
@@ -220,7 +224,7 @@ The exception taxonomy is pinned (`App/Support/RetryOnDeadlock` retries 1213 and
 else, refuses `attempts: 0`, and says *Nothing was saved*). The interruption-and-retry half is now built and pinned by
 `tests/Feature/Enrollment/EnrollmentRequestKeyTest.php`: a replay of one `requestKey` answers the enrollment the first
 send created and opens no second workflow form; the UNIQUE index refuses a second row carrying that key **on the
-driver the suite runs on**, which is the property the withdrawn seat key never had; two unkeyed acts stay two acts; a
+driver the suite runs on**, which is the property the generated-column seat key cannot have; two unkeyed acts stay two acts; a
 key that arrives naming a different student or term is refused rather than answered with somebody else's record; and
 the issuing page is read to prove the desk actually puts the key on the wire. What still no case does is kill a real
 process between the write and the commit — that belongs to the load harness (`lane172`), which drives separate

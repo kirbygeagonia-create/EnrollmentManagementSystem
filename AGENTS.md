@@ -54,6 +54,62 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `RbacSeeder` declared 17 roles on that date. Both checkers resolve figures per *paragraph*, last mention
   wins, and a claim whose text cannot be found is reported `UNBOUND` and refuses the run — an unread claim
   must never look like a checked one.
+- **After any batch that adds or drops a column, or edits a §24 per-table `— N columns` heading**, run
+  `php storage/app/scratch/lane189-weigh-column-claims.php` and prove it with
+  `php storage/app/scratch/mutate-lane189-weigh.php`. It reads one fact three ways — the heading, the number of column
+  rows physically listed beneath it, and `information_schema` — because `lane60-ratio-claims.php` binds only the heading
+  to the server, and on 2026-11-01 four tables (`students`, `admissions`, `notifications`, `enrollments`) carried the
+  heading the batch that added a column had re-taken while their lists stayed one row short. §24's own census row
+  promises "a column listed here exists, and a column the server holds is not omitted", so the list is part of the
+  claim. A table's span closes at its own `Referenced by` / `Change since` note, at the next table heading **and at the
+  next numbered section heading** — without that last bound any later `name | value` row in the document is counted
+  into whichever table was still open, and an inflated census prints agreement. It refuses a missing dump, a dump older
+  than the docx, an unknown flag by name, an empty population, and a schema that answers no tables; its harness plants
+  a heading above the server, a deleted column row (which must name the omitted column), a heading naming no table,
+  and each refusal, locating every mutant by content rather than by the dump's generated line ordinal. The generator
+  was asked the same question before the push, and `lane187` cannot answer it: it walks `#[Test]`-structured helpers,
+  so pointed at `tools/` it reads 2 files naming `Enrollments::create`, attributes 0 sites to any method and **refuses
+  with "the census read nothing"** — the right outcome, and the reason the pipeline's own seat guards were read by
+  hand instead (`where('studentId', …)->where('termId', …)->exists()` before each create, and the prior-year records
+  written on `$priorTermId`, which is a different term). CI's MySQL job runs the pipeline against `ems_test`, so the
+  runner gives the complete answer to a question the instrument can only refuse.
+  **§23.6.2 rots in the same silence.** That section is the *negative* register — "the duplication rules the server
+  does not enforce" — and nothing weighs it: `lane44-unique-keys.php` reads §23.6.1, the positive list, so the day the
+  fee-sheet key was added its row stayed, and the seat key's row stayed too after the return, three sections apart
+  from the sentence that had just been corrected. §23.9 and §28's storyboard register each restate the same
+  enforcement claim in prose, and both still said "no unique key … the database does not" after the key existed. So
+  when a key is added **or returned**, grep the whole document for the mechanism sentence — `no unique key`,
+  `the database does not`, the rule in words — and follow it into every register, then re-take the section's own lead
+  count (its "in three cases the answer is nothing" sentence is a membership claim about the rows beneath it).
+  Deleting a row is a different mechanic from editing one: `docxApply` refuses any pass that moves a `<w:tr>`, so
+  `refresh-docx-pass393.php` deletes on the archive bytes and proves that every one of the 1910 surviving rows is
+  byte-identical after the removal, refusing and restoring its own backup if one moved.
+  `refresh-docx-pass394.php` rewrites whole cells through the engine's `cell` kind — those cells split every
+  identifier into its own styled run, so no sentence needle spans them, and the cost is that the identifiers lose
+  their monospace, which is stated here rather than hidden — and its first read-back refused a correct write because
+  it re-counted the row ANCHOR, which for two of the four edits was the very sentence being replaced. Prove a rewrite
+  with a phrase the edit does not touch, and expect the retired text to be gone by its own marker, not by the search
+  prefix the replacement may legitimately repeat.
+  **A driver-only assertion belongs in a branch, not in a skip.** `DatabaseLevelEnrollmentRulesTest` first
+  `markTestSkipped` for the server-refusal half on SQLite, which is exactly what
+  `ems:ci:no-silent-skips` exists to refuse. The cheap-looking fix — a new entry in that command's `ALLOWED` list —
+  was tried, measured against the single-class junit (the skip came back `allowed skip …` with its reason ✓) and then
+  **broke three of that guard's own fixtures**, because they assert that every allowlisted test appears in the logs
+  and their synthetic junits hold no such class. That is the 2026-10-16 ALLOWED lesson arriving on its own doorstep.
+  The right shape is the one `tests/Support/EnumColumnOrder.php` already uses: ask the driver and assert what that
+  driver can carry — on MySQL the index refuses by name and a drop releases; on SQLite the same case asserts the key
+  is absent AND that the application predicate holds then releases the seat. Thirteen cases green, no skip, no
+  allow-list churn, and Pint PASS — `asserting an absence is not the same as skipping`, which is the sentence the
+  case's docblock now carries so the next reader does not reach for the flag that costs three fixtures.
+  **A completed task is not a measured field count.** `lane189-count-ads-fields.php` counts the field rows of every
+  two-column table in `Documentation/TESTING-AND-VERIFICATION-ADS.md` and asks whether each carries the ten the ADS
+  prompt names; on its first run **three cases that a closed task had credited did not** — T05 carried no `Notes`,
+  T10 no `Test data`, T22 neither `Test data` nor `Evidence`. The missing rows were written from the artefacts each
+  case already cites, not invented, and the census now reads 12 tables, 0 short. Whenever a deliverable is a
+  *document with a required shape*, the shape needs a counter: a task checked off from remembering the fields is the
+  same failure as a register row that stopped growing. Beware the repair that consumes its anchor — replacing a
+  `Preconditions` row with a `Test data` row silently deleted `Steps` until the census was re-run, which is
+  `old_string` eating the next line, met in a markdown table instead of an Edit call.
 - **After any migration that adds a UNIQUE index, or any edit to §23.6.1**, run
   `php storage/app/scratch/lane44-unique-keys.php` and prove it with
   `php storage/app/scratch/mutate-lane44-unique-keys.php`. §23.6.1 claims to list *every* unique index in the
@@ -3751,6 +3807,41 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   sweep found it. And a checker's label is matched by shape, not by the spacing its `printf` wrote: lane44 pads
   `MISS` to two spaces beside `PHANTOM`'s one, so `str_contains('MISS uq_…')` refused a reading that was there —
   parse the complaint rows and assert the set equals exactly the pair the pass was written for.
+- **A heading that moved while the table under it did not is a document that promises columns it does not list**
+  (2026-11-01, the seat key's return). `uq_enrollments_active_seat` came back the same day it was withdrawn, and the
+  return needed three things in order: `storage/app/scratch/lane187-census-fixture-seats.php` reading every enrollment
+  call site in `tests/` with the *provenance* of each student and term (a helper that mints its own person makes the
+  call's own line the identity; a person the caller minted once is shared by every line below the assignment, and
+  keying it on the call line is what reported one violation where CI refused six), that census **exiting 1 while any
+  site's provenance it cannot bind** rather than folding the unknowns into a clean number, and
+  `storage/app/scratch/mutate-lane187-provenance.php` killing one leg per promise — including the name collision
+  across two files and the memoising maker whose differing arguments must read as two people. Eight files held the
+  habit, not the six CI happened to reach first. Then the document work found a second defect of its own:
+  `storage/app/scratch/lane189-weigh-column-claims.php` compares each §24 table's own `— N columns` heading with the
+  number of column rows beneath it, and four tables were one row short (`students`/`rowVersion`,
+  `admissions`/`rejectionReason`, `notifications`/`dedupeKey`, `enrollments`/`requestKey`) because every batch that
+  added a column re-took the heading and nothing compared the heading to its own rows. `lane60-ratio-claims.php`
+  bound all four headings to `information_schema` and agreed with every one of them — the heading was true and the
+  table under it was not, which is invisible to a checker that only asks the server. So after any batch that adds a
+  column to a table §24 documents: run lane189, add the row, and re-take the heading and the two aggregate figures
+  from `lane60`'s own readings (its `counts-sentence` nouns and its `per-table` heading line), never by arithmetic.
+  Four mechanics travelled with it. **(a)** A paragraph that lists column names is written **one run per name**, so no
+  text needle spans it (`created_at, updated_at.` occurs 0 times in `document.xml`) — the repair clones the neighbour
+  run and inserts beside it, because the engine's `para` kind would flatten the paragraph's styled spans into one run.
+  **(b)** A read-back must compare rows with the same join rule the locator uses: cells joined WITH a separator, not
+  the run concatenation `flatten()` produces — six correct rows read back as absent and the pass restored its own
+  backup, which is the refusal doing its job but naming nothing until the difference is printed. **(c)** A parser that
+  reads an instrument's list must assert its count against that instrument's own tally: the per-table line's noun is
+  `per-table enrollments`, and a `(\S+)` pattern read 3 of the 4 stale figures — the guard `count($parsed) !== $tally`
+  is what turned a half-read list into a refusal. **(d)** Whether a scratch schema holds the key is a question for the
+  server, not an inference from the withdrawal: `ems_l172_a` still carried `uq_enrollments_active_seat`, because the
+  withdrawal migration ran against live `ems` alone, so the clean `dup-seats 0` there *is* a reading taken under the
+  constraint — write which schema was asked, then ask it. Finally, the §1.1 row names no figure a harness prints (the
+  census harness prints its own leg total) and no `File.php:NN` token, and the ADS pack followed the same batch:
+  `lane162-generate-erd.php --out=…` re-took the generated key table from the server, `lane169-read-ads-status.php`
+  re-read the 24-problem census (P03 moved from partly to built, with the MySQL-only limit stated in the row), and
+  `lane44`/`lane60`/`lane189`/`verify-docx`/`docx-ooxml-check`/the Word open test are the verdicts that let the batch
+  be called delivered.
 - **A dedupe whose key never reaches the column is a dedupe that reports success** (ADS guide problem 17, built
   2026-11-01). `enrollments.requestKey` + `uq_enrollments_request_key` + `EnrollmentIssuer::issue($attrs, $issuer,
   $requestKey)` — and the three things that made it safe to write down. **(a) The key must be in

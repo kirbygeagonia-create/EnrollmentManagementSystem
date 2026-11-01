@@ -33,16 +33,20 @@ use Tests\TestCase;
  *
  * The second key that batch added — `uq_enrollments_active_seat` over (studentId, termId, seatKey) — was WITHDRAWN
  * the same day by `database/migrations/2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php`,
- * because CI's MySQL job showed it refusing six test files that create two ACTIVE enrollments for one student in one
- * term (`RetakeAttemptTest`'s attempt chain, whose own comment says the second record simulates "a retake in a LATER
+ * because CI's MySQL job showed it refusing test files that create two ACTIVE enrollments for one student in one term
+ * (`RetakeAttemptTest`'s attempt chain, whose own comment says the second record simulates "a retake in a LATER
  * term" while its helper hands both rows the same one). The constraint was right; the fixtures were not, and a key
- * that reds the suite is not a protection anyone can ship. Until those fixtures name a later term or drop the prior
- * seat first — rehearsed against a scratch MySQL schema, because SQLite compiles no generated column and cannot see
- * this at all — the seat rule is `EnrollmentIssuer::seatHolder()`'s, which every desk path calls.
+ * that reds the suite is not a protection anyone can ship. **It returned the same day**, by
+ * `database/migrations/2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php`,
+ * after `storage/app/scratch/lane187-census-fixture-seats.php` read every enrollment call site in `tests/` and answered
+ * eight files rather than the six CI happened to reach, each was repaired to name a later term, drop the prior seat or
+ * take a second student, and the repaired files rehearsed green on a scratch MySQL schema with the connection pinned.
+ * `EnrollmentIssuer::seatHolder()` is still the rule every desk path calls; the key is what refuses a row written
+ * straight to the table — and it can only do that on MySQL, because SQLite compiles no generated `ALTER`.
  *
- * So this class asserts: the fee-sheet key on both drivers, the seat key on NEITHER (and loudly on both if it comes
- * back before the fixtures are repaired), and the application predicate on the seat's real path — held before the
- * drop, released after it.
+ * So this class asserts: the fee-sheet key on both drivers, the seat key where the driver can build it and its absence
+ * where it cannot (and it says out loud which claim belongs to which engine), and the application predicate on the
+ * seat's real path — held before the drop, released after it.
  */
 class DatabaseLevelEnrollmentRulesTest extends TestCase
 {
@@ -133,13 +137,13 @@ class DatabaseLevelEnrollmentRulesTest extends TestCase
     }
 
     /**
-     * The fee-sheet key exists on both drivers; the seat key exists on neither, because it was withdrawn pending the
-     * fixture repair. Asserting the absence on MySQL is the point: a reader who re-adds the index without first
-     * fixing the six files will see this case go red on the engine where it matters, which is the only place the
-     * constraint is visible at all.
+     * The fee-sheet key exists on both drivers. The seat key exists on MySQL and on nowhere else: SQLite compiles no
+     * `ALTER TABLE … ADD COLUMN … GENERATED`, so the suite's `:memory:` schema cannot hold it and must not claim it
+     * does. Each driver is asked which key the SERVER defends, which is the only way this case can be true on both
+     * surfaces — and the MySQL half is what a scratch-schema rehearsal cannot be skipped for.
      */
     #[Test]
-    public function each_driver_holds_the_fee_sheet_key_and_neither_holds_the_withdrawn_seat_key(): void
+    public function the_fee_sheet_key_is_portable_and_the_seat_key_exists_where_the_driver_can_build_it(): void
     {
         $this->assertTrue(
             $this->uniqueIndexExists('studentassessments', 'uq_studentassessments_enrollment'),
@@ -147,9 +151,66 @@ class DatabaseLevelEnrollmentRulesTest extends TestCase
         );
 
         $seatKey = $this->uniqueIndexExists('enrollments', 'uq_enrollments_active_seat');
-        $this->assertFalse($seatKey, DB::getDriverName().' reports the seat key, so either the withdrawal migration '
-            .'was reverted or the six fixture files have not been repaired and rehearsed on a scratch MySQL schema yet '
-            .'— re-adding this constraint without that rehearsal reds CI\'s MySQL job, which is how it was found.');
+
+        if (DB::getDriverName() !== 'mysql') {
+            $this->assertFalse($seatKey, 'the seat key was built on '.DB::getDriverName().', which cannot hold a '
+                .'generated column — the migration is meant to be a no-op here, and a true assertion about an '
+                .'index the driver silently dropped is worse than no assertion.');
+
+            return;
+        }
+
+        $this->assertTrue($seatKey, 'MySQL is holding no uq_enrollments_active_seat, so the rule that guards a '
+            .'second ACTIVE enrollment for one student in one term is being enforced by php alone. It was returned '
+            .'by 2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php '
+            .'after the fixtures were repaired and rehearsed on a scratch MySQL schema.');
+    }
+
+    /**
+     * The refusal itself, on the engine that can express it: a second active seat for the same pair is refused by
+     * the index, and after the first is dropped the same pair is accepted again — ruling 17's promise, held by the
+     * generated column rather than by a php predicate. On the driver that cannot build the column the case asserts
+     * the other half: no key on this schema, and the application rule holding then releasing the seat. Asserting an
+     * absence is not the same as skipping, which is why this case runs on both surfaces — a skipped check cannot
+     * fail, and `ems:ci:no-silent-skips` rightly treats one as a claim this project has not agreed to.
+     */
+    #[Test]
+    public function the_server_refuses_a_second_active_seat_and_releases_it_when_the_first_is_dropped(): void
+    {
+        $held = $this->enroll(EnrollmentStatus::Enrolled);
+
+        if (DB::getDriverName() !== 'mysql') {
+            $this->assertFalse($this->uniqueIndexExists('enrollments', 'uq_enrollments_active_seat'),
+                'SQLite compiles no `ALTER TABLE … ADD COLUMN … GENERATED`, so this schema is expected to hold no '
+                    .'seat key; if it now does, the migration became portable and this branch is the stale claim.');
+
+            $this->assertSame($held->enrollmentId,
+                EnrollmentIssuer::seatHolder($held->studentId, $held->termId)?->enrollmentId,
+                'on the driver with no key, the application rule is the only thing holding the seat');
+
+            $held->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
+
+            $this->assertNull(EnrollmentIssuer::seatHolder($held->studentId, $held->termId),
+                'the application half of the release must hold on every driver, because this driver cannot check '
+                    .'the schema half');
+
+            return;
+        }
+
+        try {
+            $this->enroll(EnrollmentStatus::Evaluated);
+            $this->fail('a second ACTIVE enrollment for student '.$held->studentId.' in term '.$held->termId
+                .' was accepted, so the unique key is not defending the pair it names.');
+        } catch (UniqueConstraintViolationException $e) {
+            $this->assertStringContainsString('uq_enrollments_active_seat', $e->getMessage(),
+                'the insert was refused, but not by the seat key: '.$e->getMessage());
+        }
+
+        $held->update(['enrollmentStatus' => EnrollmentStatus::Dropped]);
+        $again = $this->enroll(EnrollmentStatus::Enrolled);
+
+        $this->assertNotSame($held->enrollmentId, $again->enrollmentId,
+            'a drop must release the seat — seatKey goes NULL for a dropped row and MySQL ignores the NULL.');
     }
 
     /**
@@ -185,8 +246,9 @@ class DatabaseLevelEnrollmentRulesTest extends TestCase
         $this->assertSame(1, DB::table('enrollments')
             ->where('studentId', $this->studentId)->where('termId', $this->termId)
             ->where('enrollmentStatus', '!=', EnrollmentStatus::Dropped->value)->count(),
-            'two active seats exist after the drop and re-enrollment, and no server-side rule refused them: this is '
-            .'exactly the state the withdrawn key would have blocked, which is why the fixtures must be repaired first.');
+            'two active seats exist after the drop and re-enrollment. On MySQL the seat key refuses exactly this, so a '
+            .'failure here is in the release path or in the fixture, not in the rule; on SQLite no server-side rule can '
+            .'see it at all, which is why the same pair is weighed by `EnrollmentIssuer::seatHolder()` there.');
     }
 
     /**

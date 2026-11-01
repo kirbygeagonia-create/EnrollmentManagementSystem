@@ -137,12 +137,30 @@ class EnrollmentDropTest extends TestCase
     }
 
     /**
+     * A second person, because the loop below asks how three DIFFERENT records answer a drop, not how one student
+     * can be seated three times — which is the state `uq_enrollments_active_seat` now refuses (measured on a scratch
+     * MySQL schema: 1062 for '70-96-70:96'). `schoolIdNumber` and `username` are both UNIQUE on the table, so a
+     * clone re-mints both.
+     */
+    private function anotherStudent(): Students
+    {
+        $copy = $this->student->replicate(['studentId', 'schoolIdNumber', 'username', 'email', 'created_at', 'updated_at']);
+        $tag = uniqid();
+        $copy->schoolIdNumber = 'ALT-'.$tag;
+        $copy->username = 'alt_'.$tag;
+        $copy->email = 'alt_'.$tag.'@example.com';
+        $copy->save();
+
+        return $copy;
+    }
+
+    /**
      * A record at the point this desk is answerable for, carrying a confirmed load.
      */
-    private function enrolledRecord(EnrollmentStatus $status = EnrollmentStatus::Paid): Enrollments
+    private function enrolledRecord(EnrollmentStatus $status = EnrollmentStatus::Paid, ?Students $student = null): Enrollments
     {
         $enrollment = Enrollments::create([
-            'studentId' => $this->student->studentId,
+            'studentId' => ($student ?? $this->student)->studentId,
             'courseId' => $this->course->courseId,
             'termId' => $this->term->termId,
             'yearLevel' => 2,
@@ -230,7 +248,10 @@ class EnrollmentDropTest extends TestCase
             ->assertSessionHasNoErrors();
 
         // Ruling 17's promise: the drop is terminal for this row, and the student comes
-        // back on a new one in the very same term.
+        // back on a new one in the very same term. The first seat is released by a DESK ACT
+        // (`registrar.drop` above), which no static reader follows, so this line is the
+        // marker `lane187-census-fixture-seats.php` reads:
+        // seat-released-by-act: a_dropped_student_can_be_enrolled_in_the_same_term_again
         $again = Enrollments::create([
             'studentId' => $this->student->studentId,
             'courseId' => $this->course->courseId,
@@ -311,7 +332,9 @@ class EnrollmentDropTest extends TestCase
     public function the_desk_drops_from_the_assessed_load_upward_and_never_from_a_record_still_with_the_department(): void
     {
         foreach ([EnrollmentStatus::Pending, EnrollmentStatus::Evaluated, EnrollmentStatus::Assessed] as $status) {
-            $enrollment = $this->enrolledRecord($status);
+            // One person per status: the desk's answer depends on the record's state, and three active seats for
+            // one student in one term is the pair the returning key refuses at the table.
+            $enrollment = $this->enrolledRecord($status, $this->anotherStudent());
 
             // Assessed is the borderline the ruling leaves to this desk: it has a fee
             // sheet, so it is the Registrar's to close. Pending and Evaluated are not.

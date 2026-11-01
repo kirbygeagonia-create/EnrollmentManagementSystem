@@ -30,6 +30,8 @@ class ElectiveValidationTest extends TestCase
 
     private int $termId;
 
+    private int $termCursor = 0;
+
     private int $courseId;
 
     private int $majorId;
@@ -215,13 +217,38 @@ class ElectiveValidationTest extends TestCase
         ], $overrides));
     }
 
-    private function createEnrollment(Students $student, string $studentType = 'firstYear', int $yearLevel = 1): Enrollments
+    /**
+     * A term later than the one `setUp` seeded, new on every call.
+     *
+     * The case below seats the same student as a Year-2 continuing enrollment, and a retake or a promotion is a
+     * seating in a LATER term — the active-seat key this repair enables refuses one student holding two ACTIVE
+     * enrollments in the SAME term, which is the state the product forbids. Nothing in the elective validation reads
+     * the term to decide which subjects a year requires, so moving the second seating forward changes no assertion.
+     */
+    private function nextTerm(): int
+    {
+        $this->termCursor++;
+        $yearId = DB::table('academicyears')->insertGetId([
+            'yearLabel' => 'ELECT-'.$this->termCursor,
+            'startDate' => '2025-06-01',
+            'endDate' => '2026-05-31',
+        ]);
+
+        return (int) DB::table('academicterms')->insertGetId([
+            'academicYearId' => $yearId,
+            'semester' => '1st',
+            'startDate' => '2025-06-01',
+            'endDate' => '2025-10-31',
+        ]);
+    }
+
+    private function createEnrollment(Students $student, string $studentType = 'firstYear', int $yearLevel = 1, ?int $termId = null): Enrollments
     {
         return Enrollments::create([
             'studentId' => $student->studentId,
             'courseId' => $this->courseId,
             'majorId' => $this->majorId,
-            'termId' => $this->termId,
+            'termId' => $termId ?? $this->termId,
             'admissionId' => null,
             'yearLevel' => $yearLevel,
             'studentType' => $studentType,
@@ -509,7 +536,7 @@ class ElectiveValidationTest extends TestCase
         $response->assertSessionHasNoErrors();
 
         // Now test year 2 enrollment
-        $enrollment2 = $this->createEnrollment($student, 'continuing', 2);
+        $enrollment2 = $this->createEnrollment($student, 'continuing', 2, $this->nextTerm());
 
         // Propose only year 1 subjects (should fail - missing year 2 mandatory)
         $response = $this->actingAs($this->evaluator)

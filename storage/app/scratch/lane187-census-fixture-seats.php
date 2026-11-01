@@ -277,7 +277,7 @@ $classifyMaker = static function (array $body): string {
     if (preg_match('/firstOrCreate|firstOrNew|updateOrCreate|::find\(|::findOrFail\(|->first\(\)/', $src)) {
         return 'fetches';
     }
-    if (preg_match('/::create\(|::factory\(|->create\(|new \\\\\w+\(/', $src)) {
+    if (preg_match('/::create\(|::factory\(|->create\(|new \\\\\w+\(|insertGetId|->insert\(|->replicate\(/', $src)) {
         return 'creates';
     }
 
@@ -294,10 +294,15 @@ $prove = static function (string $expr, array $before, string $file, int $line, 
     if (preg_match('/^\d+$/', $expr) || preg_match("/^'[^']*'\$/", $expr)) {
         return ['LITERAL', $expr];
     }
-    // A conditional or coalescing expression takes its value from an argument the reader has not bound:
-    // `($term ?? $this->term)->termId` is the caller's term when one was passed and the class's when none was.
-    // That is genuinely not provable from the site, so it is refused by name rather than guessed at — guessing at a
-    // `??` would credit the census with a reading it does not have.
+    // A coalescing read of a class property — `($term ?? $this->term)->termId` — answers the class's record when the
+    // caller supplies nothing, which is exactly the shared case, and pass 2 replaces it with the caller's own
+    // provenance when the slot IS filled. Refusing it as CALLER was over-strict and left eleven sites in
+    // ScholarshipWithdrawalTest unread, so the census could not be a gate at all.
+    if (preg_match('/^\(?\s*\$\w+\s*\?\?\s*\$this->(\w+)/u', $expr, $cm3)) {
+        return ['PROP', $cm3[1]];
+    }
+    // Any other shape that begins with a parenthesis is a value the reader has not bound, and refusing it by name is
+    // the honest answer: guessing at it would credit the census with a reading it does not have.
     if (str_starts_with($expr, '(') || str_contains($expr, '??')) {
         return ['CALLER', $expr];
     }
@@ -542,7 +547,37 @@ foreach ($files as $file) {
                         $termFromCaller = true;
                     }
                 }
+                // A seat dropped through an OVERRIDES ARRAY rather than a positional parameter —
+                // `makeEnrollment(['enrollmentStatus' => EnrollmentStatus::Dropped])` — is still a released seat, and
+                // the slot scan cannot see it because the helper's own array names its default. The scan runs over the
+                // call's OWN bracket window, not the one line: the repaired fixture writes the override on the line
+                // BELOW the call, and a single-line reader passed its own synthetic leg while still accusing the real
+                // file — the one-line assumption this file has met in lanes 46 and 69, arriving in my own new check.
+                $callWindow = implode("\n", array_slice($body, $o, 8));
+                if (preg_match('/[\'"]enrollmentStatus[\'"]\s*=>\s*[^,)\]]*(?:Dropped|\'dropped\'|"dropped")/', $callWindow)) {
+                    $droppedHere = true;
+                }
+
+                // …and the same override shape carries the PERSON and the TERM:
+                // `enrollment(['studentId' => $this->anotherStudent()->studentId])` is a different student, which is
+                // the repair three fixtures now use, and a reader that saw only the helper's default kept calling
+                // those pairs duplicates after they had been fixed. Proof of a repair the tool cannot see is the
+                // census accusing a tree that is already right.
+                foreach (['student' => 'studentId', 'term' => 'termId'] as $half => $key) {
+                    if (preg_match("/['\"]".$key.'[\'"]\s*=>\s*([^,\]\)]+)/', $callWindow, $om)) {
+                        $over = $prove(trim($om[1]), $before, $file, $lineNo, $makers);
+                        if ($half === 'student') {
+                            $student = $over;
+                            $studentFromCaller = true;
+                        } else {
+                            $term = $over;
+                            $termFromCaller = true;
+                        }
+                    }
+                }
                 // A helper that mints its OWN student is a new person at every call site, so the call's own line is
+
+
                 // the identity — two calls, two lines, two people. But when the CALLER minted the person
                 // (`$student = $this->createStudent();` once, then two `enroll($student)` calls), FRESH means one
                 // person shared by the lines below the assignment: rewriting it to the call line is what made the
@@ -615,7 +650,18 @@ foreach ($byFile as $file => $data) {
 }
 $repeats = array_filter($groups, static fn ($g) => count($g) > 1);
 $freshSkipped = count(array_filter($sites, static fn ($s) => $s['student'][0] === 'FRESH'));
-$released = array_filter($repeats, static fn ($g) => count(array_filter($g, static fn ($s) => $s['dropped'])) > 0);
+$released = array_filter($repeats, static function ($g) use ($byFile) {
+    if (count(array_filter($g, static fn ($s) => $s['dropped'])) > 0) {
+        return true;
+    }
+    // A seat released by an ACT (a drop posted through a route, an `->update([...])` on a record the fixture does
+    // not build inline) is invisible to a static pass. Rather than widen the reader until it excuses anything, the
+    // fixture carries a marker and this branch reads it: the human assertion is recorded where an instrument can see
+    // it, and `mutate-lane187-provenance.php` proves the marker is READ by deleting it and requiring the row back.
+    $body = (string) file_get_contents($g[0]['file']);
+    $method = $g[0]['owner'];
+    return preg_match('/seat-released-by-act:[^\n]*'.preg_quote($method, '/').'|'.preg_quote($method, '/').'[^\n]*seat-released-by-act/', $body) === 1;
+});
 $held = array_values(array_diff_key($repeats, $released));
 
 echo "\ncandidate groups: two rows, one person, one term, alive in one test run\n";

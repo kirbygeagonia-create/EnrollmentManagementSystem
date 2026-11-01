@@ -145,7 +145,7 @@ class QueueStandingColumnsTest extends TestCase
         ]);
     }
 
-    private function enrollment(Students $student, AcademicStanding $standing = AcademicStanding::Regular, StudentType $type = StudentType::FirstYear): Enrollments
+    private function enrollment(Students $student, AcademicStanding $standing = AcademicStanding::Regular, StudentType $type = StudentType::FirstYear, EnrollmentStatus $status = EnrollmentStatus::Enrolled): Enrollments
     {
         return Enrollments::create([
             'studentId' => $student->studentId,
@@ -155,7 +155,7 @@ class QueueStandingColumnsTest extends TestCase
             'studentType' => $type,
             'enrollmentType' => EnrollmentType::New,
             'academicStanding' => $standing,
-            'enrollmentStatus' => EnrollmentStatus::Enrolled,
+            'enrollmentStatus' => $status,
             'evaluatedBy' => $this->evaluatorId,
         ]);
     }
@@ -187,8 +187,12 @@ class QueueStandingColumnsTest extends TestCase
     public function the_standing_map_keeps_the_newest_enrollment_for_a_pair(): void
     {
         $student = $this->student('Newest');
-        $this->enrollment($student, AcademicStanding::Irregular);
-        $this->enrollment($student, AcademicStanding::Regular);
+        // One retired row beneath one active row. `standingMapFor()` applies no status filter and orders by
+        // `enrollmentId` ascending with a `keyBy` on the pair, so "the newest write wins" is still the rule under
+        // test; what changed is that the pair can now HOLD only this shape, because `uq_enrollments_active_seat`
+        // refuses two ACTIVE enrollments for one student in one term — the state this case used to write twice.
+        $this->enrollment($student, AcademicStanding::Irregular, StudentType::FirstYear, EnrollmentStatus::Dropped);
+        $this->enrollment($student, AcademicStanding::Regular, StudentType::FirstYear, EnrollmentStatus::Enrolled);
 
         $map = Enrollments::standingMapFor([[$student->studentId, $this->termId]]);
 

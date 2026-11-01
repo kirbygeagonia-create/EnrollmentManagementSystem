@@ -70,13 +70,18 @@ a reconciliation is how a check passes while the rule it guards is broken.
 
 ## 5. How duplicate enrollment is prevented
 
-By the application, and the server was tried. Since 2026-11-01 the rule is `EnrollmentIssuer::seatHolder()` plus the
-reconciliation rule in `ems:audit:record-states`; a generated-column key was delivered the same day and **withdrawn
-the same day**, so this section states which half holds today rather than what was once attempted:
+By the application **and by the server**, and the reader should know that the server half retreated for an afternoon.
+Since 2026-11-01 the rule is `EnrollmentIssuer::seatHolder()` plus the reconciliation rule in `ems:audit:record-states`
+plus `uq_enrollments_active_seat`: the generated-column key was delivered, withdrawn the same day when CI's MySQL job
+showed the fixtures writing the state it forbids, and returned the same day once those fixtures were repaired — so this
+section states what holds today and keeps the retreat in the record rather than in a footnote:
 
 ```sql
--- delivered on 2026-11-01 by add_database_level_enrollment_rules, then withdrawn the same day by
--- 2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php
+-- delivered on 2026-11-01 by add_database_level_enrollment_rules, withdrawn the same day by
+-- 2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php, and returned the same day by
+-- 2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php.
+-- Re-read on live `ems` after that migration: SHOW INDEX answers the three-column unique key over
+-- studentId, termId, seatKey, and information_schema answers `VIRTUAL GENERATED` for the column.
 ALTER TABLE enrollments
   ADD COLUMN seatKey VARCHAR(32) GENERATED ALWAYS AS (
     CASE WHEN enrollmentStatus <> 'dropped' AND termId IS NOT NULL
@@ -90,9 +95,16 @@ releases the seat** with no trigger and no deleted history — the Registrar may
 same term, which is ruling 17's behaviour. It was withdrawn because six test files each wrote two active seats for
 one student and one term, a state the key refuses and the product forbids, and CI's MySQL job was the only surface
 that could see them: the suite's SQLite schema compiles no `ADD COLUMN … GENERATED`, so the key has never existed
-there and local green said nothing about it. The key returns when those fixtures name a later term or drop the prior
-seat first, and its `down()` restores both column and index unchanged. Before the key and after it, the rule was one
-php method (`EnrollmentIssuer::seatHolder()`), which a second route or a concurrent request could walk past — which
+there and local green said nothing about it. The key came back the same day, and the count it came back on is the
+census's rather than the failure message's: `storage/app/scratch/lane187-census-fixture-seats.php` reads every
+enrollment call site in `tests/`, binds the person and the term to where each came from, and answers **eight** files
+holding the habit; `storage/app/scratch/mutate-lane187-provenance.php` proves that reading with one leg per promise.
+Each file was repaired to name a later term, drop the prior seat, or take a second student, the repaired files
+rehearsed green on a scratch MySQL schema with the connection pinned, and
+`2026_11_01_1900000000_return_the_active_seat_key_now_that_fixtures_hold_one_seat_per_term.php` re-added column and
+index behind a duplicate guard that names any student still holding two active seats, so the migration refuses rather
+than half-applies. Before the key and after it, the rule was one php method (`EnrollmentIssuer::seatHolder()`), which a
+second route or a concurrent request could walk past — which
 is why the locking in part 9 and the audit rule are stated beside it rather than underneath it.
 `studentassessments` gained `uq_studentassessments_enrollment` on the same day and keeps it, closing the review
 document's DI-2: that key is portable, so it holds on both drivers.

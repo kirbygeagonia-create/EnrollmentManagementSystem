@@ -195,11 +195,29 @@ class AcademicStandingOwnershipTest extends TestCase
     }
 
     /**
-     * A completed subject from an earlier term, graded on the 1.00–5.00 scale.
+     * A graded subject line from the earlier term, graded on the 1.00–5.00 scale.
+     *
+     * The prior seating is memoised, because a term holds ONE active seat and the case that grades two subjects
+     * meant two LINES on one record, not two enrollments — the second of which `uq_enrollments_active_seat` now
+     * refuses (measured on a scratch MySQL schema, where it answered 1062 for '23-37-23:37'). The two lines need
+     * distinct subjects for the same reason: `uq_enrollment_subject_attempt` is unique on
+     * (enrollmentId, subjectId, attempt_number), so repeating one subject at attempt 1 would collide as well.
      */
-    private function gradePriorSubject(float $grade, int $attempt = 1): Enrolledsubjects
+    private ?Enrollments $priorEnrollment = null;
+
+    private function priorSubject(string $code): Subjects
     {
-        $prior = $this->makeEnrollment([
+        return Subjects::firstOrCreate(['subjectCode' => $code], [
+            'subjectName' => 'Prior Course '.$code,
+            'lectureUnits' => 3,
+            'labUnits' => 0,
+            'subjectType' => 'lecture',
+        ]);
+    }
+
+    private function gradePriorSubject(float $grade, int $attempt = 1, ?Subjects $subject = null): Enrolledsubjects
+    {
+        $prior = $this->priorEnrollment ??= $this->makeEnrollment([
             'termId' => $this->priorTerm->termId,
             'yearLevel' => 1,
             'enrollmentStatus' => EnrollmentStatus::Enrolled,
@@ -208,7 +226,7 @@ class AcademicStandingOwnershipTest extends TestCase
 
         return Enrolledsubjects::create([
             'enrollmentId' => $prior->enrollmentId,
-            'subjectId' => $this->subject->subjectId,
+            'subjectId' => ($subject ?? $this->subject)->subjectId,
             'grade' => $grade,
             'status' => EnrolledSubjectStatus::Confirmed,
             'attempt_number' => $attempt,
@@ -356,7 +374,7 @@ class AcademicStandingOwnershipTest extends TestCase
     public function a_clean_record_derives_regular_standing(): void
     {
         $this->gradePriorSubject(1.75);
-        $this->gradePriorSubject(3.00);
+        $this->gradePriorSubject(3.00, 1, $this->priorSubject('CS002'));
         $enrollment = $this->makeEnrollment();
 
         $report = app(AcademicStandingService::class)->derive($enrollment);
@@ -410,8 +428,12 @@ class AcademicStandingOwnershipTest extends TestCase
     #[Test]
     public function grades_from_the_term_being_evaluated_are_not_evidence(): void
     {
+        // A DROPPED seating, not a second active one. `gradedPriorSubjects()` excludes the term it is asked about
+        // (`e.termId != $enrollment->termId`) and reads no enrollment status at all, so the same-term grade is still
+        // the thing under test — and a dropped row is the one shape the active-seat key lets share a term with an
+        // active one, because `seatKey` is NULL exactly when the record is dropped.
         $current = $this->makeEnrollment([
-            'enrollmentStatus' => EnrollmentStatus::Enrolled,
+            'enrollmentStatus' => EnrollmentStatus::Dropped,
             'academicStanding' => AcademicStanding::Regular,
         ]);
         Enrolledsubjects::create([
@@ -423,7 +445,14 @@ class AcademicStandingOwnershipTest extends TestCase
         ]);
 
         // A fresh enrollment for the same student must not read this term's own
-        // failing grade as the record it was judged on.
+        // failing grade as the record it was judged on. The row is asserted present
+        // first, because the case would also answer `0` if the grade had gone missing
+        // for a reason that has nothing to do with the term rule.
+        $this->assertDatabaseHas('enrolledsubjects', [
+            'enrollmentId' => $current->enrollmentId,
+            'subjectId' => $this->subject->subjectId,
+            'grade' => 5.00,
+        ]);
         $report = app(AcademicStandingService::class)->derive($this->makeEnrollment());
 
         $this->assertFalse($report['canDerive']);
