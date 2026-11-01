@@ -21,20 +21,25 @@ if ($touched === []) {
     exit(1);
 }
 
-// The prose the citation gate reads, widened the same way the gate is widened.
-$docs = [
-    'AGENTS.md',
-    'DEPLOYMENT.md',
-    'Documentation/Per-Office-UAT-Walkthrough.md',
-    'Documentation/Demo-Day-Guide.md',
-    'Documentation/Offline-Presentation-Guide.md',
-    'Documentation/Prompt-Requirement-Matrix-2026-10-26.md',
-    'Documentation/Prompt-Completion-Report-2026-10-27.md',
-    'Documentation/Registrar-Window-Packet-2026-10-26.md',
-    'Documentation/System-Design-Quality-Review.md',
-    'Documentation/UI-Workflow-Conformance-Audit-2026-09-17.md',
-    'Documentation/UI-UX-Refinement-Task-Analysis-2026-09-17.md',
-];
+// The prose the citation gate reads. This was a hand-kept list of eleven named files, which meant the five
+// `*-ADS` documents that the gate itself was widened to open sat outside it — so the run printed
+// "0 pointer(s) reported" over a tree where two of those documents held five pointers into the file that had just
+// moved. A list a person maintains is a blind spot that reports clean (the gate's own lesson), so the population is
+// derived here and its size printed: the reader can see what was opened.
+$docs = ['AGENTS.md', 'DEPLOYMENT.md'];
+foreach (glob('Documentation/*.md') ?: [] as $d) {
+    $docs[] = $d;
+}
+foreach (glob('Documentation/*/*.md') ?: [] as $d) {
+    $docs[] = $d;
+}
+$docs = array_values(array_unique(array_filter($docs, 'is_file')));
+if (count($docs) < 10) {
+    fwrite(STDERR, 'REFUSED: only '.count($docs)." markdown file(s) were found — the walk read nothing, so a zero "
+        ."from here is not a clean tree.\n");
+    exit(1);
+}
+printf("scanning %d markdown file(s) for pointers into the touched files\n", count($docs));
 
 /** HEAD's copy of a file, exported to a scratch path because shell_exec cannot reach git from PHP on this box. */
 $headExport = function (string $rel): ?string {

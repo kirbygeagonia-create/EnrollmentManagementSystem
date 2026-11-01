@@ -479,7 +479,7 @@ clear: the row cannot go red, because the application's own answers are already 
    request with no face photo, a workflow box completed with no officer on it, a request still
    open under a box its own office had already signed, a notice addressed to a class that does
    not exist, a receipt that says the account is settled while it still owes — is one of its
-   nineteen rules. Two of the nineteen are the timetable: two schedules of one block
+   twenty rules. Two of the twenty are the timetable: two schedules of one block
    meeting at one hour, and a room or an officer in two schedules at one hour — the collisions the Blocking desk
    has refused on its form since that form existed, counted here so a write path that bypasses the form is
    visible too (ruled 2026-10-19). Two more are the money pair of 2026-10-20: a fee sheet whose held receipts
@@ -489,7 +489,12 @@ clear: the row cannot go red, because the application's own answers are already 
    (`record()` refuses an amount above the balance) and the second is what the probe that planted the first
    discovered by un-planting it badly. A non-zero count means a write path regressed or a row
    was edited behind a desk's back, so fix the path or restore from a dump rather than editing
-   the status column. Two of those nineteen are different in kind and only ever `note`, because each counts
+   the status column. A twentieth rule joined on 2026-11-01 for the Advanced Database Systems guide's capacity
+   problem: it weighs each block's held seats (distinct enrollments, dropped lines excluded — the same definition
+   the assign guard counts under its row lock) against the `maxStudents` that block declares, which is the read
+   side of an invariant the write side now enforces. It answered 0 on live `ems` the day it was added, and 1 on
+   the scratch schema that raced the pre-fix act, which is the pair of readings that makes it worth keeping.
+   Two of those twenty are different in kind and only ever `note`, because each counts
    a state an office has ruled on rather than a defect: a Clinic box signed with no health assessment
    behind it, and an ID box signed with no validated request behind it — the second one is enrollment 53,
    whose contradictory request row was deleted 2026-10-11 while its signature was deliberately left

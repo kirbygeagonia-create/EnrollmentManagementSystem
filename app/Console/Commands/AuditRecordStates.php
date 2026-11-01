@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\EnrolledSubjectStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\IdRequestStatus;
 use App\Enums\OfficeId;
@@ -145,6 +146,11 @@ class AuditRecordStates extends Command
                 'count' => $this->paidStatusWhileOwing(),
                 'severity' => 'impossible',
                 'why' => 'The state machine writes `paid` only from `record()`, and only when `outstandingBalance()` reaches zero; the void and the refund both walk it back out (§17, rulings 14 and 15). So a `paid` record whose sheet still owes is money that left the account after the status went in, and nobody told the status — the mirror of the rule above, which asks whether settled money has a step behind it while this one asks whether the step still matches the money. Found by measurement, not argument: a probe that deleted a receipt and recomputed the balance left enrollment 9 on a scratch schema saying `paid` over the full ₱17,500, and every rule this command ran read 0 on it. The Registrar gate and the clearance checklist both take this status as the fact that the student has paid.',
+            ],
+            'A block holding more students than it declares' => [
+                'count' => $this->blockOverCapacity(),
+                'severity' => 'impossible',
+                'why' => 'ADS problem 4 asks for a capacity that cannot disagree with its own count, and the write path is only half of that: `assignStudents()` now locks the block row and re-counts under the lock, so no desk act can put a 41st student in a block of 40 — but a restored dump, a hand-edited row, or a regressed guard can, and nothing would have said so. This is the read side of the same invariant, weighed on demand. Dropped lines are excluded because a released seat is not held, and the count is distinct enrollments because one student carries several subject rows. Measured 2026-11-01: live `ems` answers 0, and the scratch schema that raced HEAD\'s unlocked act answers 1 — the block that held two seats against `maxStudents` 1 is exactly the row this rule exists to name.',
             ],
         ];
 
@@ -429,6 +435,32 @@ class AuditRecordStates extends Command
                 ->where('totalAssessedAmount', '>', 0)
                 ->where('remainingBalance', '>', 0))
             ->count();
+    }
+
+    /**
+     * Blocks whose held seats exceed the capacity the block itself declares (ADS problem 4).
+     *
+     * "Held" is the same definition the write path counts under its lock: distinct enrollments, dropped lines
+     * excluded — two answers to one word is how a guard and a desk disagree. `havingRaw` compares against the
+     * block's own column, and the grouped rows are counted in PHP rather than by `->count()` because Laravel wraps
+     * a grouped builder in `select count(*) from (...)` only when it can, and answers with the first group when it
+     * cannot; `get()` plus `count()` is the shape both drivers agree on.
+     *
+     * The room's analogue is deliberately absent. `assignStudents()` weighs a room by the rows stamped with ONE
+     * scheduleId, so several sections sharing a room are never counted together — a room-level invariant here would
+     * flag data the app itself produced. That is registered as a finding rather than enforced as a rule.
+     */
+    private function blockOverCapacity(): int
+    {
+        $rows = DB::table('enrolledsubjects as es')
+            ->join('blocks as b', 'b.blockId', '=', 'es.blockId')
+            ->where('es.status', '!=', EnrolledSubjectStatus::Dropped->value)
+            ->select('b.blockId', 'b.maxStudents')
+            ->groupBy('b.blockId', 'b.maxStudents')
+            ->havingRaw('count(distinct es.enrollmentId) > b.maxStudents')
+            ->get();
+
+        return count($rows);
     }
 
     /**

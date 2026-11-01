@@ -18,6 +18,7 @@ use App\Models\Staffusers;
 use App\Models\Studentclearances;
 use App\Models\Studentrequirementsubmissions;
 use App\Models\Students;
+use App\Services\EnrollmentIssuer;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -319,26 +320,6 @@ class EnrollmentWalkthroughTest extends TestCase
     {
         Studentrequirementsubmissions::where('admissionId', $admission->admissionId)
             ->update(['submissionStatus' => 'verified']);
-    }
-
-    /**
-     * Create an enrollment directly (the system creates enrollments from
-     * approved admissions; there is no enrollment-creation endpoint).
-     *
-     * evaluatedBy is NOT NULL on enrollments; an existing Department
-     * Evaluation (office 4) staff is used as a realistic default.
-     */
-    private function createEnrollment(Admissions $admission, string $studentType, int $yearLevel = 1, ?int $evaluatedBy = null): Enrollments
-    {
-        return $this->persistEnrollment([
-            'studentId' => $admission->studentId,
-            'courseId' => $admission->courseId,
-            'termId' => $admission->termId,
-            'admissionId' => $admission->admissionId,
-            'yearLevel' => $yearLevel,
-            'studentType' => $studentType,
-            'evaluatedBy' => $evaluatedBy,
-        ]);
     }
 
     /**
@@ -913,10 +894,20 @@ class EnrollmentWalkthroughTest extends TestCase
         // --- Evaluation (office 4) with credit transfer ---
         $evaluator = $this->staffForOffice(4, 'DeptEvaluator'); // ruling 7: the evaluation sign belongs to the department
 
-        // --- Enrollment (the walk carries its own record; evaluatedBy = the evaluator) ---
-        // Year 2 is the desk's placement: the records alone derive 1 (G-2 — no year
-        // completed here), and the credit evaluation below is what moves them up.
-        $enrollment = $this->createEnrollment($admission, 'transferee', 2, $evaluator->userId);
+        // --- Enrollment: the record the approval issued, not a second one the walk minted. ---
+        // `admission.approve` creates the enrollment in `pending` and sets `studentType` from the
+        // applicant, so the transferee case has had one row to walk since that issue was built. Minting
+        // another for the same student in the same term used to be invisible: the app's own
+        // `EnrollmentIssuer::seatHolder()` guard sits in the controller, and this fixture wrote the
+        // table directly. `uq_enrollments_active_seat` refuses it on MySQL now, and it was that refusal
+        // which surfaced the habit on 2026-11-01. Year 2 stays the desk's placement: the records alone
+        // derive 1 (G-2 — no year completed here), and the credit evaluation below is what moves them up.
+        $enrollment = EnrollmentIssuer::seatHolder((int) $admission->studentId, (int) $admission->termId);
+        $this->assertNotNull(
+            $enrollment,
+            'Approving an admission must leave the student holding one seat in the term; the walk has no other record to act on.'
+        );
+        $enrollment->update(['yearLevel' => 2, 'evaluatedBy' => $evaluator->userId]);
 
         $this->actingAs($evaluator)
             ->put(route('evaluation.profile.capture', $enrollment), [

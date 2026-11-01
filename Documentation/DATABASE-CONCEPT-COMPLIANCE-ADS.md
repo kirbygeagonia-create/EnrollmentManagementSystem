@@ -9,9 +9,10 @@ evidence*, *Explained*, *N/A with explanation*. A concept is not Implemented bec
 The system is Laravel 13.23 on MySQL 8 (Laragon), Inertia/React on the desk side, an SQLite `:memory:` suite, and
 CI with three jobs (`.github/workflows/ci.yml`). Live `ems` answers **64 tables, 105 foreign keys, 96 permissions**
 as read by `php storage/app/scratch/lane60-ratio-claims.php --run` on 2026-11-01 (its own verdict: 54 match, 0 stale,
-0 unbound), and **13 unique constraints over 182 table constraints, 233 index rows** as printed by
-`php storage/app/scratch/lane154-probe-duplicate-keys.php` on the same schema. Each figure is credited to the one
-instrument that prints it, because a number attributed to a tool that never measured it is unfalsifiable.
+0 unbound), and **15 unique constraints over 184 table constraints, 237 index rows** as printed by
+`php storage/app/scratch/lane154-probe-duplicate-keys.php` on the same schema after this batch's two enrollment keys
+landed. Each figure is credited to the one instrument that prints it, because a number attributed to a tool that
+never measured it is unfalsifiable.
 
 ---
 
@@ -57,13 +58,17 @@ and *Demonstrated in test* only after T02 and T17 are delivered.
 
 - **Atomicity** — as §1 above; the enrollment and its checklist are one unit.
 - **Consistency** — the schema's own rules hold it: 105 foreign keys, MySQL enum statuses, NOT NULL required
-  columns, 13 unique keys, and `php artisan ems:audit:record-states` (19 rules) weighs the record states a desk
+  columns, 13 unique keys, and `php artisan ems:audit:record-states` (20 rules) weighs the record states a desk
   must not be able to reach. A read of the audit on live `ems` answers 0 findings.
-- **Isolation** — **not** implemented for enrollment. The guide names `SELECT … FOR UPDATE` here, and the only
-  `lockForUpdate` in `app/` is `app/Services/PrintService.php:140`, which sequences a document number. The capacity
-  check at `app/Http/Controllers/Blocking/BlockingController.php:469-478` runs before the transaction opens at
-  `:495`, so two assigns can both take the last seat. Reports likewise read outside any transaction, and no
-  isolation level is set anywhere in the repository.
+- **Isolation** — implemented for the one act the guide's `SELECT … FOR UPDATE` example describes, and nowhere else.
+  `app/Http/Controllers/Blocking/BlockingController.php:485` locks the block row as the transaction's first act,
+  `:488-491` re-counts the held seats under that lock, and `:500` locks the room row afterwards in that fixed order.
+  Before 2026-11-01 the capacity check ran *outside* the transaction, and `lane168-probe-last-seat-race.php`
+  measured what that meant on the school's server: three pairs of concurrent assigns against a block holding one
+  seat produced **5 successful writes and a block holding 2 of 1**, plus one pair ending in a real `1213` deadlock
+  that reached the desk as a 500. Reports still read outside any transaction, and no isolation level is set
+  anywhere in the repository (grepped again the same day), so the guide's REPEATABLE READ discussion is answered by
+  row locks on the write path rather than by a transaction boundary around a read.
 - **Durability** — depends on InnoDB's redo log and on a backup method the guide requires; the build has dump
   *commands in a guide* (`Documentation/Demo-Day-Guide.md:289-307`) and no executable, executed restore.
 
@@ -73,40 +78,64 @@ and P21.
 
 ---
 
-## 4. Concurrency Control (¶301) — Not implemented for the enrollment path
+## 4. Concurrency Control (¶301) — Implemented on the shared resources; the profile edit is still open
 
 **What exists.** Optimistic serialization by status: a box that is already signed refuses a second signature
 (`WorkflowService`'s `WorkflowAlreadySignedException`), and `EnrollmentIssuer::seatHolder()` (`app/Services/EnrollmentIssuer.php:37-43`)
 answers the enrollment that already holds a student's seat in a term. Notifications dedupe on a unique key
-(`app/Support/NoticeDelivery.php:32-37` catching MySQL 1062), which is the one place this build uses the database
-as the arbiter of a race.
+(`app/Support/NoticeDelivery.php:32-37` catching MySQL 1062), which is the database arbitrating a race.
 
-**What is missing.** No row lock, no version column, no atomic conditional update on the shared resources — the
-block, the room, the seat, the fee sheet. The repository already recorded this: DI-5 in
-`Documentation/System-Design-Quality-Review.md:79` names the blocking race as open since 2026-09-15.
+**What this batch added.** Two shared resources are now locked and one is refused by the server. The block and the
+room are read with `lockForUpdate()` and re-counted *inside* one transaction
+(`app/Http/Controllers/Blocking/BlockingController.php:485` and `:500`), retried only on the two conditions that mean
+"somebody held it first" (`app/Support/RetryOnDeadlock.php:76-79`), and the seat and the fee sheet are refused by
+unique keys rather than by the code that asked: `uq_enrollments_active_seat` over (`studentId`, `termId`, a VIRTUAL
+generated `seatKey`) and `uq_studentassessments_enrollment`
+(`database/migrations/2026_11_01_1100000000_add_database_level_enrollment_rules.php`). The repository had recorded
+this gap itself: DI-5 in `Documentation/System-Design-Quality-Review.md:79` named the blocking race open on
+2026-09-15, and DI-2 named the missing fee-sheet key in the same table.
 
-**Test method.** Two independent MySQL connections driving the same act (T03, T07, T11).
-**Status honest word.** Not implemented, therefore *Demonstrated in test* cannot be claimed either.
+**What is still missing, named rather than smoothed.** No `version` or `lockVersion` column exists, so a lost update
+on the profile capture or the Registrar's edit is still possible (problem P05, not built); and the room count is per
+`scheduleId`, so a hall shared by ten sections is never weighed as a hall (P04's registered question).
+
+**Test method.** `php storage/app/scratch/lane168-probe-last-seat-race.php --pairs=3` drives one act over two real
+MySQL connections against a scratch clone and prints both sides: HEAD's bytes took 5 assigns, 0 refusals and left a
+block with `maxStudents` 1 holding 2 seats, and one pair ended in a genuine `SQLSTATE[40001]` deadlock that reached
+the desk as a 500; the locked bytes took 3 assigns, 3 capacity refusals, 0 deadlocks and never more than 1 seat.
+**Status honest word.** *Implemented* for the block, the room, the seat and the sheet; *Demonstrated in test* for the
+race, because the losing writer was observed on the school's engine; *not implemented* for the optimistic version,
+which is the honest half of this row.
 
 ---
 
-## 5. Locking (¶303) — One site only
+## 5. Locking (¶303) — Three sites, one fixed order
 
 **Actual implementation.** `app/Services/PrintService.php:140` — `lockForUpdate()->max('documentNumber')` inside the
-issuance transaction, with the reserved number skipped so a re-issued sheet never duplicates a Document No. That is
-a correct pessimistic lock on the only sequence the system mints.
+issuance transaction, with the reserved number skipped so a re-issued sheet never duplicates a Document No. To it this
+batch added the two enrollment locks: the block row at `app/Http/Controllers/Blocking/BlockingController.php:485`, as
+the transaction's first act, and the room row at `:500` — always block then room, never the reverse, because a fixed
+order is what makes two contending writers serialise instead of waiting on each other. The requested student ids are
+de-duplicated and sorted before the transaction opens (`:471-473`), which is the other half of the same discipline:
+every caller reaches the same rows in the same sequence.
 
-**Remaining limitation.** No enrollment write locks anything. The plan is in the traceability matrix: lock the block
-row, then the room row, in one fixed order, and re-count capacity inside the transaction.
+**Remaining limitation.** The locks cover the assign path only. No other enrollment write takes a row lock, and the
+room count is per `scheduleId`, so what is protected is a section against its own room, not a room against its
+sections — the question P04 registers for the school rather than answering by invention.
 
----
+## 6. Deadlock Handling (¶305) — Implemented, and the deadlock was observed
 
-## 6. Deadlock Handling (¶305) — Not implemented
+Prevention is the fixed lock order and the sorted id list described in section 5. Detection and bounded retry are
+`App\Support\RetryOnDeadlock` (`app/Support/RetryOnDeadlock.php:38-66`): it re-runs the transaction only when the
+driver's code is 1213 (deadlock) or 1205 (lock wait timeout) — `isRetryable()` at `:76-79`, with the code read off the
+exception at `:69-74` — propagates every other `QueryException` untouched, and after its attempts are spent refuses
+with "Nothing was saved — please try again." (`:54-59`) instead of leaving a desk to guess whether the row moved.
+The guide's strongest available word applies here: the race is *Demonstrated in test*, because the probe met a real
+`SQLSTATE[40001]` 1213 on HEAD's act and 0 on the locked act.
 
-Grepping `app/`, `tools/`, `tests/` for `1213`, `1205`, `deadlock`, `lock wait timeout` and any retry loop around a
-write returns nothing but prose that uses "deadlock" for a state-machine trap. There is no lock order to violate
-today (because there are no locks), so there is also no deadlock prevention, detection, or bounded retry. The
-controlled demonstration the guide allows for an application that does not naturally deadlock is owed with P07.
+**Remaining limitation.** The suite runs on SQLite, which neither deadlocks nor reports 1213, so the four boundary
+cases hand the helper the two driver conditions rather than pretending the driver produced them; the retry count
+itself is only weighed on a real server.
 
 ---
 
@@ -121,9 +150,12 @@ listed in §23.6.1, of which the enrollment-relevant ones are `uq_students_schoo
 `uq_enrollment_subject_attempt`, `uq_student_clearanceperiod`, `uq_payments_ornumber`, `uq_student_scholarship_term`,
 `uq_documentprintlog_issue`, `uq_notifications_dedupe`.
 
-**Applicability.** Applies; the two keys the enrollment rules still need are named in
-`Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` P03 and are safe to add because live `ems` answers 0 duplicate
-groups for each of them.
+**Applicability.** Applies. The two keys the enrollment rules needed are named in
+`Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` P03 and are now on the schema: `uq_studentassessments_enrollment`
+travels on both drivers, while `uq_enrollments_active_seat` is MySQL-only, because SQLite answers no
+`ALTER TABLE … ADD COLUMN … GENERATED`. Both were safe to add additively because
+`php storage/app/scratch/lane154-probe-duplicate-keys.php` answered 0 duplicate groups on live `ems` for each key
+before the migration was written.
 
 **Remaining limitation.** No `CHECK` constraint expresses a range rule (capacity ≥ 0, units ≥ 0), which MySQL 8
 does support; the guide asks for them "where supported and appropriate".
@@ -143,21 +175,41 @@ indexed on `studentId`, `courseId` and `termId` individually.
 leading-wildcard searches exist across 15 controllers. So the index is real and the query ignores it.
 
 **Test method.** `EXPLAIN` and timings before and after a sargable rewrite, at a stated synthetic row count
-(traceability T09).
-**Status honest word.** Implemented for the constraints, *Query plan/performance test* not yet delivered.
+(traceability T09) — delivered by `php storage/app/scratch/lane164-measure-scale-queries.php` over the
+`ems_l163_a` scale schema; the rewrite itself is a school decision, not a default to invent.
+**Status honest word.** Implemented for the constraints, and *Query plan/performance test* delivered for the index
+the search ignores.
 
 ---
 
-## 9. Query Optimization (¶311) — Not measured
+## 9. Query Optimization (¶311) — Measured on a synthetic scale schema; the two rewrites are decisions
+
+`php storage/app/scratch/lane163-build-scale-schema.php` built `ems_l163_a` — 100,000 students, 507,420 subject
+lines, 1,200 blocks with seats filled in order — and `php storage/app/scratch/lane164-measure-scale-queries.php`
+weighed the four paths the guide names, each with its own `EXPLAIN`, newest capture saved at
+`storage/app/scratch/lane164-out.txt`. What the two runs of that command agreed on is the plan and the rows it
+expects to touch, and that is the evidence: the directory's `like '%…%'` search cannot use `idx_students_names` and
+scans ~98,800 index rows, a sargable prefix uses it for ~1,111, an exact `schoolIdNumber` is a `const` seek of one
+row, and a fulltext `MATCH` is a seek of one row. The milliseconds are not stable between runs on this box — the
+same command answered 2.68 ms and 10.54 ms for the contains search, 0.53 ms and 0.97 ms for the prefix, 0.78 ms and
+14.74 ms for the fulltext, and 0.77 ms and 6.23 ms for the batched page read — so this document quotes plans and row
+counts and treats a timing as a property of the run that printed it, the same rule the suite's assertion totals
+follow. Per-student history retrieval is an index seek at every hop (`ref` on the student FK, then `eq_ref:PRIMARY`),
+so the guide's worry about "hundreds of thousands of rows" lands on the *page loop*, not the read: a 20-row
+Registrar page costs 40 queries where the batched shape costs 2. An earlier reading of the capacity count, 410 ms,
+was a fixture artefact — the builder spread rows by a modulo that overfilled one block, and `lane163` now refuses
+that shape rather than measuring it.
 
 `app/Services/AcademicStandingService.php` reads the whole grade set in one joined, column-named query rather than
 per subject (`:177` sums `lectureUnits + labUnits` over that result), and the desk lists paginate server-side. The
-known regressions are named, not guessed: the Registrar queue issues roughly five queries per page row through
-`app/Support/EnrollmentReadiness.php:65,109-111,144,163,183`, and `AccountingController.php:372` filters a datetime
-with `whereDate`, which is non-sargable. Only one test in the suite asserts a query count
+regressions the measurement confirmed are named, not guessed: the Registrar queue issues roughly five queries per page
+row through `app/Support/EnrollmentReadiness.php`, and `AccountingController.php:372` filters a datetime with
+`whereDate`, which is non-sargable. Only one test in the suite asserts a query count
 (`tests/Feature/Print/PrintEnrollmentFormPayloadTest.php:206-227`); there is no query budget in CI.
 
-**Test method.** A ceiling assertion per desk page plus `EXPLAIN` output.
+**Test method.** Delivered for the four query paths, with `EXPLAIN` read per path. A ceiling assertion per desk page
+is still owed, and the two changes the measurements point at — what a search may stop matching, and how a page's
+checklist is batched — wait on the school rather than on an invented default.
 
 ---
 
@@ -169,8 +221,15 @@ money), cancelled rows are excluded from every count and unit total, and `ems:au
 findings on live `ems` today. The identifier rules the guide cares about — a student ID cannot duplicate, one
 clearance per student per period, one OR number — are unique constraints, not application checks.
 
-**Remaining limitation.** The seat rule (one active enrollment per student per term) is still application code, so
-this concept is Implemented with one named exception.
+**What changed with this batch.** The seat rule (one active enrollment per student per term) and the
+one-fee-sheet-per-enrollment rule are database constraints now, not only application checks. A dropped enrollment
+holds no seat because its `seatKey` is NULL and MySQL ignores NULLs in a unique index, so ruling 17 — a drop releases
+the seat, and the student may be enrolled in that term again — is expressed in the schema rather than only in a
+`where`.
+
+**Remaining limitation.** The seat key exists on MySQL only: the SQLite suite compiles no generated column, so
+`tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` asserts the seat refusal on the school's engine and
+names, in its own output, the half the suite cannot reach. Capacity and unit ranges still have no `CHECK`.
 
 ---
 
@@ -194,7 +253,7 @@ a student's page must show a lawful-basis notice. Both are on the registers and 
 
 ---
 
-## 12. Recovery (¶317) — Documented only
+## 12. Recovery (¶317) — The drill was executed, and its reading is the evidence
 
 **What exists.** A dump command with `--single-transaction` and a restore redirect in
 `Documentation/Demo-Day-Guide.md:289-307`; the same command in `Documentation/Offline-Presentation-Guide.md:89`; a
@@ -202,13 +261,21 @@ dump validator (`tools/validate_demo_backup.php`) that reads a dump's INSERTs an
 a hard-won policy in `AGENTS.md` that a dump never enters the repository and that a database is never cloned by
 rewriting a dump with `sed`.
 
-**What the guide asks and the build does not do.** An executed backup, an executed restore into an isolated schema,
-and a row-by-row comparison proving the restore. The nightly job and the restore drill are unchecked boxes in
-`Documentation/First_Build_Plan.md:128` and `:187`. No point-in-time or binlog procedure exists, and the server's
-durability configuration (`innodb_flush_log_at_trx_commit`, `sync_binlog`) has never been read into this project's
-evidence.
+**What the guide asks and the build now does.** The drill is executed, not described:
+`php tools/ems-backup-drill.php --target=ems_drill`, run 2026-11-01, dumped live `ems`, restored it into an isolated
+schema and compared the tables **row for row**, answering `VERDICT: 0 table(s) missing, 0 row-count or checksum
+difference(s)`, then dropping its own scratch schema. The tool refuses `ems` as a target by name, so no invocation can
+restore over the school's database, and the server's durability configuration was read in the same run rather than
+assumed — `innodb_flush_log_at_trx_commit = 1` with `sync_binlog = 1`. The reading sits beside the command that
+printed it in `Documentation/SECURITY-AND-RECOVERY-ADS.md` §2.
 
-**Status honest word.** *Explained*, not *Backup/restore or recovery evidence*, until traceability row P21 is built.
+**Still owed, and not claimed.** A scheduled job remains an unchecked box in
+`Documentation/First_Build_Plan.md:128` and `:187`, and point-in-time replay is not implemented: no tool in this
+repository reads the server's binary log back into a schema, so recovery to the last transaction is a procedure, not a
+demonstrated act.
+
+**Status honest word.** *Backup/restore or recovery evidence* for the restore, which is the half the guide weighs;
+*Explained* for scheduled and point-in-time recovery.
 
 ---
 
@@ -219,12 +286,12 @@ evidence.
 | 1 | Transactions | Implemented |
 | 2 | COMMIT / ROLLBACK | Implemented, demonstration owed |
 | 3 | ACID Properties | Explained, two of four demonstrated after P02/P20/P21 |
-| 4 | Concurrency Control | Not implemented → to be Demonstrated in test |
-| 5 | Locking | Partially implemented (one sequence) |
-| 6 | Deadlock Handling | N/A-with-demonstration not yet earned; goal is Demonstrated in test |
-| 7 | Database Constraints | Implemented |
-| 8 | Indexing | Implemented; performance test owed |
-| 9 | Query Optimization | Partially implemented; measurement owed |
-| 10 | Data Integrity | Implemented with one named exception |
+| 4 | Concurrency Control | Implemented on the block, the room, the seat and the fee sheet; *Demonstrated in test* for the race; no version column yet (P05) |
+| 5 | Locking | Implemented at three sites in one fixed order (block, room, document number) |
+| 6 | Deadlock Handling | Implemented; the deadlock was observed on MySQL 8, and the retry is bounded |
+| 7 | Database Constraints | Implemented; two enrollment keys added 2026-11-01; no `CHECK` ranges |
+| 8 | Indexing | Implemented; query plan and timings delivered, the sargable rewrite waits on the school |
+| 9 | Query Optimization | Measured at 100,000 enrollments; a per-page query ceiling is still owed |
+| 10 | Data Integrity | Implemented; the seat key is MySQL-only and the suite names that half |
 | 11 | Database Security | Implemented |
-| 12 | Recovery | Explained; backup/restore evidence owed |
+| 12 | Recovery | *Backup/restore or recovery evidence* delivered for the restore; scheduled and point-in-time recovery owed |

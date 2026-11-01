@@ -69,7 +69,7 @@ The prompt lists sixteen things to look for. Seven of them have a dedicated, mut
 | Status labels that disagree with the state machine | `statusLabel.js` single vocabulary; `YearLevelVocabularyTest` pins PHP and JS against each other by reading the module source |
 | Queue counters using different filters from their queue | `lane47-tile-scope.php` (SILENT-ZERO, PAGE-TILE, MIXED-SET, IMPOSSIBLE, DEAD-OPTION) |
 | Permissions enforced only by hiding controls | audit lane 1 (permissions that gate nothing), `AbilityNameCollisionTest`, `PermissionMatrixTest` |
-| Duplicate students / enrollments / receipts / workflow forms | `ems:audit:record-states` (19 rules), `lane44-unique-keys.php` (§23.6.1 must equal the server's nine unique keys) |
+| Duplicate students / enrollments / receipts / workflow forms | `ems:audit:record-states` (20 rules), `lane44-unique-keys.php` (§23.6.1 must equal the server's nine unique keys) |
 | Invalid or impossible state transitions | `EnrollmentStateMachine` as the only writer of `enrollmentstatushistory`; `DemoDatasetRecordStatesTest`; CI runs the walkthrough legs `--fail-on-skipped` |
 | Missing audit records | `AuditLogObserver` — **the crediting half is answered**: `AppServiceProvider.php:44-52` attaches the observer to every model in `app/Models`, `Creditedsubjects` among them, so a decision writes an `auditlogs` row as well as stamping `decidedBy`/`decidedDate` on the record. The workflow-definition half is still this file's question, not a defect claim |
 | File links failing through a private disk | `ServedUploadPathTest`, `ems:preflight`, the orphan-upload prune |

@@ -1,6 +1,15 @@
 # SEAIT EMS — Forms UX Audit (Input-Control Fit)
 
 **Date:** 2026-09-22
+
+> **Pointer currency (2026-11-01):** the `File.jsx:NN` numbers below are the layout this audit read on
+> 2026-09-22. They are kept as that day's reading — the control-fit verdicts were taken from those lines — and
+> re-typing them would state positions that were never true on the day the sweep ran.
+> `repo-file-line-citations.php` therefore reports them as DATED and does not judge them.
+>
+> Two things have moved under them since: several of these pages gained sortable headers, which shifted their
+> filter blocks, and three of the cited line numbers now land on blank lines. Both are the gate's *reported*
+> column, not its problem column.
 **Method:** full sweep of every `<Select>` / `<select>` / `RadioCards` usage under `resources/js/Pages`, classified per the control-fit test
 **Scope:** control choice only — "does the input widget fit the data" (`UI-Workflow-Conformance-Audit-2026-09-17.md` scoped Exams and input controls out; this is new ground)
 

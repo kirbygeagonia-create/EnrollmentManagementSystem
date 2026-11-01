@@ -124,13 +124,48 @@ if (! $mermaidOnly) {
     }
 }
 
-$text = $mermaid.$body."\n";
+// The document is three parts: a hand-written head (what the file is, and where the authority lives), the block this
+// generator owns, and hand-written prose after it (the load result and the reading notes). A generator that rewrote
+// the whole file destroyed the head the first time it was re-run, so the two markers are the contract: the bytes
+// outside them are the author's, and a file that holds prose but no markers is refused rather than overwritten.
+$begin = '<!-- generated:begin ERD -->';
+$end = '<!-- generated:end ERD -->';
+$head = '';
+$tail = '';
+if ($out !== null && $out !== '' && is_file($out)) {
+    $existing = (string) file_get_contents($out);
+    $b = strpos($existing, $begin);
+    $e = strpos($existing, $end);
+    if ($b !== false && $e !== false && $e > $b) {
+        $head = rtrim(substr($existing, 0, $b));
+        $tail = ltrim(substr($existing, $e + strlen($end)));
+        if ($head !== '') {
+            $head .= "\n\n";
+        }
+        if ($tail !== '') {
+            $tail = "\n\n".$tail;
+        }
+    } elseif (trim($existing) !== '' && ! str_contains($existing, 'erDiagram')) {
+        fwrite(STDERR, "REFUSED: {$out} holds prose but no diagram — this is not a file to splice.\n");
+
+        exit(1);
+    } else {
+        fwrite(STDERR, "REFUSED: {$out} was written by an older head of this generator and holds prose outside no\n"
+            ."       marker pair, so re-taking the diagram would delete it. Put `{$begin}` immediately above the\n"
+            ."       ```mermaid fence and `{$end}` below the generated tables, then re-run.\n");
+
+        exit(1);
+    }
+}
+
+$text = $head.$begin."\n".$mermaid.$body."\n\n".$end.$tail;
 if ($out !== null && $out !== '') {
     if (file_put_contents($out, $text) === false) {
         fwrite(STDERR, "REFUSED: could not write {$out}\n");
         exit(1);
     }
-    printf("wrote %s (%d bytes)\n", $out, strlen($text));
+    printf("wrote %s (%d bytes; head %d and tail %d bytes of hand-written prose preserved)\n",
+        $out, strlen($text), strlen($head), strlen($tail));
 }
 
 printf("schema %s: %d tables (%d domain, %d framework), %d foreign keys, %d domain edges drawn\n",

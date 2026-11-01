@@ -124,11 +124,16 @@ printf("same two reads batched for %d rows          %8.2f ms  (2 queries)\n", co
 
 echo "\n=== P23 enrollment write path ===\n";
 $weigh('seat lookup (what the guard asks)', "select enrollmentId from enrollments where studentId = {$sid} and enrollmentStatus <> 'dropped'");
-$block = $pdo->query('select blockId, maxStudents from blocks order by blockId limit 1')->fetch(PDO::FETCH_ASSOC);
+// The busiest block, not the first: counting a partition the seed never wrote to measures the plumbing, not the
+// desk's query. (The demo blocks carried into the scale schema hold no generated lines at all.)
+$block = $pdo->query("select b.blockId, b.maxStudents, count(distinct e.enrollmentId) held
+    from blocks b left join enrolledsubjects e on e.blockId = b.blockId and e.status <> 'dropped'
+    group by b.blockId, b.maxStudents order by held desc, b.blockId limit 1")->fetch(PDO::FETCH_ASSOC);
 if ($block) {
     $weigh('capacity count for one block', 'select count(distinct enrollmentId) c from enrolledsubjects where blockId = '
         .(int) $block['blockId']." and status <> 'dropped'");
-    printf("    block %s maxStudents=%s (the invariant the lock must protect)\n", $block['blockId'], $block['maxStudents']);
+    printf("    block %s holds %s of maxStudents=%s — the invariant the lock must protect, on the fullest partition\n",
+        $block['blockId'], number_format((int) $block['held']), $block['maxStudents']);
 }
 
 echo "\nVERDICT is the table above: every figure is a measured millisecond against a plan the server printed.\n";

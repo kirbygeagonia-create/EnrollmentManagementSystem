@@ -22,6 +22,7 @@ use App\Models\Subjects;
 use App\Services\PrintService;
 use App\Services\WorkflowService;
 use App\Support\ListSort;
+use App\Support\RetryOnDeadlock;
 use App\Support\TimetableConflicts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -465,68 +466,86 @@ class BlockingController extends Controller
 
         $schedule = Schedules::findOrFail($validated['scheduleId']);
 
-        // Block capacity enforcement (count distinct students, not subject rows)
-        $currentEnrolled = Enrolledsubjects::where('blockId', $block->blockId)
-            ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
-            ->distinct('enrollmentId')
-            ->count('enrollmentId');
-        $requestedCount = count($validated['enrollmentIds']);
-        if ($currentEnrolled + $requestedCount > $block->maxStudents) {
-            throw ValidationException::withMessages([
-                'capacity' => "Block capacity exceeded. Current students: {$currentEnrolled}, Max: {$block->maxStudents}, Requested: {$requestedCount}.",
-            ]);
-        }
+        // One canonical order for the enrollment rows: two desks assigning overlapping sets in opposite orders
+        // are the textbook deadlock, and sorting the list costs nothing.
+        $requested = array_values(array_unique(array_map('intval', $validated['enrollmentIds'])));
+        sort($requested);
+        $requestedCount = count($requested);
 
-        // Room capacity check for this schedule's room
-        $room = $schedule->room;
-        if ($room) {
-            $roomEnrolled = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
-                ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
-                ->distinct('enrollmentId')
-                ->count('enrollmentId');
-            if ($roomEnrolled + $requestedCount > $room->capacity) {
-                throw ValidationException::withMessages([
-                    'room_capacity' => "Room capacity exceeded. Room {$room->roomName} capacity: {$room->capacity}, Current enrolled students: {$roomEnrolled}, Requested: {$requestedCount}.",
-                ]);
-            }
-        }
+        // ADS problems 2, 4, 7 and 10. The capacity check used to run out here — outside the transaction, on a
+        // count no other request was made to wait for — so two assigns of one last seat both read the same number
+        // and both wrote; the repository's own System-Design-Quality-Review named that race (DI-5) on 2026-09-15
+        // and nothing had closed it. The count is now taken INSIDE the transaction, after the block row is locked,
+        // and the room row is locked after that: one fixed order, so two assigns that share a room but name
+        // different blocks cannot cross. A retry is safe here only because the whole act is one transaction that
+        // rolls back — an act that had already committed part of its work must not be retried blind, which is
+        // problem 17's request key rather than this helper.
+        RetryOnDeadlock::run(function () use ($block, $schedule, $requested, $requestedCount, &$assigned) {
+            DB::transaction(function () use ($block, $schedule, $requested, $requestedCount, &$assigned) {
+                Blocks::where('blockId', $block->blockId)->lockForUpdate()->firstOrFail();
 
-        $assigned = 0;
-        DB::transaction(function () use ($validated, $block, $schedule, &$assigned) {
-            foreach ($validated['enrollmentIds'] as $enrollmentId) {
-                $enrollment = Enrollments::findOrFail($enrollmentId);
-
-                // Verify enrollment is enrolled and workflow at Academic Department step (office 5)
-                if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
-                    continue;
+                // Block capacity (count distinct students, not subject rows) — read under the block's lock.
+                $currentEnrolled = Enrolledsubjects::where('blockId', $block->blockId)
+                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
+                    ->distinct('enrollmentId')
+                    ->count('enrollmentId');
+                if ($currentEnrolled + $requestedCount > $block->maxStudents) {
+                    throw ValidationException::withMessages([
+                        'capacity' => "Block capacity exceeded. Current students: {$currentEnrolled}, Max: {$block->maxStudents}, Requested: {$requestedCount}.",
+                    ]);
                 }
 
-                $workflow = $enrollment->enrollmentworkflow;
-                if (! $workflow || $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
-                    continue;
+                // Room capacity for this schedule's room, locked in the same fixed order and counted the same way.
+                if ($schedule->room !== null) {
+                    Rooms::where('roomId', $schedule->roomId)->lockForUpdate()->first();
+
+                    $roomEnrolled = Enrolledsubjects::where('scheduleId', $schedule->scheduleId)
+                        ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
+                        ->distinct('enrollmentId')
+                        ->count('enrollmentId');
+                    if ($roomEnrolled + $requestedCount > $schedule->room->capacity) {
+                        throw ValidationException::withMessages([
+                            'room_capacity' => "Room capacity exceeded. Room {$schedule->room->roomName} capacity: {$schedule->room->capacity}, Current enrolled students: {$roomEnrolled}, Requested: {$requestedCount}.",
+                        ]);
+                    }
                 }
 
-                // Assign to block and schedule. blockId marks block membership
-                // on every subject row; scheduleId goes ONLY to the row whose
-                // subject matches the chosen schedule — stamping every row with
-                // one scheduleId would print IT101's meeting time on the CS102
-                // row of the printed subject load.
-                // ponytail: one scheduleId per subject row — a lecture+lab
-                // subject's second meeting can't be stamped; a per-student
-                // schedule pivot is the upgrade path if that ever matters.
-                $enrollment->enrolledSubjects()
-                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
-                    ->update(['blockId' => $block->blockId]);
+                $assigned = 0;
+                foreach ($requested as $enrollmentId) {
+                    $enrollment = Enrollments::findOrFail($enrollmentId);
 
-                $enrollment->enrolledSubjects()
-                    ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
-                    ->where('subjectId', $schedule->subjectId)
-                    ->update(['scheduleId' => $schedule->scheduleId]);
+                    // Verify enrollment is enrolled and workflow at Academic Department step (office 5)
+                    if ($enrollment->enrollmentStatus !== EnrollmentStatus::Enrolled) {
+                        continue;
+                    }
 
-                // Sign the Blocking step now that the student is assigned
-                $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());
-                $assigned++;
-            }
+                    $workflow = $enrollment->enrollmentworkflow;
+                    if (! $workflow || $workflow->workflowsteps()->where('stepStatus', WorkflowStepStatus::Pending->value)->orderBy('stepOrder')->first()?->officeId !== OfficeId::Blocking->value) {
+                        continue;
+                    }
+
+                    // Assign to block and schedule. blockId marks block membership
+                    // on every subject row; scheduleId goes ONLY to the row whose
+                    // subject matches the chosen schedule — stamping every row with
+                    // one scheduleId would print IT101's meeting time on the CS102
+                    // row of the printed subject load.
+                    // ponytail: one scheduleId per subject row — a lecture+lab
+                    // subject's second meeting can't be stamped; a per-student
+                    // schedule pivot is the upgrade path if that ever matters.
+                    $enrollment->enrolledSubjects()
+                        ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
+                        ->update(['blockId' => $block->blockId]);
+
+                    $enrollment->enrolledSubjects()
+                        ->where('status', '!=', EnrolledSubjectStatus::Dropped->value)
+                        ->where('subjectId', $schedule->subjectId)
+                        ->update(['scheduleId' => $schedule->scheduleId]);
+
+                    // Sign the Blocking step now that the student is assigned
+                    $this->workflowService->signStepByOffice($workflow, OfficeId::Blocking->value, Auth::user());
+                    $assigned++;
+                }
+            });
         });
 
         return back()->with('success', "{$assigned} student(s) assigned to block.");

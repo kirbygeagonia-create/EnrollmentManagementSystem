@@ -101,11 +101,43 @@ $case('a phantom key added',
 // "Nine keys in seven tables" — docx pass 349 made the list ten keys in eight tables, both count cases then planted
 // nothing, and each reported itself as a caught defect until the run said MUTANT DID NOT APPLY. An anchor that has to
 // be re-cut every time the document gets truer is an anchor that hides the change it exists to test.
+//
+// So the two numbers are read as words OR digits and the planted defect is computed from them (one fewer of each)
+// instead of looked up in a pair list written on one day: pass 382 took the sentence to twelve keys in ten tables,
+// and a `$lower` map that stops at Eleven would have made this harness report its own age as a defect for the third
+// time.
+$words = ['six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10, 'eleven' => 11, 'twelve' => 12,
+    'thirteen' => 13, 'fourteen' => 14, 'fifteen' => 15, 'sixteen' => 16, 'seventeen' => 17, 'eighteen' => 18,
+    'nineteen' => 19, 'twenty' => 20];
+$asNumber = static fn (string $w): ?int => is_numeric($w) ? (int) $w
+    : ($words[strtolower($w)] ?? null);
+$spell = static function (int $n) use ($words): string {
+    $flip = array_search($n, $words, true);
+
+    return $flip === false ? (string) $n : ucfirst($flip);
+};
+
 $sentence = null;
-if (preg_match('/\b(Eight|Nine|Ten|Eleven) keys in (seven|eight|nine) tables\./u', $original, $m) === 1) {
+if (preg_match('/\b(\d+|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty)\s+keys?\s+in\s+(\d+|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+tables?\./iu', $original, $m) === 1) {
     $sentence = $m[0];
-    $lower = ['Eight' => 'Seven', 'Nine' => 'Eight', 'Ten' => 'Nine', 'Eleven' => 'Ten'];
-    $fewer = str_replace($m[1], $lower[$m[1]], $sentence);
+    $keys = $asNumber($m[1]);
+    $tables = $asNumber($m[2]);
+    if ($keys === null || $tables === null || $keys < 7 || $tables < 7) {
+        $sentence = null;
+        $fewer = null;
+        echo "\n  BAD the count sentence was read but one of its numbers is outside the map this harness can spell\n";
+    } else {
+        // Both numbers are replaced in place so the mutant keeps the document's own spacing and case, and the
+        // result is compared: a "mutant" that equals the original is a case that cannot fail, which is the defect
+        // this harness was rewritten once already for.
+        $fewer = preg_replace('/'.$m[1].'(?=\s+keys?\b)/iu', $spell($keys - 1), $sentence, 1);
+        $fewer = preg_replace('/'.$m[2].'(?=\s+tables?\b)/iu', strtolower($spell($tables - 1)), (string) $fewer, 1);
+        if ($fewer === $sentence) {
+            echo "\n  BAD the planted count equals the original — the mutant would change no byte.\n";
+            $failures += 2;
+            $sentence = null;
+        }
+    }
 }
 
 if ($sentence === null) {

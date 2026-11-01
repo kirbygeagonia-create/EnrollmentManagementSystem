@@ -131,10 +131,20 @@ foreach (array_keys($listed) as $name) {
 }
 
 $claimed = null;
-if (preg_match('/(Eight|Nine|Ten|Seven|Six)\s+keys?\s+in\s+(seven|eight|nine|six)\s+tables?/i', $dump, $c)) {
+// The word list used to stop at `Ten`, so the checker went UNBOUND the first day the register grew past it — the
+// right behaviour (an unread claim refuses), but a boundary claim has to survive its own getting truer. Spelled
+// out through twenty and digits accepted, so the next key is a document edit rather than a code edit.
+if (preg_match(
+    '/(Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty|\d+)\s+keys?\s+in\s+(six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|\d+)\s+tables?/i',
+    $dump,
+    $c
+)) {
     $claimed = [strtolower($c[1]), strtolower($c[2])];
 }
-$word = ['six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10];
+$word = ['six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10, 'eleven' => 11, 'twelve' => 12,
+    'thirteen' => 13, 'fourteen' => 14, 'fifteen' => 15, 'sixteen' => 16, 'seventeen' => 17, 'eighteen' => 18,
+    'nineteen' => 19, 'twenty' => 20];
+$asNumber = static fn (string $w): ?int => is_numeric($w) ? (int) $w : ($word[$w] ?? null);
 $tables = count(array_unique(array_column($domain, 'table')));
 
 if ($claimed === null) {
@@ -142,8 +152,8 @@ if ($claimed === null) {
     printf("          cannot find has not been checked, which is not the same as a claim that passed\n");
     $problems++;
 } else {
-    $okKeys = $word[$claimed[0]] === count($domain);
-    $okTables = $word[$claimed[1]] === $tables;
+    $okKeys = $asNumber($claimed[0]) === count($domain);
+    $okTables = $asNumber($claimed[1]) === $tables;
     printf("  %s the sentence says %s keys in %s tables; the server holds %d keys across %d tables\n",
         $okKeys && $okTables ? 'ok  ' : 'MISS',
         $claimed[0], $claimed[1], count($domain), $tables);

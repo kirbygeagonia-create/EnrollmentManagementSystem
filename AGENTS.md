@@ -1277,6 +1277,32 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
 
 ## Facts new code must respect
 
+- **A fixture that writes the table bypasses the controller's guard, and a database key is what sees it** (2026-11-01).
+  `EnrollmentWalkthroughTest`'s transferee case approved an admission — which *issues* the enrollment — and then minted
+  a second enrollment for the same student in the same term, because its helper called `Enrollments::create` directly
+  while `EnrollmentIssuer::seatHolder()` sits in the controller. It had done that for months and every leg stayed
+  green: the walkthrough uses `DatabaseTransactions`, so the pair existed only inside the transaction, and
+  `lane154-probe-duplicate-keys.php` correctly answered 0 duplicate groups against live `ems`. Adding
+  `uq_enrollments_active_seat` turned the E2E folder red with `1062 Duplicate entry '1487-11-1487:11'`, and the repair
+  was the fixture's state, not the gate's rule — the case now walks the record the approval issued. So when a new
+  unique key or constraint turns a test red, ask first which row the test should have been reading, and whether its own
+  transaction hid the duplicate from every census: a 0 on live data is not evidence that no path creates a pair.
+- **A generator that writes a partly hand-written document must splice on markers and refuse without them** (2026-11-01,
+  `lane162-generate-erd.php`). `Documentation/DATABASE-DESIGN-ADS.md` says on its first line "This page is generated,
+  not written", and the batch had since hand-written a load-test result into it; the first re-take of the diagram
+  rewrote the whole file and deleted the document's own title and provenance paragraphs — 29 lines gone, and nothing
+  in the gate list asks a generator whether it owns the bytes it overwrites. The fix is a marker pair
+  (`<!-- generated:begin ERD -->` / `<!-- generated:end ERD -->`): everything outside it belongs to the author and is
+  carried across verbatim, and a file that holds prose but no markers is **refused with exit 1** rather than
+  overwritten — proved against a copy with the markers stripped, which is the only way to know the refusal is read
+  and not merely printed. Two readings came out of doing it: the preservation message must count the head it kept and
+  not just the tail (an understated label is the same class as an unprinted blind spot), and a refusal's exit code
+  cannot be read through `| head`, because the pipe's status belongs to `head` — the fifth time this file has said so.
+- **A rule-count guard is how you learn a rule was added.** `DemoDatasetRecordStatesTest` pins the count the record-state
+  audit prints, so the batch's twentieth rule made it fail with "actual size 20 matches expected size 19" rather than
+  letting the new rule go unnoticed. The expectation moves with the register, and the number lives in the command's own
+  footer (`Rules run: 20`) — `lane59-instrument-counts.php` binds it there.
+
 - **Stack:** Laravel + Inertia/React (`resources/js/Pages`), MySQL 8 via Laragon, PHP at
   `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`. `localhost:8080` is Laragon Apache;
   `php artisan serve` silently shadows it on loopback, so check which server answered a probe.
@@ -1303,7 +1329,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   every year, so an unscoped query reads a retired term's meeting as a conflict for the term being built. A
   schedule whose block is missing has no term to scope by and the filter is dropped rather than answered "no
   conflict" — widening is the honest failure, silence is not. `ems:audit:record-states` carries the same rule as
-  two of its nineteen rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
+  two of its twenty rules (`collidingSchedules('block')` and `('resource')`), self-joined through both blocks so
   the two sides are term-equal, and half-open so **back-to-back is not a collision**. There is deliberately no
   `meetingId` exclusion on that path: Laravel rewrites `where('meetingId', '!=', null)` into `IS NOT NULL`, so the
   create-form guard that used to depend on it passed by an accident of the query builder, not by intent.
@@ -2892,7 +2918,9 @@ proved by comparing the whole window in both versions, which is the only claim a
   `Academicyears::firstOrCreate` calls behind §21's `academicyears` row), `Studentclearances.php` :87-93,
   `AdmissionPolicy.php` :67-152 (the whole extracted method, return at :151, brace at :152), `AuditRecordStates.php`
   :305-327 — **a range deliberately straddling two rules**, "the two box rules", so the straddle is the claim — and
-  its "nineteen rules" is 19 `'count' =>` entries, measured not recalled; also `RbacSeeder.php`, `IDController.php`
+  its "nineteen rules" was 19 `'count' =>` entries on the day it was read, measured not recalled (the 2026-11-01 batch
+  added a twentieth, `A block holding more students than it declares`, and the guard that counts them went red — which
+  is the guard working); also `RbacSeeder.php`, `IDController.php`
   :184, `StudentController.php` :49, `AuthenticatedLayout.jsx` :85-113, `Toast.jsx` :164-168,
   `SendWorkflowNotification.php` :57, `WorkflowService.php` :54-73, and the pointers passes 229-234 wrote themselves
   in `BlockingController.php` and `ExamController.php`. **The instrument-side trap in that count is mine again:**
@@ -3629,7 +3657,8 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   id and can never see that defect; the class gained a case that runs a real transition and retries it, which is the
   harness naming a missing test rather than a guard that failed. **And §23.6.1's own tally is a boundary claim, not a
   summary:** the list says it holds *every* unique index in the domain tables, so this migration re-cut that count
-  sentence to ten keys in eight tables and `lane44-unique-keys.php` refused until the row existed — while
+  sentence — which reads twelve keys in ten tables on the 2026-11-01 schema, the two enrollment keys having joined
+  the ten-in-eight the print-log key produced — and `lane44-unique-keys.php` refused until the row existed, while
   `mutate-lane44-unique-keys.php` had hardcoded the old sentence, so two of its cases planted nothing and reported
   themselves as failures. Locate a count sentence by its shape; an anchor that has to be re-cut every time the document
   gets truer hides the change it exists to test. After any batch that touches a notification write, the
@@ -3664,7 +3693,60 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   reads must be addressable (`--screen=`, `--listeners=`), or a positive control means editing a desk screen; and every
   leg that must stay SILENT is asserted silent (deleting the `Notification` fallback removes the accusation, renaming
   the bell's row marker or the payload literal makes the run refuse rather than report absence).
-- **A notice's four parts are one builder, and a destination is derived rather than asked** (G-35, prompt §8).
+- **A stored generated column cannot be added to a table other tables point at, and `1215` does not say so**
+  (ADS guide problems 2-4, 7, 10, 11; built 2026-11-01). `database/migrations/2026_11_01_1100000000_add_database_level_enrollment_rules.php`
+  adds `uq_studentassessments_enrollment` and `uq_enrollments_active_seat (studentId, termId, seatKey)` where
+  `seatKey` is a **VIRTUAL** generated column, non-null exactly when `enrollmentStatus <> 'dropped'` and a term is
+  named — so MySQL ignores the NULL and a drop releases the seat with no trigger and no deleted row. The first draft
+  said `STORED`, and MySQL 8.4 answered `SQLSTATE[HY000]: 1215 Cannot add foreign key constraint` for
+  `ALTER TABLE enrollments ADD COLUMN … STORED` — a message that names a foreign key while no foreign key is being
+  added. The cause is the table rebuild: `enrollments` is referenced by **eleven** child tables (read from
+  `information_schema.KEY_COLUMN_USAGE`, not recalled), and `SET FOREIGN_KEY_CHECKS = 0` does not help. A plain
+  `ADD COLUMN … NULL` succeeds and a VIRTUAL column succeeds, so the diagnosis was two statements, not an opinion.
+  Three consequences: the unique index over a virtual column is accepted and refused a real duplicate
+  (`1062 Duplicate entry '53-11-53:11' for key 'enrollments.uq_enrollments_active_seat'`, then the same insert
+  after a drop was accepted — both directions measured on a clone of live `ems` holding its 37 enrollments); SQLite
+  has no `ALTER TABLE … ADD COLUMN … GENERATED` at all, so the suite's `:memory:` schema carries the fee-sheet key
+  and NOT the seat key, and `tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` asserts the
+  driver-appropriate fact instead of skipping; and both guards in that migration run *before* the ALTER and name the
+  violating rows, because MySQL's 1062 after the fact says only "a duplicate exists". Preconditions were measured
+  first: 0 duplicate fee sheets and 0 null `termId` on live `ems`, which is what made an additive key safe rather
+  than a promise.
+- **A race must be shown with two writers, and the instrument's own shape decides whether the race can happen.**
+  `storage/app/scratch/lane168-probe-last-seat-race.php` clones `ems` into `ems_l168_a`, stages one block at exactly
+  one free seat, and starts two child processes with the **same `--start-at` instant**. Two rules came out of
+  building it. (a) An HTTP leg is the wrong instrument: PHP's built-in server handles one request at a time, so a
+  "concurrent" curl pair serialises and reads as a fixed bug — the children call `assignStudents()` directly and
+  the tool says so in its own output. (b) Without the start gate the second child often begins after the first has
+  committed, and a race that did not happen looks like a race that is closed. Measured with `--pairs=3`: HEAD's
+  bytes gave **5 assigns, 0 refusals, a block holding 2 seats against `maxStudents` 1, and one genuine
+  `SQLSTATE[40001] 1213` that reached the desk as a 500**; the locked act gave 3 assigns, 3 `capacity` refusals, 0
+  deadlocks, max 1 seat — twice, the second time after the working bytes were restored by hash. So the pass
+  condition for the HEAD leg is *unsafe*, and a HEAD leg that produces the clean outcome is reported BAD: an
+  instrument that cannot show the defect it names makes its own green meaningless. `Auth::loginUsingId()` is not a
+  thing to reach for here — a CLI boot has no started session, so `Auth::id()` answers null and every case dies on
+  the policy with a misleading 403; `Auth::setUser($staff)` is the working spelling, measured by
+  `storage/app/scratch/lane168-probe-desk-rights.php` before the child was written.
+- **A checker's vocabulary is a claim about the future, and a hand-kept file list is a blind spot that prints a
+  clean verdict.** Three instruments in this repository went quietly inert while reporting success, and all three
+  were caught by a plant or a NOTICE rather than by reading them: `repo-file-line-citations.php` carried a 25-file
+  literal list, so the four documents written hours earlier were never opened and the run printed `0 problem(s)`
+  (it now derives its scope from `Documentation/*.md`, prints `SCOPE n markdown file(s)`, prints a `NOTICE` naming
+  anything the old list missed, and the harness `mutate-lane126-md-citation-gate.php` answers 10 legs including one
+  that plants a new document and requires its bad pointer to be *reported* — scanning is the stronger guarantee, so
+  the old "refuse on an unlisted doc" leg was replaced, not kept); its `Pointer currency` exemption was the literal
+  string with one date embedded, so a document exempted on any later day could not carry an honest date and still
+  be recognised — now any ISO date matches and a marker without the parentheses still accuses, which is the leg
+  that proves a widening is not an off switch; and `lane44-unique-keys.php` plus its harness spelled the count
+  sentence through a four-word list and a `$lower` map, so `Twelve keys in ten tables` read as UNBOUND — both now
+  read words *or* digits and the harness computes "one fewer" arithmetically, because a harness that must be
+  re-cut every time the document gets truer hides the change it exists to test.
+- **`§NN` is a citation even when it means this file's own section.** The new ADS documents first pointed at their
+  own parts with the sigil (`§9`, `§11`), and `lane37b-repo-citation-sweep.php` resolved them against the authority
+  docx's real chapters and stayed silent — a false match, which is the collision the `prompt §NN` convention exists
+  to prevent. Internal references are now spelled "part 9", "section 5"; a pointer into another document names that
+  document; and a reference to the development prompt's numbering cannot be checked by any tool in this tree (the
+  prompt lives outside it), so those are spelled in words too.
   `App\Support\NoticeFacts::forEnrollment()` is the only writer of the title, the action required, the record
   reference and the link, and both queued listeners merge its array into their own payload, so a notice cannot
   arrive with a message and no way to act on it. `App\Enums\OfficeId::deskRouteName()` answers which queue holds
@@ -3717,6 +3799,34 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   `DeskRefreshPendingStateTest.php` first read
   `Pages/**/*.jsx`, returned zero paths, and would have certified the whole tree; the walk now uses a recursive iterator and the
   case asserts the population is non-empty before judging it.
+- **A harness plant needs a population the copy can actually supply** (2026-11-01, `mutate-lane172-load-integrity.php`).
+  Its first cut took the smallest block on the schema and asked it for `maxStudents + 1` new holders; the block's own
+  term held 12 enrollments and the ceiling was 37, so the leg printed `stamped 12 of the 38 needed` and **called the
+  checker asleep when the checker was right** — a leg that cannot plant is the instrument's age, not a defect in the
+  thing it measures. The leg now walks the six smallest blocks and takes the first whose term can supply what the
+  ceiling needs, and the run answers 10 legs, 0 bad. Three sibling plants bit the same way in the same file: naming
+  the VIRTUAL `seatKey` in an INSERT (MySQL 3105 — `SHOW COLUMNS`' `Extra` is what says GENERATED), deleting a
+  workflow form without its `workflowsteps` children (1451 RESTRICT), and asking
+  `information_schema.STATISTICS` about a uniqueness that `SHOW INDEX` shows does not exist. Read the schema before
+  writing the plant, and print what the plant affected: this harness now names the stamp count, the drop count and
+  the column list it read in every leg line.
+- **A timing is a property of the run that printed it, like an assertion count** (2026-11-01). The same command, on
+  the same 100,000-student schema, answered **2.68 ms** for the directory's leading-wildcard search on one run and
+  **10.54 ms** on another; **0.53** then **0.97** for the prefix; **0.78** then **14.74** for the fulltext match;
+  **0.77 ms** then **6.23 ms** for the batched page read. The plans and their `rows=` estimates agreed both times,
+  so the claim that survives is ~98,800 rows touched against ~1,111, not the milliseconds. Lane 58's rule for an
+  assertion total reaches performance prose: name the run or the captured file beside every millisecond, prefer the
+  plan as the evidence, and when a re-run disagrees, record both readings rather than re-typing the newer one into
+  the sentences that quoted the older. The documents now do that, and
+  `storage/app/scratch/lane164-out.txt` is the capture they point at.
+- **Pinning `DB_CONNECTION=mysql` on the command line is not how the E2E folder is re-run.** `phpunit.xml` names
+  `:memory:` for the suite, so exporting `DB_CONNECTION=mysql` while it still supplies the database name makes every
+  leg die with `SQLSTATE[HY000] [1049] Unknown database ':memory:'` — eight failures that read like a code regression
+  minutes after a seeded pipeline had exited 0. The E2E classes pin their own connection and take the schema from
+  `E2E_DB_DATABASE` (default `ems`), so run `php artisan test tests/Feature/E2E --fail-on-skipped` plainly; a scratch
+  schema is named by `E2E_DB_DATABASE=ems_lNN_x` alone. Lane 87's trap was the mirror (a MySQL name with the
+  connection unpinned opened a SQLite file called after it); the pair is one rule — **the connection and the database
+  name must come from the same place**, and here that place is the test, not the shell.
 - **A figure wrapped off its instrument's citation is not clean, it is unseen.** In markdown the binder reads a physical line:
   AGENTS' lane-49 pair sat on the continuation of a long bullet and `lane59-instrument-counts.php` reported zero stale while one
   of the two numbers had moved twice. Keeping the figure and the tool on one line raised the judged count by one, which is the

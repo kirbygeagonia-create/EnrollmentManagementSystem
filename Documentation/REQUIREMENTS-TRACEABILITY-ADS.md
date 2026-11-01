@@ -22,15 +22,15 @@ not be read from code it says so, and no requirement is marked Verified without 
 | ID | Problem (guide ¶) | Applicability | Status |
 |---|---|---|---|
 | P01 | Incomplete Enrollment Transaction (¶41) | Applies | Implemented, demonstration owed (T02) |
-| P02 | Last Available Slot (¶51) | Applies | **Not built** — the capacity check runs outside the transaction and takes no lock |
-| P03 | Duplicate Enrollment (¶61) | Applies | Partially — subject lines are guarded by a unique key; the active-seat rule is application code only |
-| P04 | Incorrect Section Capacity (¶71) | Applies | Partially — counts are derived, never stored, so drift is impossible, but nothing enforces `count ≤ maxStudents` in the database |
+| P02 | Last Available Slot (¶51) | Applies | Built and measured 2026-11-01 — block row locked inside the transaction, count re-taken under it, room locked second; HEAD overbooked 2-of-1, the fix refused one writer per pair |
+| P03 | Duplicate Enrollment (¶61) | Applies | Built and measured 2026-11-01 — subject lines guarded since the schema was written, and the seat and the fee sheet are now refused by unique keys on MySQL (`uq_enrollments_active_seat`, `uq_studentassessments_enrollment`) |
+| P04 | Incorrect Section Capacity (¶71) | Applies | Built and pinned — count weighed against `maxStudents` by the assign guard and by the audit's twentieth rule; the room-level question stays open by name |
 | P05 | Simultaneous Student Updates (¶81) | Applies | **Not built** — no optimistic version, no lock, a silent overwrite is possible |
 | P06 | Enrollment Cancellation (¶91) | Applies | Implemented, demonstration owed (T06) |
-| P07 | Database Deadlock (¶101) | Applies | **Not built** — no deadlock error handling, no bounded retry, no stated lock order |
-| P08 | Student Search Performance (¶111) | Applies | Partially — a composite name index exists but the search's `LIKE '%…%'` cannot use it |
-| P09 | Enrollment History Performance (¶121) | Applies | Partially — the record page is set-based; the Registrar queue issues ≈5 queries per row |
-| P10 | Concurrent Subject Registration (¶131) | Applies | **Not built** — same missing lock as P02; no concurrent test exists anywhere |
+| P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
+| P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
+| P09 | Enrollment History Performance (¶121) | Applies | Measured, not repaired — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched |
+| P10 | Concurrent Subject Registration (¶131) | Applies | Partly — the P02 lock and a two-writer harness both exist now; the subject-line race itself is undriven |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
 | P13 | Maximum Academic Load (¶161) | Partially — a band rule exists, a term unit cap does not | **Not built** (limit value is an open school question) |
@@ -41,10 +41,10 @@ not be read from code it says so, and no requirement is marked Verified without 
 | P18 | Duplicate Student ID (¶212) | Applies | Implemented at the database — `uq_students_schoolid` |
 | P19 | Accidental Deletion (¶223) | Partially — status-based cancellation, no restore path | Implemented for protection; restoration is an owner question |
 | P20 | Reports During Active Enrollment (¶234) | Applies | **Not built** — no isolation level is set anywhere; a report reads across several auto-committed statements |
-| P21 | Database Recovery (¶245) | Applies | **Not built** — backup and restore exist as commands in a guide, never as an executable procedure, and no drill has been run |
+| P21 | Database Recovery (¶245) | Applies | Built and executed 2026-11-01 — `tools/ems-backup-drill.php` restored a fresh dump into a scratch schema, compared 64 tables row for row, three ordered digests MATCHES, and read the durability variables from the server |
 | P22 | Unauthorized Database Access (¶255) | Applies | Implemented and pinned |
-| P23 | Heavy Enrollment Traffic (¶265) | Applies | Partially — indexes exist; nothing has been measured |
-| P24 | Complete Enrollment-Day Challenge (¶276) | Applies | **Not built** — no concurrency or load harness exists in the repository |
+| P23 | Heavy Enrollment Traffic (¶265) | Applies | Built and measured 2026-11-01 — the queries are weighed on 100,000 students and 507,420 subject lines, and `lane172` ran 1,000 acts through ten real processes at 69 per second with every integrity question read back from the server |
+| P24 | Complete Enrollment-Day Challenge (¶276) | Applies | Built and measured 2026-11-01 — 1,000 issues, 10 workers, one contended seat (1 winner, 9 refusals) and five drop-vs-issue races, ending with no student holding two active seats and no orphan form; the lost-update and report-isolation halves stay with P05 and P20 |
 
 ---
 
@@ -72,19 +72,32 @@ not be read from code it says so, and no requirement is marked Verified without 
 
 - **Objective.** Two requests, one seat; the database must not let both have it.
 - **Applicability.** Applies. A section is `blocks` and its room capacity is `rooms.capacity`.
-- **Existing implementation.** `app/Http/Controllers/Blocking/BlockingController.php:469-472` counts distinct
-  `enrollmentId` values that are not dropped, `:474` compares the sum against `$block->maxStudents` and `:475-477`
-  throws, and only at `:495` does `DB::transaction` begin. The check is therefore outside the transaction and no
-  row is locked: two simultaneous assigns both read the same count and both write. The only `lockForUpdate` in
-  `app/` is `app/Services/PrintService.php:140`, on the document-number sequence.
-- **Gap.** Concurrency control absent; enforcement is application-level only, which the guide refuses.
-- **Required solution.** Lock the block row (`lockForUpdate`) as the transaction's first act, re-run the capacity
-  count inside it, then write; take the room row after the block row in one fixed order so two paths cannot cross.
+- **Existing implementation.** Built 2026-11-01. `app/Http/Controllers/Blocking/BlockingController.php:471-473`
+  de-duplicates the requested ids and sorts them into one canonical order; `:483` wraps the act in
+  `App\Support\RetryOnDeadlock::run()`; `:484` opens the transaction; `:485` locks the block row with
+  `lockForUpdate()` as the transaction's first act; `:488-491` re-counts distinct non-dropped `enrollmentId` values
+  *under* that lock; `:492-496` refuses above `maxStudents`; `:500` then locks the room row — a fixed order, block
+  before room — and `:502-510` counts and refuses the room the same way. Before this batch the count ran outside the
+  transaction and no row was locked, and the only `lockForUpdate` in `app/` was
+  `app/Services/PrintService.php:140` on the document-number sequence.
+- **Gap.** The application half is closed. The database still holds no rule that refuses a 41st seat if a future
+  writer bypasses this path, which is P04's generated-column proposal (task #31) rather than this row.
+- **Required solution.** As above, delivered: lock, re-count under the lock, one fixed order, bounded retry of only
+  the two conditions that mean "somebody held it first".
 - **Affected components.** Backend, database.
-- **Testing method.** T03 on a scratch MySQL schema with two real connections, one seat, two assign calls.
-- **Evidence.** Pending.
-- **Status.** Not started. **This is the repository's own open finding DI-5** in
-  `Documentation/System-Design-Quality-Review.md:79`, recorded 2026-09-15 and never repaired.
+- **Testing method.** T03 over two real MySQL connections on a scratch clone, and the shape guards on SQLite.
+- **Evidence.** `php storage/app/scratch/lane168-probe-last-seat-race.php --pairs=3` measured both sides on the
+  school's server: HEAD's act ran 3 pairs to **5 assigns, 0 refusals, a block holding 2 seats against
+  `maxStudents` 1**, and one pair ended in a real `SQLSTATE[40001] 1213` deadlock that reached the desk as a 500;
+  the locked act ran the same 3 pairs to **3 assigns, 3 `capacity` refusals, 0 deadlocks, max 1 seat**, and the
+  third pass (working bytes restored) matched the first. `tests/Feature/Blocking/BlockCapacityAtomicityTest.php`
+  pins the shape (lock inside the transaction, both rows locked, sorted ids, dropped rows not consuming a seat)
+  and the retry helper's boundaries, proved by
+  `php storage/app/scratch/mutate-g-ads-capacity-tests.php`, which plants one defect per promise, prints its own leg
+  total instead of having one written here, restores every file it touched by hash, and refuses when a needle matches
+  nothing rather than reporting a kill it did not land.
+- **Status.** Built and measured 2026-11-01. **This closes the repository's own open finding DI-5** in
+  `Documentation/System-Design-Quality-Review.md:79`, recorded 2026-09-15 and open for six weeks.
 
 ### P03 — Duplicate Enrollment (¶61-70)
 
@@ -95,34 +108,61 @@ not be read from code it says so, and no requirement is marked Verified without 
   `app/Services/EnrollmentIssuer.php:37-43` reads a non-dropped enrollment for a student and term, and a caller
   refuses when one exists. `studentassessments` has no unique key on `enrollmentId` (measured against
   `database/migrations` — no `unique(` names that table).
-- **Gap.** The seat rule has no database-level enforcement, so a second route or a concurrent request bypasses it;
-  a second fee sheet for one enrollment is likewise unguarded (the review document's DI-2, still open).
-- **Required solution.** Add `uq_studentassessments_enrollment` and a stored generated column on `enrollments`
-  that is non-null only for a status that holds a seat, with a unique index over (`studentId`, `termId`, that
-  column) — MySQL ignores NULLs in a unique index, which is exactly the "a drop releases the seat" ruling, so
-  re-enrollment stays legal without a trigger.
+- **Gap closed.** The seat rule used to have no database-level enforcement, so a second route or a concurrent request
+  could walk past it, and a second fee sheet for one enrollment was likewise unguarded — the review document's DI-2,
+  open since 2026-09-15. Both are refused by the server now.
+- **What was delivered.** `uq_studentassessments_enrollment` on `studentassessments(enrollmentId)`, which travels on
+  both drivers, and `uq_enrollments_active_seat` on `enrollments(studentId, termId, seatKey)` where `seatKey` is a
+  **VIRTUAL** generated column, non-null exactly when the status is not `dropped` and a term is named. MySQL ignores
+  NULLs in a unique index, which is precisely the ruling that a drop releases the seat, so re-enrollment stays legal
+  without a trigger. Written as
+  `database/migrations/2026_11_01_1100000000_add_database_level_enrollment_rules.php`. The usual spelling for a
+  generated column is STORED; it was tried and measured, and the `ALTER TABLE` answers
+  `1215 Cannot add foreign key constraint`, because a STORED change rebuilds a table eleven other tables point at.
+  VIRTUAL adds in place, accepts the unique index, and keeps the same NULL behaviour. The difference is recorded here
+  rather than smoothed over, because a reader who tries STORED next time will meet the same error.
 - **Affected components.** Database, backend.
 - **Testing method.** T04 (sequential duplicate), plus a case that inserts over the HTTP stack and asserts the
   database, not the controller, is what refused.
-- **Evidence.** Pending; the precondition is measured — `php storage/app/scratch/lane154-probe-duplicate-keys.php`
-  answers 0 duplicate groups on live `ems` for every key this row proposes.
-- **Status.** Partially implemented; the database half is not started.
+- **Evidence.** `php storage/app/scratch/lane154-probe-duplicate-keys.php` answered 0 duplicate groups on live `ems`
+  for every key this row proposes — the precondition for adding a constraint additively instead of repairing data
+  first. `tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` then pins both keys: the fee-sheet refusal is
+  asserted on every driver, the seat refusal only on MySQL, and the class names the half the SQLite suite cannot reach
+  in its own output instead of skipping it quietly.
+- **Status.** Built 2026-11-01 on the driver the school runs. This closes the review document's DI-2 alongside the
+  DI-5 that P02 closed; see `Documentation/System-Design-Quality-Review.md:79`.
 
 ### P04 — Incorrect Section Capacity (¶71-80)
 
 - **Objective.** Counts and capacity must not disagree.
-- **Existing implementation.** There is no stored counter to drift: the headcount is derived at read time
-  (`app/Http/Controllers/Blocking/BlockingController.php:469-472`, and the tiles at `:103-105`). A dropped line is
-  excluded by `where('status','!=',…Dropped)` at `:470`.
-- **Gap.** Nothing proves `count ≤ maxStudents` holds for rows that were written by another route, and no
-  reconciliation command reports a violation.
+- **Existing implementation.** There is no stored counter to drift: the headcount is derived at read time — the
+  roster tiles at `app/Http/Controllers/Blocking/BlockingController.php:103-106` and the write guard's own count at
+  `:488-491`, both excluding dropped lines (`:58` and `:489`), both counting *distinct* enrollments because one
+  student carries several subject rows. A dropped line is therefore not a held seat on either surface.
+- **Gap.** A room is not weighed as a room. `:502-505` counts the rows stamped with **one** `scheduleId`, so when ten
+  sections share a hall the check never sees the other nine — it enforces "this section fits this room", not "this
+  room's total load fits". That is registered here rather than silently "fixed", because making it a room-level sum
+  would refuse data the app itself produces today; it is a school question about what `rooms.capacity` means.
+  Nothing proved the block invariant held for rows written by another route either, until this batch.
 - **Required solution.** A rule in `ems:audit:record-states` that selects every block whose non-dropped distinct
   enrollment count exceeds `blocks.maxStudents`, so the invariant is weighed on demand rather than assumed; the
   P02 lock is what keeps it true at write time.
 - **Affected components.** Database, tooling.
 - **Testing method.** T05 (capacity reached refuses further enrollment) and a new audit rule case.
-- **Evidence.** Pending.
-- **Status.** Not started.
+- **Evidence.** Delivered 2026-11-01 as the command's twentieth rule, `blockOverCapacity()` at
+  `app/Console/Commands/AuditRecordStates.php:453-464` with its entry at `:150-153`. It uses the guard's definition
+  of "held" rather than a second one. Measured before it was written: live `ems` answers **0** blocks over their own
+  `maxStudents`, so the rule joins the standing gate green rather than turning it red with pre-existing damage.
+  `php artisan ems:audit:record-states` now prints `Rules run: 20` from its own tally, and
+  `the_audit_names_a_block_holding_more_students_than_it_declares` in
+  `tests/Feature/Blocking/BlockCapacityAtomicityTest.php` plants the over-capacity row directly (the desk path can no
+  longer produce it) and requires the rule's FAIL line, then drops the seat and requires the same rule's `ok` line.
+  `php storage/app/scratch/mutate-g-ads-capacity-tests.php` kills both halves — dropping the dropped-row filter and
+  moving the comparison to `>=` each make that case go red. T05 itself is answered by
+  `a_request_larger_than_the_seats_left_seats_nobody`, which also proves the two seats a refused request left behind
+  are still available.
+- **Status.** Write guard and read reconciliation both built and pinned; the room-level question stays open by
+  decision and is named above rather than counted as done.
 
 ### P05 — Simultaneous Student Updates (¶81-90)
 
@@ -143,7 +183,11 @@ not be read from code it says so, and no requirement is marked Verified without 
 - **Existing implementation.** `RegistrarController::drop()` at `app/Http/Controllers/Registrar/RegistrarController.php:368`
   runs one transaction that sets the enrollment to `dropped` and every proposed or confirmed subject line to
   dropped; `app/Services/EnrollmentStateMachine.php:48-50` states the ruling in code ("A drop is terminal"), and
-  the exclusion of dropped rows is read at `BlockingController.php:57,137,392,470,484,518,553`,
+  the exclusion of dropped rows is read wherever seats are counted — the roster's own closure at
+  `BlockingController.php:57-58` and the write guard at `:488-491`, with the same clause repeated at every other
+  count site in that controller. The numbers of those further sites are deliberately not listed: a comma list of
+  line numbers is judged only on its FIRST number by the citation gate, so the rest age unseen, and this batch's
+  insertion aged all seven of them by one to nineteen rows while the gate printed `0 problem(s)`. See also
   `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:133`.
 - **Gap.** No test proves a mid-cancellation failure leaves nothing half-dropped.
 - **Required solution.** None new; the demonstration is owed.
@@ -155,18 +199,30 @@ not be read from code it says so, and no requirement is marked Verified without 
 ### P07 — Database Deadlock (¶101-110)
 
 - **Objective.** Prevent, detect, retry safely.
-- **Existing implementation.** None. Grepping `app/`, `tools/`, `tests/` for `1213`, `1205`, `deadlock`,
-  `lock wait timeout`, `retry` around writes answers nothing; the only deliberate duplicate-key catch is
-  `app/Support/NoticeDelivery.php:32-37` on error 1062.
-- **Gap.** No lock order is stated, no deadlock error is handled, no bounded retry exists.
-- **Required solution.** One helper that (a) takes locks in one fixed order (block, then room, then enrollment),
-  (b) catches 1213 and 1205, (c) retries a bounded number of times with jitter, and (d) refuses to retry anything
-  whose effect is not idempotent — which is why P17's request key is a prerequisite for this row.
+- **Existing implementation.** Built 2026-11-01. `app/Support/RetryOnDeadlock.php` is the one statement of the rule:
+  `run()` at `:38-66` retries only `self::DEADLOCK` (1213, `:27`) and `self::LOCK_WAIT_TIMEOUT` (1205, `:29`),
+  `codeOf()` at `:69-74` reads `errorInfo[1]` before falling back to `getCode()` because the two drivers word a
+  refusal differently, and exhaustion raises a `ValidationException` at `:54-59` whose sentence says
+  *Nothing was saved* — a desk told to retry without being told the record is unchanged will assume it was.
+  The lock order lives at `app/Http/Controllers/Blocking/BlockingController.php:485` (block) then `:500` (room),
+  with the requested ids sorted at `:472` so two overlapping assigns take the enrollment rows in one order.
+  Before this batch, grepping `app/`, `tools/`, `tests/` for `1213`, `1205`, `deadlock` or a retry around writes
+  answered nothing; the only deliberate driver-code catch was `app/Support/NoticeDelivery.php:32-37` on 1062.
+- **Gap.** The retry is scoped to one act. Every other write path still has no lock order and no retry, and the
+  helper's own docblock states the condition under which wrapping is safe (one transaction, fully rolled back)
+  rather than letting any caller borrow it blind.
+- **Required solution.** As delivered for the Blocking path; extend per path only where a path both counts a
+  shared resource and writes it.
 - **Affected components.** Backend, database.
-- **Testing method.** T08 — a controlled two-connection deadlock on a scratch schema, plus a case proving the
-  retry does not duplicate a committed effect.
-- **Evidence.** Pending.
-- **Status.** Not started.
+- **Testing method.** T08 — a controlled two-connection deadlock on a scratch schema, plus cases proving the retry
+  does not swallow a non-retryable condition and does not repeat a refusal the desk must read.
+- **Evidence.** The deadlock is not hypothetical: `lane168-probe-last-seat-race.php` observed a real
+  `SQLSTATE[40001] 1213` on HEAD's act in one of three pairs, surfacing as a 500 at the desk. The locked act ran
+  nine writes across three pairs with `deadlock 0`. `BlockCapacityAtomicityTest` covers the helper's boundaries
+  (1213 and 1205 retried; 1062, 1146, 2002 and 1451 propagated on the first pass; a `ValidationException` never
+  retried; `attempts: 0` refused), proved by `mutate-g-ads-capacity-tests.php`.
+- **Status.** Built for the Blocking assign path; the measured deadlock proves the condition the guide describes
+  occurs on this schema. Not extended to other paths, and that is stated rather than counted as complete.
 
 ### P08 — Student Search Performance (¶111-120)
 
@@ -181,8 +237,37 @@ not be read from code it says so, and no requirement is marked Verified without 
   measure `EXPLAIN` and timings before and after on a schema holding generated synthetic students, never real ones.
 - **Affected components.** Database, backend.
 - **Testing method.** T09 with a measured row count and the plan printed.
-- **Evidence.** Pending.
-- **Status.** Not started (index exists but is unreachable).
+- **Evidence.** `php storage/app/scratch/lane164-measure-scale-queries.php` over a scratch schema the guide's scale
+  asks for — `ems_l163_a`, built by `lane163-build-scale-schema.php --students=100000` from live `ems`' structure:
+  **100,000 students, 101,484 enrollments, 507,420 subject lines**. The newest capture is saved beside the tool at
+  `storage/app/scratch/lane164-out.txt`; the numbers below are read from it.
+
+  **What is stable is the work the plan does, not the millisecond.** Two runs of this same command on the same
+  schema answered the contains-search at 2.68 ms and at 10.54 ms, the prefix at 0.53 ms and 0.97 ms, the fulltext
+  match at 0.78 ms and 14.74 ms, and the batched page read at 0.77 ms and 6.23 ms — a latency on this box moves with
+  whatever else the box is doing, exactly as an assertion total belongs to the run that printed it. The plans agreed
+  with themselves across both runs, and that is the finding:
+
+  | read | plan the server chose | rows it expects to touch |
+  |---|---|---|
+  | `like '%Scale12%'` (what the desk does today) | `index:idx_students_names` | ~98,800 |
+  | `like 'Scale12%'` | `range:idx_students_names` | ~1,111 |
+  | `schoolIdNumber` exact | `const:uq_students_schoolid` | 1 |
+  | `MATCH … AGAINST` on a fulltext index | `fulltext:ft_students_names` | 1 |
+
+  An ~89x difference in rows touched between the leading-wildcard read and the prefix is the guide's claim proved
+  rather than asserted, and it survives any millisecond. The fulltext index exists only on the scratch schema — the
+  probe adds it at `storage/app/scratch/lane164-measure-scale-queries.php:92` to price the option — and live `ems`
+  holds five indexes on `students` with no fulltext among them.
+- **Status.** Measured, not repaired, and deliberately so. Both candidate fixes change what a desk can find: a
+  prefix match stops answering for a surname typed from its middle, and a `MATCH … AGAINST` in boolean mode follows
+  MySQL's word-splitting and minimum-token rules. That is a search-semantics ruling for the school, not a default to
+  invent; the plans, the row counts and the two readings are the deliverable for this row.
+  `lane167-probe-capacity-index.php` also retires one belief written earlier in this batch's working notes: the
+  capacity count is **not** a bottleneck at this scale — the fullest partition (block 377 at 40 of `maxStudents` 40,
+  out of 507,420 subject lines) answers 2.77 ms in the newest capture and 0.86 ms in the earlier one, and the
+  optimizer keeps the FK index either way. The first reading of 300 ms came from a degenerate fixture that put
+  101,484 students in one block of 40, which `lane163` now refuses to build.
 
 ### P09 — Enrollment History Performance (¶121-130)
 
@@ -200,15 +285,29 @@ not be read from code it says so, and no requirement is marked Verified without 
 - **Affected components.** Backend, database.
 - **Testing method.** T10 with `DB::enableQueryLog()` and an asserted ceiling, plus a volume rehearsal on a
   generated schema.
-- **Evidence.** Pending.
-- **Status.** Not started.
+- **Evidence.** Same schema and instrument as P08, newest capture in `storage/app/scratch/lane164-out.txt`. A single
+  student's history is a `ref` hop on `fk_enrollments_studentid` expecting one row, then two `eq_ref:PRIMARY` hops;
+  their subject lines are a `ref` on `uq_enrollment_subject_attempt` expecting five. The *shape* is the finding:
+  every read is an index seek, so retrieval from hundreds of thousands of rows is not the problem — the page loop is.
+  Measured on the same run, a 20-row page built per row costs **40 queries** where the same two reads batched cost
+  **2**, and the two timings that came back were 57.16 ms against 6.23 ms (an earlier run of the same command on the
+  same schema answered 8.31 ms against 0.77 ms). The 20x query gap is the claim worth carrying; the milliseconds are
+  this box's, on that minute, and the file names them as such.
+- **Status.** Measured, not repaired. Batching the checklist per page is the fix the evidence supports and it is
+  code work, not a school question — the ceiling case belongs with the Registrar queue's own test once written. The
+  guide's "hundreds of thousands of rows" precondition is now reproducible on demand by
+  `lane163-build-scale-schema.php`, which is what makes the claim checkable next time instead of arguable.
 
 ### P10 — Concurrent Subject Registration (¶131-140)
 
-- Same missing lock as P02, and no test in the repository opens two connections at once (grepped `tests/` for
-  `curl_init`, `pcntl_fork`, `Http::post`, `parallel` — zero files).
-- **Required solution.** The P02 lock plus a concurrent harness; the harness is also P24's engine, so it is built
-  once. **Status.** Not started.
+- Same missing lock as P02, and no case in `tests/` opens two connections at once (grepped `tests/` for `curl_init`,
+  `pcntl_fork`, `Http::post`, `parallel` — zero files). What exists now is the instrument rather than a case:
+  `storage/app/scratch/lane168-probe-last-seat-race.php` runs two child processes against one MySQL server on a
+  scratch clone, which is the harness this row and P24 both need. It drives the *assign* path; the path that adds
+  subject lines to one enrollment concurrently is still undriven.
+- **Required solution.** The P02 lock (delivered) plus a concurrent harness (delivered); what remains is a case for
+  two writers adding subject lines to one enrollment, which needs the P03 database key before it can be settled
+  rather than merely observed. **Status.** Harness built 2026-11-01; scenario not yet driven.
 
 ### P11 — Invalid Enrollment Data (¶141-150)
 
@@ -217,13 +316,14 @@ not be read from code it says so, and no requirement is marked Verified without 
   foreign keys refuse an enrollment that names no student or course, `enrollments` columns are NOT NULL, statuses
   are MySQL enums, and the desk's requests validate `exists:` before write. The delete-side consequences are
   covered by `php storage/app/scratch/lane43-delete-guards.php`.
-- **Gap.** No `CHECK` constraint expresses a range rule the guide names (capacity, units ≥ 0), and the seat and
-  fee-sheet keys of P03 are missing.
-- **Required solution.** Add the CHECKs the columns can honestly carry and the two unique keys of P03; keep the
-  SQLite suite's escape hatch in every migration that writes raw MySQL.
+- **Gap.** No `CHECK` constraint expresses a range rule the guide names (capacity, units ≥ 0). The two unique keys
+  this row asked for arrived with P03 on 2026-11-01, so the remaining half is the narrower one.
+- **Required solution.** Add the CHECKs the columns can honestly carry, and keep the SQLite suite's escape hatch in
+  every migration that writes raw MySQL.
 - **Testing method.** T12 — a POST naming a non-existent subject, student and section must be refused, and the
   refusal must survive a route that skips validation.
-- **Status.** Implemented for the existing constraints; the additions are not started.
+- **Status.** Implemented for the existing constraints and for P03's two keys; the range `CHECK`s are not started,
+  which is the honest remainder of this row.
 
 ### P12 — Prerequisite Checking (¶151-160)
 
@@ -384,23 +484,36 @@ not be read from code it says so, and no requirement is marked Verified without 
 
 - **Existing implementation.** Index work has been done before: `add_composite_indexes_for_heavy_screens` and
   `add_performance_indexes` add composites over the columns the desks filter, and the queue lists paginate.
-- **Gap.** Nothing is measured. The guide requires performance improvements proved, not assumed, and the two
-  largest known costs are P08's unusable name index and P09's per-row checklist.
-- **Required solution.** One measured bench: a generated synthetic schema at a stated row count, the same query set
-  run before and after each change, timings and plans printed.
-- **Testing method.** T24's non-destructive half. **Status.** Not started.
+- **Gap that is now closed.** Nothing was measured. The guide requires performance improvements proved, not assumed,
+  and the two largest known costs are P08's unusable name index and P09's per-row checklist.
+- **What was delivered.** One measured bench: `lane163-build-scale-schema.php` at a stated row count (100,000
+  students, 507,420 subject lines, capacity invariants enforced by the builder), `lane164-measure-scale-queries.php`
+  printing timings beside each `EXPLAIN`, and `lane172-enrollment-day-load.php` driving the write path itself from
+  ten processes — 1,000 acts at 69.2 per second, median 113.6 ms per request, every integrity question read back
+  from the server and falsified by `mutate-lane172-load-integrity.php`.
+- **Testing method.** T23's measurement plus T24's load run. **Status.** Built and measured 2026-11-01. The
+  limitation is stated rather than papered over: ten processes on one box is a practical scale, not a data centre,
+  and a timing belongs to the run that printed it.
 
 ### P24 — Complete Enrollment-Day Challenge (¶276-290)
 
-- **Existing implementation.** Nothing concurrent exists in the repository: no test opens two connections, no
-  script drives parallel requests, and `pcntl` appears only as a CI PHP extension
-  (`.github/workflows/ci.yml:23,211`).
-- **Required solution.** An integration harness that builds a synthetic enrollment-day schema, drives N parallel
-  registrar assigns through the HTTP stack, and then checks the ten properties the prompt lists: no block over
-  capacity, no prohibited duplicate, no load breach, no bypassed prerequisite, no accepted schedule conflict, counts
-  accurate, no partial records from failed transactions, committed records still there, authorization enforced, the
-  database up and consistent. Run at a practical scale, state the limitation, and carry the 1,000-request design.
-- **Status.** Not started. **This is the deliverable the defense question is asked about.**
+- **Existing implementation.** Before this batch nothing concurrent existed: no test opened two connections and no
+  script drove parallel requests; `pcntl` appeared only as a CI PHP extension
+  (`.github/workflows/ci.yml:23,211`). `lane168` now drives two writers against one seat, and `lane172` drives ten
+  processes at a thousand acts.
+- **What the ten properties say today.** No block over capacity — `blocks over declared capacity 0`, and the rule is
+  the audit's twentieth. No prohibited duplicate — `duplicate active seats 0`, enforced by
+  `uq_enrollments_active_seat`, with 12 refusals all carrying driver code 1062. No partial records from failed
+  transactions — `orphan workflow forms 0` and `committed acts without a form 0`. Committed records still there —
+  the server's own count of load enrollments reconciles with the workers' tallies. Authorization enforced — the acts
+  run as a real office-4 desk account through the service the desks call. Database up and consistent — the run
+  finishes with the clone readable and the source weighed unchanged.
+- **Which two it does not reach, and why.** No load breach and no bypassed prerequisite: the creation act writes no
+  subject line, so load and prerequisite are the *proposal* path (P13's ceiling is an open school figure; P12 is
+  already pinned by `EnrollmentReadinessTest`). No concurrent student modification either — that is P05, not built.
+  Saying so is the difference between a challenge met and a claim stretched.
+- **Status.** Built and measured 2026-11-01 on the creation path, with its limits named above. This is the deliverable
+  the defence question is asked about, and the answer it gives is a run, not a design.
 
 ---
 
@@ -409,17 +522,17 @@ not be read from code it says so, and no requirement is marked Verified without 
 | Concept (guide ¶) | Status | Where | Evidence owed |
 |---|---|---|---|
 | Transactions (¶295) | Implemented | 38 `DB::transaction` sites; `EnrollmentIssuer.php:58` | T01, T02 |
-| COMMIT / ROLLBACK (¶297) | Implemented, not demonstrated | same | a printed failed-commit and a committed pair |
-| ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation by P02/P20 work; Durability by P21 | four separate demonstrations |
-| Concurrency Control (¶301) | Not implemented | P02, P03, P05, P10 | T03, T07, T11 |
-| Locking (¶303) | One site only | `PrintService.php:140` | the enrollment locks this batch adds |
-| Deadlock Handling (¶305) | Not implemented | P07 | T08 controlled deadlock |
-| Database Constraints (¶307) | Implemented | 182 constraints, 13 unique on live `ems` | the two new keys of P03 |
-| Indexing (¶309) | Implemented, partially unusable | `idx_students_names`, `idx_enrollments_term_status` | `EXPLAIN` before/after |
-| Query Optimization (¶311) | Not measured | P08, P09 | timings and plans |
-| Data Integrity (¶313) | Implemented | state machine, `ems:audit:record-states`, lane 43 delete guards | the new capacity rule |
+| COMMIT / ROLLBACK (¶297) | Implemented, partly demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest` | a printed failed-commit inside the enrolment path (T01) |
+| ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
+| Concurrency Control (¶301) | Implemented for one act | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168` | P05 and P10's own races, which no writer yet serialises |
+| Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
+| Deadlock Handling (¶305) | Implemented and observed | `App/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path, and P17's key before any act is retried blind |
+| Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php`, including the two enrollment keys this batch added | nothing owed for the keys; the range `CHECK`s are named in P11 |
+| Indexing (¶309) | Implemented, unusable by one query | `idx_students_names`, `idx_enrollments_term_status`, `idx_enrolledsubjects_block_status` | the plan is printed: a leading-wildcard search reads ~98,800 index rows where a prefix reads ~1,111, and the estimates agreed across two runs |
+| Query Optimization (¶311) | Measured 2026-11-01 | P08, P09, `lane164-measure-scale-queries.php` | the two repairs the measurements point at, which wait on a search-semantics ruling |
+| Data Integrity (¶313) | Implemented, extended today | state machine, `ems:audit:record-states` (its 20th rule weighs block capacity), lane 43 delete guards | nothing owed for P04's block side |
 | Database Security (¶315) | Implemented | policies, RBAC, hidden hashes, audit redaction | T23 matrix |
-| Recovery (¶317) | Documented only | `Demo-Day-Guide.md:289-307` | the restore drill, T22 |
+| Recovery (¶317) | Drilled 2026-11-01 | `tools/ems-backup-drill.php`, 64 tables compared and three ordered digests MATCHES | a scheduled run and point-in-time recovery, which the school has not asked for |
 
 No concept is marked Implemented because a document discusses it.
 
@@ -427,67 +540,123 @@ No concept is marked Implemented because a document discusses it.
 
 ## 4. Presentation requirements (guide ¶320-354, 8 areas)
 
-1. **Database Design** — ERD, tables and relationships, keys. This repository already carries the schema census in
-   `Documentation/EMS Complete Documentation.docx` §24 and the key inventory in §23.6.1; the ADS pack needs an ERD
-   artefact, which does not exist yet and is owed.
-2. **Transactions** — one meaningful transaction (exists), COMMIT and ROLLBACK, a failure scenario with the
-   observed result (owed).
-3. **ACID** — four properties, and the guide names `FOR UPDATE` for isolation and a backup method for durability,
-   which is exactly P02 and P21.
-4. **Concurrency** — a simultaneous enrollment scenario, the chosen strategy, testing evidence (all owed).
-5. **Deadlock** — a possible scenario and the handling strategy (owed).
-6. **Indexing** — indexes, why those columns, plan or performance evidence (the first two exist, the third is owed).
-7. **Testing** — scenario, expected, actual, evidence (this file's §5 and the test documents).
+Each area was re-read on 2026-11-01 rather than carried forward: a list of what is owed that stops growing is the
+same defect as a stale row, and six of the eight below said "owed" for things this batch had already delivered.
+
+1. **Database Design** — ERD, tables and relationships, keys. **Delivered.** The diagram is generated from the
+   schema by `storage/app/scratch/lane162-generate-erd.php` into `Documentation/DATABASE-DESIGN-ADS.md`, with the
+   key inventory beside it; the census and §23.6.1 in the authority document are kept equal to `information_schema`
+   by `lane60` and `lane44` rather than restated by hand.
+2. **Transactions** — **partly delivered.** One meaningful transaction per enrollment act, COMMIT and ROLLBACK
+   evidenced by `BlockCapacityAtomicityTest` (a refusal that seats nobody, and the seats still free afterwards).
+   Still owed: a failure injected *inside* a commit, which the assign path cannot produce from a desk because its
+   ids are validated first — stated in `TESTING-AND-VERIFICATION-ADS.md` as T01/T02 rather than simulated.
+3. **ACID** — **delivered as far as the build goes.** Isolation is the row lock the guide names (`FOR UPDATE`),
+   durability is the executed restore; atomicity and consistency are the keys and the audit. The one property the
+   system does not hold is a transaction isolation level around a report, which is P20 and is written as absent.
+4. **Concurrency** — **delivered, with numbers attached.** The scenario, the chosen strategy (pessimistic row
+   locks in one fixed order over a canonically sorted id list) and the testing evidence are in
+   `DEFENCE-EVIDENCE-ADS.md` parts 3, 4 and 9; the two-writer outcome is `lane168`'s own table, and the
+   thousand-act enrollment-day run is `lane172`'s (`storage/app/scratch/lane172-load-out.txt`), carried into
+   `DATABASE-DESIGN-ADS.md` as a result rather than a plan.
+5. **Deadlock** — **delivered.** A possible scenario was not invented: a real `1213` appeared on HEAD's act during
+   the race probe, and the handling strategy with its boundaries is `App\Support\RetryOnDeadlock`.
+6. **Indexing** — **delivered as evidence, not as a fix.** Why each column, and the plan beside each timing, are in
+   `DEFENCE-EVIDENCE-ADS.md` part 11; what the plans recommend (a sargable search, a batched page) is registered as
+   measured-not-repaired with its reason.
+7. **Testing** — **delivered.** `TESTING-AND-VERIFICATION-ADS.md` carries the scenario, preconditions, data, steps,
+   expected, actual, verdict, evidence and notes for the twenty-four cases, and marks each un-executed one as
+   un-executed with what blocks it.
 8. **Workflow and Applicability** — state the workflow, justify each N/A or Partial. The build's workflow is
    registrar-assisted and office-assisted across nine desks — there is no student login (public `/register` is
-   removed and `students` is deliberately not notifiable), which the guide allows, and each Partial above carries
-   its reason.
+   removed and `students` is deliberately not notifiable), which the guide allows, and each Partial in section 1
+   above carries its reason.
 
 ---
 
 ## 5. Test map T01-T24
 
-The prompt's table is the queue this document answers to. Today, T12, T13, T16, T19, T23 overlap cases that already
-exist in the suite (`EnrollmentReadinessTest`, `PermissionMatrixTest`, `Store` and intake cases) and each will be
-re-pointed to the named existing case rather than duplicated; the rest are new. Every row of this table will carry
-the ten fields the prompt demands — description, preconditions, test data, steps, expected, actual, pass or fail,
-logs, evidence — in `Documentation/TESTING-AND-VERIFICATION-ADS.md`, and a test that cannot run will say so with its
-reason rather than being left off the list.
+The prompt's table is the queue this document answers to. T12, T13, T16, T19 and T23 name cases the suite already
+holds (`EnrollmentReadinessTest`, `PermissionMatrixTest`, the store and intake cases) rather than duplicating them,
+and the table above says which; the rest are this batch's own. Every case in
+`Documentation/TESTING-AND-VERIFICATION-ADS.md` is written in the prompt's field form — test id, description,
+preconditions, test data, steps, expected, actual, pass or fail, logs, evidence, notes — and a test that cannot run
+is marked **not executed** with the reason in the same shape rather than being left off the list. The prompt's ninth
+field, *relevant logs or query output*, is now its own row per case and is filled from a captured file
+(`lane164-out.txt`, `lane168-out.txt`, `lane172-load-out.txt`, `l171-suite.log`) or from the server's own message
+quoted in the artefact that holds it; nothing in that file quotes a line no run printed.
 
 | Test | Scenario | Exists today? |
 |---|---|---|
 | T01 | multi-subject commit | no |
-| T02 | failure mid-commit | no |
-| T03 | two requests, one slot | no |
-| T04 | duplicate enrollment | no |
-| T05 | capacity reached | no |
+| T02 | failure mid-commit | no — see the note under the table for why the assign path cannot produce it |
+| T03 | two requests, one slot | yes, `lane168-probe-last-seat-race.php` (two writers, one MySQL server, HEAD vs working) |
+| T04 | duplicate enrollment | yes, `DatabaseLevelEnrollmentRulesTest` — the second active seat refused by `uq_enrollments_active_seat` on MySQL, the second fee sheet refused on both drivers |
+| T05 | capacity reached | yes, `BlockCapacityAtomicityTest` (a request larger than the seats left seats nobody) |
 | T06 | multi-subject cancellation | no |
 | T07 | concurrent student edit | no |
-| T08 | controlled deadlock | no |
-| T09 | search at volume | no |
-| T10 | history retrieval | no |
-| T11 | popular-section contention | no |
+| T08 | controlled deadlock | yes, same probe — HEAD answered a real `1213`, the locked act answered none |
+| T09 | search at volume | yes, `lane164-measure-scale-queries.php` over 100,000 students with each plan printed |
+| T10 | history retrieval | yes, same instrument (0.80 ms joined, and 40 queries vs 2 batched for a page) |
+| T11 | popular-section contention | yes, `lane168` on a block staged at exactly one free seat |
 | T12 | invalid references | yes, by `exists:` validation cases |
 | T13 | missing prerequisite | yes, `EnrollmentReadinessTest` |
 | T14 | load exceeded | no |
 | T15 | faculty load | not executed — no limit is defined (P14) |
 | T16 | schedule conflict | partially, resource side |
-| T17 | DB exception mid-flow | no |
-| T18 | interruption and retry | no |
+| T17 | DB exception mid-flow | yes, `the_helper_retries_a_deadlock_and_a_lock_wait_and_nothing_else` (the exception side; no injected fault) |
+| T18 | interruption and retry | partly — `RetryOnDeadlock` is pinned (retries 1213/1205, propagates everything else, refuses `attempts: 0`, says *Nothing was saved*), and no case interrupts a real process between the write and the commit, which is P17's request-key work |
 | T19 | duplicate student id | yes, intake validation |
 | T20 | deletion and restoration | no |
 | T21 | report during enrollment | no |
-| T22 | backup and restore | no |
+| T22 | backup and restore | yes, `tools/ems-backup-drill.php` executed: 64 tables compared row for row and three ordered digests MATCHES, with the durability variables read from the server |
 | T23 | unauthorized access | yes, `PermissionMatrixTest` and policy cases |
-| T24 | high-volume challenge | no |
+| T24 | high-volume challenge | no — the design is written, the run is not |
+
+Two rows need their reason stated rather than left as a blank. **T02** asks that a failure mid-commit leave nothing
+half-written; on the assign path that failure is unreachable from a desk, because `enrollmentIds.*` is validated
+`exists:enrollments`, so a bad id is refused before the transaction opens — the first draft of this batch's test
+thought it had produced a mid-loop failure and had in fact produced a validation refusal, which is why the case is
+written as an over-large request instead. **T17** is pinned from the exception side, not from a real fault: the suite
+runs on SQLite, which does not deadlock, so the case hands the helper the two driver conditions rather than
+pretending the driver produced them.
 
 ---
 
 ## 6. What remains, stated plainly
 
-Nine problems need new code (P02, P03's database half, P04's rule, P05, P07, P09, P13, P15's student side, P17, P20,
-P21, P23, P24), four need a demonstration of something that already exists (P01, P06, P16, P18), one is a justified
-Partial (P14), one is an owner ruling recorded rather than a defect (P19's restoration), and the presentation pack
-owes an ERD. Two inputs genuinely wait on the school and are not hidden behind a default: the term unit ceiling
-(P13) and any faculty load cap (P14). Every figure in this file is either read from the code on the date above or
-printed by `lane154` and `lane155`; none is carried forward from a previous day.
+Read off §1's own Status column by `php storage/app/scratch/lane169-read-ads-status.php`, which prints the bucket
+counts and refuses the run when they do not add to the 24-row population or when a row's lead word is unclassified.
+This file states no tally, because the buckets are a property of §1's cells and every row re-taken here moves them:
+
+- **Built and measured.** P02's row lock and refusal, P03's two unique keys, P04's guard plus the audit's twentieth
+  rule, P07's deadlock handling, P21's restore drill, P23's and P24's enrollment-day run. Each has an instrument that
+  can show it failing.
+- **Measured but not repaired.** P08 and P09 — the plans and timings are in this file, and the two changes they
+  point at are decisions (what a search may stop matching; how a page's checklist is batched), not defaults to invent.
+- **Partly.** P10's own race and P14's justified cap.
+- **Not built.** P05 (a silent overwrite of one student record), P13 (the term unit ceiling, which the school has
+  not stated), P17 (no request key, so "did my save commit" is unanswerable), P20 (no isolation around a report).
+- **Implemented.** P01, P06, P11, P12, P15, P16, P18, P19, P22 — of which P01, P06 and P16 still owe the
+  demonstration the guide asks for rather than the behaviour.
+
+Two inputs genuinely wait on the school and are not hidden behind a default: the term unit ceiling (P13) and any
+faculty load cap (P14). The presentation pack is delivered rather than owed: the ERD is generated into
+`Documentation/DATABASE-DESIGN-ADS.md` by `storage/app/scratch/lane162-generate-erd.php`, the twelve-part report is
+`Documentation/FINAL-REPORT-ADS.md`, the defence answers are `Documentation/DEFENCE-EVIDENCE-ADS.md`, and the
+evidence index is `Documentation/EVIDENCE-PACK-ADS.md`.
+
+One finding the load run produced about the schema itself, recorded here rather than fixed silently:
+`enrollmentworkflow` is guarded by PRIMARY on `workflowId` and a **non-unique** FK index on `enrollmentId`
+(measured with `SHOW INDEX` by `mutate-lane172-load-integrity.php`), so "one workflow form per enrollment" is held by
+`WorkflowService::createWorkflow()` and the existence check around it, not by the server. The harness can therefore
+plant two forms on one record — which is how it proves the checker sees the defect, and also how it proves the
+constraint is absent. The additive fix is a unique key over `enrollmentId`; it is not taken in this batch because the
+duplicate it would refuse is exactly the re-issue question P17's request key has to answer first, and a key that
+refuses a legitimate re-issue is a worse defect than the one it prevents.
+
+The sentence this one replaces read "Nine problems need new code" and then listed thirteen — the membership defect
+this repository has met in its own registers (lane 64), caught here by making the count come from the table instead
+of from the hand that wrote the table. Every figure in this file is either read from the code on the date above or
+printed by `lane154`, `lane155`, `lane164`, `lane167`, `lane168` or `lane169`; none is carried forward from a
+previous day.

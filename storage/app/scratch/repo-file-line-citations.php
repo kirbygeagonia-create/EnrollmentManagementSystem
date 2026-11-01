@@ -65,26 +65,41 @@ $targets = $args !== [] ? $args : [
     'Documentation/REQUIREMENTS-TRACEABILITY-ADS.md',
     'Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md',
     'Documentation/SYSTEM-ARCHITECTURE-ADS.md',
+    'Documentation/DATABASE-DESIGN-ADS.md',
+    'Documentation/SECURITY-AND-RECOVERY-ADS.md',
 ];
 
-// A dated owner-facing document that is not in the list above is a citation blind spot, not an absence
-// of citations. Refuse loudly rather than reporting a clean sweep over files this tool never opened.
-// Only when the whole set is being scanned: a scoped run names its own files on purpose.
-if ($args === []) {
-    $dated = glob($root.'/Documentation/{School-Decision-Sheet-*,Prompt-Requirement-Matrix-*,Prompt-Completion-Report-*,Registrar-Window-Packet-*,Department-Board-Exam-Confirmation-*,Registrar-Print-Decision-Sheet-*,Print-Fidelity-Comparison-*,*-ADS}', GLOB_BRACE);
-    $unlisted = [];
-    foreach ((array) $dated as $f) {
-        $rel = 'Documentation/'.basename($f);
-        if (! in_array($rel, $targets, true)) {
-            $unlisted[] = $rel;
-        }
-    }
-    if ($unlisted !== []) {
-        fwrite(STDERR, 'REFUSED: '.count($unlisted).' dated owner-facing document(s) exist but are not scanned: '
-            .implode(', ', $unlisted)."\n  Add the file to the list above, or delete it. An unread document cannot be a clean one.\n");
+// The list above is a hand-kept set, and hand-kept sets miss the newest document: this gate was widened once to
+// name the five `*-ADS` files, and the four written after that sat outside it while the run printed
+// "0 problem(s)" — the blind spot this file has recorded three times. So the prose set is DERIVED here: every
+// markdown file under `Documentation`, plus the two at the root. The list above is kept because it names the files
+// the gate was built for, and a scoped run (`<this tool> File.md …`) still answers to its own arguments.
+$derived = glob($root.'/Documentation/*.md') ?: [];
+$derived = array_map(static fn (string $f): string => 'Documentation/'.basename($f), $derived);
+$derived[] = 'AGENTS.md';
+$derived[] = 'DEPLOYMENT.md';
+$derived = array_values(array_unique($derived));
+sort($derived);
 
-        exit(1);
-    }
+if ($derived === []) {
+    fwrite(STDERR, "REFUSED: the walk of Documentation/ found no markdown at all — a clean verdict from an empty "
+        ."scope is not a clean verdict.\n");
+
+    exit(1);
+}
+
+$missingFromList = array_values(array_diff($derived, $targets));
+$targets = $args !== [] ? $args : array_values(array_unique([...$targets, ...$derived]));
+
+// The old behaviour was to REFUSE on a document the list did not name, which is weaker than scanning it: a refusal
+// sends a reader to add a line, and the line is forgotten again. Now the file is opened, and the notice records
+// that the hand-kept list had fallen behind the directory — which is the fact worth keeping visible.
+if ($args === [] && $missingFromList !== []) {
+    echo 'NOTICE  '.count($missingFromList)." markdown file(s) exist but were not on the hand-kept list; they are "
+        ."scanned anyway: ".implode(', ', $missingFromList)."\n";
+}
+if ($args === []) {
+    echo 'SCOPE   '.count($targets)." markdown file(s) opened (derived from Documentation/, not from memory)\n";
 }
 
 $index = null;
@@ -198,7 +213,10 @@ $lineCache = [];
 // make a dated row state a position that was never true on its own day, while leaving them judged makes the
 // gate permanently red and teaches everyone to ignore it. Both readings are wrong; this is the third: the
 // pointers are reported, named, and not counted against the run. lane 72's HISTORY bucket, applied here.
-$DATED_MARKER = 'Pointer currency (2026-10-31)';
+// The marker used to be the literal string `Pointer currency (2026-10-31)`, which embedded one day's date: a
+// document exempted on a later day could not carry an honest date and still be recognised, so the exemption would
+// either lie about its day or silently stop applying. Any ISO date after the phrase is now accepted.
+$DATED_MARKER = '/Pointer currency \(\d{4}-\d{2}-\d{2}\)/';
 $datedReported = 0;
 $datedDocs = [];
 
@@ -211,7 +229,7 @@ foreach ($targets as $rel) {
         continue;
     }
     $text = (string) file_get_contents($path);
-    $isDated = ! $strictDated && str_contains($text, $DATED_MARKER);
+    $isDated = ! $strictDated && preg_match($DATED_MARKER, $text) === 1;
     preg_match_all($fileRe, $text, $m, PREG_SET_ORDER);
 
     foreach ($m as $x) {

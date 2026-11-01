@@ -174,15 +174,30 @@ $samples = [
     ['enrollments', 'enrollmentId', 'enrollmentStatus'],
     ['payments', 'paymentId', 'orNumber'],
 ];
+// A GROUP_CONCAT checksum would have been the weaker instrument even when it parsed: `group_concat_max_len`
+// defaults to 1024 bytes, so a table wider than that hashes its own prefix and calls the remainder identical.
+// The rows are therefore read in key order and hashed here, with the hashed row count printed beside the digest.
+$hashOf = static function (PDO $c, string $table, string $prefix, string $key, string $col): array {
+    $rows = $c->query("select `{$key}`, `{$col}` from {$prefix}`{$table}` order by `{$key}`")->fetchAll(PDO::FETCH_ASSOC);
+    $parts = [];
+    foreach ($rows as $r) {
+        $parts[] = $r[$key].':'.($r[$col] ?? 'NULL');
+    }
+
+    return [count($rows), md5(implode('|', $parts))];
+};
+
 foreach ($samples as [$t, $key, $col]) {
     if (! in_array($t, $tables, true)) {
         continue;
     }
-    $a = $pdo->query("select coalesce(md5(group_concat(concat(`{$key}`,':`,`{$col}`) order by `{$key}` separator '|')),'-') from `{$source}`.`{$t}`")->fetchColumn();
-    $b = $drill->query("select coalesce(md5(group_concat(concat(`{$key}`,':`,`{$col}`) order by `{$key}` separator '|')),'-') from `{$t}`")->fetchColumn();
-    printf("  ordered checksum %-14s %s\n", $t, $a === $b ? 'MATCHES' : 'DIFFERS');
-    if ($a !== $b) {
-        $differing[] = $t.' checksum differs';
+    [$na, $ha] = $hashOf($pdo, $t, '`'.$source.'`.', $key, $col);
+    [$nb, $hb] = $hashOf($drill, $t, '', $key, $col);
+    $same = $na === $nb && $ha === $hb;
+    printf("  ordered checksum %-14s rows %s/%s digest %s  %s\n", $t, number_format($na), number_format($nb),
+        substr($ha, 0, 8), $same ? 'MATCHES' : 'DIFFERS');
+    if (! $same) {
+        $differing[] = $t.' ordered checksum differs';
     }
 }
 

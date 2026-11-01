@@ -139,22 +139,57 @@ $say('flag-changes-the-set', $controlProblems + $controlDated === $strictProblem
 $say('unknown-flag-refused', $rc === 1 && str_contains($out, 'REFUSED') && str_contains($out, '--no-such-flag-at-all'),
     "rc={$rc} ".$flat($out));
 
-// ── 7. a dated document the list does not name is a loud refusal, and removing it returns the verdict ──────
+// ── 7. a document the hand-kept list never named is still OPENED, and its bad pointer is reported ──────────
+// The gate used to REFUSE on an unlisted document. That is weaker than scanning it — a refusal sends a reader to
+// add a line, and the line is forgotten by the next person who writes a document — so the set is now derived from
+// `Documentation/*.md` and this leg proves a newly created file is read rather than noticed.
 $plantedSheet = $root.'/Documentation/School-Decision-Sheet-2999-01-01.md';
 $plantedSheets[] = $plantedSheet;
 if (file_put_contents($plantedSheet, "# Fixture sheet\n\nSee `{$blankPointer}`.\n") === false) {
     fwrite(STDERR, "PLANT FAILED: cannot write a sheet into Documentation/\n");
     $bad++;
-    printf("\n7 leg(s), %d bad\n", $bad);
+    printf("\nleg 7 could not plant; %d bad\n", $bad);
 
     exit(1);
 }
 [$rc, $out] = $run([]);
-$refused = $rc === 1 && str_contains($out, 'REFUSED') && str_contains($out, 'School-Decision-Sheet-2999-01-01.md');
+$opened = $rc === 1 && str_contains($out, 'School-Decision-Sheet-2999-01-01.md')
+    && str_contains($out, 'EMPTY LINE') && str_contains($out, 'SCOPE');
 @unlink($plantedSheet);
 [$rcAfter, $outAfter] = $run([]);
-$say('unlisted-doc-loud', $refused && $rcAfter === 0, "planted rc={$rc} removed rc={$rcAfter} ".$flat($out));
+$say('new-doc-is-opened', $opened && $rcAfter === 0 && ! str_contains($outAfter, '2999-01-01'),
+    "planted rc={$rc} named-in-output=".str_contains($out, '2999-01-01').' removed rc='.$rcAfter.' '.$flat($out));
 
-printf("\n7 leg(s), %d bad\n", $bad);
+// ── 8. the exemption is not tied to one day's date ─────────────────────────────────────────────────────────
+// The marker used to be the literal `Pointer currency (2026-10-31)`, so a document exempted on any later day
+// either lied about its date or stopped being exempt. Any ISO date now works, and this leg proves it by writing
+// a different one and requiring the same REPORTED verdict leg 3 requires.
+$markedLater = $scratch.'/lane126-marked-later.md';
+$write($markedLater, "# Fixture\n\n**Pointer currency (2026-11-01):** these digits quote that day's layout.\n\n"
+    ."The deactivate act is `{$blankPointer}`.\n");
+[$rc, $out] = $run(['storage/app/scratch/lane126-marked-later.md']);
+$say('marker-any-date-exempts', $rc === 0 && $fig($out, 'problem(s)') === 0
+    && $fig($out, 'dated-record pointer(s)') === 1 && str_contains($out, 'DATED'), "rc={$rc} ".$flat($out));
+
+// ── 9. and a malformed marker still accuses ────────────────────────────────────────────────────────────────
+// A widening that accepts anything is not a widening, it is an off switch: without the parentheses the note is
+// ordinary prose, and the pointer under it must be judged.
+$markedBad = $scratch.'/lane126-marked-bad.md';
+$write($markedBad, "# Fixture\n\n**Pointer currency 2026-11-01:** no parentheses, so this is a sentence, not a marker.\n\n"
+    ."The deactivate act is `{$blankPointer}`.\n");
+[$rc, $out] = $run(['storage/app/scratch/lane126-marked-bad.md']);
+$say('malformed-marker-accuses', $rc === 1 && $fig($out, 'problem(s)') === 1 && str_contains($out, 'EMPTY LINE')
+    && ! str_contains($out, 'DATED'), "rc={$rc} ".$flat($out));
+
+// ── 10. an empty derived scope refuses rather than answering clean ────────────────────────────────────────
+// The scope is read from the directory, so a walk that opened no file must refuse: this is the same failure the
+// harness already names for a checker pointed at the wrong construct — a clean verdict over nothing read.
+[$rc, $out] = $run([]);
+$scope = preg_match('/SCOPE\s+(\d+) markdown/', (string) $out, $m) ? (int) $m[1] : 0;
+$say('scope-is-printed-and-non-empty', $scope >= 30 && str_contains($out, 'derived'),
+    "SCOPE line read as {$scope} file(s); expected the whole Documentation/ tree to be named in the output.");
+
+$legs = 10;
+printf("\n%d leg(s), %d bad\n", $legs, $bad);
 
 exit($bad === 0 ? 0 : 1);
