@@ -170,6 +170,21 @@ jobs:
           # case to report a failure and this step to exit 1 naming the column, then blinds the instrument in two
           # copies, each of which must refuse rather than report a clean sweep.
           php storage/app/scratch/lane87-date-write-columns.php --ci
+      - name: Refuse a list that repaints without saying so
+        run: |
+          # Prompt §14 asks that empty, loading and console-error states be checked, and §28.3 G-41 carried that
+          # clause as UNVERIFIED because nothing weighed it. This is the source-level half of it: a bare table site
+          # whose default sentence is the only thing a desk would see, a page that repaints rows from its own
+          # router call without any pending signal on that refresh, and any console.log / console.warn / debugger
+          # left in a page. The loading claim is the one that moved: 24 of the 28 pages that repaint looked handled
+          # because a SAVE button form.processing sits in the same file, on a different control answering a
+          # different question — so the rule reads the refresh, never the word. A page that renders the shared
+          # table is credited only because DataTable.jsx reads the router pending state AND app.jsx arms the
+          # watcher at boot; strip either one and every refreshing page becomes chargeable again, which is a leg
+          # of mutate-lane142-console-states.php rather than a claim in this comment. The RESPONSIVE half and the
+          # runtime-error half are printed NOT JUDGED: media queries and a live console error are viewport and
+          # browser properties, and this step does not pretend otherwise.
+          php storage/app/scratch/lane142-measure-console-states.php --ci
 
   backend-mysql:
     name: Backend (Pest) — MySQL 8

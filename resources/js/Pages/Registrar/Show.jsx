@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
-import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, Select, formatYearLevel, registrarGateLabels } from '@/Components/ui';
+import { PageHeader, Badge, Card, CauseEffectModal, StatCard, WorkflowStepper, Modal, Select, formatYearLevel, registrarGateLabels, useRouterPending } from '@/Components/ui';
 import { useState } from 'react';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 import ReturnRecordModal from '@/Components/ReturnRecordModal';
@@ -37,6 +37,11 @@ function GradeHistory({ enrollment, gradeHistory }) {
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    // This screen's grade tables are built by hand rather than through the shared control, so the control's pending
+    // caption cannot reach them and the picker's refetch would repaint nothing until the answer lands. The same hook
+    // the control reads is called here — one definition, two surfaces.
+    const waiting = useRouterPending();
 
     const terms = [];
     gradeHistory.rows.forEach((row) => {
@@ -112,6 +117,11 @@ function GradeHistory({ enrollment, gradeHistory }) {
                 </p>
             ) : (
                 <div className="space-y-4">
+                    {waiting && (
+                        <p className="table-status text-xs text-slate-500" role="status" aria-live="polite">
+                            Updating the grade history for the chosen term…
+                        </p>
+                    )}
                     {terms.map((term) => (
                         <div key={term.termLabel}>
                             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-2">

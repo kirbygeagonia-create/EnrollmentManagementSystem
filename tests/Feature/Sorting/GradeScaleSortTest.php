@@ -46,11 +46,15 @@ class GradeScaleSortTest extends TestCase
         ]);
         $this->desk->assignRole('SysAdmin');
 
-        // floor, passing, description — created A, B, C, D in that order.
-        $this->band(75, 79.99, true, 'zeta');
-        $this->band(70, 74.99, false, 'alpha');
-        $this->band(80, 100, true, 'mike');
-        $this->band(65, 69.99, false, 'bravo');
+        // floor, passing, description — created A, B, C, D in that order. The floors are GRADE POINTS, not
+        // percentages: `gradescale.minGrade` and `maxGrade` are `decimal(3,2)`, so the column holds at most 9.99.
+        // The first draft wrote 75 and 79.99 here, SQLite accepted them silently and every case was green on this
+        // box while CI's MySQL job refused the insert with error 1264 — a fixture whose values are outside the
+        // school's own column is true for the wrong reason, the spent-counter lesson reached from the type side.
+        $this->band(2.00, 2.49, true, 'zeta');
+        $this->band(1.50, 1.99, false, 'alpha');
+        $this->band(2.50, 4.00, true, 'mike');
+        $this->band(1.00, 1.49, false, 'bravo');
     }
 
     private function band(float $min, float $max, bool $passing, string $description): Gradescale
@@ -178,7 +182,7 @@ class GradeScaleSortTest extends TestCase
     {
         // Two bands sharing a floor would arrive in either order without the stable key; the handler names the
         // row's own id, so the listing is reproducible across pages.
-        $this->band(75, 77, false, 'kilo');
+        $this->band(2.00, 2.25, false, 'kilo');
 
         $first = $this->actingAs($this->desk)->get(route('admin.reference-data.grade-scale', [
             'sort' => 'range', 'direction' => 'asc', 'search' => 'a',

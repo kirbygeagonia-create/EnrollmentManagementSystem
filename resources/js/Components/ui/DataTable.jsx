@@ -1,11 +1,20 @@
+import { useRouterPending } from './useRouterPending';
+
 // Resolve dotted key paths ('enrollment.student.schoolIdNumber') against the
 // row; falls back to '—' so a wrong key renders a visible dash, never a
 // silent blank cell (audit 2026-09-25).
 const resolveKey = (row, key) =>
     key.split('.').reduce((acc, k) => (acc == null ? acc : acc[k]), row) ?? '—';
 
-export default function DataTable({ columns, rows, children, emptyMessage = 'No records found', className = '', sort = null, onSort = null }) {
+export default function DataTable({ columns, rows, children, emptyMessage = 'No records found', className = '', sort = null, onSort = null, busy = null }) {
     const hasRows = rows && rows.length > 0;
+
+    // Prompt §14 asks for a loading state, and the wait a desk actually experiences is the visit that refetches
+    // these rows — not the form submit that saved something. The page cannot report what it never subscribed to, so
+    // the shared control reads the router's own pending state and every table inherits it; `busy` stays an opt-in
+    // override for a screen that has a narrower in-flight request than the whole page.
+    const routerPending = useRouterPending();
+    const waiting = busy === null ? routerPending : busy;
 
     // A header is a control only when the handler both listed the key and asked for it to be sortable: the page
     // never offers an order the server would ignore, which is the shape §28.3 records as a dead filter send.
@@ -13,7 +22,15 @@ export default function DataTable({ columns, rows, children, emptyMessage = 'No 
 
     return (
         <div className={`overflow-x-auto ${className}`}>
-            <table className="data-table data-table-striped">
+            {waiting && (
+                // Words, not only an opacity change: prompt §11 asks for labelled controls and a screen-reader user
+                // gets nothing from a dimmed table. `aria-busy` is set on the same region so the state is announced
+                // once and read by assistive tech that ignores visible text ordering.
+                <p className="table-status text-xs text-slate-500 py-1" role="status" aria-live="polite">
+                    Updating these rows…
+                </p>
+            )}
+            <table className="data-table data-table-striped" aria-busy={waiting ? 'true' : undefined}>
                 <thead>
                     <tr>
                         {columns.map((col) => (

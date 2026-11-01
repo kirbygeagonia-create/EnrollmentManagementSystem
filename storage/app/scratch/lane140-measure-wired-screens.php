@@ -50,7 +50,7 @@ foreach ($argv as $i => $a) {
     if (in_array($a, ['--check-matrix', '--check-docx'], true)) {
         continue;
     }
-    fwrite(STDERR, "REFUSED: this tool takes --json=<path>, --dump=<path>, --matrix=<path>, --check-matrix or "
+    fwrite(STDERR, 'REFUSED: this tool takes --json=<path>, --dump=<path>, --matrix=<path>, --check-matrix or '
         ."--check-docx and received '{$a}'.\n");
 
     exit(1);
@@ -122,7 +122,7 @@ foreach ($files as $f) {
 $handlerSites = [];
 $appFiles = $walk($root.'/app', 'php');
 if ($appFiles === []) {
-    fwrite(STDERR, "REFUSED: the walk of app/ found no .php file, so the handler reading would answer 0 about a "
+    fwrite(STDERR, 'REFUSED: the walk of app/ found no .php file, so the handler reading would answer 0 about a '
         ."population it never opened.\n");
 
     exit(1);
@@ -169,9 +169,14 @@ printf("SCREEN reading — of those, the page reaches the sort helper: %d\n", $s
 printf("HANDLER reading — distinct actions in app/ that call ListSort::apply: %d (%d call site(s))\n",
     $handlerCount, $rawSiteCount);
 
-printf("\nwired pages (%d):\n", $screenCount);foreach($usesSortHelper as $p){ echo "  ".$p."\n"; }
+printf("\nwired pages (%d):\n", $screenCount);
+foreach ($usesSortHelper as $p) {
+    echo '  '.$p."\n";
+}
 printf("\nhandlers (%d):\n", $handlerCount);
-foreach($handlerSites as $h){ echo "  ".$h."\n"; }
+foreach ($handlerSites as $h) {
+    echo '  '.$h."\n";
+}
 
 // The two readings count different units and are printed apart rather than reconciled into one number: an action
 // can serve two lists, and a page can reach the helper for a table its action does not order.
@@ -184,7 +189,7 @@ printf("\nSCREEN %d vs HANDLER %d — %s\n", $screenCount, $handlerCount,
 // count the register carries is about desk tables only.
 $helperWithoutTable = array_values(array_filter(
     $files,
-    static function (string $f) use ($root): bool {
+    static function (string $f): bool {
         $src = (string) file_get_contents($f);
 
         return (str_contains($src, 'listSort') || preg_match('/nextSortDirection|sortParams/', $src) === 1)
@@ -221,7 +226,7 @@ if ($jsonTo !== null) {
  * is re-worded, and prints its cleanest verdict exactly then. Each pattern names the shape it reads, and a run that
  * extracts nothing refuses, because "0 stale" over 0 claims is the fake census this repository has met five times.
  *
- * @return array<int, array{0: string, 1: int, 2: string}>  [matched text, asserted number, which count it claims]
+ * @return array<int, array{0: string, 1: int, 2: string}> [matched text, asserted number, which count it claims]
  */
 function wired_owed_claims(string $t): array
 {
@@ -292,7 +297,7 @@ function judge_claims(string $label, string $text, int $wired, int $owed, array 
     printf("\n%s: %d wired/owed claim(s) extracted — wired %d, owed %d, denominator %d.\n",
         $label, count($claims), $wired, $owed, $wired + $owed);
     if ($wired + $owed !== 36 && $wired + $owed !== 0) {
-        fwrite(STDERR, "REFUSED: wired {$wired} + owed {$owed} = ".($wired + $owed).", not the 36 the sentence names. "
+        fwrite(STDERR, "REFUSED: wired {$wired} + owed {$owed} = ".($wired + $owed).', not the 36 the sentence names. '
             ."The denominator itself moved and the registers still add to a retired total.\n");
 
         exit(1);
@@ -301,7 +306,7 @@ function judge_claims(string $label, string $text, int $wired, int $owed, array 
         foreach ($bad as $b) {
             fwrite(STDERR, "  STALE  {$b}\n");
         }
-        fwrite(STDERR, "REFUSED: ".count($bad)." claim(s) in {$label} disagree with the tree.\n");
+        fwrite(STDERR, 'REFUSED: '.count($bad)." claim(s) in {$label} disagree with the tree.\n");
 
         exit(1);
     }
@@ -380,7 +385,7 @@ if (in_array('--check-docx', $argv, true)) {
         }
     }
     if ($judged === 0) {
-        fwrite(STDERR, "REFUSED: the dump yielded no JUDGED wired/owed claim — the living sentences moved out of "
+        fwrite(STDERR, 'REFUSED: the dump yielded no JUDGED wired/owed claim — the living sentences moved out of '
             ."reach and this run would otherwise certify a document it never read.\n");
 
         exit(1);

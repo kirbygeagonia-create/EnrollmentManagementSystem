@@ -44,13 +44,13 @@ while (time() < $deadline) {
 }
 
 if ($exitLine === null) {
-    fwrite(STDERR, "REFUSED: the suite log never reported SUITE_EXIT within the hour. This is not a verdict — read "
+    fwrite(STDERR, 'REFUSED: the suite log never reported SUITE_EXIT within the hour. This is not a verdict — read '
         ."the log and the process list before believing anything below.\n");
 
     exit(1);
 }
 
-printf("suite finished: SUITE_EXIT=%d%s", $exitLine, chr(10));
+printf('suite finished: SUITE_EXIT=%d%s', $exitLine, chr(10));
 if (preg_match('/^(\s*Tests:.*|.*Tests:\s*\d+.*)$/mu', (string) file_get_contents($suiteLog), $t) === 1) {
     echo '  tally line: '.trim($t[1]).chr(10);
 }
@@ -117,7 +117,7 @@ if (file_exists('storage/app/scratch/lane144-listtests.txt')) {
     // tally below rather than asserted from a namespace.
     $disc = preg_match_all('/^\s*-\s+Tests/m', (string) file_get_contents('storage/app/scratch/lane144-listtests.txt'));
     if ($disc === false) {
-        fwrite(STDERR, "REFUSED: the discovery count would not compile — that is a broken reader, not a tree with "
+        fwrite(STDERR, 'REFUSED: the discovery count would not compile — that is a broken reader, not a tree with '
             ."no tests.\n");
 
         exit(1);

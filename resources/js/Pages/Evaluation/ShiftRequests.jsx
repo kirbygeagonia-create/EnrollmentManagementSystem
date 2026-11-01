@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel, formatYearLevel, yearLevelChoices } from '@/Components/ui';
+import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel, formatYearLevel, yearLevelChoices, useRouterPending } from '@/Components/ui';
 import { useState } from 'react';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
@@ -20,6 +20,10 @@ const name = (u) => (u ? `${u.firstName} ${u.lastName}` : '—');
 export default function ShiftRequests({ requests, filters = {}, students = [], courses = [], terms = [], can = {}, stats = {} }) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
+    // This screen lists shift requests as cards rather than through the shared table, so the control's pending
+    // caption cannot reach it, and its filter submits repaint the list in place — the wait is real and was
+    // invisible. The same hook the control reads is called here.
+    const waiting = useRouterPending();
     const [filing, setFiling] = useState(false);
     const [endorsing, setEndorsing] = useState(null);
     const [deciding, setDeciding] = useState(null);
@@ -132,6 +136,12 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
                     />
                 </FilterBarField>
             </FilterBar>
+
+            {waiting && (
+                <p className="table-status text-xs text-slate-500" role="status" aria-live="polite">
+                    Updating the docket…
+                </p>
+            )}
 
             <Card title="The docket" subtitle="Each row is one paper: the student's stated will, and the three signatures behind it">
                 {requests.data?.length ? (

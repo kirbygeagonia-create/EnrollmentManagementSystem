@@ -2531,6 +2531,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   while the checklist is seeded from `ProvisionalClearanceRequirements::NAMES` — nine. Admission and Academic
   lines were signed by whichever account was userId 1. Fixed 2026-10-16 by mapping all nine offices and routing
   every signer through `desk_signer_for()`, which refuses an unseated desk.
+- **A fixture written outside the column’s declared domain is green here and red on the runner.** The grade-scale screen was wired as the eighteenth sortable table, its eight cases passed on this box, and CI’s MySQL job refused every one of them: the fixture wrote `minGrade` 75 with a ceiling of 79.99, while `gradescale.minGrade` and `maxGrade` are `decimal(3,2)`, so the school’s column holds at most 9.99 and error 1264 aborts the insert. SQLite has no such ceiling and answers 200. The scale stores GRADE POINTS, not percentages, and reading `information_schema.COLUMNS` before typing the numbers is what says so. Same family as the spent-counter lesson, reached from the type side. So after any batch whose fixture writes a numeric or enum column: ask the migrations or `information_schema` for the column type, and rehearse the file on a scratch schema with `DB_CONNECTION` pinned (lane 87’s rule — naming a MySQL database without pinning the connection makes Laravel open a SQLite file named after it) before the push, not after the runner complains.
 - **A rehearsal schema with clean counters cannot find a counter assumption.** The bug above passed on a
   schema built from the CI recipe because nothing had spent `staffusers` yet; CI caught it because its Pest
   step runs *before* the seeders and every rolled-back test insert still spends its id. When a rehearsal is
@@ -3635,6 +3636,41 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   `notifications` schema, or §23.6.1: run that class, that harness, and `lane44-unique-keys.php` proved by its harness,
   then re-take §24's `notifications` column count and the census sentence (lane 60 names them; a new column moves
   columns, indexes and table constraints together).
+- **A loading state belongs to the visit that repaints the rows, not to the button that saved something** (§14, G-41 contained).
+  `php storage/app/scratch/lane142-measure-console-states.php` weighs prompt §14's console, empty and loading halves at the source
+  (41 table sites in 61 pages) and its harness `mutate-lane142-console-states.php` answers 21 legs; the responsive half is printed
+  NOT JUDGED because a source scan cannot state a viewport fact, and that limit is in the tool's own output rather than implied by
+  a zero. The loading measurement is the lesson: 28 pages repaint rows from a `router.get`/`visit`/`reload` of their own, and the
+  first rule credited 24 of them for the word `processing` appearing anywhere in the file, which was a SAVE button's
+  `useForm().processing` on a different control answering a different question. With the rule tightened to the act, the answer was
+  28 of 28 waiting in silence. The fix is one subscription at boot and one caption in the shared `DataTable`, because 36 of the 41
+  sites already come through that control; `lane145-measure-table-surfaces.php` bounds the coverage claim (4 pages build their own
+  `<table`, and only `Registrar/Show.jsx` refreshes in place, so it and `Evaluation/ShiftRequests.jsx` read the same hook rather
+  than inventing a second flag). `tests/Feature/Desk/DeskRefreshPendingStateTest.php` pins the mechanism and its last case is the
+  census that fails the day a page repaints rows outside the control. Two traps that the browser read, not the source read, produced.
+  **A store that unsubscribes per component is a store that silences its siblings**: `router.on(event, cb)` returns an unsubscribe
+  whose filter keeps only listeners with `event !== E && callback !== C`, so removing one table's listener removes every listener
+  registered for `start` — a page with two tables would leave the other reporting "Updating" forever. That is why the watchers are
+  registered once in `app.jsx` and readers use `useSyncExternalStore`, and why the test asserts `router.off` never appears in the
+  module. **And the caption's settle must be read, not assumed**: the first click showed the caption still present with
+  `aria-busy="true"`, which reads as a stuck state; a longer wait showed it clearing, because the poll had broken out while a
+  second visit was still open. Prove a transient affordance by sampling it again after the visit, not at the first sighting.
+- **A plant that the reader cannot see indicts the reader, not the plant.** `mutate-lane147-notice-fields.php` planted a
+  `title` key into a copy of the workflow listener and the census still answered NO. The window was taken from the
+  `'message'` key rather than from the array that encloses it, so a field written *before* that key — exactly where a
+  title would go — sat outside the span, and the instrument looked correct while reading too little. The bound now
+  starts at the enclosing bracket and prints how many bytes it read, because a reader that does not state its own span
+  cannot be audited after it disagrees with a plant. Two corollaries the same harness paid for: the surfaces a census
+  reads must be addressable (`--screen=`, `--listeners=`), or a positive control means editing a desk screen; and every
+  leg that must stay SILENT is asserted silent (deleting the `Notification` fallback removes the accusation, renaming
+  the bell's row marker or the payload literal makes the run refuse rather than report absence).
+- **A `**` glob in PHP matches nothing, so a census written with one passes by reading no file.** The census case above first read
+  `Pages/**/*.jsx`, returned zero paths, and would have certified the whole tree; the walk now uses a recursive iterator and the
+  case asserts the population is non-empty before judging it.
+- **A figure wrapped off its instrument's citation is not clean, it is unseen.** In markdown the binder reads a physical line:
+  AGENTS' lane-49 pair sat on the continuation of a long bullet and `lane59-instrument-counts.php` reported zero stale while one
+  of the two numbers had moved twice. Keeping the figure and the tool on one line raised the judged count by one, which is the
+  falsification.
 - **A refusal that answers success is the same lie as a zero the server never sent** (lane 97, prompt §8, G-47's
   ownership half). `NotificationController::markRead()` already declined to write another desk's notice — inside an
   `if` — and then returned `{"ok": true}` regardless. Nothing in the front end calls that route today (the bell

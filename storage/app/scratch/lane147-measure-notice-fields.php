@@ -22,6 +22,8 @@ chdir($root);
 
 $wantRows = false;
 $schema = null;
+$screenOverride = null;
+$listenersOverride = null;
 foreach ($argv as $i => $a) {
     if ($i === 0) {
         continue;
@@ -37,7 +39,19 @@ foreach ($argv as $i => $a) {
 
         continue;
     }
-    fwrite(STDERR, "REFUSED: this tool takes --rows or --schema=<name> and received '{$a}'.\n");
+    // Addressable surfaces, so a harness can plant a field or delete the bell's row marker without editing a desk
+    // screen: a checker whose positive control is unreachable is a checker that can only say "missing".
+    if (str_starts_with($a, '--screen=')) {
+        $screenOverride = substr($a, 9);
+
+        continue;
+    }
+    if (str_starts_with($a, '--listeners=')) {
+        $listenersOverride = substr($a, 12);
+
+        continue;
+    }
+    fwrite(STDERR, "REFUSED: this tool takes --rows, --schema=<name>, --screen=<path> or --listeners=<path> and received '{$a}'.\n");
 
     exit(1);
 }
@@ -74,18 +88,22 @@ $PARTS = [
     ],
 ];
 
-$writers = ['app/Listeners/SendEnrollmentNotification.php', 'app/Listeners/SendWorkflowNotification.php'];
-$screen = 'resources/js/Layouts/AuthenticatedLayout.jsx';
+// Addressable surfaces, so a harness can plant a field or erase the bell's row marker without editing a desk screen:
+// a checker whose positive control is unreachable is a checker that can only ever say "missing".
+$writers = $listenersOverride === null
+    ? ['app/Listeners/SendEnrollmentNotification.php', 'app/Listeners/SendWorkflowNotification.php']
+    : [$listenersOverride];
+$screen = $screenOverride ?? 'resources/js/Layouts/AuthenticatedLayout.jsx';
 
 /**
  * The byte span of the array literal that encloses `$at`, scanned by depth so a nested `])` cannot end it early.
  * Returns 0 when no enclosing `[` exists, which the caller must treat as an unread surface rather than as an empty
  * payload.
  */
-$braceSpanFrom = static function (string $text, int $at): int {
+$braceSpanFrom = static function (string $text, int $at): array {
     $open = strrpos(substr($text, 0, $at), '[');
     if ($open === false) {
-        return 0;
+        return [0, 0];
     }
     $depth = 0;
     $len = strlen($text);
@@ -96,12 +114,16 @@ $braceSpanFrom = static function (string $text, int $at): int {
         } elseif ($c === ']') {
             $depth--;
             if ($depth === 0) {
-                return $p - $at + 1;
+                // The span is the WHOLE array literal, from its opening bracket. Taking it from the `'message'`
+                // key instead was the defect the harness caught: a field written before that key — which is where
+                // a title would naturally go — sits outside the window, so the census reported a planted title as
+                // absent and looked right while reading too little.
+                return [$open, $p - $open + 1];
             }
         }
     }
 
-    return 0;
+    return [0, 0];
 };
 
 foreach (array_merge($writers, [$screen]) as $f) {
@@ -120,13 +142,15 @@ foreach ($writers as $f) {
 // reader credits a field the code never writes. The block is taken by brace depth from the array that opens with the
 // message key, so a nearby query naming `enrollmentId` cannot be credited to the notice.
 $payloadAt = strpos($writerText, "'message'");
-$writerPayload = $payloadAt === false ? '' : substr($writerText, $payloadAt, $braceSpanFrom($writerText, $payloadAt));
+[$payloadStart, $payloadLen] = $payloadAt === false ? [0, 0] : $braceSpanFrom($writerText, $payloadAt);
+$writerPayload = $payloadLen > 0 ? substr($writerText, $payloadStart, $payloadLen) : '';
 if ($writerPayload === '') {
-    fwrite(STDERR, "REFUSED: no `'message'` payload literal was found in the listeners, so the writer surface read "
-        ."nothing and every field would be reported absent by accident.\n");
+    fwrite(STDERR, "REFUSED: no enclosing array literal was found for a `'message'` key in the listeners, so the "
+        ."writer surface read nothing and every field would be reported absent by accident.\n");
 
     exit(1);
 }
+printf("writer payload block: %d bytes from the array that holds the 'message' key\n", $payloadLen);
 
 $screenFull = (string) file_get_contents($root.'/'.$screen);
 // The bell's ROW block only. The layout file also contains a logo, a menu and a profile dropdown, and words like
@@ -153,7 +177,7 @@ if ($wantRows) {
     }
     $db = $schema ?? ($env['DB_DATABASE'] ?? null);
     if ($db === null || $db === '') {
-        fwrite(STDERR, "REFUSED: no schema was named and .env answers none, so the rows surface would be read from "
+        fwrite(STDERR, 'REFUSED: no schema was named and .env answers none, so the rows surface would be read from '
             ."a guess.\n");
 
         exit(1);
@@ -165,7 +189,7 @@ if ($wantRows) {
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
     } catch (PDOException $e) {
-        fwrite(STDERR, "REFUSED: the rows surface could not open '{$db}': ".$e->getMessage()." — say which schema "
+        fwrite(STDERR, "REFUSED: the rows surface could not open '{$db}': ".$e->getMessage().' — say which schema '
             ."was asked for rather than reporting the field as absent.\n");
 
         exit(1);

@@ -88,7 +88,7 @@ if ($new === $text) {
 }
 $written = @file_put_contents($path, $new);
 if ($written !== strlen($new)) {
-    fwrite(STDERR, "REFUSED: the write returned ".var_export($written, true)."; restoring.\n");
+    fwrite(STDERR, 'REFUSED: the write returned '.var_export($written, true)."; restoring.\n");
     copy($bak, $path);
 
     exit(1);
@@ -98,7 +98,7 @@ if ($written !== strlen($new)) {
 // a frozen pipe count is the verifier expectation that ages), the gap rows are all still present, and no named class
 // was lost to the write. A raw pipe inside a cell would split the row and silently shrink the table.
 if (substr_count($appended, '|') !== substr_count($from, '|')) {
-    fwrite(STDERR, "REFUSED: the replacement carries ".substr_count($appended, '|')." pipe(s) where the anchor carries "
+    fwrite(STDERR, 'REFUSED: the replacement carries '.substr_count($appended, '|').' pipe(s) where the anchor carries '
         .substr_count($from, '|')." — a raw pipe inside a cell splits the row. Restoring.\n");
     copy($bak, $path);
 

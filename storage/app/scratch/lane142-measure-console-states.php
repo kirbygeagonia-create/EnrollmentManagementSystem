@@ -26,6 +26,8 @@ chdir($root);
 $ci = false;
 $jsonTo = null;
 $pagesOverride = null;
+$controlOverride = null;
+$bootOverride = null;
 foreach ($argv as $i => $a) {
     if ($i === 0) {
         continue;
@@ -47,7 +49,21 @@ foreach ($argv as $i => $a) {
 
         continue;
     }
-    fwrite(STDERR, "REFUSED: this tool takes --json=<path>, --pages=<dir> or --ci and received '{$a}'.\n");
+    // The two files that establish the shared control's coverage, addressable so a harness can falsify that claim:
+    // --control= at a copy whose pending read is removed must make every refreshing page chargeable again. Without
+    // such a leg, "LOADING 0" is a claim about a control nobody proved.
+    if (str_starts_with($a, '--control=')) {
+        $controlOverride = substr($a, 10);
+
+        continue;
+    }
+    if (str_starts_with($a, '--boot=')) {
+        $bootOverride = substr($a, 7);
+
+        continue;
+    }
+    fwrite(STDERR, 'REFUSED: this tool takes --json=<path>, --pages=<dir>, --control=<path>, --boot=<path> or --ci'
+        ." and received '{$a}'.\n");
 
     exit(1);
 }
@@ -76,9 +92,32 @@ if ($files === []) {
 $tableSites = [];
 $sitesByFile = [];
 $absByFile = [];
+
+// Does the shared control carry the refresh signal, and is it armed at boot? Read once, from the two files that
+// would have to say so, so a page cannot be credited by a subscription that was never registered: DataTable.jsx
+// must read the pending state AND app.jsx must call the boot-time watcher, because the store only fills when a
+// listener exists.
+$controlPath = $controlOverride ?? $root.'/resources/js/Components/ui/DataTable.jsx';
+$bootPath = $bootOverride ?? $root.'/resources/js/app.jsx';
+foreach ([$controlPath, $bootPath] as $mustRead) {
+    if (! file_exists($mustRead)) {
+        fwrite(STDERR, "REFUSED: {$mustRead} is not in the tree, so the control's coverage cannot be established.\n");
+
+        exit(1);
+    }
+}
+$controlReadsPending = str_contains((string) file_get_contents($controlPath), 'useRouterPending');
+$bootArmsWatch = str_contains((string) file_get_contents($bootPath), 'watchRouterPending(');
+$controlSignals = $controlReadsPending && $bootArmsWatch;
+
+printf("shared control carries the refresh signal: %s (control reads pending: %s, boot arms the watcher: %s)\n",
+    $controlSignals ? 'yes' : 'NO', $controlReadsPending ? 'yes' : 'no', $bootArmsWatch ? 'yes' : 'no');
 $findings = [];
 $counts = ['EMPTY' => 0, 'LOADING' => 0, 'CONSOLE' => 0, 'PARSE' => 0];
 $refreshingPages = 0;
+$bareSites = [];
+$guardedSites = [];
+$rawRefreshing = 0;
 $forbidden = ['console.log', 'console.warn', 'debugger '];
 $errorNotes = [];
 
@@ -89,9 +128,23 @@ foreach ($files as $f) {
     $rel = str_replace('\\', '/', substr($f, strlen($pagesRoot) + 1));
     $absByFile[$rel] = $f;
 
-    // Every `<DataTable …>` opening tag in the file. An attribute may itself contain `>` (a ternary inside a
-    // braces expression), so the tag is taken by brace-and-angle depth from the opening, never by a regex that
-    // stops at the first `>` — that is lane 47's StatCard trap met on this control.
+    // Every page, table or not. The first draft ran this scan inside the `has a shared table` branch, and the harness
+    // caught it: a `console.log` or a `debugger` left on a form page was invisible, which is the over-narrow scope
+    // this file has been caught by from the other side. The prompt's bullet is about workflows, not about tables.
+    foreach (['console.log', 'console.warn', 'debugger'] as $bad) {
+        $n = substr_count($src, $bad);
+        if ($n > 0) {
+            $counts['CONSOLE'] += $n;
+            $findings[] = ['CONSOLE', $rel, 0, "{$n} occurrence(s) of '{$bad}'"];
+        }
+    }
+    // console.error is the deliberate half and is printed, not counted: the fetch guard that reports a refusal
+    // writes it on purpose (lane 29's rule that a screen may not paint a plausible success).
+    $errCount = substr_count($src, 'console.error');
+    if ($errCount > 0) {
+        $errorNotes[$rel] = $errCount;
+    }
+
     if (! preg_match_all('/<DataTable\b/', $src, $tm, PREG_OFFSET_CAPTURE)) {
         continue;
     }
@@ -124,23 +177,14 @@ foreach ($files as $f) {
         $tableSites[] = [$rel, $at];
         $sitesByFile[$rel] = ($sitesByFile[$rel] ?? 0) + 1;
         if (! str_contains($tag, 'emptyMessage')) {
-            $counts['EMPTY']++;
-            $findings[] = ['EMPTY', $rel, $at, 'no emptyMessage on this table site; the desk reads the shared default sentence'];
+            // Not yet a finding: the shared control's default sentence only reaches the desk when the page lets the
+            // table paint at all. `Admin/WorkflowMonitor/Index.jsx` was reported by the first draft and is wrong —
+            // it renders `EmptyState title="No records match these filters"` in the false arm of a
+            // `rows.length === 0` test, so the generic string is unreachable and the emptiness IS named. Asking the
+            // paint rather than the prop is lane 46's "a checker pointed at the wrong construct prints a pass",
+            // met from the over-reporting side.
+            $bareSites[$rel] = ($bareSites[$rel] ?? 0) + 1;
         }
-    }
-
-    foreach (['console.log', 'console.warn', 'debugger'] as $bad) {
-        $n = substr_count($src, $bad);
-        if ($n > 0) {
-            $counts['CONSOLE'] += $n;
-            $findings[] = ['CONSOLE', $rel, 0, "{$n} occurrence(s) of '{$bad}'"];
-        }
-    }
-    // console.error is the deliberate half and is printed, not counted: the fetch guard that reports a refusal
-    // writes it on purpose (lane 29's rule that a screen may not paint a plausible success).
-    $errCount = substr_count($src, 'console.error');
-    if ($errCount > 0) {
-        $errorNotes[$rel] = $errCount;
     }
 }
 
@@ -155,15 +199,60 @@ foreach ($sitesByFile as $rel => $nSites) {
     // repaint a table from their own router call, 24 were credited solely by a SAVE button's `form.processing` — a
     // different act on a different control — and 0 by any signal attached to the refresh. So the affordance must sit
     // where the answer is awaited: a `router.on(...)` subscription, or a pending value handed to the table.
-    $refreshes = preg_match('/\brouter\s*\.\s*(?:get|visit|reload)\s*\(/', $src) === 1;
-    $signalsRefresh = preg_match('/\brouter\s*\.\s*on\s*\(/', $src) === 1
-        || preg_match('/<DataTable\b[^>]*\b(?:busy|loading)=/s', $src) === 1;
-    if ($refreshes && ! $signalsRefresh) {
+    //
+    // A page that renders the shared control is credited by the CONTROL's own subscription, because that is where the
+    // fix lives (one definition, inherited by every desk table — lane 69's rule). What stays chargeable is a page
+    // that refreshes rows the control cannot see: a hand-built table with no signal of its own.
+    $refreshes = (preg_match('/\brouter\s*\.\s*(?:get|visit)\s*\(\s*route\([^)]*\)\s*,/', $src) === 1
+            || str_contains($src, 'preserveState'))
+        && preg_match('/\brouter\s*\.\s*(?:get|visit|reload)\s*\(/', $src) === 1;
+    $ownSignal = preg_match('/\brouter\s*\.\s*on\s*\(/', $src) === 1
+        || preg_match('/<DataTable\b[^>]*\b(?:busy|loading)=/s', $src) === 1
+        || str_contains($src, 'useRouterPending');
+    $usesSharedControl = preg_match('/<DataTable\b/', $src) === 1;
+    if ($refreshes && ! $ownSignal && ! ($usesSharedControl && $controlSignals)) {
         $counts['LOADING']++;
         $findings[] = ['LOADING', $rel, 0, "repaints {$nSites} shared table(s) from its own router call with no pending signal on that refresh"];
     }
     if ($refreshes) {
         $refreshingPages++;
+    }
+}
+
+// EMPTY, judged on whether the emptiness can reach the desk at all.
+foreach ($bareSites as $rel => $n) {
+    $src = (string) file_get_contents($absByFile[$rel] ?? $root.'/'.$rel);
+    if (preg_match('/<EmptyState\b/', $src) === 1) {
+        $guardedSites[$rel] = $n;
+
+        continue;
+    }
+    $counts['EMPTY'] += $n;
+    $findings[] = ['EMPTY', $rel, 0, "{$n} bare table site(s): no emptyMessage and no EmptyState anywhere in the page"];
+}
+
+// The population the shared control CANNOT reach: a page that builds its own <table> and refreshes it from a router
+// call. Without this loop the answer is a comfortable 0 that omits exactly the surfaces the fix does not cover —
+// lane 145's census named one such page (Registrar/Show.jsx, whose year and semester pickers refetch the record while
+// its tables are hand-built), and a reader of "LOADING 0" would never be sent to it.
+foreach ($files as $f) {
+    $src = (string) file_get_contents($f);
+    if (preg_match('/<DataTable\b/', $src) === 1) {
+        continue;
+    }
+    // The same discriminator `DeskRefreshPendingStateTest` uses, so the two cannot answer differently: a visit that
+    // passes a query object or asks for preserveState repaints THIS screen's rows, while `router.get(route('x.index'))`
+    // behind a Cancel button leaves the page and has no stale list to announce.
+    $inPlace = preg_match('/\brouter\s*\.\s*(?:get|visit)\s*\(\s*route\([^)]*\)\s*,/', $src) === 1
+        || str_contains($src, 'preserveState');
+    if (! $inPlace || preg_match('/\brouter\s*\.\s*(?:get|visit|reload)\s*\(/', $src) !== 1) {
+        continue;
+    }
+    $rawRefreshing++;
+    $rel = str_replace('\\', '/', substr($f, strlen($pagesRoot) + 1));
+    if (preg_match('/\brouter\s*\.\s*on\s*\(/', $src) !== 1 && ! str_contains($src, 'useRouterPending')) {
+        $counts['LOADING']++;
+        $findings[] = ['LOADING', $rel, 0, 'repaints its own rows from a router call, outside the shared control, with no pending signal'];
     }
 }
 
@@ -178,11 +267,13 @@ printf("table sites rendered: %d\n", count($tableSites));
 foreach ($counts as $label => $n) {
     printf("%-10s %d\n", $label, $n);
 }
-printf("\nLOADING scope: of the %d page(s) that render a shared table, %d repaint the rows from a `router.get`/`visit`/"
-    ."`reload` the page itself calls; the other %d are NOT this bucket's question and are not counted clean. A page is "
-    ."credited only by a signal on that refresh — a `router.on(...)` subscription or a pending value passed to the "
+printf("\nLOADING scope: of the %d page(s) that render a shared table, %d repaint the rows from a `router.get`/`visit`/"."`reload` the page itself calls; the other %d are NOT this bucket's question and are not counted clean. A page is "
+    .'credited only by a signal on that refresh — a `router.on(...)` subscription or a pending value passed to the '
     ."table — never by a SAVE button's `form.processing`, which is a different act.\n",
     count($sitesByFile), $refreshingPages, count($sitesByFile) - $refreshingPages);
+printf("EMPTY scope: %d page(s) leave the shared control's default sentence reachable; %d render a bare <DataTable> "
+    ."but name the emptiness with their own EmptyState, and are not counted as gaps.\n",
+    array_sum($bareSites) - array_sum($guardedSites), count($guardedSites));
 if ($findings !== []) {
     echo "\nqueue:\n";
     foreach ($findings as [$kind, $file, $at, $why]) {
@@ -222,7 +313,7 @@ if ($ci) {
 
         exit(1);
     }
-    echo "--ci: every site the scanner could bound is closed on the three source-level halves; the responsive "
+    echo '--ci: every site the scanner could bound is closed on the three source-level halves; the responsive '
         ."half remains NOT JUDGED.\n";
 }
 

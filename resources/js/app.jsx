@@ -5,6 +5,7 @@ import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import ErrorBoundary from '@/Components/ErrorBoundary';
+import { watchRouterPending } from '@/Components/ui/useRouterPending';
 
 const appName = import.meta.env.VITE_APP_NAME || 'SEAIT EMS';
 
@@ -39,3 +40,9 @@ router.on('invalid', (event) => {
     console.error('[Inertia] Invalid response received', event.detail.response);
     window.location.href = event.detail.response?.url ?? window.location.href;
 });
+
+// One app-level subscription, read by every surface that shows server rows. Per-component listeners would have to
+// unsubscribe, and this library's unsubscribe removes every listener registered for the event name — so on a page
+// holding two tables, unmounting one would leave the other reporting "Updating" forever. See
+// resources/js/Components/ui/useRouterPending.js.
+watchRouterPending();

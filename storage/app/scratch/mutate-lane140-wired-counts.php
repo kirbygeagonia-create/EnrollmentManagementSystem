@@ -99,7 +99,7 @@ $report = static function (string $leg, bool $ok, string $detail = '') use (&$fa
 // 1 — control: both surfaces agree, and the dated row is named rather than judged.
 [$code, $out] = $run('--check-matrix --check-docx');
 $report('control', $code === 0 && substr_count($out, 'AGREES') === 2 && str_contains($out, 'DATED'),
-    "exit {$code}, ".substr_count($out, 'AGREES')." agree(s), dated row ".(str_contains($out, 'DATED') ? 'named' : 'MISSING'));
+    "exit {$code}, ".substr_count($out, 'AGREES').' agree(s), dated row '.(str_contains($out, 'DATED') ? 'named' : 'MISSING'));
 
 // 2 — a stale WIRED figure in the Status cell (the defect the instrument actually found).
 $copy = $plant($matrix, 'lane140-mx-wired.php.txt', 'eighteen of thirty-six tables use it',
@@ -151,7 +151,7 @@ $copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the eighteen wired pages c
 $text = (string) file_get_contents($root.'/'.$copyA);
 $needle = '18 of the 36 pages that use the shared table';
 if (substr_count($text, $needle) !== 1) {
-    fwrite(STDERR, "BAD: the owed needle occurs ".substr_count($text, $needle)." time(s) in the dump copy, wanted 1"
+    fwrite(STDERR, 'BAD: the owed needle occurs '.substr_count($text, $needle).' time(s) in the dump copy, wanted 1'
         ." — the leg would silently leave a claim standing.\n");
 
     exit(1);
@@ -159,7 +159,7 @@ if (substr_count($text, $needle) !== 1) {
 $text = str_replace($needle, 'the pages that use the shared table', $text);
 $w = @file_put_contents($root.'/'.$copyA, $text);
 if ($w !== strlen($text)) {
-    fwrite(STDERR, "BAD: the second plant returned ".var_export($w, true).".\n");
+    fwrite(STDERR, 'BAD: the second plant returned '.var_export($w, true).".\n");
 
     exit(1);
 }
