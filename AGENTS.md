@@ -3172,7 +3172,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   queries"), and §24.14 ("Correction established in this edition: … both listeners write `notifiable_type =
   App\Models\Students`"). §28.3 closed N-1 on **2026-10-01** and the code agrees: both listeners write
   `Staffusers::class` / `$userId` (`SendEnrollmentNotification.php:76-77`, `SendWorkflowNotification.php:109-110`),
-  `WorkflowInbox::actors()` plucks staff userIds (`app/Support/WorkflowInbox.php:87-99`), and the listener's own
+  `WorkflowInbox::actors()` plucks staff userIds (`app/Support/WorkflowInbox.php:134-156`), and the listener's own
   docblock states that students are not notifiable. **The pass measures live `ems` instead of recalling it** — it
   refuses unless the table answers exactly one `notifiable_type`, `App\Models\Staffusers` (14 rows). The instrument
   gap: `lane61` judges *status words*, `lane60` *figures*, `lane59` *instrument counts*, the sweeps *line numbers* —
@@ -3677,7 +3677,7 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   link may not become a second, weaker authorization. **One vocabulary per part**: the record reference reads the
   person through the relations the listener already has and spells the level through `App\Support\YearLevel`, so
   the notice obeys the ruling that no surface may hand-write a year level. **And the bell may not invent what the
-  server did not send** — the row's `|| 'Notification'` was deleted, not reworded, because §48's rule about a
+  server did not send** — the row's `|| 'Notification'` was deleted, not reworded, because lane 48's rule about a
   plausible value belongs to a title as much as to a peso figure. Pin:
   `tests/Feature/Notification/NoticeReadabilityTest.php`, proved by
   `php storage/app/scratch/mutate-lane147-notice-fields.php`, and the census that sized the debt is
@@ -3692,6 +3692,27 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   rest stayed bounds-clean while sitting one row short of the construct their sentence names. Run
   `lane76-shift-cites.php` after the LAST insertion of a batch, and treat a `GONE` refusal as a reading task: the
   completion-branch window had been edited, so its replacement was asserted line by line before `--map=` wrote it.
+- **A bell addressed by office alone names a record its recipient cannot open** (G-44's scope half, prompt §8 and §7.1).
+  `WorkflowInbox::actors($officeId, $enrollment)` now filters the office's active accounts through
+  `CollegeScope::holds()` — the one statement of the college boundary — instead of plucking every account in the
+  office. Measured on live `ems` before the change: office 7 holds 11 active accounts and 6 carry a `unitId`
+  (`dept.caf` … `dept.cte`, units 1-6), and the Department Evaluation box addresses that office, so a signature rang
+  five colleges' department desks while each of those desks lists only its own college's records. Three rules came
+  out of building it. **A null enrollment keeps the whole office**, because a notice that names no record has no
+  college to ask about, and silently narrowing that branch would lose real bells; **classification routing is not
+  the same question as college scope** — `studentType` and `applicantType` appear in no desk list either (measured:
+  grepping them through `DeskQueues.php` and the desk controllers answers nothing), so there is no screen-side rule
+  to unify the bell with and inventing one would be the defect; **and one end-to-end case cannot cover both call
+  sites**, because the status listener and the workflow listener address separately — the harness's first leg planted
+  a one-argument call in `SendWorkflowNotification` and reported the promise as surviving when the case it pointed at
+  dispatches `EnrollmentStatusChanged` and never reaches that file, which is a leg that cannot fail wearing the
+  costume of a finding. Pin: `tests/Feature/Notification/NoticeCollegeBoundaryTest.php`, proved by
+  `php storage/app/scratch/mutate-g44-notice-college-boundary.php`, whose control count is read off its own first run
+  rather than typed, because a frozen "7 passed" goes red the day the class gains a case. The pointers this aged
+  were re-taken by reading, not shifted: the authority document cited `WorkflowInbox.php` lines 87 to 99 for
+  "actors() answers the office's staff userIds" while those lines were `nextOffice()`'s opening brace and its
+  handoff comment — a wrong target that had been living under a bounds-clean number — so the map sent both copies
+  to the method's real window, and the clause now says what the method answers.
 - **A `**` glob in PHP matches nothing, so a census written with one passes by reading no file.** The case in
   `DeskRefreshPendingStateTest.php` first read
   `Pages/**/*.jsx`, returned zero paths, and would have certified the whole tree; the walk now uses a recursive iterator and the

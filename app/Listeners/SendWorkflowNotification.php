@@ -51,7 +51,7 @@ class SendWorkflowNotification implements ShouldQueue
             $this->notify(
                 "workflow_completed:{$workflow->workflowId}:{$step->workflowStepId}",
                 'workflow_completed',
-                WorkflowInbox::actors(OfficeId::Registrar->value),
+                WorkflowInbox::actors(OfficeId::Registrar->value, $enrollment),
                 $enrollment,
                 $workflow,
                 "{$who} · {$course}: enrollment form complete — all {$progress['total']} desks signed, last by {$signer} ({$stepLabel}). Ready for the records file.",
@@ -67,7 +67,7 @@ class SendWorkflowNotification implements ShouldQueue
         $this->notify(
             $stepKey,
             'workflow_step_signed',
-            WorkflowInbox::actors($next?->officeId),
+            WorkflowInbox::actors($next?->officeId, $enrollment),
             $enrollment,
             $workflow,
             "{$who} · {$course}: '{$stepLabel}' signed by {$signer}. "

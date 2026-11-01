@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
+use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
 use App\Models\Staffusers;
 use App\Models\Workflowsteps;
@@ -117,18 +118,37 @@ final class WorkflowInbox
     }
 
     /**
-     * Every active account in that office: the people whose bell should ring.
+     * Every active account in that office that may reach this record: the people whose bell should ring.
+     *
+     * A college-bound desk's list is filtered by CollegeScope, so its bell has to be too. Measured on
+     * live `ems` before this was written: office 7 (Academic Department) holds 11 active accounts and 6
+     * of them carry a unitId, and the Department Evaluation box addresses that office — so a signature
+     * rang five colleges' department accounts while four of those five opened an empty queue and a record
+     * their own policy would refuse. The boundary is asked from `CollegeScope::holds()`, the one
+     * statement of it, rather than restated as a where clause here.
+     *
+     * A null enrollment keeps the old behaviour: a notice that names no record is not bounded by one.
      *
      * @return list<int>
      */
-    public static function actors(?int $officeId): array
+    public static function actors(?int $officeId, ?Enrollments $enrollment = null): array
     {
         if (! $officeId) {
             return [];
         }
 
-        return Staffusers::where('officeId', $officeId)
+        $accounts = Staffusers::where('officeId', $officeId)
             ->where('status', 'active')
+            ->get();
+
+        if ($enrollment === null) {
+            return $accounts->pluck('userId')->map(fn ($id) => (int) $id)->values()->all();
+        }
+
+        $courseUnitId = $enrollment->course?->unitId;
+
+        return $accounts
+            ->filter(static fn (Staffusers $user) => CollegeScope::holds($user, $courseUnitId))
             ->pluck('userId')
             ->map(fn ($id) => (int) $id)
             ->values()

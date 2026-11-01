@@ -65,7 +65,7 @@ class SendEnrollmentNotification implements ShouldQueue
             'total' => $progress['total'],
         ] + NoticeFacts::forEnrollment($enrollment, $lead, WorkflowInbox::nextOffice($workflow, $event->toStatus));
 
-        foreach (WorkflowInbox::actors(WorkflowInbox::nextOffice($workflow, $event->toStatus)) as $userId) {
+        foreach (WorkflowInbox::actors(WorkflowInbox::nextOffice($workflow, $event->toStatus), $enrollment) as $userId) {
             // One row per recipient, keyed by the transition that produced it: the recipient is part of the identity
             // because one office legitimately rings several desks, and the history id is what makes a retried job
             // recognisable as the same delivery (§28.3 G-36).
