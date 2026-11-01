@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, nextSortDirection, sortParams } from '@/Components/ui';
 
 const passingFilterOptions = [
     { value: '', label: 'All Bands' },
@@ -15,9 +15,11 @@ const passingOptions = [
     { value: 'false', label: 'Failed', tone: 'danger' },
 ];
 
-export default function GradeScales({ bands, passingCeiling, hasGradeScale, filters = {} }) {
+export default function GradeScales({ bands, passingCeiling, hasGradeScale, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [isPassing, setIsPassing] = useState(filters.isPassing ?? '');
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || 'asc');
     const [showModal, setShowModal] = useState(false);
     const [editingBand, setEditingBand] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -33,12 +35,14 @@ export default function GradeScales({ bands, passingCeiling, hasGradeScale, filt
         {
             key: 'range',
             label: 'Grade Range',
+            sortKey: 'range',
             render: (row) => `${Number(row.minGrade).toFixed(2)} – ${Number(row.maxGrade).toFixed(2)}`,
             className: 'font-mono',
         },
         {
             key: 'isPassing',
             label: 'Result',
+            sortKey: 'isPassing',
             render: (row) => (
                 <Badge tone={row.isPassing ? 'success' : 'danger'}>
                     {row.isPassing ? 'Passing' : 'Failed'}
@@ -46,14 +50,26 @@ export default function GradeScales({ bands, passingCeiling, hasGradeScale, filt
             ),
             className: 'text-center',
         },
-        { key: 'description', label: 'Description' },
+        { key: 'description', label: 'Description', sortKey: 'description' },
     ], []);
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.grade-scale'), {
+            search: search || undefined,
+            isPassing: isPassing === '' ? undefined : isPassing,
+            ...sortParams('range', key, direction),
+        }, { preserveState: true, preserveScroll: true });
+    };
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.grade-scale'), {
             search: search || undefined,
             isPassing: isPassing === '' ? undefined : isPassing,
+            ...sortParams('range', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -202,6 +218,8 @@ export default function GradeScales({ bands, passingCeiling, hasGradeScale, filt
                             columns={columns}
                             rows={bands.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No grade bands found"
                         />
                         <div className="mt-4">

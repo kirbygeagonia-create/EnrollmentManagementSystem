@@ -783,8 +783,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `min(studentassessments.remainingBalance)` is 0.00 today. The rule is that a guard tests the record or list
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
-  `%` — and **prints its own blind spots** (20 guards whose dash sits on a line it cannot join, 345 lines where
-  the operand is a name, code, date or error string); its harness compares against a baseline it measures in
+  `%` — and
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 363 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
+  three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
+  only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
+  was not enough on its own and the reason is worth keeping: in a markdown file the binder reads a *physical line*, not a
+  grammatical sentence, so a figure wrapped onto the continuation of a long bullet keeps its words and loses its citation —
+  the run printed "stale zero" while one of the two numbers was simply never judged. Keeping a figure and the tool it came
+  from on one line is what made the judged count rise; a claim the checker cannot reach is not a clean claim. Its
+  harness compares against a baseline it measures in
   the same run, because an earlier harness hard-coded "5 presence-tests" and failed harmlessly-but-loudly the
   moment the checker learned a new shape.
 - **After any batch that adds or edits a cell showing a date**, run `php storage/app/scratch/lane50-date-day-shift.php`
@@ -1732,7 +1740,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 19 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+  still owed: 18 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
 2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
 handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
 while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
@@ -1768,11 +1776,49 @@ construct from the one its own sentence names. Run the resolver **after the last
 edit; that harness had its own anchor re-cut once too, because a `--filter` written with hyphens selects no test and
 the leg reported that as a survivor. Pass 368 appended to the day's record through a needle it first proved was
 present: a pass that cannot find the sentence it means to extend refuses, where a lazier one would have written an
-orphan. The delivered run that carries
-the fifteenth, sixteenth and seventeenth tables answer 1,168 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
-`artisan test --list-tests` discovers the same 1,168, which is the check that no inserted method stole a `#[Test]`
-attribute; the difference over the run above is exactly the four classes these three screens added, counted out of that run's own
-junit. The account-status guard is `tests/Feature/Admin/AccountStatusToneVocabularyTest.php`, four cases, and its
+orphan. The eighteenth wired screen is the grade-scale bands, and it is the first in this tranche whose insertion aged
+nothing: all three of its hunks in `ReferenceDataController.php` begin at old line 693, below every line the document
+cites in that file (47-123, 108, 400, 572), so twenty-two net lines moved no pointer. That claim is asserted, not
+assumed — `refresh-docx-pass370.php` compares HEAD's bytes with the working bytes at each cited number and refuses if
+anyone differs, because a bounds sweep prints the identical `0 line problem(s)` for a file that never moved and for
+one whose every pointer below line 47 aged. **A wired count is measured now, not typed.**
+`php storage/app/scratch/lane140-measure-wired-screens.php` reads the population twice from two surfaces — the pages
+among the 36 that render `DataTable` and reach `listSort.js` (18), and the distinct actions in `app/` that call
+`ListSort::apply` (18) — and `--check-matrix` / `--check-docx` extract every wired-or-owed claim by shape and require
+each to equal the tree. It found a real defect on its first use: the matrix's G40 **Status cell** still read
+"fourteen of thirty-six tables use it" while the prose in the same row had been re-taken three times and reached
+seventeen — the cell had fallen four tables behind because every batch moved the sentence and nothing compares a
+cell's number with the sentence beside it (lane 64's membership defect, lane 61's tally rule, arriving from the verdict
+column; lane 94 could not see it because it classifies verbs, not figures). Two defects in the instrument came out
+before its verdict was trustworthy, and both are classes this file already names: its directory walker hard-coded
+`.jsx`, so the handler reading answered **0** over a tree holding 18 call sites — an unread population printed as a
+measurement, now a refusal — and it charged a **dated** §1.1 row's "34 of the 36 pages" as stale, which is lane 72's
+rule the checker had not learned; the exemption is proved by falsification, by re-spelling that row's leading date as
+`(this issue)` through `--dump=` and watching the same claim fire STALE again. It also refuses `--dump=` without
+`--check-docx`, an unknown flag by name, an empty judged population, a dump older than the docx, and a wired-plus-owed
+pair that no longer adds to the denominator it names. Pass 371 wrote eighteen in all nine places and asserts after the
+write that no retired figure survives inside the G40 row. **A dated §1.1 row may not absorb a later day's sentences.**
+Row 37 led `2026-10-29 One sort mechanism, one wired queue` and five days of appends had accumulated inside it, so its
+date no longer covered what the row states — lane 60's and lane 72's re-aging rule met from the prose side: nobody
+re-typed a figure, the row was silently widened past its own date by sentences. The defect became visible only because
+the new instrument needed the dated-row exemption, and that exemption exempted row 37's `34 of the 36 pages` — right
+answer, wrong reason, because the row was no longer only 2026-10-29. Pass 372 set the cell to the span the row actually
+covers and gave the newest sentence the day it describes instead of `the same day`, which a range makes ambiguous; the
+day is read from `SchoolTime::today()` rather than typed and the pass refuses unless the answer is a date (its first run
+did refuse, because `today()` returns a **string** and the draft called `->toDateString()` on it). Prove any change to
+the wired/owed checker with `php storage/app/scratch/mutate-lane140-wired-counts.php`: it plants a stale figure in each
+surface, requires the dated exemption to fire both ways through `--dump=`, mutes every living claim in a copy to reach
+the judged-nothing refusal, blinds its own PHP walker to prove a zero over an unread population refuses, tells the four
+flag refusals apart by their messages, and re-runs the control at the end. Its dated-row leg locates the date cell by
+the row's own **title**, not by a remembered date, because pass 372 widened that cell the same day the harness was
+written — a leg anchored on yesterday's bytes reports its own age as a defect. Delivered figures for the eighteenth
+table are re-taken from the run that contains it, beside the class names, by
+`php storage/app/scratch/lane107-retake-class-figures.php`. The delivered run that carries
+the fifteenth, sixteenth, seventeenth and eighteenth tables answer 1,176 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
+`artisan test --list-tests` discovers the same 1,176, which is the check that no inserted method stole a `#[Test]`
+attribute; the difference over the run above is exactly the one class this screen added, and that run's junit gives
+`tests/Feature/Sorting/GradeScaleSortTest.php` 8 cases and 32 assertions — read from the run's own `<testsuite>` entry
+for that class, not from a single-file invocation, which is where a class total has gone wrong before. The account-status guard is `tests/Feature/Admin/AccountStatusToneVocabularyTest.php`, four cases, and its
 assertion total is deliberately not stated here because it moved between a single-file run and the delivered whole run
 on this same box — lane 58's rule met from a surface nobody had seen it bite on. The audit log is
 also the first screen whose order reaches a row that may not exist: `auditlogs.userId` is NULL on 3,294 of the

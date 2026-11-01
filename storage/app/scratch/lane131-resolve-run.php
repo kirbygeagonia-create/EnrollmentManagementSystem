@@ -7,19 +7,36 @@
 // "no run for <sha>" about a run that had existed the whole time — an accepted-and-inert argument, met from inside a
 // poller rather than a checker.
 $jsonPath = $argv[2] ?? 'storage/app/scratch/lane131-runs.json';
+if (! file_exists($jsonPath)) {
+    fwrite(STDERR, "REFUSED: the runs file '{$jsonPath}' does not exist. Pass it as the second argument, after the SHA.\n");
+
+    exit(1);
+}
+
 $json = (string) file_get_contents($jsonPath);
 $runs = json_decode($json, true);
 if (! is_array($runs)) {
     $err = trim((string) file_get_contents('storage/app/scratch/lane131-runs.err'));
-    fwrite(STDERR, "REFUSED: gh run list answered no JSON.".($err === '' ? '' : "  stderr: {$err}")."\n");
+    fwrite(STDERR, "REFUSED: gh run list answered no JSON from '{$jsonPath}'.".($err === '' ? '' : "  stderr: {$err}")."\n");
 
     exit(1);
 }
 
 // shell_exec cannot reach git from PHP on this box, so the SHA is handed in rather than asked for.
 $want = trim((string) ($argv[1] ?? ''));
-if (strlen($want) < 7) {
-    fwrite(STDERR, "REFUSED: the SHA needle is empty or too short (".strlen($want)." chars), and an empty needle matches every run.\n");
+// A length floor alone is not a guard: a mistyped invocation passed the runs path into the needle's slot, the
+// resolver matched nothing, and printed "no run for storage/app/ yet" about a run that had existed the whole time —
+// the same fake-absence this poller was rebuilt to refuse. A SHA is hex, and nothing else is a SHA.
+if (! preg_match('/\A[0-9a-f]{7,40}\z/i', $want)) {
+    fwrite(STDERR, "REFUSED: the first argument must be a hex commit SHA of at least 7 characters; it received '"
+        .substr($want, 0, 40)."'.\n");
+
+    exit(1);
+}
+
+// An argument the resolver does not read is an argument its caller believes has an effect.
+for ($extra = 3; $extra < $argc; $extra++) {
+    fwrite(STDERR, "REFUSED: this resolver takes <sha> [<runs-file>] and received an extra argument '{$argv[$extra]}'.\n");
 
     exit(1);
 }

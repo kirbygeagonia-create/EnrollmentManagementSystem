@@ -690,18 +690,40 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageGradeScales', Gradescale::class);
 
-        $bands = Gradescale::query()
+        // Split from the paging call so the order is applied in the action, as on every wired screen. This one
+        // already arrived in band order, so the mechanism keeps the desk's view unchanged and only adds the
+        // headers: the 'range' column paints `minGrade – maxGrade`, so it is ordered by the floor of the range,
+        // which is the only reading under which "sort by grade range" has a meaning. `maxGrade` is painted inside
+        // that same cell and never on its own, so it carries no header.
+        $query = Gradescale::query()
             ->when($request->search, fn ($q, $search) => $q->where('description', 'like', "%{$search}%"))
-            ->when($request->filled('isPassing'), fn ($q) => $q->where('isPassing', $request->boolean('isPassing')))
-            ->orderBy('minGrade')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->filled('isPassing'), fn ($q) => $q->where('isPassing', $request->boolean('isPassing')));
+
+        $sortable = [
+            'range' => ['column' => 'minGrade'],
+            'isPassing' => ['column' => 'isPassing'],
+            'description' => ['column' => 'description'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'range',
+            'gradescale.gradeScaleId'
+        );
+
+        $bands = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/GradeScales', [
             'bands' => $bands,
             'passingCeiling' => Gradescale::passingCeiling(),
             'hasGradeScale' => Gradescale::isConfigured(),
-            'filters' => $request->only(['search', 'isPassing']),
+            'filters' => $request->only(['search', 'isPassing']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
