@@ -45,6 +45,7 @@ use App\Services\EnrollmentStateMachine;
 use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\CollegeScope;
+use App\Support\DeskQueues;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use App\Support\YearLevel;
@@ -88,13 +89,13 @@ class EvaluationController extends Controller
         // Ruled 2026-10-13: a college's department receives the enrollments of its own college. A desk
         // belonging to no college (Registrar, Guidance, Accounting, the clinic) is bounded by nothing and
         // keeps the whole queue, which is what the ruling says about those desks.
-        $query = CollegeScope::ofEnrollments(
-            Enrollments::with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term', 'evaluatedByUser']),
-            $desk
-        )
-            // Item 8: enrollments returned by the Registrar land back on this
-            // desk with a return reason, alongside fresh Pending records.
-            ->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])
+        // Item 8: enrollments the Registrar sent back with a return reason land here alongside the fresh
+        // Pending ones. Those two states are exactly what the dashboard card counts, so the list now asks
+        // the same call rather than restating it (§28.3 G-46) — one predicate, two readers, and no way for
+        // the number above the queue to describe a set the queue does not. The search and the order stay
+        // here: they read what this desk typed, which is the page's business, not the population's.
+        $query = DeskQueues::evaluation($desk)
+            ->with(['student:studentId,schoolIdNumber,lastName,firstName,middleName', 'course', 'major', 'term', 'evaluatedByUser'])
             ->when($request->search, $search)
             ->orderByDesc('enrollmentId');
 

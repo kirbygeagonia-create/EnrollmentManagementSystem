@@ -82,6 +82,7 @@ $classes = [
     'IDQueueSortTest.php',
     'StudentsDirectorySortTest.php',
     'AdmissionQueueSortTest.php',
+    'DashboardQueueCountMatchesDeskTest.php',
 ];
 $missing = array_values(array_diff($classes, array_keys($figures)));
 if ($missing !== []) {
@@ -114,10 +115,12 @@ $edits = [
     ['AGENTS.md', 'AdmissionQueueSortTest.php` (6 cases / 23 assertions)', 'AdmissionQueueSortTest.php', 1],
     ['AGENTS.md', 'ClinicQueueSortTest.php` (12 cases / 42 assertions)', 'ClinicQueueSortTest.php', 1],
     ['AGENTS.md', 'IDQueueSortTest.php` (12 cases / 47 assertions)', 'IDQueueSortTest.php', 2],
-    // Batch 3 added one case to the dashboard agreement class, so its totals moved in two documents. The needle is
-    // the same string in both matrix copies, hence expect=2 there.
-    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 2],
-    ['AGENTS.md', 'DashboardQueueCountMatchesDeskTest.php` (6 cases, 35 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 1],
+    // Lane 114 added two assertions to the dashboard agreement class (the fourth list is a call and a retired
+    // predicate). The matrix's prompt-§8 row no longer carries a figure at all — pass 347 removed it there — so this
+    // needle has ONE copy in the matrix and one in AGENTS.md, not the two the previous batch found. A needle list
+    // that is not re-cut each batch is the age this guard exists to make loud rather than silent.
+    ['Documentation/Prompt-Requirement-Matrix-2026-10-26.md', 'DashboardQueueCountMatchesDeskTest.php` (7 cases, 45 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 1],
+    ['AGENTS.md', 'DashboardQueueCountMatchesDeskTest.php` (7 cases, 45 assertions)', 'DashboardQueueCountMatchesDeskTest.php', 1],
 ];
 
 $failures = [];

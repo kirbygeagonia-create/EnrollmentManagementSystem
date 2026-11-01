@@ -202,14 +202,21 @@ echo "\n";
 $live = $root.'/storage/app/scratch/lane59-readings.json';
 $use = is_file($live) ? 'storage/app/scratch/lane59-readings.json' : $dir.'/readings.json';
 $r = $run($php.' '.$checker.' --readings='.$use);
-preg_match('/(\d+) match, (\d+) stale, (\d+) unbound/', $r['out'], $s);
-$ok = (int) ($s[1] ?? -1);
-$stale = (int) ($s[2] ?? -1);
-$unbound = (int) ($s[3] ?? -1);
-printf("     real documents, readings from %s: %d match, %d stale, %d unbound, exit %d\n",
-    basename($use), $ok, $stale, $unbound, $r['code']);
-$say($stale === 0 && $unbound === 0 && $ok >= 7 && $r['code'] === 0,
-    'real-run — every instrument figure the documents state now equals what its tool prints ('.$ok.' bound)');
+// The relation, not a remembered count. This leg used to assert `$ok >= 7`, and lane 114 made that fail for the
+// wrong reason: the batch deliberately took a figure OUT of AGENTS.md (a leg count beside the harness that prints
+// its own), so the checker now binds fewer figures and reports them all as agreeing. A floor read off one day's
+// document count is a stale claim inside the instrument; what must hold is that every figure the checker judged
+// agreed, that nothing was left unbound, and that it judged something at all.
+preg_match('/(\d+) figure\(s\) cited a named instrument: (\d+) judged \((\d+) match, (\d+) stale, (\d+) unbound/', $r['out'], $s);
+$cited = (int) ($s[1] ?? -1);
+$judged = (int) ($s[2] ?? -1);
+$ok = (int) ($s[3] ?? -1);
+$stale = (int) ($s[4] ?? -1);
+$unbound = (int) ($s[5] ?? -1);
+printf("     real documents, readings from %s: %d cited, %d judged = %d match + %d stale + %d unbound, exit %d\n",
+    basename($use), $cited, $judged, $ok, $stale, $unbound, $r['code']);
+$say($stale === 0 && $unbound === 0 && $judged >= 1 && $ok === $judged && $judged <= $cited && $r['code'] === 0,
+    'real-run — every instrument figure the checker judged equals what its tool prints ('.$judged.' of '.$cited.' cited)');
 
 // The CI half: only the citation sweeps are measured on the runner, so a figure citing a tool CI leaves out is NAMED and
 // not judged — never passed as checked. This leg judges the REAL documents, so it must read the REAL readings: with the

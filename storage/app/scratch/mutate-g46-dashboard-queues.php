@@ -73,6 +73,16 @@ $legs = [
         'from' => "        return self::assessmentsFor(EnrollmentStatus::Assessed)\n            ->where('remainingBalance', '>', 0);",
         'to' => "        return self::assessmentsFor(EnrollmentStatus::Assessed);",
     ],
+    // Lane 114's own promise. Putting the department's predicate back into its controller keeps every NUMBER equal —
+    // the badge case stays green — so the only thing that can see the two copies returning is the structural case
+    // that reads the action's body. A leg on the equality case would have slept.
+    [
+        'name' => 'evaluation-list-re-inlined',
+        'case' => 'four_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge',
+        'file' => 'app/Http/Controllers/Evaluation/EvaluationController.php',
+        'from' => '        $query = DeskQueues::evaluation($desk)',
+        'to' => "        \$query = CollegeScope::ofEnrollments(Enrollments::query(), \$desk)->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])",
+    ],
 ];
 
 if (isset($flags['list'])) {

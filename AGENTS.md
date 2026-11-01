@@ -926,9 +926,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   (lane 69, three defects caught only by reading the dry run's own counts). Two desk messages needed the
   helper, Pint will not let a static call keep a fully-qualified name in `app/` (it files the import, proved:
   it rewrote an inline `\App\Support\YearLevel::format(...)` in a test into `use` + short call), and one line
-  inserted at :46 moved every line below it — so ~47 explicit citations into `EvaluationController.php` had to
-  move +1. (a) **A short citation is a prefix of a long one**: replacing `EvaluationController.php:57` hit three
-  places, two of them inside `:577-583`, and wrote `:588-584`. Replace with one regex pass over the
+  inserted at line 46 moved every line below it — so ~47 explicit citations into `EvaluationController.php` had to
+  move +1. (a) **A short citation is a prefix of a long one**: replacing the pointer to line 57 of
+  `EvaluationController.php` hit three places, two of them inside a range written 577-583, and wrote a range reading
+  588-584. Replace with one regex pass over the
   file-name-prefixed pattern, never a needle list. (b) **`strip_tags()` welds adjacent runs together**, so the
   sentence read as a file named `curriculumsubjects` + `EvaluationController.php` and refused to move pointers
   that did belong to the moved file; join runs with a space (`preg_replace('/<[^>]*>/', ' ', …)`). (c) **A bare
@@ -1605,8 +1606,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollments.clinicrecords` and `resources/js/Pages/Students/Show.jsx:506-519` prints `cr.findings`, with no field-level gate — the
   prompt's own worked example of what must not be shared; **G-45** `afterCommit` appears 0 times while both
   notification listeners are `ShouldQueue` and `notifications` has only a non-unique index (`:20`); **G-46**
-  `DashboardController::queueCounts()` counted institution-wide `Pending` while `EvaluationController.php:91-97` is
-  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` (the lane-47 family, live, and closed by lane 96); **G-44** declines and
+  `DashboardController::queueCounts()` counted institution-wide `Pending` while the page behind it was
+  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` — that predicate is `DeskQueues.php:87-96`,
+  which the desk's own list has asked since 2026-10-31 (the lane-47 family, live, and closed by lane 96); **G-44** declines and
   rejections notify nobody; **G-47** the bell row is message-plus-time, no deep link, and a non-recipient's mark-read
   returns `{ok:true}`; **G-50** `documents` shares the private root with the served `local` disk. One sweep claim was
   disproved on the way: `'clinic' => ['clinic.view', …]` in `RbacSeeder.php` is a module declaration, not a role
@@ -1652,18 +1654,30 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   new cases passed while that relation bug was in the code, because they ran as a staff account whose `unitId` is null and
   every `of*()` method returns the query untouched in that case; only the college-bound fixture executed the line.
   So a count-equality test written solely for an unbounded desk certifies nothing about scoping — pair them.
-  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (7 cases, 45 assertions) compares each badge to
+  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (7 cases, 47 assertions) compares each badge to
   the number the desk itself prints in **both** directions, and `storage/app/scratch/mutate-g46-dashboard-queues.php`
-  (4 legs) is what showed the second direction was missing: its `admission` leg **survived** on the first run,
+  — a leg per promise, so this file states no leg count and the harness prints its own — is what showed the second
+  direction was missing: its `admission` leg **survived** on the first run,
   because the college case asserted only the `evaluation` badge — the admission half of G-46 had no test until that
   leg refused to die. A second leg answered `needle matched 0 times`, which is the harness's own age and not a
   surviving defect; both were repaired before the run answered `ALL KILLED: 4 leg(s), 0 bad`. `blocking` is
   deliberately **not** unified: its badge counts enrollments whose
   first open box is Blocking while the page lists timetable blocks, and picking one silently is a school decision —
-  it is item 9 on the 2026-10-29 sheet. Four desk lists (assessment, accounting, registrar, clearance) still build
-  their queries inline, so for those the agreement is *tested*, and `DeskQueues`' own docblock says which are shared
-  calls and which are only measured to agree; moving the rest onto it is
-  the next step. `lane76-shift-cites.php` refused line 44 of `DashboardController.php` as AMBIGUOUS because the `$user =
+  it is item 9 on the 2026-10-29 sheet. **A sentence naming which lists call the helper is a membership claim, and it
+  rots the moment one more list joins.** This bullet said four lists still built their queries inline — naming
+  assessment, accounting and registrar among them — through the whole batch that moved exactly those three onto the
+  helper, because the batch edited the code and the register row and never re-read this sentence. Measured again on
+  2026-10-31, after the department's evaluation queue became the fourth list to ask: six desk lists take their rows
+  from `DeskQueues` (assessment, accounting, registrar, evaluation, clinic, ID) and two stay inline **by decision**,
+  because their cards name a subset their pages must not lose — the admission card counts `Pending` while
+  `AdmissionController::index()` applies no status filter at all, so draft, approved and rejected rows are on the page
+  and off the badge, and the clearance card counts `Pending` while its desk lists every status it may still act on.
+  `DashboardQueueCountMatchesDeskTest` reads each action's own body for the call *and* for the retired predicate, so a
+  batch that re-inlines one is caught although every number stays equal; `mutate-g46-dashboard-queues.php` plants that
+  re-inline, which is the leg the badge-equality cases structurally cannot see. After any batch that adds or removes
+  one of those calls, run that class, prove it with that harness, and re-take the count in **three** surfaces — this
+  bullet, `DeskQueues`' class docblock, and §28.3's G-46 row — because two answers to "how many lists ask it" is the
+  defect this file has refused in lanes 46, 69 and 90. `lane76-shift-cites.php` refused line 44 of `DashboardController.php` as AMBIGUOUS because the `$user =
   $request->user();` line I added made a second identical line exist — resolve by reading, pass `--map=44=42`, never
   by letting the tool guess. The same batch moved the ID and Clinic controllers, and a pointer in *this* file's own
   pass-244 paragraph aged with them: the Issued tab's predicate it quotes is now lines 66 to 71 of that controller.
@@ -1951,6 +1965,27 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   needle to survive as the head of the new sentence; demanding 0 made pass 341 refuse a correct write and restore its
   backup, which is (e)'s per-edit residual rule met again one batch later, and the reason the expectation is now a
   per-edit flag rather than one constant for the loop.
+  **(g)** G-52 closed the same day, and the last two sites were the ones the splicer could not reach. The Registrar's
+  record page and the clearance slip's print page load a relation *through* the student, so the narrowing travels in a
+  closure — `'student' => fn ($q) => $q->select(COLS)->with(['addresses', 'guardians'])` — and three readers had to
+  agree that that shape is narrowed. One predicate now answers it (`student_load_path_columns()` in
+  `students-column-guard.php`, shared by the census, the re-audit and the source-side test), because two answers to
+  "is this narrowed" is this file's oldest defect, and it refuses a closure with **no** `select(` rather than crediting
+  any arrow-function entry. Its first cut bounded the entry at the first comma, which is *inside* the select's own
+  argument list — a six-column load read as one column, clearing a site by under-reading it; the bound is a depth-zero
+  comma now. Two readings came out of the proof rather than the code. **A surviving leg found a lazy load, not a bad
+  case:** dropping the closure's `with('enrollments.course')` left `enrollments` in the slip payload anyway, because
+  the same request calls `Studentclearances::termEnrollment()` and that read fills the relation key with whole rows —
+  so the case asks for the nested course, which only the eager load carries, and a relation key alone is not evidence.
+  **And a reader that cannot judge a shape must print it:** `lane108c` now reports the closure-shaped sites as a named
+  blind spot instead of clearing them, and the census labels its own counter ("a leaf list is invisible to this
+  number"), because a summary line that counts one of two spellings is the two-units defect again. Citation work
+  followed: the shift tool moved every pointer in the two files they grew by (+2 and +3 lines), refused on three BARE
+  tails and one GONE window, and the tails were re-taken by reading — one of them only through its **run boundary**
+  (`>:219<`), because the plain text needle for that number belongs to a different file's comma list, and the GONE
+  window mapped to a longer span whose start and end were both read inside `printSlip`. The register row now leads
+  `Closed 2026-10-31` with the census answering no identity-only row; the two screens that edit the person record stay
+  whole by design and are named as editors, not as debt.
 - **A builder's pinned select travels into every clone of it, and `selectRaw()` appends** (lane 108, found only by
   CI's MySQL job). The G-51 pin put `admissions.*` on the admission queue's builder, so the status tile's
   `(clone $query)->reorder()->selectRaw('admissionStatus, count(*) as aggregate')` was no longer a two-column
@@ -2485,7 +2520,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   **The same shape lives in a register row, and the file being right is what hides it** (passes 208/208b). Two
   rows cited ranges inside the very file their own sentence names, and every instrument cleared both: the
   elective-band row quoted the standing-override message for the rule that refuses a proposal outside the min–max
-  band (that check is `EvaluationController.php:664-670`, not the two blocks above it), and the staff row quoted
+  band (that check is `EvaluationController.php:665-671`, not the two blocks above it — re-taken 2026-10-31 with both
+  endpoints compared byte for byte against HEAD's copy of the file, because lane 114's one import line moved every
+  line below it), and the staff row quoted
   the curriculum block for the seeding of `staff8` and the office heads (that is
   `DevReferenceDataSeeder.php:782-827`). A bounds sweep asks only whether the lines exist; the meaning sweep needs
   the prose to name a *method*. So the rule when draining a pointer queue is to read the cited span's own text
@@ -2902,7 +2939,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
   answers **two**: `EnrollmentIssuer.php:78`, inside `issue()` directly after `Enrollments::create` at :76, and
-  `EvaluationController.php:803`, behind `if (! $enrollment->enrollmentworkflow)` at :802. So the one-form rule is held
+  `EvaluationController.php:929`, behind `if (! $enrollment->enrollmentworkflow)` at :928. (Re-taken 2026-10-31: the
+  two numbers this bullet carried had aged 126 lines, every one of them bounds-clean and every one landing on live
+  code in the right file — the `.md` half of lane 88's defect, met again.) So the one-form rule is held
   by that existence check, not by a single call site — the row's conclusion stands, its stated reason does not — and
   neither cited span contained the call at all (those 532-to-535 lines are `decideStanding()`'s validation, and 466 to 485 is
   `captureProfile()`'s address loop). **When a register row explains a rule by a count, measure the count**: the script
@@ -2944,12 +2983,16 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   boxes and their caps at :483-493/:495-507), which is precisely why no identifier rule can bind them — and the rest
   gave five real defects. §28's E-11 row cited `:288-289` for "a warning string is returned": :288 is the ternary's
   **false** branch (the return when no warning exists) and :289 closes the transaction; the warn-and-proceed whose words
-  the row quotes is **:286-287**. §13's step row cited `EvaluationController.php:273` for "evaluatedBy written by
-  profile capture" — :273 is a *comment* inside `returningStudents()`; the write is **:496**, inside `captureProfile()`
-  (416-522). §28's T-5 row cited `:259-293` for `satisfiedPrerequisites`, which is **:316-340** (:334 is the
-  `Creditedsubjects` read the sentence names; :293 is the *next* method's signature); §21's proposal row cited
-  `:586-605` for the "prerequisite auto-gate" (**:643-667** — 586-605 is the curriculum load plus elective grouping) and
-  `:236-257` for "curriculum pinning" (**:184-186** — 236-257 is `show()`'s capability props).
+  the row quotes is **:286-287**. §13's step row cited EvaluationController.php line 273 for "evaluatedBy written by
+  profile capture" — that line was a *comment* inside `returningStudents()`; the write was then at line 496, inside
+  `captureProfile()`. §28's T-5 row cited lines 259 to 293 for `satisfiedPrerequisites`, which was then 316 to 340
+  (line 334 was the `Creditedsubjects` read the sentence names, and line 293 the *next* method's signature); §21's
+  proposal row cited lines 586 to 605 for the "prerequisite auto-gate" (then 643 to 667 — 586 to 605 was the curriculum
+  load plus elective grouping) and lines 236 to 257 for "curriculum pinning" (then 184 to 186 — 236 to 257 is
+  `show()`'s capability props). **Each number above pass 235's own repair is that day's reading, and every one of them
+  has aged since — so they are spelled in words here on purpose, because the colon form in this file is a live pointer
+  the citation gate reads and a bounds-clean pointer to a retired layout is the very defect this paragraph records.**
+  The live windows for those constructs were re-taken by reading on 2026-10-31 and the authority document carries them.
   **Then came something no instrument in this repository can see.** Four sections narrate gap **N-1** in the present
   tense: §19.4's writer table (`notifiable_type = "App\Models\Students", notifiable_id = studentId`), §19.4's
   consequence ("no real notification is ever displayed. The writers address Students; the only reader filters on

@@ -437,6 +437,14 @@ tree was verified afterwards by reading the files, not by trusting an exit code.
 
 ### What this batch did not finish, stated as work
 
+> **Superseded on 2026-10-31, and wrong as written on 2026-10-27.** Four of the six lists this paragraph named were
+> still inline that day — the sentence omitted the evaluation queue and the admission queue — and three of them joined
+> `App\Support\DeskQueues` on 2026-10-30, the department's evaluation queue on 2026-10-31. The current statement of
+> which six lists ask that class, and which two stay inline *by decision* (admission, clearance, each with the reason
+> measured from its own handler), lives in the G-46 row of §28.3 in the authority document and in the requirement
+> matrix's score of prompt §8; the paragraph below is kept as that day's reading and is
+> deliberately not re-typed.
+
 Four desk lists (assessment, accounting, registrar, clearance) still restate their filters inline, so their badge
 agreement is tested rather than structural (task #41). Thirty-four of the thirty-six shared tables still offer no
 order (task #28). The authority document's §28.3 does not yet carry G-44 … G-50 (task #37). The §24 paragraph that

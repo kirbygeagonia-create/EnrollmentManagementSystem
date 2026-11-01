@@ -225,10 +225,10 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
     }
 
     #[Test]
-    public function three_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge(): void
+    public function four_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge(): void
     {
         // The agreement between a badge and its list used to be only a tested one: two copies of a predicate, with a
-        // case watching whether they still said the same thing. Three desks now ask `DeskQueues` for their rows, so
+        // case watching whether they still said the same thing. Four desks now ask `DeskQueues` for their rows, so
         // there is one copy and drift is not representable — a stronger claim than equality, and it needs its own
         // guard, because a later batch that re-inlined the predicate would keep every number equal while putting the
         // two copies back.
@@ -249,6 +249,10 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
             'Accounting/AccountingController.php' => [
                 'DeskQueues::assessmentsFor(EnrollmentStatus::Assessed)',
                 "->whereHas('enrollment', fn (\$q) => \$q->where('enrollmentStatus', EnrollmentStatus::Assessed))",
+            ],
+            'Evaluation/EvaluationController.php' => [
+                'DeskQueues::evaluation($desk)',
+                "->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])",
             ],
         ];
         foreach ($shared as $path => [$call, $retired]) {

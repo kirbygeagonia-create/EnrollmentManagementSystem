@@ -296,12 +296,69 @@ $read31 = [
     'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single first() branch — a slip names its own term\'s enrollment or nothing',
 ];
 
+// Rows re-opened on 2026-10-31 by lane 113 (G-52's closure sites). Cause: the two closure loads added +2 lines to
+// RegistrarController.php and +3 to ClearanceController.php, and docx passes 343-346 rewrote the sentences beside the
+// print-action and rule pointers, so 28 keys aged on a move or on a re-word while their claims stayed put. Each span
+// below was opened today with lane70-read-unread.php and lane70-read-span.php — a numbered reader, never `sed -n Ap;Bp`
+// — and the verdict is what that line says. None was carried from an earlier date without looking.
+$read31b = [
+    'RegistrarController.php:331-331' => 'the \'enrollmentType\' => $enrollmentType write in approve() — BR31\'s derived type, as §24\'s row states it',
+    'RegistrarController.php:373-373' => 'the \'dropReason\' => required|string|min:10|max:500 rule inside drop() — the reason a dropped record must carry',
+    'RegistrarController.php:401-401' => 'printCertificate()\'s signature — the first of the three desk pages §23 names',
+    'RegistrarController.php:423-423' => 'printClassCards()\'s signature — the second desk page, and §25.1\'s Class Card row\'s own page pointer',
+    'RegistrarController.php:454-454' => 'printSubjectLoad()\'s signature — the third desk page',
+    'RegistrarController.php:469-469' => 'the Inertia::render(\'Registrar/PrintSubjectLoad\') line — the component that page answers with (the clause names render, whose owner is Inertia.php, so this pairing had to be read)',
+    'RegistrarController.php:478-478' => 'downloadCertificate()\'s signature — §25.1\'s certificate PDF sibling, and one of the four generated PDFs',
+    'RegistrarController.php:493-493' => 'downloadEnrollmentForm()\'s signature — a generated PDF',
+    'RegistrarController.php:505-505' => 'downloadClassCard()\'s signature, opened on its multi-line parameter list — §25.1\'s one-card download',
+    'RegistrarController.php:531-531' => 'downloadSubjectLoad()\'s signature — the last generated PDF of the four',
+    'ClearanceController.php:438-438' => 'downloadSlip()\'s signature — the slip\'s PDF sibling, moved here by this batch\'s +3 lines above it',
+    'BlockingController.php:571-571' => 'downloadBlockSchedule()\'s signature — §23\'s print action for the block schedule (no line moved; the sentence around it was re-worded)',
+    'PrintService.php:115-115' => 'recordIssue()\'s signature — the one writer behind every desk print (no line moved; the row\'s own clause was re-taken)',
+    'PrintService.php:254-254' => 'printClassCard()\'s signature — the per-subject card the class-card route renders',
+    'Studentclearances.php:87-93' => 'the P-17 ruled comment and termEnrollment()\'s single first() branch — a slip names its own term\'s enrollment or nothing',
+    'AssessmentController.php:213-219' => 'the BR19 note with $totalScholarshipCoverage and $totalWaived written as 0 — the grant is not auto-awarded in compute()',
+    'AssessmentController.php:221-229' => 'the remainingBalance arithmetic and Studentassessments::create\'s four money columns — the row §24 cites for the columns the server holds',
+    'AssessmentController.php:241-241' => 'the COMMENTED-OUT transition inside compute() — the absence "computation alone does not advance the enrollment" points at',
+    'AssessmentController.php:493-504' => 'finalize()\'s transaction: the transition at :495 and signStepByOffice at :502, office 3 recorded as Scholarship while the workflow label is Assessment',
+    'AccountingController.php:231-291' => 'record()\'s body from its signature at :231 through the \'remainingBalance\' => $newBalance write at :291 — the payment path the ₱0 rule is stated over',
+    'AccountingController.php:349-349' => 'settleNoBalance()\'s signStepByOffice(OfficeId::Accounting->value) — the signature a collected payment would otherwise have earned',
+];
+
+// Rows re-opened on 2026-10-31 by lane 114. One cause, and it is the one this file already names: the batch added a
+// single `use` line to EvaluationController.php, the shift tool re-numbered every cited window below it, and
+// re-numbering rewrites the 240-character window a NEIGHBOURING pointer hashes — which is why a WorkflowService row
+// aged although no line moved under it. Each span below was opened today with lane70-read-unread.php and
+// lane70-read-span.php, and the verdict is what that line says.
+$read31c = [
+    'EvaluationController.php:703-713' => 'the mandatory-block diff inside the proposal, gated on irregular standing and on transferee/shifter — the §13 row’s "proposed subjects must cover the mandatory block"',
+    'EvaluationController.php:193-195' => 'Item 7’s pin comment and the resolveCurriculum() call — the row §13 cites for "which curriculum the proposal is measured against"',
+    'EvaluationController.php:715-739' => 'the prerequisite auto-gate comment through its ValidationException — §13’s proposal row and §21’s min–max neighbour',
+    'EvaluationController.php:566-566' => 'the \'evaluatedBy\' => Auth::user()->userId write inside captureProfile() — the evaluator the walkthrough’s Department Evaluation step records',
+    'EvaluationController.php:353-380' => 'satisfiedPrerequisites() whole: the passing ceiling, the passed and credited merge, and its return — T-5’s shifter credit row',
+    'WorkflowService.php:54-73' => 'stepsFor()’s seven box entries and the array_filter() that makes six — the "stages and boxes counted separately" row (no line moved; the neighbouring re-number moved its window)',
+];
+
 $records = [];
 $noVerdict = [];
 foreach ($keys as $k) {
     $head = (string) preg_replace('/#[0-9a-f]{8}$/u', '', $k);
     $why = null;
     $when = null;
+    foreach ($read31c as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span lane 114’s one import line left it in: '.$t];
+
+            break;
+        }
+    }
+    foreach ($read31b as $p => $t) {
+        if ($why === null && str_starts_with($head, $p)) {
+            $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span lane 113\'s +2/+3 left it in: '.$t];
+
+            break;
+        }
+    }
     foreach ($read31 as $p => $t) {
         if ($why === null && str_starts_with($head, $p)) {
             $why = ['read' => '2026-10-31', 'by' => 'read 2026-10-31 in the span this batch\'s re-number left it in: '.$t];

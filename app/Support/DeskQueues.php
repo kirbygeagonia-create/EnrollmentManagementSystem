@@ -25,16 +25,16 @@ use Illuminate\Database\Eloquent\Builder;
  * enrollments or requests where their pages list assessment sheets and enrollment rows.
  *
  * These builders carry the *population* only: no eager loading, no search, no ordering, no pagination. The
- * dashboard's badges are built from them, and so now are the Assessment queue, the Registrar queue and the cashier's
- * queue base — `AssessmentController`, `RegistrarController` and `AccountingController` each call the method below
- * that names their rows, so the card and the list are one call rather than two copies that a test merely watches.
- * `ClinicController` and `IDController` were already built this way. `AdmissionController` and `EvaluationController`
- * still write their own queries, so for those two the agreement is still only tested; the docblock of each method
- * below says which of the two it is. Moving the rest onto this class is the remaining step, and the reason it is a
- * step at all is the pair that must NOT be moved: `accounting()` and `clearance()` name the badge's SUBSET (the
- * owing sheets, the pending rows) while their desks list the owing-and-settled tabs and every clearance status, and
- * `DashboardQueueCountMatchesDeskTest` compares those two badges to the desk's own tile for exactly that reason —
- * the card counts a queue, the list counts rows.
+ * dashboard's badges are built from them, and so now are six desk lists — `AssessmentController`,
+ * `RegistrarController`, `AccountingController` (its queue base), `EvaluationController`, `ClinicController` and
+ * `IDController` each call the method below that names their rows, so the card and the list are one call rather than
+ * two copies that a test merely watches. `AdmissionController` and `ClearanceController` still write their own
+ * queries and the docblock of each method below says why: their cards name a SUBSET (`Pending` applications,
+ * `Pending` clearances) while the desk lists rows it may still act on beyond that subset, so unifying them would
+ * hide records rather than align numbers. `DashboardQueueCountMatchesDeskTest` compares those two badges to the
+ * desk's own tile for exactly that reason — the card counts a queue, the list counts rows. Nothing is left to move
+ * except by that rule: the only queue with no method here is `blocking`, whose badge counts enrollments and whose
+ * page lists timetable blocks.
  *
  * **Only two of these take a desk, and that is the boundary as it is built, not an oversight.** `admission` and
  * `evaluation` honour `CollegeScope` because `AdmissionController` and `EvaluationController` bound their own
@@ -60,6 +60,11 @@ class DeskQueues
     /**
      * Applications awaiting the Admission desk, inside the college boundary the desk's own list honours.
      *
+     * The list does NOT come from here, and that is a decision rather than debt: this call counts `Pending` while
+     * `AdmissionController::index()` shows the submitted cases *and* the saved drafts of every status, because a
+     * draft is work the desk has not finished rather than a row it may ignore. Building the page from this builder
+     * would hide rows from the desk — §8 with the sign flipped, and the same reason `clearance()` is left alone.
+     *
      * @return Builder<Admissions>
      */
     public static function admission(?Staffusers $desk): Builder
@@ -73,6 +78,9 @@ class DeskQueues
     /**
      * Enrollments this desk must evaluate — fresh ones and the ones the Registrar sent back, which the desk has
      * always listed and the badge never counted.
+     *
+     * `EvaluationController::index()` builds its queue from this call, so the card and the list are one predicate
+     * rather than two copies a test merely watches (§28.3 G-46).
      *
      * @return Builder<Enrollments>
      */
