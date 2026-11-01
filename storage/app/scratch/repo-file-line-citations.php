@@ -60,13 +60,17 @@ $targets = $args !== [] ? $args : [
     // the matrix's own shorthand paths went unnoticed.
     'Documentation/Prompt-Completion-Report-2026-10-27.md',
     'Documentation/School-Decision-Sheet-2026-10-29.md',
+    // The Advanced Database Systems pack. Each of these documents quotes `File.php:NN` pointers at the
+    // implementation it claims to trace, so an unscanned one is a traceability matrix nobody weighed.
+    'Documentation/REQUIREMENTS-TRACEABILITY-ADS.md',
+    'Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md',
 ];
 
 // A dated owner-facing document that is not in the list above is a citation blind spot, not an absence
 // of citations. Refuse loudly rather than reporting a clean sweep over files this tool never opened.
 // Only when the whole set is being scanned: a scoped run names its own files on purpose.
 if ($args === []) {
-    $dated = glob($root.'/Documentation/{School-Decision-Sheet-*,Prompt-Requirement-Matrix-*,Prompt-Completion-Report-*,Registrar-Window-Packet-*,Department-Board-Exam-Confirmation-*,Registrar-Print-Decision-Sheet-*,Print-Fidelity-Comparison-*}', GLOB_BRACE);
+    $dated = glob($root.'/Documentation/{School-Decision-Sheet-*,Prompt-Requirement-Matrix-*,Prompt-Completion-Report-*,Registrar-Window-Packet-*,Department-Board-Exam-Confirmation-*,Registrar-Print-Decision-Sheet-*,Print-Fidelity-Comparison-*,*-ADS}', GLOB_BRACE);
     $unlisted = [];
     foreach ((array) $dated as $f) {
         $rel = 'Documentation/'.basename($f);
