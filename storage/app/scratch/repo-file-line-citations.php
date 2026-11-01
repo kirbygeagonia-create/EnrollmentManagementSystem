@@ -64,6 +64,7 @@ $targets = $args !== [] ? $args : [
     // implementation it claims to trace, so an unscanned one is a traceability matrix nobody weighed.
     'Documentation/REQUIREMENTS-TRACEABILITY-ADS.md',
     'Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md',
+    'Documentation/SYSTEM-ARCHITECTURE-ADS.md',
 ];
 
 // A dated owner-facing document that is not in the list above is a citation blind spot, not an absence
