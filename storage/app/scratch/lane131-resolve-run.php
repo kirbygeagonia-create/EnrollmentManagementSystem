@@ -3,7 +3,11 @@
 // Which Actions run belongs to the SHA the operator just pushed, read from `gh run list` output.
 // Matching is client-side on the FULL sha, and the resolved run is then asked for its own headSha — a prefix
 // match on an empty needle matches everything, and a poller must re-read the object it claims to have watched.
-$json = (string) file_get_contents('storage/app/scratch/lane131-runs.json');
+// The runs file is named by the caller: this resolver once kept reading the previous push's capture and reported
+// "no run for <sha>" about a run that had existed the whole time — an accepted-and-inert argument, met from inside a
+// poller rather than a checker.
+$jsonPath = $argv[2] ?? 'storage/app/scratch/lane131-runs.json';
+$json = (string) file_get_contents($jsonPath);
 $runs = json_decode($json, true);
 if (! is_array($runs)) {
     $err = trim((string) file_get_contents('storage/app/scratch/lane131-runs.err'));
@@ -21,8 +25,10 @@ if (strlen($want) < 7) {
 }
 
 foreach ($runs as $r) {
-    if (($r['headSha'] ?? '') === $want) {
-        printf("RUN=%d status=%s headSha=%s\n", (int) $r['databaseId'], $r['status'], $r['headSha']);
+    // A prefix of at least seven characters is matched, and the caller re-reads the run's own headSha afterwards:
+    // equality on a short needle is how a poller says "no run exists" about a run that has been there all along.
+    if (str_starts_with((string) ($r['headSha'] ?? ''), $want)) {
+        printf("RUN=%d status=%s headSha=%s\n", (int) $r['databaseId'], (string) ($r['status'] ?? 'unknown'), $r['headSha']);
 
         exit(0);
     }
