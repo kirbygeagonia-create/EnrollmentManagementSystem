@@ -255,7 +255,24 @@ echo "\n";
 $junits = glob($root.'/storage/app/scratch/*-junit.xml') ?: [];
 usort($junits, static fn (string $a, string $b): int => (int) filemtime($b) <=> (int) filemtime($a));
 $real = $junits[0] ?? null;
-$realLog = $real === null ? null : preg_replace('/-junit\.xml$/', '.txt', $real);
+// The delivered run's log is not always spelled like the junit's sibling: the suite step writes `*-junit.xml` beside
+// a `*.log`, while the older captures use `.txt`. A pair that exists must not be reported as missing evidence, and
+// a missing junit and a junit without a log are two different complaints.
+$realLog = null;
+if ($real !== null) {
+    foreach (['.txt', '.log'] as $ext) {
+        $candidate = preg_replace('/-junit\.xml$/', $ext, $real);
+        if (is_file((string) $candidate)) {
+            $realLog = $candidate;
+            break;
+        }
+    }
+}
+if ($real === null) {
+    $say(false, 'real-junit — no whole-suite JUnit on disk; run the suite with --log-junit first');
+} elseif ($realLog === null) {
+    $say(false, 'real-junit — '.basename((string) $real).' has no paired .txt or .log, so the run it proves cannot be named');
+}
 if ($real !== null && is_file((string) $realLog) && (int) filesize($real) > 0) {
     $rel = static fn (string $p): string => str_replace($root.'/', '', $p);
     // Prove the pair is ONE run before letting it stand as ground truth: a junit and a log from different days would

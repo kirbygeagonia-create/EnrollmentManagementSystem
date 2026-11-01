@@ -123,9 +123,14 @@ foreach ((file($root.'/.env') ?: []) as $line) {
         $env[$m[1]] = trim($m[2], " \t\"'");
     }
 }
-$mysqli = new mysqli('localhost', $env['DB_USERNAME'] ?? 'root', $env['DB_PASSWORD'] ?? '', $schema);
-if ($mysqli->connect_error) {
-    fwrite(STDERR, "REFUSED: {$schema} answered nothing (".$mysqli->connect_error."), and the third reading is the server's.\n");
+// PHP 8's mysqli driver THROWS on a failed connection (`mysqli_sql_exception`), so the classic
+// `if ($mysqli->connect_error)` guard below the constructor is dead code that reads like a refusal — the same
+// never-firing-truthy-guard shape this repository has met with `ZipArchive::open` and `filesize`. The refusal is
+// therefore written in the catch, and its wording is what the harness leg asserts.
+try {
+    $mysqli = new mysqli('localhost', $env['DB_USERNAME'] ?? 'root', $env['DB_PASSWORD'] ?? '', $schema);
+} catch (\mysqli_sql_exception $e) {
+    fwrite(STDERR, 'REFUSED: '.$schema.' answered nothing ('.$e->getMessage().'), and the third reading is the server\'s.'."\n");
     exit(1);
 }
 $safe = $mysqli->real_escape_string($schema);
