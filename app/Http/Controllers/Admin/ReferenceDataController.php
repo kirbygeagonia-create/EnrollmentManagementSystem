@@ -206,18 +206,39 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageMajors', Majors::class);
 
-        $majors = Majors::with('course')
+        // Split from the paging call so the order is applied in the action, as on every other wired screen.
+        // The Course column is one hop away and `majors.courseId` is `NOT NULL` with no missing value on live
+        // `ems`, so the hop is INNER; the default is the title ascending because a reference list is read
+        // alphabetically, and the fallback names the desk's key so the echo matches a header.
+        $query = Majors::with('course')
             ->when($request->search, fn ($q, $search) => $q->where('majorName', 'like', "%{$search}%"))
-            ->when($request->courseId, fn ($q, $courseId) => $q->where('courseId', $courseId))
-            ->orderByDesc('majorId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->courseId, fn ($q, $courseId) => $q->where('courseId', $courseId));
+
+        $sortable = [
+            'majorName' => ['column' => 'majorName'],
+            'course' => ['column' => 'courseName', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'majors.courseId'],
+            'majorId' => ['column' => 'majorId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'majorName',
+            'majors.majorId'
+        );
+
+        $majors = $query->paginate(20)->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
 
         return Inertia::render('Admin/ReferenceData/Majors', [
             'majors' => $majors,
             'courses' => $courses,
-            'filters' => $request->only(['search', 'courseId']),
+            'filters' => $request->only(['search', 'courseId']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

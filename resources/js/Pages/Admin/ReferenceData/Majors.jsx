@@ -2,11 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Majors({ majors, courses, filters = {} }) {
+export default function Majors({ majors, courses, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [courseId, setCourseId] = useState(filters.courseId || '');
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || 'asc');
     const [showModal, setShowModal] = useState(false);
     const [editingMajor, setEditingMajor] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -17,16 +19,28 @@ export default function Majors({ majors, courses, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'majorId', label: 'ID', className: 'font-mono text-sm hidden md:table-cell' },
-        { key: 'majorName', label: 'Title' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
+        { key: 'majorId', label: 'ID', sortKey: 'majorId', className: 'font-mono text-sm hidden md:table-cell' },
+        { key: 'majorName', label: 'Title', sortKey: 'majorName' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
     ], []);
+
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.majors'), {
+            search: search || undefined,
+            courseId: courseId || undefined,
+            ...sortParams('majorName', key, direction),
+        }, { preserveState: true, preserveScroll: true });
+    };
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.majors'), {
             search: search || undefined,
             courseId: courseId || undefined,
+            ...sortParams('majorName', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -152,6 +166,8 @@ export default function Majors({ majors, courses, filters = {} }) {
                             columns={columns}
                             rows={majors.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No majors found"
                         />
                         <div className="mt-4">

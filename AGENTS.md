@@ -1732,7 +1732,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 20 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+  still owed: 19 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
 2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
 handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
 while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
@@ -1761,10 +1761,17 @@ dropdown", while the two reads — the `Academicunits::all(…)` and `Academicye
 thirty-one lines away in the same file. Both numbers land on live code in the right file, so the bounds sweep, the
 meaning sweep and lane 32 all agree with them: lane 70's wrong-target class arriving in a row this document had
 re-pointed once before. Pass 364 moved both to the line that holds the read, each asserted against that line's own
-bytes before the write. The delivered run that carries
-the fifteenth and sixteenth tables answer 1,161 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
-`artisan test --list-tests` discovers the same 1,161, which is the check that no inserted method stole a `#[Test]`
-attribute; the difference over the run above is exactly the three classes these two screens added, counted out of that run's own
+bytes before the write. The seventeenth is the majors list, and it re-taught the same lesson inside one working day:
+`majors()` sits **above** the two lines pass 364 had just re-taken, so the twenty-seven lines it gained aged them by
+twenty-one again — 379 became 400 and 551 became 572, each still a live line of the right file carrying a different
+construct from the one its own sentence names. Run the resolver **after the last insertion of a batch**, not after each
+edit; that harness had its own anchor re-cut once too, because a `--filter` written with hyphens selects no test and
+the leg reported that as a survivor. Pass 368 appended to the day's record through a needle it first proved was
+present: a pass that cannot find the sentence it means to extend refuses, where a lazier one would have written an
+orphan. The delivered run that carries
+the fifteenth, sixteenth and seventeenth tables answer 1,168 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
+`artisan test --list-tests` discovers the same 1,168, which is the check that no inserted method stole a `#[Test]`
+attribute; the difference over the run above is exactly the four classes these three screens added, counted out of that run's own
 junit. The account-status guard is `tests/Feature/Admin/AccountStatusToneVocabularyTest.php`, four cases, and its
 assertion total is deliberately not stated here because it moved between a single-file run and the delivered whole run
 on this same box — lane 58's rule met from a surface nobody had seen it bite on. The audit log is
