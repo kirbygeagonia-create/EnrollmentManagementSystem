@@ -31,3 +31,27 @@ NOTE ON THIS CAPTURE: an earlier run of the same command over three pairs gave t
 4 proposed, 2 unretried 1213, every pair settling on exactly 6 rows with 0 duplicates. The milliseconds belong to
 these runs (lane 58's rule: a timing is a property of the run that printed it); the claim that survives is the
 4-of-10 lock deaths and the row counts, not any single figure.
+
+===== SAME COMMAND, THE REPAIR IN PLACE (lock the enrollment first + RetryOnDeadlock + move only when not already evaluated) =====
+MEASURED ON AN UNCOMMITTED WORKING COPY, NOT IN THE TREE. The repair works — the reading below is real — but landing
+it needs the authority document's 21 citations into `EvaluationController.php` moved with it, and `lane76-shift-cites`
+refused four of them (two GONE windows inside `proposeSubjects()`, one AMBIGUOUS, one bare tail belonging to another
+file). Resolving those by reading and re-running the five gates did not fit the session that measured this, so the
+tree was reverted to the pushed commit and the patch kept at `storage/app/scratch/lane191-p10-repair.patch`
+(untracked — scratch `.patch` is not re-included) with the recipe in task #44. A half-moved register is the defect
+this repository refuses, and a proven fix parked as a patch costs one session; a corrupted docx costs the authority.
+$ php storage/app/scratch/lane190-probe-subject-line-race.php --schema=ems_l190_a --pairs=5 --recreate
+
+children run: 10  proposed: 10  refused: 0  deadlock or lock-timeout: 0  other driver error: 0  policy-refused: 0
+row counts after each pair: 6, 6, 6, 6, 6   the payload holds 6   duplicate (enrollment,subject,attempt) groups: 0
+
+SAFE: every pair left exactly the payload's own row count, no duplicate line, and no driver error reached the caller.
+retired: ems_l190_a dropped.
+L190_EXIT=0
+
+READING BETWEEN THE TWO CAPTURES (the intermediate run, not shown in full): with the lock and the retry but WITHOUT the
+"already evaluated" branch, 10 writers gave 5 proposals and 5 `App\Exceptions\InvalidStateTransitionException` deaths —
+"Cannot transition enrollment from 'evaluated' to 'evaluated'". That is the finding the lock exposed: before it, the
+second writer's stale in-memory status let the transition run a second time, so the throw was the truth arriving, not a
+new defect. The branch answers it by moving the record once. All three readings are kept because the middle one is the
+reason the branch exists.
