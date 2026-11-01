@@ -52,14 +52,14 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Field | |
 |---|---|
 | Description | The same student enrolled twice in one term, including by a route that never asks the application rule. |
-| Preconditions | A migrated schema holding the new keys; `uq_enrollments_active_seat` on the engine that can build it. |
+| Preconditions | A migrated schema. **`uq_enrollments_active_seat` is not on it today**: the key was delivered on 2026-11-01 and withdrawn the same day, so this row records both the measurement that was taken while it was live and the assertion the suite can actually make now. |
 | Test data | One student, one term, one course; the second row written with `enrollmentStatus` `pending` so no code path vetoes it. |
-| Steps | `DatabaseLevelEnrollmentRulesTest`: insert the held seat, attempt the second, then set the first to `dropped` and retry. |
-| Expected | The second active insert is refused by the server. After the drop, the same insert succeeds — a drop releases the seat. |
-| Actual | MySQL (`ems_l170_a`, and live `ems` after the migration): refused with `uq_enrollments_active_seat`, then accepted, leaving one active seat. SQLite: the key cannot exist there (`ALTER TABLE … ADD COLUMN … GENERATED` is unsupported), so that driver asserts `EnrollmentIssuer::seatHolder()` answers the held row and names the surface it cannot reach. |
-| Logs / query output | the server's own words, quoted in the migration docblock and again in `l171-suite.log`: `SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1487-11-1487:11' for key 'enrollments.uq_enrollments_active_seat'` — the shape that made the walkthrough fixture's double-mint visible after months of green. |
-| Result | **Pass** on MySQL; **asserted-not-applicable** on SQLite, stated in the case rather than skipped. |
-| Evidence | `php storage/app/scratch/lane154-probe-duplicate-keys.php` (0 duplicate groups before the key, which is what made it safe to add), the two `1062` messages quoted in the migration's own docblock. |
+| Steps | `DatabaseLevelEnrollmentRulesTest`: insert the held seat, ask `EnrollmentIssuer::seatHolder()` about it, set it to `dropped`, ask again, then write the second row. |
+| Expected | The application rule answers the held row and answers nothing once it is dropped, and the re-enrollment succeeds. A server-side refusal is expected **only** on a driver whose schema holds a key. |
+| Actual | While the key was live, on 2026-11-01: MySQL (`ems_l170_a`, and live `ems` after that migration) refused the second insert with `uq_enrollments_active_seat` and accepted it after the drop, both directions measured. On the schema today, **neither driver holds the key**: the case asserts the fee-sheet index exists on both, asserts the seat index is absent on both, and asserts the application predicate plus the drop-and-retry. SQLite could never have held it anyway — `ALTER TABLE … ADD COLUMN … GENERATED` is unsupported there, which is the asymmetry that made CI the only witness and the withdrawal necessary. |
+| Logs / query output | the server's own words from the day the key was live, quoted in the enforcement migration's docblock and again in `l171-suite.log`: `SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1487-11-1487:11' for key 'enrollments.uq_enrollments_active_seat'` — the shape that made the walkthrough fixture's double-mint visible after months of green. `SHOW INDEX FROM enrollments` on a schema migrated today answers no row for that name, and the withdrawal is proved by `storage/app/scratch/lane174-rehearsal-seat-key-withdrawal.php`. |
+| Result | **Partly demonstrated.** The duplicate-refusal half was a Pass on MySQL while the key was live and is now an assertion about an absent index plus a present application rule; the drop-releases-the-seat half passes on both drivers. Stated as a retreat rather than left reading as a current server guarantee. |
+| Evidence | `php storage/app/scratch/lane154-probe-duplicate-keys.php` (0 duplicate groups before the key, which is what made it safe to add), the two `1062` messages quoted in the enforcement migration's docblock, `DatabaseLevelEnrollmentRulesTest`'s own three cases, and the withdrawal migration's `down()`, which is the proof the key can come back. |
 | Notes | Deliberately NOT a trigger: the guide allows either, and a generated column keeps the rule in the schema without a stored procedure to lose on restore. |
 
 ### T05 — capacity reached
@@ -197,12 +197,6 @@ which is the guide's "reuse existing evidence" instruction and this repository's
 **Logs / query output** for all four is the same run: their case names are printed line by line in
 `storage/app/scratch/l171-suite.log`, and the counts per class come out of that run's junit through
 `lane107-retake-class-figures.php` rather than being retyped here.
-
-### T17 DB exception mid-flow, T18 interruption and retry — **partly executed**
-
-The exception taxonomy is pinned (which codes retry, which propagate, what the desk is told). What is not pinned is
-an interruption between the write and the commit, because that needs the request key of matrix P17 — retrying an act
-whose earlier work already committed would duplicate it, which is the guide's own warning.
 **Logs / query output:** the four boundary cases print in `l171-suite.log`, and the load run's `driver 1062 12` line
 in `lane172-load-out.txt` is the field evidence that a server refusal is classified as a business rejection rather
 than a technical error — the distinction prompt part 40 asks for.
@@ -220,11 +214,20 @@ than a technical error — the distinction prompt part 40 asks for.
 | Result | **Pass**, as an executed drill — recorded in `SECURITY-AND-RECOVERY-ADS.md`. |
 | Notes | No scheduled job and no point-in-time recovery exist; the document says so rather than implying the drill is a policy. |
 
-### T17 DB exception mid-flow, T18 interruption and retry — **partly executed**
+### T17 DB exception mid-flow, T18 interruption and retry — **executed for the retry half**
 
-The exception taxonomy is pinned (which codes retry, which propagate, what the desk is told). What is not pinned is
-an interruption between the write and the commit, because that needs the request key of matrix P17 — retrying an act
-whose earlier work already committed would duplicate it, which is the guide's own warning.
+The exception taxonomy is pinned (`App/Support/RetryOnDeadlock` retries 1213 and 1205 only, propagates everything
+else, refuses `attempts: 0`, and says *Nothing was saved*). The interruption-and-retry half is now built and pinned by
+`tests/Feature/Enrollment/EnrollmentRequestKeyTest.php`: a replay of one `requestKey` answers the enrollment the first
+send created and opens no second workflow form; the UNIQUE index refuses a second row carrying that key **on the
+driver the suite runs on**, which is the property the withdrawn seat key never had; two unkeyed acts stay two acts; a
+key that arrives naming a different student or term is refused rather than answered with somebody else's record; and
+the issuing page is read to prove the desk actually puts the key on the wire. What still no case does is kill a real
+process between the write and the commit — that belongs to the load harness (`lane172`), which drives separate
+processes but does not interrupt one mid-transaction, and is stated as a limit rather than papered over. Proved by
+`storage/app/scratch/mutate-p17-idempotency-tests.php`, one leg per promise, including the leg that takes
+`requestKey` out of `Enrollments::$fillable` — the silent failure, since mass assignment drops an unlisted field with
+no error at all.
 
 ---
 
@@ -238,7 +241,7 @@ whose earlier work already committed would duplicate it, which is the guide's ow
 | T15 | faculty load | not executed — no limit is defined (matrix P14), so there is no expectation to assert | none; nothing in `app/` holds a faculty-load predicate to fail |
 | T16 | schedule conflict | partly — rooms, officers and the block's own hour are covered by `TimetableConflicts` and its tests; two blocks for one student are not (P15) | the suite's own lines in `l171-suite.log` for the three covered branches; the two-block case is the gap |
 | T20 | deletion and restoration | not executed — no restore path exists, and the guide's own question is open with the school (P19) | none; `lane43-delete-guards.php` prints the 72 refusing keys, which is the measurement behind the absence |
-| T21 | report during enrollment | not executed — no isolation level is set anywhere, so a report reads across statements (P20) | `lane172-load-out.txt` prints the session's `REPEATABLE-READ`, which is the default no act currently relies on |
+| T21 | report during enrollment | executed for the daily collection report — both `payments` reads sit inside one transaction, so the sheet is one snapshot; the Registrar queue and the dashboard tiles are named in matrix P20 as still reading outside one | the case's own name in the run, `the_daily_report_takes_its_two_reads_inside_one_transaction`, and `lane172-load-out.txt`'s `session isolation REPEATABLE-READ`, which is the default the case relies on and deliberately does not change |
 
 ---
 

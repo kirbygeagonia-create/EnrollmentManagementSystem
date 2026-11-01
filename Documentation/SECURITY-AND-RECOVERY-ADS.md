@@ -104,4 +104,8 @@ commits on return and rolls back on a throw, so a `try/catch` cannot accidentall
 findings on live `ems`, which is the reading that says nothing partial is sitting on the records today. The
 presentation's remaining half — a printed COMMIT beside a printed ROLLBACK from the same act — is owed as
 traceability tests T02, T17 and T18, and the interruption case (a request key the desk can ask about after the
-connection dies) is traceability row P17, not built yet.
+connection dies) is traceability row P17, **built on 2026-11-01**: `enrollments.requestKey` with
+`uq_enrollments_request_key`, `EnrollmentIssuer::issue($attrs, $issuer, $requestKey)` answering a replay with the
+enrollment the first send created, and a refusal when one key arrives naming a different student or term. What the
+recovery story still does not have is a lookup route by key (the desk that lost its response is the desk that can
+re-send, so the re-send is the lookup today) and any rate limit on the POST.

@@ -681,6 +681,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'yearsInInstitution' => 0,
                 'academicStanding' => 'regular',
                 'formIssuedDate' => now()->toDateString(),
+                'rowVersion' => $enrollment->student->rowVersion,
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -844,6 +845,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'yearsInInstitution' => 1,
                 'academicStanding' => 'regular',
                 'formIssuedDate' => now()->toDateString(),
+                'rowVersion' => $enrollment->student->rowVersion,
             ])
             ->assertSessionHasNoErrors();
 
@@ -935,6 +937,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'yearsInInstitution' => 0,
                 'academicStanding' => 'regular',
                 'formIssuedDate' => now()->toDateString(),
+                'rowVersion' => $enrollment->student->rowVersion,
             ])
             ->assertSessionHasNoErrors();
 
@@ -1068,6 +1071,7 @@ class EnrollmentWalkthroughTest extends TestCase
                 'yearsInInstitution' => 1,
                 'academicStanding' => 'regular',
                 'formIssuedDate' => now()->toDateString(),
+                'rowVersion' => $enrollment->student->rowVersion,
             ])
             ->assertSessionHasNoErrors();
 

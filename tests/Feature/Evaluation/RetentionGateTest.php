@@ -189,6 +189,7 @@ class RetentionGateTest extends TestCase
             'yearsInInstitution' => 2,
             'academicStanding' => 'regular',
             'formIssuedDate' => now()->toDateString(),
+            'rowVersion' => $this->student->fresh()->rowVersion,
         ];
     }
 

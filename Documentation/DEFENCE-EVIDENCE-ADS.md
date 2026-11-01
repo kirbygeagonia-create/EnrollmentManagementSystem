@@ -70,9 +70,13 @@ a reconciliation is how a check passes while the rule it guards is broken.
 
 ## 5. How duplicate enrollment is prevented
 
-By the server, since 2026-11-01:
+By the application, and the server was tried. Since 2026-11-01 the rule is `EnrollmentIssuer::seatHolder()` plus the
+reconciliation rule in `ems:audit:record-states`; a generated-column key was delivered the same day and **withdrawn
+the same day**, so this section states which half holds today rather than what was once attempted:
 
 ```sql
+-- delivered on 2026-11-01 by add_database_level_enrollment_rules, then withdrawn the same day by
+-- 2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php
 ALTER TABLE enrollments
   ADD COLUMN seatKey VARCHAR(32) GENERATED ALWAYS AS (
     CASE WHEN enrollmentStatus <> 'dropped' AND termId IS NOT NULL
@@ -81,11 +85,17 @@ ALTER TABLE enrollments
   ADD UNIQUE KEY uq_enrollments_active_seat (studentId, termId, seatKey);
 ```
 
-`seatKey` is non-null exactly when the row holds a seat. MySQL ignores NULLs in a unique index, so **a drop releases
-the seat** with no trigger and no deleted history — the Registrar may enroll the student they dropped in the same
-term, which is ruling 17's behaviour. Before this, the rule was one php method
-(`EnrollmentIssuer::seatHolder()`), which a second route or a concurrent request could walk past.
-`studentassessments` gained `uq_studentassessments_enrollment` on the same day, closing the review document's DI-2.
+`seatKey` was non-null exactly when the row held a seat, and MySQL ignores NULLs in a unique index, so **a drop
+releases the seat** with no trigger and no deleted history — the Registrar may enroll the student they dropped in the
+same term, which is ruling 17's behaviour. It was withdrawn because six test files each wrote two active seats for
+one student and one term, a state the key refuses and the product forbids, and CI's MySQL job was the only surface
+that could see them: the suite's SQLite schema compiles no `ADD COLUMN … GENERATED`, so the key has never existed
+there and local green said nothing about it. The key returns when those fixtures name a later term or drop the prior
+seat first, and its `down()` restores both column and index unchanged. Before the key and after it, the rule was one
+php method (`EnrollmentIssuer::seatHolder()`), which a second route or a concurrent request could walk past — which
+is why the locking in part 9 and the audit rule are stated beside it rather than underneath it.
+`studentassessments` gained `uq_studentassessments_enrollment` on the same day and keeps it, closing the review
+document's DI-2: that key is portable, so it holds on both drivers.
 
 ## 6. How student academic-load limits are enforced
 

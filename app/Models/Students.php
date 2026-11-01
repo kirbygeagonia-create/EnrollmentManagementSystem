@@ -20,6 +20,11 @@ class Students extends Model
 
     protected $fillable = ['schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix', 'gender', 'birthdate', 'birthplace', 'citizenship', 'civilStatus', 'religionId', 'contactNumber', 'telephoneNumber', 'semestersCompleted', 'yearsInInstitution', 'email', 'username', 'passwordHash', 'status'];
 
+    // A schema default is not handed back to a model that was just created, so without this the object in memory
+    // carries null for `rowVersion` while the row on disk holds 1 — and the screen built from that object would post
+    // a null version and be refused for a field its own record does have.
+    protected $attributes = ['rowVersion' => 1];
+
     // Written at intake and reset through the staff profile path; read by no screen. Staffusers has hidden its own
     // credential hash from the start, and Student 360 hands the whole student model to the browser.
     protected $hidden = [

@@ -169,7 +169,14 @@ export default function EnrollmentProfileForm({ enrollment, religions = [], acad
 
     const submit = (e) => {
         e.preventDefault();
-        form.transform((data) => ({ ...data, addresses, guardians })).put(
+        form.transform((data) => ({
+            ...data,
+            addresses,
+            guardians,
+            // P05: the version travels from the record this page was rendered from, not from a field the desk can
+            // type. A stale page therefore announces itself as stale instead of overwriting the newer save.
+            rowVersion: student.rowVersion,
+        })).put(
             route('evaluation.profile.capture', { enrollment: enrollment.enrollmentId }),
             {
                 preserveScroll: true,

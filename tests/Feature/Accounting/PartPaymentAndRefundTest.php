@@ -23,8 +23,10 @@ use App\Models\Studentassessments;
 use App\Models\Students;
 use App\Services\WorkflowService;
 use Database\Seeders\RbacSeeder;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
@@ -489,5 +491,56 @@ class PartPaymentAndRefundTest extends TestCase
         // prints no name suffix, which is what the census read rather than a constant shared with the clinic desk.
         // §28.3 G-52.
         DeskStudentPayload::assertNameOnly($assessment->enrollment->student, $props['assessment']['enrollment']['student'] ?? null, 'accounting.show');
+    }
+
+    /**
+     * Guide problem 20 / prompt part 43.C: a report generated while the drawer is moving must use one consistent read.
+     *
+     * The assertion is the property that holds on both engines — both `payments` reads happen while a transaction is
+     * open — because that is the half a test can weigh here. Why it is enough on the school's server is measured, not
+     * recited from doctrine: `lane172`'s load capture printed `session isolation REPEATABLE-READ` off the live
+     * connection, and InnoDB fixes a read view at the first consistent read of a transaction, so a receipt committed
+     * by another session between the two reads cannot appear in one and not the other. SQLite's suite cannot show a
+     * second session at all, which is why no snapshot-difference claim is asserted here.
+     */
+    #[Test]
+    public function the_daily_report_takes_its_two_reads_inside_one_transaction(): void
+    {
+        $assessment = $this->createOwingAssessment();
+        $this->collect($assessment, 1000);
+
+        $before = DB::transactionLevel();
+        $levels = [];
+        $sql = [];
+        DB::listen(function (QueryExecuted $event) use (&$levels, &$sql): void {
+            // MySQL quotes with backticks and SQLite with double quotes, so a needle spelled in one engine's
+            // quoting sees no query on the other — the case then fails its own population guard rather than
+            // passing on nothing, which is the direction this repository wants the bug to come out in.
+            if (preg_match('/from\s+[`"]payments[`"]/i', $event->sql) === 1) {
+                $levels[] = DB::transactionLevel();
+                $sql[] = $event->sql;
+            }
+        });
+
+        $props = $this->actingAs($this->cashier)
+            ->get(route('accounting.daily-report'))
+            ->assertOk()
+            ->viewData('page')['props'];
+
+        // A listener that saw nothing would let the two assertions below pass on a report that stopped reading the
+        // table at all, so the population is checked first.
+        self::assertNotSame([], $levels, 'the daily report ran no query against `payments`; this case measured nothing');
+        self::assertGreaterThan(1, count($levels), 'expected both the receipt list and the refund list to read `payments`'
+            .'; saw '.count($levels).' read(s): '.implode(' || ', $sql));
+        // `RefreshDatabase` already holds one transaction open for the test, so the level the action's own
+        // `DB::transaction` raises is compared against what it was before the request — an absolute number here
+        // would be a fact about the harness, not about the report.
+        self::assertSame([$before + 1], array_values(array_unique($levels)),
+            'both `payments` reads must sit inside one transaction the action opened and at no other depth;'
+                .' level before the request was '.$before.', levels seen were '.implode(', ', $levels));
+
+        // And the numbers still describe the drawer: the transaction is not allowed to change what is counted.
+        self::assertSame(1, $props['summary']['totalCount'], 'the one collected receipt should be on the sheet');
+        self::assertEquals(1000, (float) $props['summary']['totalAmount']);
     }
 }

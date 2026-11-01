@@ -23,9 +23,9 @@ not be read from code it says so, and no requirement is marked Verified without 
 |---|---|---|---|
 | P01 | Incomplete Enrollment Transaction (¶41) | Applies | Implemented, demonstration owed (T02) |
 | P02 | Last Available Slot (¶51) | Applies | Built and measured 2026-11-01 — block row locked inside the transaction, count re-taken under it, room locked second; HEAD overbooked 2-of-1, the fix refused one writer per pair |
-| P03 | Duplicate Enrollment (¶61) | Applies | Built and measured 2026-11-01 — subject lines guarded since the schema was written, and the seat and the fee sheet are now refused by unique keys on MySQL (`uq_enrollments_active_seat`, `uq_studentassessments_enrollment`) |
+| P03 | Duplicate Enrollment (¶61) | Applies | Partly — subject lines guarded since the schema was written and the fee sheet by `uq_studentassessments_enrollment` since 2026-11-01; the active-seat key was added the same day and **withdrawn the same day** after CI showed six test files writing two active seats for one student and term, so that rule is `seatHolder()`'s until the fixtures are repaired |
 | P04 | Incorrect Section Capacity (¶71) | Applies | Built and pinned — count weighed against `maxStudents` by the assign guard and by the audit's twentieth rule; the room-level question stays open by name |
-| P05 | Simultaneous Student Updates (¶81) | Applies | **Not built** — no optimistic version, no lock, a silent overwrite is possible |
+| P05 | Simultaneous Student Updates (¶81) | Applies | **Built** — `students.rowVersion` is compared before the profile write, a mismatch is refused naming both numbers and writing nothing, and a successful save spends exactly one version |
 | P06 | Enrollment Cancellation (¶91) | Applies | Implemented, demonstration owed (T06) |
 | P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
 | P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
@@ -37,10 +37,10 @@ not be read from code it says so, and no requirement is marked Verified without 
 | P14 | Faculty Teaching Load (¶171) | Partially — assignments are stored, no load limit is | Justified Partial with a controlled demonstration owed |
 | P15 | Conflicting Class Schedules (¶181) | Applies | Implemented for rooms, officers and blocks; the student-side overlap across two blocks is owed |
 | P16 | Transaction Failure During Enrollment (¶191) | Applies | Implemented, failure demonstration owed (T17) |
-| P17 | Power Interruption During Enrollment (¶201) | Applies | **Not built** — no idempotency key, no rate limit on any POST, no "did my request commit" answer |
+| P17 | Power Interruption During Enrollment (¶201) | Applies | **Built** — `enrollments.requestKey` names the act, `EnrollmentIssuer::issue()` answers the record that already exists, and a UNIQUE index refuses a second row for one key on both drivers |
 | P18 | Duplicate Student ID (¶212) | Applies | Implemented at the database — `uq_students_schoolid` |
 | P19 | Accidental Deletion (¶223) | Partially — status-based cancellation, no restore path | Implemented for protection; restoration is an owner question |
-| P20 | Reports During Active Enrollment (¶234) | Applies | **Not built** — no isolation level is set anywhere; a report reads across several auto-committed statements |
+| P20 | Reports During Active Enrollment (¶234) | Applies | Built and measured 2026-11-01 — the daily collection report takes both of its `payments` reads inside one transaction, so InnoDB's default REPEATABLE READ fixes one read view for the sheet; the isolation level itself is deliberately unset |
 | P21 | Database Recovery (¶245) | Applies | Built and executed 2026-11-01 — `tools/ems-backup-drill.php` restored a fresh dump into a scratch schema, compared 64 tables row for row, three ordered digests MATCHES, and read the durability variables from the server |
 | P22 | Unauthorized Database Access (¶255) | Applies | Implemented and pinned |
 | P23 | Heavy Enrollment Traffic (¶265) | Applies | Built and measured 2026-11-01 — the queries are weighed on 100,000 students and 507,420 subject lines, and `lane172` ran 1,000 acts through ten real processes at 69 per second with every integrity question read back from the server |
@@ -54,7 +54,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 
 - **Source / objective.** Enrollment spans several subjects; one fails; the rest must not stand.
 - **Applicability.** Applies. The build's enrollment act is `EnrollmentIssuer::issue()`.
-- **Existing implementation.** `app/Services/EnrollmentIssuer.php:58` opens `DB::transaction(fn)` and returns the
+- **Existing implementation.** `app/Services/EnrollmentIssuer.php:109` opens `DB::transaction(fn)` and returns the
   closure's value, so the `enrollments` insert and the workflow form written at `:76` and `:78` commit together or
   not at all. The Registrar's approve and drop acts wrap their subject lines, the status transition and the box
   signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:321`, `:368`). 38
@@ -105,32 +105,35 @@ not be read from code it says so, and no requirement is marked Verified without 
 - **Existing implementation.** Subject lines: `database/migrations/2026_08_09_1000000004_extend_enrolledsubjects_table.php:33`
   declares `uq_enrollment_subject_attempt` on (`enrollmentId`, `subjectId`, `attempt_number`) — a second identical
   line is refused by the server. The active-seat rule is code: `EnrollmentIssuer::seatHolder()` at
-  `app/Services/EnrollmentIssuer.php:37-43` reads a non-dropped enrollment for a student and term, and a caller
+  `app/Services/EnrollmentIssuer.php:39-45` reads a non-dropped enrollment for a student and term, and a caller
   refuses when one exists. `studentassessments` has no unique key on `enrollmentId` (measured against
   `database/migrations` — no `unique(` names that table).
-- **Gap closed.** The seat rule used to have no database-level enforcement, so a second route or a concurrent request
-  could walk past it, and a second fee sheet for one enrollment was likewise unguarded — the review document's DI-2,
-  open since 2026-09-15. Both are refused by the server now.
-- **What was delivered.** `uq_studentassessments_enrollment` on `studentassessments(enrollmentId)`, which travels on
-  both drivers, and `uq_enrollments_active_seat` on `enrollments(studentId, termId, seatKey)` where `seatKey` is a
-  **VIRTUAL** generated column, non-null exactly when the status is not `dropped` and a term is named. MySQL ignores
-  NULLs in a unique index, which is precisely the ruling that a drop releases the seat, so re-enrollment stays legal
-  without a trigger. Written as
-  `database/migrations/2026_11_01_1100000000_add_database_level_enrollment_rules.php`. The usual spelling for a
-  generated column is STORED; it was tried and measured, and the `ALTER TABLE` answers
-  `1215 Cannot add foreign key constraint`, because a STORED change rebuilds a table eleven other tables point at.
-  VIRTUAL adds in place, accepts the unique index, and keeps the same NULL behaviour. The difference is recorded here
-  rather than smoothed over, because a reader who tries STORED next time will meet the same error.
+- **What was delivered, and what was taken back out.** `uq_studentassessments_enrollment` on
+  `studentassessments(enrollmentId)` is on the schema, portable to the suite's SQLite, and closes the review
+  document's DI-2. `uq_enrollments_active_seat` over (`studentId`, `termId`, a VIRTUAL generated `seatKey`) was added
+  the same morning — measured, not guessed: STORED answers `1215 Cannot add foreign key constraint` because rebuilding
+  a table eleven other tables point at is what a STORED change does, while VIRTUAL adds in place, takes the index, and
+  keeps the NULL-means-no-seat behaviour that makes a drop release the seat without a trigger.
+  **It was withdrawn the same day** by
+  `database/migrations/2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php`,
+  because CI's MySQL 8 job — the only engine where the key exists at all — refused six test files that create two
+  ACTIVE enrollments for one student in one term. `RetakeAttemptTest`'s comment says the second record simulates "a
+  retake in a later term" and its helper hands both rows the same term; the constraint was right and the fixtures
+  were not. The withdrawal is not a defeat to file away: it names the six files, and re-adding the index is the last
+  step after they are repaired and rehearsed against a scratch MySQL schema with `DB_CONNECTION` pinned (lane 87's
+  rule), because the SQLite suite is structurally blind to this key.
 - **Affected components.** Database, backend.
 - **Testing method.** T04 (sequential duplicate), plus a case that inserts over the HTTP stack and asserts the
   database, not the controller, is what refused.
 - **Evidence.** `php storage/app/scratch/lane154-probe-duplicate-keys.php` answered 0 duplicate groups on live `ems`
-  for every key this row proposes — the precondition for adding a constraint additively instead of repairing data
-  first. `tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` then pins both keys: the fee-sheet refusal is
-  asserted on every driver, the seat refusal only on MySQL, and the class names the half the SQLite suite cannot reach
-  in its own output instead of skipping it quietly.
-- **Status.** Built 2026-11-01 on the driver the school runs. This closes the review document's DI-2 alongside the
-  DI-5 that P02 closed; see `Documentation/System-Design-Quality-Review.md:79`.
+  for every key this row proposed — the precondition for adding a constraint additively rather than repairing data
+  first. `tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` pins the fee-sheet refusal on both drivers,
+  asserts the seat key is **absent on both** (so a reader who re-adds it before the fixtures are repaired sees the
+  case go red on the engine where it matters), and pins the application predicate on the seat's real path: held, then
+  released by a drop, then taken again.
+- **Status.** Partly built, and the gap is named rather than smoothed: the fee sheet is server-enforced, the seat is
+  enforced by `EnrollmentIssuer::seatHolder()`, which every desk path calls and no fresh install's schema enforces.
+  The review document's DI-2 is closed; DI-5 was closed by P02; the seat half of DI-1's family waits on the fixtures.
 
 ### P04 — Incorrect Section Capacity (¶71-80)
 
@@ -167,14 +170,26 @@ not be read from code it says so, and no requirement is marked Verified without 
 ### P05 — Simultaneous Student Updates (¶81-90)
 
 - **Objective.** Two authorized users editing one record must not silently overwrite.
-- **Existing implementation.** None: no `version`, `lockVersion` or `revision` column exists in any migration
-  (grepped `database/migrations`), and no enrollment write takes a lock.
-- **Gap.** Lost-update is possible on the profile capture and on the Registrar's edit path.
-- **Required solution.** Optimistic locking on the record the desk edits: a stored version stamped by the server
-  into the payload, echoed by the form, and refused with a named conflict message when it no longer matches.
+- **Existing implementation.** Now: `students.rowVersion` (unsignedInteger, NOT NULL, default 1) added by
+  `database/migrations/2026_11_01_1700000000_add_row_version_to_students_table.php`, read by the profile screen and
+  compared in `EvaluationController::captureProfile()` before any write. Before this batch there was none: no
+  `version`, `lockVersion` or `revision` column existed in any migration.
+- **Gap that remains.** The version is on `students` alone. A desk holding two *different* records — the address rows
+  and the guardian rows, which are separate tables the same screen edits — can still overwrite one another, and the
+  Registrar's edit path does not touch the person record, so it is unaffected rather than protected.
+- **Required solution.** Delivered as the guide asks: a stored version stamped by the server into the payload
+  (`EnrollmentProfileForm.jsx` puts `student.rowVersion` on the wire, so it is the record's number, never a typed
+  field), echoed back, and refused with a named conflict message when it no longer matches. The column is outside
+  `$fillable` on purpose: a client that could set its own version could walk past the check.
 - **Affected components.** Database, backend, frontend.
-- **Testing method.** T07 — two PATCHes carrying the same version; the second must be refused and must not write.
-- **Evidence.** Pending.
+- **Testing method.** T07 — two saves carrying the same version; the second is refused and writes nothing. Pinned by
+  four cases in `tests/Feature/Evaluation/ProfileCaptureTest.php` and falsified by
+  `storage/app/scratch/mutate-p05-version-tests.php` (comparison removed, bump removed, `required` downgraded to
+  `nullable`, refusal stripped of its message, column made fillable — each killed by the case that names it).
+- **Evidence.** `Tests: 11 passed` for that file locally; `lane181-suite.log` carries the delivered whole-suite
+  reading that contains it. A schema default is not returned to a model that was just created, which is why
+  `Students` now declares `protected $attributes = ['rowVersion' => 1];` — without it the in-memory object posted a
+  null version and the guard refused a screen that had done nothing wrong.
 - **Status.** Not started.
 
 ### P06 — Enrollment Cancellation (¶91-100)
@@ -385,24 +400,39 @@ not be read from code it says so, and no requirement is marked Verified without 
 
 ### P16 — Transaction Failure During Enrollment (¶191-200)
 
-- As P01: the mechanism exists (`EnrollmentIssuer.php:58`), the midway demonstration does not. A `try/catch` that
+- As P01: the mechanism exists (`EnrollmentIssuer.php:109`), the midway demonstration does not. A `try/catch` that
   swallows without rolling back is refused by the framework's own closure form, which is worth saying out loud in
   the defense. **Status.** Implemented; T17 demonstration not started.
 
 ### P17 — Power Interruption During Enrollment (¶201-211)
 
-- **Existing implementation.** InnoDB durability and the transaction boundaries above. Nothing else: no
-  idempotency column exists on `enrollments`, `enrolledsubjects` or `studentassessments`, and `routes/web.php`
-  carries zero `throttle` middleware on any POST (only `LoginRequest` rate-limits,
-  `app/Http/Requests/Auth/LoginRequest.php:47-82`).
-- **Gap.** After an interruption, neither the desk nor the system can answer "did that request commit?", and a
-  re-submit is only stopped by a read-then-write guard.
-- **Required solution.** A request key minted before the POST and stored with a UNIQUE index, so a retry hits the
-  constraint and the server answers with the record the first attempt created; plus a lookup route the desk can
-  call with that key.
-- **Testing method.** T18 — submit, kill the connection before the response, retry with the same key, assert one
-  record and a legible answer.
-- **Status.** Not started.
+- **Existing implementation.** InnoDB durability and the transaction boundaries above; `LoginRequest` rate-limits
+  (`app/Http/Requests/Auth/LoginRequest.php:47-82`) and nothing else does.
+- **Built in this batch.** `enrollments.requestKey` (varchar 64, nullable) with `uq_enrollments_request_key` over it,
+  added by `database/migrations/2026_11_01_1800000000_add_request_key_to_enrollments_table.php`.
+  `EnrollmentIssuer::issue($attributes, $issuer, $requestKey)` reads the key first and answers the enrollment that
+  already exists — one record, one workflow form — and a second request that races past the read is refused by the
+  UNIQUE index and then answered the same way, so the index is the guard and the read is only the fast path. One key
+  may not name two different acts: a key already bound to a different student or term raises a validation refusal
+  naming both records rather than handing over somebody else's enrollment. The desk half mints the key when the act
+  is opened (`resources/js/Components/ui/requestKey.js`, used by `Pages/Evaluation/Index.jsx` and
+  `Pages/Evaluation/ShiftRequests.jsx`) and replaces it after a success, so a retry of the same send is the same act
+  while a second student issued in the same visit is a different one.
+- **Why the index is portable and the withdrawn seat key was not.** A plain nullable column with an ordinary unique
+  index exists on the suite's SQLite driver as well as on MySQL, so `tests/Feature/Enrollment/EnrollmentRequestKeyTest.php`
+  can assert the server's own refusal. `uq_enrollments_active_seat` needed a generated column, SQLite cannot build
+  one, and the whole local suite was green over a rule only CI could see.
+- **Testing method.** T18, as the service's own cases plus the wire: replay answers the first record; the index
+  refuses a second row carrying one key on whichever driver the suite runs; two unkeyed acts stay two acts; a
+  cross-act replay is refused and leaves the original untouched; the page is read to prove the desk actually sends a
+  key. Proved by `storage/app/scratch/mutate-p17-idempotency-tests.php`, one leg per promise — including the plant
+  that takes `requestKey` out of `Enrollments::$fillable`, which is the silent one: mass assignment drops a field
+  with no error at all, and a dedupe whose key never reaches the column looks exactly like a working one.
+- **What is still owed.** The guide's other half — a rate limit on the POST — is not built: no `throttle` middleware
+  sits on any desk route, so a stuck desk can still send one act ten times. The key makes each send answer the same
+  record; it does not make the sends fewer. A lookup route by key is also not built, because the desk that lost its
+  response is the desk that can re-send, and the re-send already answers with the record.
+- **Status.** Built for the enrollment-issuing acts.
 
 ### P18 — Duplicate Student ID (¶212-222)
 
@@ -434,18 +464,28 @@ not be read from code it says so, and no requirement is marked Verified without 
 
 ### P20 — Reports During Active Enrollment (¶234-244)
 
-- **Existing implementation.** None of the isolation question: grepping the repository for `ISOLATION LEVEL`,
-  `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE`, `transaction_isolation` finds only `config/cache.php` and
-  `composer.lock` false hits. `config/database.php:14` sets the session **time zone** and nothing about isolation.
-  Every report screen (`RegistrarController::index`, `AccountingController::dailyReport` at `:360-404`,
-  `DashboardController`) runs its reads outside any transaction, so a multi-query report can straddle two
-  snapshots.
-- **Required solution.** Run each report inside one transaction on a consistent snapshot, state the chosen level and
-  why (MySQL's default REPEATABLE READ gives the snapshot at first read; the guide asks for a coherent point in
-  time), keep it read-only so enrollment traffic is not blocked, and measure that it does not wait on locks.
-- **Testing method.** T21 — a report whose first query is followed by a committed enrollment must print the number
-  from before it, and the next report must show the new one.
-- **Status.** Not started.
+- **Existing implementation.** The isolation reading was true when this row was written and is kept because it is
+  what was measured: grepping the repository for `ISOLATION LEVEL`, `READ COMMITTED`, `REPEATABLE READ`,
+  `SERIALIZABLE`, `transaction_isolation` finds only `config/cache.php` and `composer.lock` false hits, and
+  `config/database.php:14` sets the session **time zone** and nothing about isolation.
+- **What was built 2026-11-01.** The daily collection report — the one sheet the guide's problem describes, the
+  action beginning at `app/Http/Controllers/Accounting/AccountingController.php:360` — now takes both of its
+  `payments` reads inside one `DB::transaction`, so InnoDB's default REPEATABLE READ fixes a single read view for
+  the sheet and a receipt committed by another session mid-render cannot appear in the row list and not the totals.
+  The isolation level is **not** declared: raising or lowering it changes what every desk write on the connection
+  sees, which is an engine-wide decision the school has not made, so the run names the default it measured instead
+  (`lane172` printed `session isolation REPEATABLE-READ` off the live server).
+- **What remains, named rather than counted as done.** `RegistrarController::index` and the dashboard's aggregate
+  tiles still read outside a transaction. They are lists and counters rather than a signed sheet a desk reconciles
+  against the drawer, so this row does not extend its claim to them; the same wrap applies whenever one of them
+  starts costing more than one snapshot.
+- **Testing method.** T21 — the report's two `payments` reads must sit one transaction level deeper than the request
+  started at, and the totals must still equal a direct read.
+- **Status.** Built and measured 2026-11-01 for the daily collections report, pinned by
+  `tests/Feature/Accounting/PartPaymentAndRefundTest.php` and falsified by
+  `php storage/app/scratch/mutate-p20-consistent-read-tests.php`, which takes the wrapper off and requires that
+  named case to go red (4 legs, control green before and after, tree restored by hash). The other report screens
+  are the remainder above.
 
 ### P21 — Database Recovery (¶245-254)
 
@@ -502,8 +542,11 @@ not be read from code it says so, and no requirement is marked Verified without 
   (`.github/workflows/ci.yml:23,211`). `lane168` now drives two writers against one seat, and `lane172` drives ten
   processes at a thousand acts.
 - **What the ten properties say today.** No block over capacity — `blocks over declared capacity 0`, and the rule is
-  the audit's twentieth. No prohibited duplicate — `duplicate active seats 0`, enforced by
-  `uq_enrollments_active_seat`, with 12 refusals all carrying driver code 1062. No partial records from failed
+  the audit's twentieth. No prohibited duplicate — `duplicate active seats 0`. Measured while
+  `uq_enrollments_active_seat` was live, the run logged 12 refusals that all carried driver code 1062; the key is
+  withdrawn today, so the same property is held by `EnrollmentIssuer::seatHolder()` in the worker and re-weighed by
+  the audit afterwards, and the server no longer refuses anything on that rule. That is a narrower guarantee than
+  the one this row first stated, and it is stated here as such. No partial records from failed
   transactions — `orphan workflow forms 0` and `committed acts without a form 0`. Committed records still there —
   the server's own count of load enrollments reconciles with the workers' tallies. Authorization enforced — the acts
   run as a real office-4 desk account through the service the desks call. Database up and consistent — the run
@@ -526,8 +569,8 @@ not be read from code it says so, and no requirement is marked Verified without 
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
 | Concurrency Control (¶301) | Implemented for one act | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168` | P05 and P10's own races, which no writer yet serialises |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
-| Deadlock Handling (¶305) | Implemented and observed | `App/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path, and P17's key before any act is retried blind |
-| Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php`, including the two enrollment keys this batch added | nothing owed for the keys; the range `CHECK`s are named in P11 |
+| Deadlock Handling (¶305) | Implemented and observed | `App/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
+| Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php` — today twelve keys in ten tables, of which this batch contributes `uq_enrollments_request_key` on `enrollments` and `uq_studentassessments_enrollment` on `studentassessments`; the VIRTUAL seat key the same batch added was withdrawn the same day, so it is absent from the list on purpose | nothing owed for the keys; the range `CHECK`s are named in P11 |
 | Indexing (¶309) | Implemented, unusable by one query | `idx_students_names`, `idx_enrollments_term_status`, `idx_enrolledsubjects_block_status` | the plan is printed: a leading-wildcard search reads ~98,800 index rows where a prefix reads ~1,111, and the estimates agreed across two runs |
 | Query Optimization (¶311) | Measured 2026-11-01 | P08, P09, `lane164-measure-scale-queries.php` | the two repairs the measurements point at, which wait on a search-semantics ruling |
 | Data Integrity (¶313) | Implemented, extended today | state machine, `ems:audit:record-states` (its 20th rule weighs block capacity), lane 43 delete guards | nothing owed for P04's block side |
@@ -551,9 +594,12 @@ same defect as a stale row, and six of the eight below said "owed" for things th
    evidenced by `BlockCapacityAtomicityTest` (a refusal that seats nobody, and the seats still free afterwards).
    Still owed: a failure injected *inside* a commit, which the assign path cannot produce from a desk because its
    ids are validated first — stated in `TESTING-AND-VERIFICATION-ADS.md` as T01/T02 rather than simulated.
-3. **ACID** — **delivered as far as the build goes.** Isolation is the row lock the guide names (`FOR UPDATE`),
-   durability is the executed restore; atomicity and consistency are the keys and the audit. The one property the
-   system does not hold is a transaction isolation level around a report, which is P20 and is written as absent.
+3. **ACID** — **delivered as far as the build goes.** Isolation is the row lock the guide names (`FOR UPDATE`) for
+   the write path and one transaction around the sheet the cashier prints, so a report no longer straddles two
+   snapshots; durability is the executed restore; atomicity and consistency are the keys and the audit. What the
+   system still does not do is declare an isolation level, which is a deliberate refusal to change what every desk
+   write on the connection sees — the engine's default is measured and named instead (REPEATABLE READ, read from the
+   session by `lane172`).
 4. **Concurrency** — **delivered, with numbers attached.** The scenario, the chosen strategy (pessimistic row
    locks in one fixed order over a canonically sorted id list) and the testing evidence are in
    `DEFENCE-EVIDENCE-ADS.md` parts 3, 4 and 9; the two-writer outcome is `lane168`'s own table, and the
@@ -591,7 +637,7 @@ quoted in the artefact that holds it; nothing in that file quotes a line no run 
 | T01 | multi-subject commit | no |
 | T02 | failure mid-commit | no — see the note under the table for why the assign path cannot produce it |
 | T03 | two requests, one slot | yes, `lane168-probe-last-seat-race.php` (two writers, one MySQL server, HEAD vs working) |
-| T04 | duplicate enrollment | yes, `DatabaseLevelEnrollmentRulesTest` — the second active seat refused by `uq_enrollments_active_seat` on MySQL, the second fee sheet refused on both drivers |
+| T04 | duplicate enrollment | partly — the fee sheet is refused by `uq_studentassessments_enrollment` on both drivers (`DatabaseLevelEnrollmentRulesTest`); the second active seat is refused only by `EnrollmentIssuer::seatHolder()`, because the server key for it was withdrawn on 2026-11-01 pending a fixture repair |
 | T05 | capacity reached | yes, `BlockCapacityAtomicityTest` (a request larger than the seats left seats nobody) |
 | T06 | multi-subject cancellation | no |
 | T07 | concurrent student edit | no |
@@ -605,10 +651,10 @@ quoted in the artefact that holds it; nothing in that file quotes a line no run 
 | T15 | faculty load | not executed — no limit is defined (P14) |
 | T16 | schedule conflict | partially, resource side |
 | T17 | DB exception mid-flow | yes, `the_helper_retries_a_deadlock_and_a_lock_wait_and_nothing_else` (the exception side; no injected fault) |
-| T18 | interruption and retry | partly — `RetryOnDeadlock` is pinned (retries 1213/1205, propagates everything else, refuses `attempts: 0`, says *Nothing was saved*), and no case interrupts a real process between the write and the commit, which is P17's request-key work |
+| T18 | interruption and retry | built and pinned by `tests/Feature/Enrollment/EnrollmentRequestKeyTest.php` — replay answers the first record, the UNIQUE index refuses a second row for one key on the driver the suite runs on, a cross-act replay is refused, and the desk page is read to prove it sends a key. What no case does is kill a real process between the write and the commit, which is a harness of processes rather than a phpunit case (T23's `lane172` is that harness, and it does not interrupt mid-transaction) |
 | T19 | duplicate student id | yes, intake validation |
 | T20 | deletion and restoration | no |
-| T21 | report during enrollment | no |
+| T21 | report during enrollment | yes, `the_daily_report_takes_its_two_reads_inside_one_transaction` (the daily collections sheet; the Registrar queue and dashboard tiles are named as the remainder in P20) |
 | T22 | backup and restore | yes, `tools/ems-backup-drill.php` executed: 64 tables compared row for row and three ordered digests MATCHES, with the durability variables read from the server |
 | T23 | unauthorized access | yes, `PermissionMatrixTest` and policy cases |
 | T24 | high-volume challenge | no — the design is written, the run is not |
@@ -629,14 +675,16 @@ Read off §1's own Status column by `php storage/app/scratch/lane169-read-ads-st
 counts and refuses the run when they do not add to the 24-row population or when a row's lead word is unclassified.
 This file states no tally, because the buckets are a property of §1's cells and every row re-taken here moves them:
 
-- **Built and measured.** P02's row lock and refusal, P03's two unique keys, P04's guard plus the audit's twentieth
+- **Built and measured.** P02's row lock and refusal, P04's guard plus the audit's twentieth
   rule, P07's deadlock handling, P21's restore drill, P23's and P24's enrollment-day run. Each has an instrument that
   can show it failing.
 - **Measured but not repaired.** P08 and P09 — the plans and timings are in this file, and the two changes they
   point at are decisions (what a search may stop matching; how a page's checklist is batched), not defaults to invent.
-- **Partly.** P10's own race and P14's justified cap.
-- **Not built.** P05 (a silent overwrite of one student record), P13 (the term unit ceiling, which the school has
-  not stated), P17 (no request key, so "did my save commit" is unanswerable), P20 (no isolation around a report).
+- **Partly.** P03's active-seat rule (the fee sheet is server-enforced, the seat is `seatHolder()`'s until six
+  fixture files are repaired), P10's own race and P14's justified cap.
+- **Not built.** P13 (the term unit ceiling, which the school has
+  not stated), P17's rate-limit half (no POST is throttled, so a stuck desk can still send the same act ten times —
+  the key makes each one answer the same record rather than making the sends fewer).
 - **Implemented.** P01, P06, P11, P12, P15, P16, P18, P19, P22 — of which P01, P06 and P16 still owe the
   demonstration the guide asks for rather than the behaviour.
 
@@ -651,9 +699,12 @@ One finding the load run produced about the schema itself, recorded here rather 
 (measured with `SHOW INDEX` by `mutate-lane172-load-integrity.php`), so "one workflow form per enrollment" is held by
 `WorkflowService::createWorkflow()` and the existence check around it, not by the server. The harness can therefore
 plant two forms on one record — which is how it proves the checker sees the defect, and also how it proves the
-constraint is absent. The additive fix is a unique key over `enrollmentId`; it is not taken in this batch because the
-duplicate it would refuse is exactly the re-issue question P17's request key has to answer first, and a key that
-refuses a legitimate re-issue is a worse defect than the one it prevents.
+constraint is absent. The additive fix is a unique key over `enrollmentId`. It was left out of that batch because the
+duplicate it would refuse is exactly the re-issue question P17's request key had to answer first — and P17 is now
+built, so a re-send of one act is answered with the record that exists instead of reaching the form at all. That
+leaves the key safe to add and nothing in the way of it; it is still not added in the same breath as the feature that
+justified it, because a schema guard deserves its own refused-against-real-data check (`lane154` measured zero
+duplicate forms) and its own row in §23.6.1.
 
 The sentence this one replaces read "Nine problems need new code" and then listed thirteen — the membership defect
 this repository has met in its own registers (lane 64), caught here by making the count come from the table instead

@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, Modal, FormSection, Select, RadioCards, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, yearLevelChoices, nextSortDirection, sortParams } from '@/Components/ui';
 import { useState, useMemo } from 'react';
+import { newRequestKey } from '@/Components/ui/requestKey';
 
 export default function Index({ enrollments, stats = {}, filters = {}, sort = null, canIssueEnrollment = false, returningStudents = [], terms = [], courses = [] }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -58,11 +59,19 @@ export default function Index({ enrollments, stats = {}, filters = {}, sort = nu
         }
     };
 
+    // P17: one key per ACT, not per screen. A failed send keeps the key so the desk's retry is answered with the
+    // enrollment the first send created; a success mints the next act's key, so issuing a second student in the
+    // same visit cannot be answered with the first student's record.
+    const [issueKey, setIssueKey] = useState(() => newRequestKey('issue'));
+
     const submitIssue = (e) => {
         e.preventDefault();
-        issueForm.post(route('evaluation.store'), {
+        issueForm.transform((data) => ({ ...data, requestKey: issueKey })).post(route('evaluation.store'), {
             preserveScroll: true,
-            onSuccess: () => setIssueOpen(false),
+            onSuccess: () => {
+                setIssueOpen(false);
+                setIssueKey(newRequestKey('issue'));
+            },
         });
     };
 

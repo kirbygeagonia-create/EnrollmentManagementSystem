@@ -3,6 +3,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { PageHeader, Card, Badge, Modal, FormSection, Select, RadioCards, StatCard, EmptyState, FilterBar, FilterBarField, formatStatusLabel, formatYearLevel, yearLevelChoices, useRouterPending } from '@/Components/ui';
 import { useState } from 'react';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
+import { newRequestKey } from '@/Components/ui/requestKey';
 
 const statusTone = {
     pending: 'warning',
@@ -208,7 +209,10 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
                                             className="btn btn-primary btn-sm"
                                             onClick={() => {
                                                 setDeciding(r);
-                                                decideForm.setData({ decision: 'grant', remarks: '' });
+                                                // P17: the key is minted when this paper's decision is opened, so a
+                                                // retry of the same decision carries the same act and is answered
+                                                // with the enrollment the first send created.
+                                                decideForm.setData({ decision: 'grant', remarks: '', requestKey: newRequestKey('shift') });
                                             }}
                                         >
                                             Decide — final call

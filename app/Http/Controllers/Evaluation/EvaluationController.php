@@ -558,10 +558,30 @@ class EvaluationController extends Controller
             'yearsInInstitution' => 'required|integer|min:0',
             'academicStanding' => 'required|in:regular,irregular',
             'formIssuedDate' => 'required|date',
+            // P05: the version the page was rendered from. Required, because a payload that sends nothing is a
+            // screen that has not been told what the record currently says — and "unknown" may not become
+            // "allowed to overwrite".
+            'rowVersion' => 'required|integer|min:1',
         ]);
 
-        DB::transaction(function () use ($enrollment, $validated) {
+        // Guide problem 5. A silent overwrite is the defect: two desks open the same student, one saves, and the
+        // second save replaces the first without either desk being told. The comparison is against the row this
+        // request is about to write, read here rather than inside the transaction, because the refusal must write
+        // nothing at all — not a partial profile, not a re-stamped address, not a bumped version.
+        $held = (int) $enrollment->student->rowVersion;
+        $posted = (int) $validated['rowVersion'];
+        if ($held !== $posted) {
+            return back()->withErrors([
+                'rowVersion' => "This student record changed after the page was read: it is on version {$held}, "
+                    ."the form you sent carries {$posted}. Nothing was written. Re-open the record, then re-enter "
+                    .'the change — the other desk\'s save is still on the file.',
+            ])->withInput();
+        }
+
+        DB::transaction(function () use ($enrollment, $validated, $held) {
             $student = $enrollment->student;
+            // The bump rides the same save as the fields, so a record cannot end up written-but-not-counted.
+            $student->rowVersion = $held + 1;
             $student->update(StudentRecordDefaults::person([
                 'lastName' => $validated['lastName'],
                 'firstName' => $validated['firstName'],
@@ -1072,6 +1092,10 @@ class EvaluationController extends Controller
             'majorId' => 'nullable|exists:majors,majorId',
             'yearLevel' => 'required|integer|min:1|max:5',
             'studentType' => ['required', Rule::in([StudentType::Continuing->value, StudentType::Shifter->value])],
+            // P17: the key identifies the ACT, not the student — one per opened form. It is nullable because a
+            // caller that has not been given one is an ordinary write, not a violation; nothing on the seat rule
+            // or the workflow depends on it.
+            'requestKey' => 'nullable|string|max:64',
         ]);
 
         $student = Students::findOrFail($validated['studentId']);
@@ -1129,7 +1153,7 @@ class EvaluationController extends Controller
             'studentType' => $validated['studentType'],
             // BR31: a returning student's record updates the one the school already holds.
             'enrollmentType' => EnrollmentType::Old,
-        ], Auth::user());
+        ], Auth::user(), $validated['requestKey'] ?? null);
 
         return redirect()->route('evaluation.show', $enrollment->enrollmentId)
             ->with('success', 'Enrollment form issued for '.strtolower($student->lastName).', '.strtolower($student->firstName).' — '.YearLevel::format($enrollment->yearLevel).'.');

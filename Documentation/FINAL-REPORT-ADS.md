@@ -32,7 +32,7 @@ but deliberately not repaired, and six remain open with their reasons written do
 | Stack | Laravel **13.23.0** (`composer.json` `^13.8`; `artisan --version`), Inertia + React 18 on the front, MySQL 8 in production, SQLite `:memory:` in the suite. Not Laravel 11, which a note in this project had repeated without re-reading. |
 | Architecture | A monolith with nine office desks behind one workflow form; controllers resolve a record, `App\Support` holds the shared predicates (`DeskQueues`, `CollegeScope`, `WorkflowInbox`, `ListSort`, `EnrollmentReadiness`), and papers are rendered from Blade templates by Browsershot. |
 | Database | 64 tables (56 domain + 8 framework), 480 columns, 105 foreign keys (71 NO ACTION / 29 SET NULL / 4 CASCADE / 1 RESTRICT), 12 unique keys in 10 tables, 138 indexes — all read from `information_schema` on 2026-11-01. |
-| Real weaknesses found | The unlocked capacity check (DI-5); no uniqueness on `studentassessments` (DI-2); a search whose leading wildcard cannot use the index the schema carries; a Registrar queue issuing 40 queries for a 20-row page; **no isolation level anywhere**, so a report reads across statements; **no idempotency key**, so an interrupted request cannot be answered; and a room weighed per-schedule rather than per-room, which means the room's declared capacity is not the rule it reads like. |
+| Real weaknesses found | The unlocked capacity check (DI-5); no uniqueness on `studentassessments` (DI-2); a search whose leading wildcard cannot use the index the schema carries; a Registrar queue issuing 40 queries for a 20-row page; **no isolation level anywhere**, so a report reads across statements (the daily collection report now reads inside one transaction); no rate limit on any desk POST, so a stuck desk can resend one act ten times — the request key makes each resend answer the same record, not the sends fewer; and a room weighed per-schedule rather than per-room, which means the room's declared capacity is not the rule it reads like. |
 | Also found, while reading | A bell addressed by office alone could name a record its recipient's own policy refuses; `**` globs in php match nothing, so two censuses had been passing by reading no file; and a document cited a roster filter at a line that held a docblock opener. |
 
 ## 3. Requirements coverage
@@ -44,10 +44,10 @@ below is the claim, and the tool owns the number:
 
 | Bucket | Problems |
 |---|---|
-| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
+| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
 | Measured, not repaired | P08 search plan, P09 page query count |
 | Partly | P10, P14 |
-| Not built | P05, P13, P17, P20 |
+| Not built | P13 |
 | Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
 
 Demonstrated through a controlled test rather than argued: T03, T04, T05, T08, T09, T10, T11, T22 — each named with
@@ -61,7 +61,13 @@ question attached, not as not-applicable.
 - `uq_enrollments_active_seat (studentId, termId, seatKey)` with `seatKey` a **virtual** generated column that is
   non-null exactly when the row holds a seat. MySQL ignores NULLs, so `dropped` releases the seat without a trigger
   and without deleting the record. Both were refused-to-add guards first: the migration names the violating rows
-  rather than skipping the key.
+  rather than skipping the key. **This key was withdrawn the same day it was delivered**, by
+  `2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php`: six test files each wrote
+  two active seats for one student and one term, which the key refuses and the product forbids, and only CI's MySQL
+  job could see it, because SQLite compiles no `ADD COLUMN … GENERATED` and the suite had therefore been green over
+  a rule it never exercised. The seat rule is application-enforced again (`EnrollmentIssuer::seatHolder()`, the row
+  locks around the capacity check, and the audit's reconciliation), the withdrawal is reversible in `down()`, and the
+  fixture repair that lets the key return is a registered task rather than a forgotten one.
 - Chosen over a stored generated column for a measured reason: a stored column rebuilds `enrollments`, which eleven
   child tables reference, and MySQL 8.4 answers `1215 Cannot add foreign key constraint` for it — with
   `foreign_key_checks` off as well.
@@ -126,9 +132,13 @@ figures that would need one are the school's (report part 9).
 
 ## 9. Remaining issues
 
-Open engineering: P05 (a silent overwrite of one student record — no version column), P17 (no request key, so an
-interrupted act cannot be retried safely and "did my save commit?" is unanswerable), P20 (no isolation level around a
-report), P13 and P14 (two load ceilings with no number), P10's own subject-line race, and the room-capacity
+Open engineering: P05's sibling half (the version now guards the one screen that edits the person record, but a desk
+holding two *different* records — the address and guardian rows — can still write them without a version, since the
+column is on `students` and not on its children), P17's rate-limit half (no
+`throttle` middleware sits on any desk route, so a stuck desk can resend one act ten times — the key makes each send
+answer the same record, not the sends fewer), P20's isolation half (no isolation level is declared anywhere, so a
+report that reads in more than one transaction still sees a moving drawer — the daily report now reads inside one),
+P13 and P14 (two load ceilings with no number), P10's own subject-line race, and the room-capacity
 semantics named in report part 2. Open with the school: the term unit ceiling, any faculty cap, the search semantics that P08's
 measurement now prices, restoration policy behind P19, and the thirteen items on the dated decision sheets that a
 window has to answer.
@@ -167,8 +177,9 @@ Documents: the five ADS files plus `TESTING-AND-VERIFICATION-ADS.md`, `IMPLEMENT
 
 1. Answer the thirteen school items on the dated sheets — two of them (P13, P14) unblock tests that cannot be
    written without a number.
-2. Add the request key (P17). It is the prerequisite for extending the retry beyond one act and for answering a
-   desk that lost power mid-save.
+2. Add `uq_enrollmentworkflow_enrollment`. P17's request key removed the reason it was unsafe — a re-sent act is now
+   answered with the enrollment that exists rather than reaching the form at all — so the server can hold "one
+   workflow form per enrollment", which today only `WorkflowService::createWorkflow()` does.
 3. Batch the Registrar queue's checklist reads, which P09's measurement prices at 40 queries against 2.
 4. Rule on the room's meaning, then make the room check either per-room or honest about being per-section.
 5. Take the load run further than the creation act: the thousand-issue bench is delivered (`lane172`,

@@ -232,6 +232,9 @@ class ShiftRequestController extends Controller
         $validated = $request->validate([
             'decision' => 'required|in:grant,reject',
             'remarks' => 'nullable|required_if:decision,reject|string|min:10|max:500',
+            // P17: the granting POST creates an enrollment, so it carries the act's key. A desk that re-sends the
+            // same decision after a dropped connection is answered with the enrollment the first send created.
+            'requestKey' => 'nullable|string|max:64',
         ]);
 
         if ($validated['decision'] === 'reject') {
@@ -317,7 +320,7 @@ class ShiftRequestController extends Controller
                     ? AcademicStanding::Irregular
                     : null,
                 'enrollmentType' => EnrollmentType::Old,
-            ], Auth::user());
+            ], Auth::user(), $validated['requestKey'] ?? null);
 
             $shiftRequest->update([
                 'requestStatus' => ShiftRequestStatus::Granted,

@@ -183,6 +183,7 @@ class ProfileCaptureTest extends TestCase
             'yearsInInstitution' => 1,
             'academicStanding' => 'regular',
             'formIssuedDate' => now()->toDateString(),
+            'rowVersion' => $this->student->fresh()->rowVersion,
         ], $overrides);
     }
 
@@ -322,5 +323,83 @@ class ProfileCaptureTest extends TestCase
         $this->student->refresh();
         $this->assertSame('Incomplete', $this->student->lastName);
         $this->assertEquals(0, $this->student->addresses()->count());
+    }
+
+    /**
+     * Guide problem 5, the case the whole rule exists for: two desks hold the same student, the first saves, and the
+     * second must be told rather than silently replacing the first. The old version is what a screen rendered before
+     * the first save would still be carrying.
+     */
+    #[Test]
+    public function a_stale_version_is_refused_and_the_newer_save_survives(): void
+    {
+        $enrollment = $this->makeEnrollment();
+        $stale = $this->student->fresh()->rowVersion;
+
+        $this->actingAs($this->evaluator)
+            ->put(route('evaluation.profile.capture', $enrollment), $this->completeProfilePayload([
+                'lastName' => 'FirstDesk',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('FirstDesk', $this->student->fresh()->lastName);
+
+        $this->actingAs($this->evaluator)
+            ->put(route('evaluation.profile.capture', $enrollment), $this->completeProfilePayload([
+                'lastName' => 'SecondDesk',
+                'rowVersion' => $stale,
+            ]))
+            ->assertSessionHasErrors('rowVersion');
+
+        $after = $this->student->fresh();
+        $this->assertSame('FirstDesk', $after->lastName,
+            'the second desk overwrote the first — which is precisely the silent loss problem 5 names.');
+        $this->assertSame($stale + 1, $after->rowVersion, 'a refused save must not spend a version.');
+    }
+
+    /** A save that is accepted spends exactly one version, so the next screen sees a different number. */
+    #[Test]
+    public function a_successful_save_bumps_the_version_by_exactly_one(): void
+    {
+        $enrollment = $this->makeEnrollment();
+        $before = $this->student->fresh()->rowVersion;
+
+        $this->actingAs($this->evaluator)
+            ->put(route('evaluation.profile.capture', $enrollment), $this->completeProfilePayload())
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($before + 1, $this->student->fresh()->rowVersion,
+            'the version did not move with the write, so the next stale screen would be accepted.');
+    }
+
+    /**
+     * A payload that names no version is refused rather than allowed through: "unknown" must not become "permitted
+     * to overwrite", or every older screen keeps the right it was given.
+     */
+    #[Test]
+    public function a_payload_without_a_version_is_refused_rather_than_overwriting(): void
+    {
+        $enrollment = $this->makeEnrollment();
+
+        $payload = $this->completeProfilePayload();
+        unset($payload['rowVersion']);
+
+        $this->actingAs($this->evaluator)
+            ->put(route('evaluation.profile.capture', $enrollment), $payload)
+            ->assertSessionHasErrors('rowVersion');
+
+        $this->assertSame('Incomplete', $this->student->fresh()->lastName,
+            'a save with no version wrote the record anyway.');
+    }
+
+    /**
+     * The version is written by the bump, never by the desk. If it were mass-assignable a stale screen could post a
+     * high number and walk past the check, so the model's own fillable list is the pin.
+     */
+    #[Test]
+    public function the_version_is_not_something_a_payload_may_write_directly(): void
+    {
+        $this->assertNotContains('rowVersion', (new Students)->getFillable(),
+            'rowVersion is fillable, so a client can set its own version and the comparison proves nothing.');
     }
 }

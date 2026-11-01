@@ -222,7 +222,7 @@ rather than folded into the result.
 | Stage | What it drives | What is measured |
 |---|---|---|
 | warm | 20 sequential assigns | that the stage is legal at all, before any concurrency number is taken |
-| contention | 1,000 assigns across N workers against blocks whose seats are deliberately fewer than the requests | assigned, refused on `capacity`, refused by the seat key, deadlocks retried, deadlocks that reached a desk |
+| contention | 1,000 assigns across N workers against blocks whose seats are deliberately fewer than the requests | assigned, refused on `capacity`, refused by `EnrollmentIssuer::seatHolder()` in the worker, deadlocks retried, deadlocks that reached a desk. The third category was `refused by the seat key` while `uq_enrollments_active_seat` was live; the key is withdrawn, so that half of the guarantee is now application-side and the server refuses nothing on it |
 | mixed | the same writers plus the reports `Registrar/Index` and `Accounting/Index` | whether a report's row count changes mid-flight, which is problem 20's question in a load run |
 | settle | every invariant rule of `ems:audit:record-states` | block seats against `maxStudents`, one sheet per enrollment, one active seat per student and term |
 

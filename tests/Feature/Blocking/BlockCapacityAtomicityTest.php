@@ -456,6 +456,18 @@ class BlockCapacityAtomicityTest extends TestCase
         return substr($file, $start, $end);
     }
 
+    /** One desk account per class run, created rather than assumed: CI seeds nothing before the Pest step. */
+    private int $evaluatorCache = 0;
+
+    private function evaluatorId(): int
+    {
+        if ($this->evaluatorCache === 0) {
+            $this->evaluatorCache = $this->desk()->userId;
+        }
+
+        return $this->evaluatorCache;
+    }
+
     private function desk(): Staffusers
     {
         $staff = Staffusers::factory()->make([
@@ -508,7 +520,10 @@ class BlockCapacityAtomicityTest extends TestCase
             'studentId' => $student->studentId, 'courseId' => $this->courseId, 'termId' => $this->termId,
             'yearLevel' => 1, 'studentType' => StudentType::FirstYear, 'enrollmentType' => EnrollmentType::New,
             'academicStanding' => 'regular', 'enrollmentStatus' => EnrollmentStatus::Enrolled,
-            'evaluatedBy' => Staffusers::where('officeId', OfficeId::Guidance->value)->value('userId') ?? 1,
+            // Resolved, never typed: CI's Pest step runs before the seeders, so `staffusers` may hold no id 1 there
+            // and `?? 1` becomes a foreign-key refusal (1452) rather than a fallback. The same reason the project
+            // resolves fee types by name.
+            'evaluatedBy' => $this->evaluatorId(),
         ]);
         foreach (Subjects::pluck('subjectId') as $subjectId) {
             Enrolledsubjects::create([

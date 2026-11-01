@@ -202,6 +202,18 @@ try {
         }
 
         try {
+            // The seat question is answered the way every desk answers it today — `EnrollmentIssuer::seatHolder()`,
+            // which the controllers call before they issue. The database key that used to back this refusal was
+            // withdrawn on 2026-11-01 pending a fixture repair (see the withdrawal migration), so a run that claimed
+            // "the server refused" after that date would be quoting a constraint the schema no longer holds.
+            $held = EnrollmentIssuer::seatHolder($studentId, $term);
+            if ($held !== null) {
+                $refused++;
+                $codes['seat-held'] = ($codes['seat-held'] ?? 0) + 1;
+
+                continue;
+            }
+
             $issuer->issue([
                 'studentId' => $studentId,
                 'courseId' => $course,

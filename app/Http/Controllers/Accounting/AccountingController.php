@@ -366,27 +366,45 @@ class AccountingController extends Controller
         // date used to be compared as raw text.
         $date = SchoolTime::dayOrNull($request->date) ?? SchoolTime::today();
 
-        // Money still in the drawer: a settled receipt and an installment are both cash
-        // taken; a void and a refund are not.
-        $payments = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'processedBy'])
-            ->whereDate('paymentDate', $date)
-            ->held()
-            ->orderByDesc('paymentId')
-            ->get();
+        // One sheet, one moment. The two reads below used to run as separate auto-committed statements, so a receipt
+        // the cashier committed between them appeared on the row list and not in the totals — a report that
+        // disagreed with itself, which is guide problem 20 and prompt part 43.C's "reports use suitable consistent-read
+        // behavior". InnoDB's default REPEATABLE READ fixes the read view at the first consistent read, so taking
+        // both inside one transaction is what makes the sheet one day's truth. The isolation level is deliberately
+        // not raised or lowered here: that would change what every desk write on this connection sees, which is an
+        // engine-wide decision the school has not made.
+        // Only the two reads sit inside the transaction. The summary is arithmetic over rows already in memory, so
+        // moving it outside cannot let a second snapshot in, and a closure that returns a compound array fights
+        // static analysis over a shape it cannot even render differently.
+        $reads = [];
+        DB::transaction(function () use ($date, &$reads): void {
+            // Money still in the drawer: a settled receipt and an installment are both cash
+            // taken; a void and a refund are not.
+            $payments = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'processedBy'])
+                ->whereDate('paymentDate', $date)
+                ->held()
+                ->orderByDesc('paymentId')
+                ->get();
 
-        // A refund is cash the desk handed back, so it belongs on the same sheet — on the
-        // day it went out, which is why the row carries its own date rather than having
-        // `paymentDate` rewritten. Money leaving the drawer with no line on the daily
-        // count is cash that cannot be explained (ruling 14).
-        // `refundedAt` is a real instant, so the day is the school's: UTC midnight would hand back a refund
-        // processed in the school's morning onto the previous sheet. `paymentDate` above is left as `whereDate`
-        // on purpose — every one of its rows is midnight from a date-only input, so its stored date *is* the day.
-        $refunds = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'refundedByUser'])
-            ->where('paymentStatus', PaymentStatus::Refunded)
-            ->where('refundedAt', '>=', SchoolTime::startOfSchoolDay($date))
-            ->where('refundedAt', '<', SchoolTime::startOfNextSchoolDay($date))
-            ->orderByDesc('paymentId')
-            ->get();
+            // A refund is cash the desk handed back, so it belongs on the same sheet — on the
+            // day it went out, which is why the row carries its own date rather than having
+            // `paymentDate` rewritten. Money leaving the drawer with no line on the daily
+            // count is cash that cannot be explained (ruling 14).
+            // `refundedAt` is a real instant, so the day is the school's: UTC midnight would hand back a refund
+            // processed in the school's morning onto the previous sheet. `paymentDate` above is left as `whereDate`
+            // on purpose — every one of its rows is midnight from a date-only input, so its stored date *is* the day.
+            $refunds = Payments::with(['enrollment.student:studentId,schoolIdNumber,lastName,firstName,middleName', 'refundedByUser'])
+                ->where('paymentStatus', PaymentStatus::Refunded)
+                ->where('refundedAt', '>=', SchoolTime::startOfSchoolDay($date))
+                ->where('refundedAt', '<', SchoolTime::startOfNextSchoolDay($date))
+                ->orderByDesc('paymentId')
+                ->get();
+
+            $reads = ['payments' => $payments, 'refunds' => $refunds];
+        });
+
+        $payments = $reads['payments'];
+        $refunds = $reads['refunds'];
 
         $summary = [
             'totalAmount' => $payments->sum('amount'),

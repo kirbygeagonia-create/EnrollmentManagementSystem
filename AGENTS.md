@@ -735,7 +735,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   identity, not a census of `payments`), COMPARISON (one number repeated beside several tables — "They are two
   stages, two offices, two permissions" counts the flows being compared, while `offices` answers 9), CODEISH (a
   number on a class member: "the two `Enrollments::create` sites in app/" counts call sites, which a grep answers —
-  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:76`, so the sentence is true
+  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:131`, so the sentence is true
   and simply not this tool's question), and PER-RECORD (a *lone* number inside an enumeration of eleven table
   names: §3's walkthrough trail "…payments, enrollmentstatushistory, 7 workflowsteps, clinicrecords, idrequests"
   is one enrollment's own trail, not the 199 `workflowsteps` holds). **A census list and a trail list look alike and
@@ -2717,9 +2717,16 @@ proved by comparing the whole window in both versions, which is the only claim a
   **The same shape lives in a register row, and the file being right is what hides it** (passes 208/208b). Two
   rows cited ranges inside the very file their own sentence names, and every instrument cleared both: the
   elective-band row quoted the standing-override message for the rule that refuses a proposal outside the min–max
-  band (that check is `EvaluationController.php:665-671`, not the two blocks above it — re-taken 2026-10-31 with both
-  endpoints compared byte for byte against HEAD's copy of the file, because lane 114's one import line moved every
-  line below it), and the staff row quoted
+  band — and the number that row carried is **still not the band rule**: re-read on 2026-11-01, `665-671` in HEAD's
+  copy is `proposeSubjects()`'s closing brace, a blank line, and that method's own docblock, so the byte-for-byte
+  re-take on 2026-10-31 proved the lines were *live*, not that they carried the claim. The same window now sits at
+  `EvaluationController.php:689-694` (docblock, signature, opening brace, the `authorize` line), which is what the
+  number honestly points at today; the refusal itself is in neither that window nor the two blocks above it, and
+  grepping `minSubjects`/`maxSubjects`/`minUnits`/`maxUnits`/`band` through this controller and
+  `app/Support/EnrollmentReadiness.php` finds no such rule at all — which is a finding about the register row, not a
+  line number to guess at. This is the wrong-target shape again, met from the inside: a bounds sweep, a byte-match
+  against HEAD and a confident reader all agree with a pointer that describes a different act than its sentence.
+  Similarly, the staff row quoted
   the curriculum block for the seeding of `staff8` and the office heads (that is
   `DevReferenceDataSeeder.php:782-827`). A bounds sweep asks only whether the lines exist; the meaning sweep needs
   the prose to name a *method*. So the rule when draining a pointer queue is to read the cited span's own text
@@ -3138,7 +3145,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   enrollment" row said `createWorkflow()` "is called once, from the Evaluation signature", and §18.6's workflow row said
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
-  answers **two**: `EnrollmentIssuer.php:78`, inside `issue()` directly after `Enrollments::create` at :76, and
+  answers **two**: `EnrollmentIssuer.php:133`, inside `create()` directly after `Enrollments::create` at :131, and
   `EvaluationController.php:929`, behind `if (! $enrollment->enrollmentworkflow)` at :928. (Re-taken 2026-10-31: the
   two numbers this bullet carried had aged 126 lines, every one of them bounds-clean and every one landing on live
   code in the right file — the `.md` half of lane 88's defect, met again.) So the one-form rule is held
@@ -3712,6 +3719,75 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   violating rows, because MySQL's 1062 after the fact says only "a duplicate exists". Preconditions were measured
   first: 0 duplicate fee sheets and 0 null `termId` on live `ems`, which is what made an additive key safe rather
   than a promise.
+- **A key only one driver can build is a key that breaks the other driver's fixtures silently — rehearse the suite
+  on the strict driver before adding it** (the same batch, met by the withdrawal). `uq_enrollments_active_seat`
+  passed the whole local suite because SQLite compiles no `ALTER TABLE … ADD COLUMN … GENERATED`: the key has never
+  existed in `:memory:`, so the suite could not violate it either. CI's MySQL job then refused **six** test files at
+  once, each writing two active enrollments for one student and one term — a habit invisible for months because the
+  application rule (`seatHolder()`) is not consulted by a raw `Enrollments::create`. The pre-flight census asked the
+  live rows and got 0 duplicates, which is the wrong population: fixtures live in `tests/`, not in `ems`. So before
+  any new UNIQUE or CHECK key whose column is driver-specific: (a) run the affected test folders against a scratch
+  MySQL schema with `DB_CONNECTION` pinned (lane 87's rule), because local green is structurally blind to it; and
+  (b) grep the fixtures for the state the key forbids, not only the rows. Where the fixture habit *is* the state the
+  product forbids, the honest move is to withdraw the key with its reason in the migration docblock, keep `down()`
+  reversible, register the fixture repair as a task, and let the documents follow in the same batch — which moves
+  §23.6.1's row (that list claims to hold EVERY domain key, so a withdrawn index must leave it — and because the same
+  schema moment also *admits* a new one, the write is the row's four cells rewritten in place, which clears lane44's
+  `PHANTOM` and its `MISS` together and keeps the register at the twelve rows the server holds), the count sentence
+  beside it (take the pair `lane44-unique-keys.php` reads off the server, never the arithmetic — and compare it
+  case-insensitively, because the sentence opens a paragraph and reads `Twelve`: rebuilding it from a lowercase word
+  map turns a true sentence into a mis-cased one the engine will happily apply), and §24's per-table
+  `enrollments — N columns` heading plus its column-aggregate cross-check row, because a generated column is a real
+  column to `information_schema`. `storage/app/scratch/refresh-docx-pass384.php` writes the row and the prose,
+  **WEIGHS** the two §24 figures against the server and lane60 and refuses if either has drifted — a skip has to be
+  measured, or it is the fake-clean verdict again — and refuses while the withdrawn index still exists on live `ems`
+  or the new one is absent, so the document cannot be corrected against a schema it does not describe. After the
+  write it re-dumps and runs lane44 again, and restores its own backup unless that instrument reads zero problems and
+  exits 0: the register is verified by the checker that owns it, not by the pass that edited it.
+  **Two instrument traps met while building it.** `<w:t[^>]*>` is NOT the run pattern: it opens on `<w:tc>`,
+  `<w:tcPr>`, `<w:tr>` and `<w:tbl>` too, so a "flattened document" built with it is one run plus a swallow of
+  markup, and every needle count read off it proves nothing — the engine and `dump-docx-flat.php` use
+  `<w:t(?: [^>]*)?>`, and `lane185-read-seat-key-row.php` reported a table cell as 564 bytes of `w:tcPr` before the
+  sweep found it. And a checker's label is matched by shape, not by the spacing its `printf` wrote: lane44 pads
+  `MISS` to two spaces beside `PHANTOM`'s one, so `str_contains('MISS uq_…')` refused a reading that was there —
+  parse the complaint rows and assert the set equals exactly the pair the pass was written for.
+- **A dedupe whose key never reaches the column is a dedupe that reports success** (ADS guide problem 17, built
+  2026-11-01). `enrollments.requestKey` + `uq_enrollments_request_key` + `EnrollmentIssuer::issue($attrs, $issuer,
+  $requestKey)` — and the three things that made it safe to write down. **(a) The key must be in
+  `Enrollments::$fillable`**: mass assignment drops an unlisted field with no error, no warning and no failing
+  query, so the first enrollment would have been written keyless, every replay would find nothing, and the desk
+  would get a second record while every test that does not look at the column stayed green. The falsifier plants
+  exactly that (`key-dropped-by-mass-assignment-goes-red`), because a bug with no symptom needs a leg that creates
+  the symptom. **(b) The index is the guard, the read is the fast path** — lane 116's rule again: two requests
+  carrying one key can both pass `firstWhere()`, so the catch is on the duplicate code and re-reads rather than
+  swallowing. **(c) It is portable on purpose**: a nullable varchar with an ordinary unique index exists on the
+  suite's SQLite driver, unlike the withdrawn generated column, so `the_index_refuses_a_second_row_carrying_one_key_on_this_driver`
+  is a real server refusal measured on the driver the suite runs on. Two more decisions are stated rather than
+  smoothed: one key may not name two different acts (a key already bound to another student or term is refused with
+  both ids named, because answering a new act with somebody else's enrollment is a wrong record delivered as a
+  success), and the guide's rate-limit half is **not** built — no desk route carries `throttle`, so a stuck desk can
+  still send one act ten times; the key makes each send answerable, not the sends fewer. On the screen side the key
+  is minted when the act is opened and replaced after a success (`resources/js/Components/ui/requestKey.js`), because
+  a page that issues five students in one visit performs five acts with five keys. My own first assertion for that
+  used `/transform\([^)]*requestKey/`, which cannot cross the parentheses of `transform((data) => …)` and failed on a
+  page that was correct — the same character-class-bound defect lanes 46 and 50 record, met again in a new file.
+- **A schema DEFAULT is not handed back to the model you just created, so a guard on a defaulted column refuses its
+  own fixture** (P05, 2026-11-01). `students.rowVersion` is `NOT NULL default 1`, and the first run of the two profile
+  test files after the gate went in answered 11 failed with `Session has unexpected errors: {"default": ["The row
+  version field is required."]}` — the field was *present and null*, because `Students::create([...])` returns an
+  object whose `rowVersion` the database defaulted but never handed back, so a payload built from that object posted
+  null and Laravel read it as absent. Two rules follow. Declare the same
+  default on the model (`protected $attributes = ['rowVersion' => 1];`) so the in-memory object tells the truth, and
+  have anything that must echo the current version re-read the row (`->fresh()`), because that is exactly what a
+  rendered screen does — an in-memory model goes stale the moment any other writer touches it, which is the very
+  condition an optimistic lock exists to detect. Second lesson from the same repair: a bulk fixture fix keyed on a
+  **column** name (`formIssuedDate`) is not a fix keyed on the **route** — that phrase also appears inside
+  `Enrollments::create` arrays and inside an assertion, so a patcher that matched six sites in three files still
+  missed the payload the failures pointed at, and it was the red run, not the patcher's own count, that said so.
+  Drive fixture repairs from the call site (`grep` for the route name, then walk to its
+  payload), assert the match count per file, and re-run the file. After both fixes the two Evaluation files answered
+  `Tests: 19 passed (145 assertions)` and `PermissionMatrixTest` 107 passed unchanged, which is the reading that made
+  the new gate safe to keep.
 - **A race must be shown with two writers, and the instrument's own shape decides whether the race can happen.**
   `storage/app/scratch/lane168-probe-last-seat-race.php` clones `ems` into `ems_l168_a`, stages one block at exactly
   one free seat, and starts two child processes with the **same `--start-at` instant**. Two rules came out of
@@ -3795,7 +3871,46 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   "actors() answers the office's staff userIds" while those lines were `nextOffice()`'s opening brace and its
   handoff comment — a wrong target that had been living under a bounds-clean number — so the map sent both copies
   to the method's real window, and the clause now says what the method answers.
+- **A map keyed on a bare method name is a map that loses files.** `lane187-census-fixture-seats.php` reads every
+  `Enrollments::create` site in `tests/` and records each file's helper alongside the parameter positions that feed
+  its student, its term and its status. Keyed by method name alone, `createEnrollment` declared in one file was
+  overwritten by a different file's helper of the same name — and because the call-site pass filters the map by file,
+  the clobbered file's calls matched no helper and produced **no site at all**. The run printed 263 sites where 504
+  exist (measured 2026-11-01 against this tree; the number moves when a fixture is repaired, which is the point of
+  naming the reading rather than the rule) and one owed method where CI had refused six files, with a tally, a
+  partition check and a refusal on unbound rows: every guard balanced over a population that was never read. Keyed by
+  file and name, the same code recalled six of six on the same bytes. A **fifth** defect came out of the same session,
+  and it is the one a reader cannot see from the call site: `$this->student($course->courseCode)` inside a helper's
+  own array looks like a fetch of a person keyed by the course, so the census folded two calls into one student and
+  reported five clean `DashboardQueueCountMatchesDeskTest` methods as violations — while `student()` writes
+  `uniqid()` into its `schoolIdNumber` and INSERTS a brand-new person every time. So a maker's arguments name a
+  record only when the maker memoises: the census now reads the maker's own body and splits `firstOrCreate`/`find`
+  (identity is the folded arguments, so the same label twice really is a duplicate pair) from `::create`/`::factory`
+  (fresh at every call, so two calls are two people), and refuses rather than guessing when the body answers neither.
+  A parameter may also only claim a half of the key when it **leads** the expression: `$course` appears inside
+  `$this->student($course->courseCode)`, and treating it as the person was the mechanical half of that false positive.
+  Two rules follow, and both are this file's oldest defect in a new costume: *a lookup key must name everything the
+  value is scoped by* (here file plus method), and *a census must print the size of what it read and be compared
+  against a known positive* — a population that changes when a keying bug is fixed is the proof the earlier number
+  was not a measurement. The falsifier `storage/app/scratch/mutate-lane187-provenance.php` now owns that comparison:
+  one leg per provenance class, and the harness prints its own total, because a leg count frozen here goes stale the
+  day a class gains a leg
+  (a helper that mints its own person, a shared `$this->student`, a person minted by the CALLER and used twice, a
+  memoising maker called with different labels, the same memoising maker called with the SAME label (which must be
+  reported — the leg that keeps a widening from becoming a blind spot), an inserting maker reached through an
+  argument, the same helper name in a sibling file, one site inside a loop, a status argument that releases a seat,
+  an unclassifiable maker, an unresolvable name, a directory with no create site, the scope flag, an identical
+  re-run, `--show-groups`, and an unknown flag), each asserting the census's OWN exit code through `exec()`
+  rather than a pipe's, and each asserting the site count beside the verdict so a CLEAN can never mean "read
+  nothing". One leg failed on arithmetic of my own — it demanded four sites from a fixture that holds two plus one —
+  and the fix was the relation it meant to prove (a floor over a LOSS), not the number. An earlier leg failed and
+  that failure was the finding: `--show-groups` stood in the tool's
+
+
+  own usage line while its argument parser fell through to the unknown-flag refusal, so the flag had never worked and
+  no leg had ever asked. A harness that passes everything on the first run is the shape that deserves one more leg.
 - **A `**` glob in PHP matches nothing, so a census written with one passes by reading no file.** The case in
+
   `DeskRefreshPendingStateTest.php` first read
   `Pages/**/*.jsx`, returned zero paths, and would have certified the whole tree; the walk now uses a recursive iterator and the
   case asserts the population is non-empty before judging it.

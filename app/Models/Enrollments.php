@@ -19,7 +19,7 @@ class Enrollments extends Model
 
     public $timestamps = true;
 
-    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'returnReason', 'dropReason', 'clearanceConfirmedBy', 'clearanceConfirmedAt', 'curriculumId', 'enrolledDate', 'formIssuedDate', 'formSignedDate'];
+    protected $fillable = ['studentId', 'courseId', 'majorId', 'termId', 'yearLevel', 'admissionId', 'studentType', 'enrollmentType', 'academicStanding', 'enrollmentStatus', 'evaluatedBy', 'registrarProcessedBy', 'returnReason', 'dropReason', 'clearanceConfirmedBy', 'clearanceConfirmedAt', 'curriculumId', 'enrolledDate', 'formIssuedDate', 'formSignedDate', 'requestKey'];
 
     protected function casts(): array
     {

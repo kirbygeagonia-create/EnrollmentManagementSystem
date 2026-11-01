@@ -21,6 +21,8 @@ server-side. The same rule applies to the load run: designed in `DATABASE-DESIGN
 | Capacity is reconciled, not assumed | `php artisan ems:audit:record-states` | 20 rules, each with its count, and the new `A block holding more students than it declares` reading 0 |
 | The keys refuse at the server | `php artisan test tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` then the same with `DB_CONNECTION=mysql DB_DATABASE=ems_l170_a` | the fee-sheet case passes on both drivers; the seat case passes on MySQL and states what SQLite cannot judge |
 | A thousand enrollment acts keep the database honest | `php storage/app/scratch/lane172-enrollment-day-load.php --requests=1000 --workers=10 --keep` | ten processes issuing through the act every desk uses, then ten workers against one seat, then five drop-versus-issue races; the table prints 0 duplicate seats, 0 orphan forms, 0 records with two forms, one winner on the contended seat, and the server's own isolation and thread counters |
+| Two desks on one student do not overwrite each other | `php artisan test tests/Feature/Evaluation/ProfileCaptureTest.php` | guide problem 5: the second save, carrying the version the first save retired, is refused naming both numbers and writing nothing; the accepted save spends exactly one version; a payload with no version is refused rather than allowed through; and the column is asserted outside `$fillable`, because a client that could set its own version would make the comparison decoration. Falsified by `storage/app/scratch/mutate-p05-version-tests.php` — 8 legs, one per promise |
+| An interrupted enrollment act is answered, not duplicated | `php artisan test tests/Feature/Enrollment/EnrollmentRequestKeyTest.php` | six cases: a replay of one `requestKey` returns the enrollment the first send created and opens no second workflow form; the UNIQUE index refuses a second row carrying that key **on the driver the suite runs on**; two unkeyed acts stay two acts; a key arriving for a different student or term is refused naming both ids; the schema shape is read from the server on both drivers; and the issuing page is read to prove the desk puts the key on the wire. Falsified by `storage/app/scratch/mutate-p17-idempotency-tests.php` — 8 legs, one per promise, including the leg that takes `requestKey` out of `$fillable`, the failure mode with no error message at all |
 | The load tool's questions can fail | `php storage/app/scratch/mutate-lane172-load-integrity.php --source=ems_l172_a --term=11 --contended=<studentId>` | each integrity question is planted in a damaged copy and the same tool must name it; the control reads clean before and after |
 | Search cost is measured, not asserted | `php storage/app/scratch/lane164-measure-scale-queries.php` | timings with the `EXPLAIN` plan beside each, over 100,000 students — and the honest note that the millisecond moves between runs while the plan does not |
 | A dump restores and matches | `php tools/ems-backup-drill.php --target=ems_drill` | 64 tables compared by `COUNT(*)`, three ordered digests, and the durability variables read from the server |
@@ -75,10 +77,25 @@ SELECT b.blockId, b.maxStudents, COUNT(DISTINCT es.enrollmentId) held
   FROM blocks b JOIN enrolledsubjects es ON es.blockId = b.blockId AND es.status <> 'dropped'
  GROUP BY b.blockId, b.maxStudents HAVING held > b.maxStudents;
 
--- the generated column, as the server defines it
+-- every unique index the domain tables hold, so the list is read rather than recited
+SELECT TABLE_NAME, INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) cols
+  FROM information_schema.STATISTICS
+ WHERE TABLE_SCHEMA = 'ems' AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
+ GROUP BY TABLE_NAME, INDEX_NAME ORDER BY TABLE_NAME, INDEX_NAME;
+
+-- the generated column, as the server defined it while the key was live. This answers ZERO ROWS today: the
+-- column was withdrawn on the day it was added, and the query is kept here because a defence that hides its own
+-- retreat is not evidence. `down()` in the withdrawal migration restores both column and index.
 SELECT COLUMN_NAME, DATA_TYPE, EXTRA, GENERATION_EXPRESSION
   FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = 'ems' AND TABLE_NAME = 'enrollments' AND COLUMN_NAME = 'seatKey';
+
+-- the request key that answers an interrupted enrollment act (guide problem 17). Read it on a schema the batch's
+-- migrations have reached; on live `ems` today both answer zero rows, because the migration has not been run there.
+SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE
+  FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA = 'ems' AND TABLE_NAME = 'enrollments' AND COLUMN_NAME = 'requestKey';
+SHOW INDEX FROM enrollments WHERE Key_name = 'uq_enrollments_request_key';
 
 -- what durability actually costs a commit today
 SELECT @@innodb_flush_log_at_trx_commit, @@sync_binlog, @@transaction_isolation;

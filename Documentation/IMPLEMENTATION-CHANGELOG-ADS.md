@@ -28,11 +28,66 @@ measured before writing:
 
 - `uq_studentassessments_enrollment` on `studentassessments(enrollmentId)`. Closes DI-2, open since 2026-09-15.
 - `uq_enrollments_active_seat` on `enrollments(studentId, termId, seatKey)`, where `seatKey` is a **VIRTUAL**
-  generated column, non-null exactly when `enrollmentStatus <> 'dropped'` and a term is named.
+  generated column, non-null exactly when `enrollmentStatus <> 'dropped'` and a term is named. **Withdrawn the same
+  day by the next migration in this file's list**, so the delivered schema keeps only the fee-sheet key.
 
 Live `ems` was dumped to `C:\Users\ADMIN\ems-backups\ems-pre-db-enforcement-2026-11-01.sql` first (64 tables,
 1.42 MB, `INSERT INTO enrollments` verified present), then migrated, then re-read: 37 enrollments, 24 students,
 14 fee sheets and 3,526 audit rows, identical before and after. No row was deleted, altered or re-seated.
+
+`database/migrations/2026_11_01_1600000000_withdraw_the_active_seat_key_until_the_fixtures_are_repaired.php` —
+removes `uq_enrollments_active_seat` and its VIRTUAL `seatKey`, and nothing else. It is additive in the other
+direction: `down()` re-adds the column as VIRTUAL (not STORED, for the `1215` reason above) and re-adds the key, so
+the withdrawal is a step that can be walked back rather than a decision that destroys the work. The reason is stated
+in the migration's own docblock and is not a schema problem: six test files write two active enrollments for one
+student in one term, which is the state the key exists to refuse and the product forbids, and CI's MySQL job was the
+only surface able to see them — the suite's `:memory:` schema compiles no `ALTER TABLE … ADD COLUMN … GENERATED`, so
+the key never existed where the suite runs and every local green was silent about it. The fee-sheet key is left
+standing because it is portable: SQLite enforces it and its case passes on both drivers.
+
+`database/migrations/2026_11_01_1800000000_add_request_key_to_enrollments_table.php` — additive, and deliberately the
+*other* shape. `enrollments.requestKey` is a nullable varchar(64) with `uq_enrollments_request_key` over it, which
+both drivers build, so the guide's problem 17 is guarded by the server on the suite as well as on CI. Nullable means
+NULLs stay outside the rule (MySQL and SQLite both treat them as distinct), so a seeder, a backfill and every caller
+that has not been given a key keep working untouched — which is what makes this safe to add while the seat key is
+still being repaired. Its guard runs before the ALTER and names a duplicate rather than skipping the key.
+
+### 2b. Services and screens for problems 17 and 5
+
+`database/migrations/2026_11_01_1700000000_add_row_version_to_students_table.php` — additive: `students.rowVersion`
+unsignedInteger NOT NULL default 1. Guide problem 5 asks that two desks editing one student not silently overwrite,
+and the schema default makes every row already on file version 1 rather than invalid. Portable on purpose: the
+withdrawn seat key needed a generated column SQLite could not build, so the suite could never violate it and never
+proved it either; a plain column with a comparison is enforced and exercised on both drivers. `Students` also declares
+`protected $attributes = ['rowVersion' => 1];` because a schema default is **not** handed back to a model that was
+just created — without it the object in memory carried null, the screen posted null, and the guard refused a desk that
+had done nothing wrong. The column is deliberately outside `$fillable`: a client that can set its own version can walk
+past the check, so the bump is a direct property assignment inside the write.
+
+`EvaluationController::captureProfile()` reads the held version before the transaction and refuses a mismatch naming
+both numbers and writing nothing — the refusal sits outside the transaction so a rejected save cannot leave a partial
+profile, a re-stamped address row or a spent version. `resources/js/Components/EnrollmentProfileForm.jsx` puts
+`student.rowVersion` on the wire through the form's transform, so the number comes from the record the page was
+rendered from and never from a field a person can type.
+
+`App/Services/EnrollmentIssuer::issue()` takes a third argument, `$requestKey`. A key already on file is answered with
+the enrollment it created — same record, no second workflow form — and a second request that races past the read is
+refused by the index and then answered the same way, so **the index is the guard and the read is only the fast path**
+(lane 116's rule, applied to the record the school cares more about). A key that arrives naming a different student or
+term raises a validation refusal naming both ids instead of handing over the first student's enrollment, because a
+wrong record delivered as a success is worse than a refusal.
+
+`Enrollments::$fillable` gained `requestKey`. This is the one line in the batch that a green suite could not have
+caught on its own: mass assignment drops an unlisted field with no error, no warning and no failing query, so leaving
+it out would have written keyless rows and let the whole mechanism report success.
+`storage/app/scratch/mutate-p17-idempotency-tests.php` plants exactly that omission, among its legs.
+
+`EvaluationController::store()` and `ShiftRequestController`'s decision accept and forward the key
+(`nullable|string|max:64`); `resources/js/Components/ui/requestKey.js` mints it when an act is opened and the issuing
+page replaces it after a success, because a page that issues five students performs five acts with five keys. The
+Admission approval path still creates its enrollment directly at `AdmissionController.php:594` and is **not** keyed in
+this batch — it already consults `seatHolder()` before writing, so it cannot mint a second seat, but it has no answer
+to "did my approval commit", and that is stated here rather than covered by a claim.
 
 Two choices worth recording:
 
