@@ -46,6 +46,8 @@ foreach (array_slice($argv, 1) as $arg) {
 // screen reading "nothing beyond the name". Two readers answering one question differently is the defect this
 // repository refuses in lanes 6, 46, 69, 70 and 90; this was the second definition, in my own instrument.
 require __DIR__.'/page-read-graph.php';
+require __DIR__.'/students-column-guard.php';
+$narrowedEntries = 0;
 
 $files = [];
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/app/Http/Controllers'));
@@ -91,13 +93,25 @@ foreach ($files as $abs) {
         $paths = [];
         preg_match_all("/'([a-zA-Z0-9_.]*)'/", $m[1][0], $pm, PREG_OFFSET_CAPTURE);
         foreach ($pm[1] as $p) {
-            if (in_array('student', explode('.', $p[0]), true) && ! str_contains($p[0], ':')) {
-                // The capture group begins AFTER the opening quote, so minus one is the quote itself. The first cut
-                // recorded the group offset while its comment claimed it had added one; the rewriter then read
-                // `enrollment.student',` where it expected `'enrollment.student'` and refused every row it was
-                // handed — the refusal worked, the census had not.
-                $paths[] = ['path' => $p[0], 'at' => $m[1][1] + $p[1] - 1];
+            if (! in_array('student', explode('.', $p[0]), true)) {
+                continue;
             }
+            // The capture group begins AFTER the opening quote, so minus one is the quote itself. The first cut
+            // recorded the group offset while its comment claimed it had added one; the rewriter then read
+            // `enrollment.student',` where it expected `'enrollment.student'` and refused every row it was
+            // handed — the refusal worked, the census had not.
+            $litAt = $m[1][1] + $p[1] - 1;
+            // `student:cols` never reaches here (its segment carries the colon), but a closure does: `'student' =>
+            // fn ($q) => $q->select(…)` is the ONLY way to narrow a student that sits in the middle of a path, and
+            // the column list then lives outside the literal. Ask the shared predicate rather than inventing a
+            // second answer to "is this narrowed" — the census, `lane108c` and the source-side test all read it.
+            $cols = student_load_path_columns($p[0], substr($src, $litAt + strlen("'".$p[0]."'")));
+            if ($cols !== null) {
+                $narrowedEntries++;
+
+                continue;
+            }
+            $paths[] = ['path' => $p[0], 'at' => $litAt];
         }
         $whole = array_values(array_unique(array_column($paths, 'path')));
         if ($whole === []) {
@@ -119,7 +133,7 @@ foreach ($files as $abs) {
 }
 
 if ($rows === []) {
-    fwrite(STDERR, "REFUSED: no handler in app/Http/Controllers carries a whole-student load, which contradicts"
+    fwrite(STDERR, 'REFUSED: no handler in app/Http/Controllers carries a whole-student load, which contradicts'
         ." the three this batch narrowed — re-read the pattern before believing a clean census.\n");
 
     exit(1);
@@ -139,7 +153,7 @@ foreach ($rows as $ri => $r) {
     if ($r['component'] === null) {
         $counts['NO-COMPONENT']++;
 
-        $prints[] = sprintf("NO-COMPONENT   %-58s %-30s %s", $r['file'], $r['action'].'()', implode(', ', $r['paths']));
+        $prints[] = sprintf('NO-COMPONENT   %-58s %-30s %s', $r['file'], $r['action'].'()', implode(', ', $r['paths']));
 
         continue;
     }
@@ -147,7 +161,7 @@ foreach ($rows as $ri => $r) {
     if (! is_file($page)) {
         $counts['NO-COMPONENT']++;
 
-        $prints[] = sprintf("NO-COMPONENT   %-58s %-30s %s  (no page at Pages/%s.jsx)", $r['file'], $r['action'].'()', implode(', ', $r['paths']), $r['component']);
+        $prints[] = sprintf('NO-COMPONENT   %-58s %-30s %s  (no page at Pages/%s.jsx)', $r['file'], $r['action'].'()', implode(', ', $r['paths']), $r['component']);
 
         continue;
     }
@@ -157,7 +171,7 @@ foreach ($rows as $ri => $r) {
     if ($reachable === []) {
         $counts['NO-COMPONENT']++;
 
-        $prints[] = sprintf("NO-COMPONENT   %-58s %-30s %s  (the page resolved no source at all)", $r['file'], $r['action'].'()', implode(', ', $r['paths']));
+        $prints[] = sprintf('NO-COMPONENT   %-58s %-30s %s  (the page resolved no source at all)', $r['file'], $r['action'].'()', implode(', ', $r['paths']));
 
         continue;
     }
@@ -176,7 +190,7 @@ foreach ($rows as $ri => $r) {
     if ($read !== []) {
         $counts['READS-SENSITIVE']++;
 
-        $prints[] = sprintf("READS-SENSITIVE %-57s %-30s %s -> %s reads %s", $r['file'], $r['action'].'()', implode(', ', $r['paths']), $r['component'], implode(', ', $read));
+        $prints[] = sprintf('READS-SENSITIVE %-57s %-30s %s -> %s reads %s', $r['file'], $r['action'].'()', implode(', ', $r['paths']), $r['component'], implode(', ', $read));
 
         continue;
     }
@@ -197,7 +211,7 @@ foreach ($rows as $ri => $r) {
 }
 
 if (array_sum($counts) !== count($rows)) {
-    fwrite(STDERR, sprintf("REFUSED: the census tallies %d rows across buckets but collected %d — a row fell"
+    fwrite(STDERR, sprintf('REFUSED: the census tallies %d rows across buckets but collected %d — a row fell'
         ." through a branch that counted nothing.\n", array_sum($counts), count($rows)));
 
     exit(1);
@@ -207,13 +221,17 @@ if (array_sum($counts) !== count($rows)) {
 // because the render pattern had an invalid escape, and the buckets added up perfectly. A census that resolved no
 // page states nothing about any payload, so the join itself is guarded.
 if ($counts['IDENTITY-ONLY'] + $counts['READS-SENSITIVE'] === 0) {
-    fwrite(STDERR, "REFUSED: no row resolved a page, so the handler-to-component join is broken and the verdict"
+    fwrite(STDERR, 'REFUSED: no row resolved a page, so the handler-to-component join is broken and the verdict'
         ." below would be a census of nothing.\n");
 
     exit(1);
 }
 
-echo "load sites examined: ".count($rows)." over ".count($files)." controllers\n";
+echo 'load sites examined: '.count($rows).' over '.count($files)." controllers\n";
+// What this counter counts is the CLOSURE shape only: an entry spelled `student:cols` never reaches the loop above,
+// because its own segment carries the colon and is not the bare word `student`. Naming that is the difference between
+// a printed figure and a census — the two-shapes-one-counter defect this repository has met from the print side.
+echo "student entries narrowed by a closure select (a leaf list is invisible to this counter): {$narrowedEntries}\n";
 foreach ($prints as $p) {
     echo $p."\n";
 }
@@ -276,7 +294,7 @@ if ($jsonTo !== null) {
 
         exit(1);
     }
-    printf("json written: %s (%d row(s))%s", $jsonTo, count($out), PHP_EOL);
+    printf('json written: %s (%d row(s))%s', $jsonTo, count($out), PHP_EOL);
 }
 
 echo "\nNote: `READS-SENSITIVE` is judged on the PAGE, and a page that reads a column through a local alias or a\n"

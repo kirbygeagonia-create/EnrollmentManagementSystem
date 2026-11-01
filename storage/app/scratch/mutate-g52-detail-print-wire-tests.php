@@ -86,6 +86,43 @@ $legs = [
         'to' => "'schoolIdNumber' => \$enrollment->student->schoolIdNumber,\n                        'birthdate' => \$enrollment->student->schoolIdNumber,",
         'filter' => 'the_blocking_screen_ships_only_the_student_name_on_both_rosters',
     ],
+    // ---- the two CLOSURE sites (§28.3 G-52's last debt) -------------------------------------------------------
+    [
+        'name' => 'registrar-closure-reverts-to-a-whole-student',
+        'file' => 'app/Http/Controllers/Registrar/RegistrarController.php',
+        'from' => "'student' => fn (\$q) => \$q->select('studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix')\n                ->with(['addresses', 'guardians']),",
+        'to' => "'student.addresses',\n            'student.guardians',",
+        'filter' => 'the_registrar_record_screen_ships_only_the_student_name',
+    ],
+    [
+        'name' => 'registrar-closure-asks-a-column-the-table-lacks',
+        'file' => 'app/Http/Controllers/Registrar/RegistrarController.php',
+        // `students` keys on studentId and has never held `id`: MySQL throws and the case dies on the response, while
+        // SQLite answers 200 and puts an EXTRA KEY on the node. Either way the named case must refuse — this is the
+        // pass-330 defect re-tested on the shape that replaced the byte splice.
+        'from' => "\$q->select('studentId', 'schoolIdNumber', 'lastName'",
+        'to' => "\$q->select('id', 'studentId', 'schoolIdNumber', 'lastName'",
+        'filter' => 'the_registrar_record_screen_ships_only_the_student_name',
+    ],
+    [
+        'name' => 'slip-closure-reverts-to-a-whole-student',
+        'file' => 'app/Http/Controllers/Clearance/ClearanceController.php',
+        'from' => "'student' => fn (\$q) => \$q->select('studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName')->with('enrollments.course')",
+        'to' => "'student.enrollments.course'",
+        'filter' => 'the_clearance_slip_print_screen_ships_only_the_student_name',
+    ],
+    [
+        'name' => 'slip-closure-drops-the-relation-it-must-re-load',
+        'file' => 'app/Http/Controllers/Clearance/ClearanceController.php',
+        // The select stays, the `with` goes. This leg is the one that SURVIVED its first draft: `enrollments` still
+        // reached the payload, because the same request calls $clearance->termEnrollment() and that lazy read fills
+        // the key — with whole enrollment rows and no course. So the case now asks for what the paper prints, the
+        // nested course, and the relation key alone is no longer treated as evidence. A leg that a green case can
+        // absorb is a leg that names the wrong promise.
+        'from' => "'firstName', 'middleName')->with('enrollments.course')",
+        'to' => "'firstName', 'middleName')",
+        'filter' => 'the_clearance_slip_print_screen_ships_only_the_student_name',
+    ],
 ];
 
 $run = static function (string $filter) use ($php): array {

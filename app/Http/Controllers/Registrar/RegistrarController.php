@@ -122,9 +122,11 @@ class RegistrarController extends Controller
     {
         $this->authorize('view', $enrollment);
 
+        // G-52: the student is the MIDDLE of this path, so its column list cannot ride on the leaf — a `:cols`
+        // suffix on `student.addresses` asks the addresses table for a surname. The select travels in the closure.
         $enrollment->load([
-            'student.addresses',
-            'student.guardians',
+            'student' => fn ($q) => $q->select('studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName', 'suffix')
+                ->with(['addresses', 'guardians']),
             'course',
             'major',
             'term.academicYear',

@@ -408,7 +408,10 @@ class ClearanceController extends Controller
     {
         $this->authorize('view', $clearance);
 
-        $clearance->load(['student.enrollments.course', 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser']);
+        // G-52: the slip reads a name and the enrollment its course lives on, so the student's own columns are
+        // narrowed here — and because the student is the MIDDLE of this path the list must travel in a closure that
+        // re-loads `enrollments.course` inside it, or `:cols` would be asked of the enrollments table.
+        $clearance->load(['student' => fn ($q) => $q->select('studentId', 'schoolIdNumber', 'lastName', 'firstName', 'middleName')->with('enrollments.course'), 'clearancePeriod.term.academicYear', 'approvals.requirement.office', 'receivedByUser']);
 
         $termEnrollment = $clearance->termEnrollment();
 

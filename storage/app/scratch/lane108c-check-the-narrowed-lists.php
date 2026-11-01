@@ -31,6 +31,7 @@
  */
 $root = dirname(__DIR__, 3);
 require __DIR__.'/page-read-graph.php';
+require __DIR__.'/students-column-guard.php';
 
 $showLines = false;
 $jsonTo = null;
@@ -135,7 +136,7 @@ foreach ($files as $abs) {
 }
 
 if ($sites === []) {
-    fwrite(STDERR, "REFUSED: no narrowed student load exists in app/Http/Controllers, which contradicts the"
+    fwrite(STDERR, 'REFUSED: no narrowed student load exists in app/Http/Controllers, which contradicts the'
         ." thirteen this batch wrote — re-read the pattern before believing a clean audit.\n");
 
     exit(1);
@@ -248,13 +249,36 @@ foreach ($byAction as $key => $group) {
 }
 
 if (array_sum($counts) !== count($byAction)) {
-    fwrite(STDERR, sprintf("REFUSED: the audit tallies %d action(s) across buckets but collected %d — a row fell"
+    fwrite(STDERR, sprintf('REFUSED: the audit tallies %d action(s) across buckets but collected %d — a row fell'
         ." through a branch that counted nothing.\n", array_sum($counts), count($byAction)));
 
     exit(1);
 }
 
 echo 'narrowed load literals: '.count($sites).' over '.count($byAction)." action(s)\n";
+
+// A CLOSURE-narrowed site is printed, not judged. This reader finds a list by the `path:cols` spelling, and a student
+// that sits in the middle of a path carries its columns outside the literal, so the leaf-list pattern sees nothing —
+// and a run that silently skipped it would print `MISSING 0` over rows it never read. That is lane 46's wrong-construct
+// defect arriving in my own audit, so the shape is named here and those two screens are pinned instead by their own
+// wire cases, which ask the payload rather than the source.
+$closureOnly = [];
+foreach ($files as $abs2) {
+    $src2 = (string) file_get_contents($abs2);
+    $rel2 = str_replace($root.'/', '', $abs2);
+    preg_match_all("/'([a-zA-Z_.]*[Ss]tudent)'\s*=>\s*(?:fn|function)\s*\(/", $src2, $cm2, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+    foreach ($cm2 as $c2) {
+        $cols = student_load_path_columns($c2[1][0], substr($src2, $c2[1][1] + strlen("'".$c2[1][0]."'")));
+        if ($cols === null) {
+            continue;
+        }
+        $closureOnly[] = sprintf('%s %s() selects %s', $rel2, $enclosing($declsByFile[$rel2]['decls'], $c2[1][1]), implode(', ', $cols));
+    }
+}
+echo 'closure-narrowed sites this audit does NOT judge: '.count($closureOnly)."\n";
+foreach ($closureOnly as $l) {
+    echo '  '.$l."\n";
+}
 foreach ($rows as $r) {
     $why = isset($r['why']) ? '  ('.$r['why'].')' : '';
     // The scope travels with the verdict: an OK over 40 reachable files and an OK over 1 are not the same claim,
@@ -310,7 +334,7 @@ if ($jsonTo !== null) {
 
         exit(1);
     }
-    printf("json written: %s (%d row(s))%s", $jsonTo, count($out), PHP_EOL);
+    printf('json written: %s (%d row(s))%s', $jsonTo, count($out), PHP_EOL);
 }
 
 if ($counts['MISSING'] > 0) {

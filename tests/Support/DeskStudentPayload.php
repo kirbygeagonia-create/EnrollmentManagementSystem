@@ -31,7 +31,14 @@ final class DeskStudentPayload
     /** The identity set a narrowed load answers when the page paints no name suffix. */
     private const IDENTITY = ['firstName', 'lastName', 'middleName', 'schoolIdNumber', 'studentId'];
 
-    public static function assertNameOnly(Students $student, ?array $node, string $where, bool $withSuffix = false): void
+    /**
+     * @param  string[]  $relations  the relation keys this screen legitimately asks the student to carry —
+     *                               `addresses`, `guardians`, `enrollments`. Declaring them per call is what keeps the
+     *                               equality honest: a closure that re-loads a relation the page never named would
+     *                               otherwise widen the accepted set silently, which is the leak arriving by a door
+     *                               the assertion held open.
+     */
+    public static function assertNameOnly(Students $student, ?array $node, string $where, bool $withSuffix = false, array $relations = []): void
     {
         Assert::assertNotNull($node, "no student node reached {$where} — the payload was read wrong, so this case"
             .' measured nothing about what the desk receives');
@@ -39,8 +46,9 @@ final class DeskStudentPayload
         $expected = self::IDENTITY;
         if ($withSuffix) {
             $expected[] = 'suffix';
-            sort($expected);
         }
+        $expected = array_merge($expected, $relations);
+        sort($expected);
 
         $actual = array_keys($node);
         sort($actual);
@@ -48,9 +56,15 @@ final class DeskStudentPayload
         Assert::assertSame(
             $expected,
             $actual,
-            "the student shipped to {$where} is not the identity set — this desk reads a name and received"
+            "the student shipped to {$where} is not the identity set".($relations === [] ? '' : ' plus the relations'
+                .' this screen declares: '.implode(', ', $relations)).' — this desk reads a name and received'
             ."\n  expected: ".implode(', ', $expected)."\n  actual:   ".implode(', ', $actual)
         );
+
+        foreach ($relations as $rel) {
+            Assert::assertIsArray($node[$rel] ?? null, "{$where} declares the relation {$rel} and it did not arrive"
+                .' — a closure that selects the student without re-loading the relation empties the section');
+        }
 
         // `passwordHash` is proven absent by the equality above, which is stronger than Students::$hidden: the model
         // hid it on a whole load, and G-52's leak was a column riding on the row being listed, not on a model.

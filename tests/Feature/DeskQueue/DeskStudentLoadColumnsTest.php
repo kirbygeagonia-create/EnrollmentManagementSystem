@@ -26,24 +26,19 @@ use Tests\TestCase;
 class DeskStudentLoadColumnsTest extends TestCase
 {
     /**
-     * Actions that still load a whole student and owe it to §28.3 G-52. This list must only ever get shorter, and
-     * a site that leaves it without the code changing FAILS — a paid debt kept on the books is the same defect as
-     * an unpaid one, in the other direction.
+     * Actions that still load a whole student and owe it to §28.3 G-52.
      *
-     * Only TWO names remain, and both are a different shape from every site already narrowed: their literal is a
-     * relation ON the student (`student.addresses`, `student.guardians`, `student.enrollments.course`), so the
-     * student sits in the middle of the path and a column list appended to the leaf would ask the ADDRESSES or the
-     * COURSE table for `lastName`. Narrowing either needs a closure that selects on `student` and re-loads the
-     * relation inside it — a per-site rewrite, not a byte splice, which is why the rewriter skips them by name.
+     * EMPTY as of 2026-10-31, and the emptiness is the claim: every desk screen that paints a name now names the
+     * columns it paints, and the last two sites went the way a leaf list cannot — `'student' => fn ($q) =>
+     * $q->select(…)->with(['addresses', 'guardians'])`, because their student sits in the MIDDLE of a path and a
+     * `:cols` suffix on `student.addresses` would ask the addresses table for a surname. The shared predicate
+     * (`students-column-guard.php`) decides that a closure WITHOUT a select is still a whole load, so the list stays
+     * empty by reading rather than by hope; `lane113-probe-the-closure-predicate.php` is its positive control.
      *
-     * The nine sites that left this list on 2026-10-31 (five desk detail screens and the Registrar's three print
-     * pages) were rewritten at their census byte offsets, and the desk folders for each of those routes answered
-     * green: the column list is a claim about the `students` table, and a GET that returns 200 is what proves it.
+     * This list must only ever get shorter. A new bare load anywhere still fails the case, and so does a name left
+     * here after its site has been narrowed.
      */
-    private const STILL_OPEN = [
-        'RegistrarController::show',
-        'ClearanceController::printSlip',
-    ];
+    private const STILL_OPEN = [];
 
     /**
      * Two sites are not a debt: the admission case screen and the evaluation record screen are where an officer
@@ -108,12 +103,19 @@ class DeskStudentLoadColumnsTest extends TestCase
     }
 
     /**
-     * Every `with`/`load` literal whose dot-separated segments include `student` with no `:` column list.
+     * Every `with`/`load` entry that hands a desk the whole student row.
+     *
+     * Two shapes are narrowed and one shared predicate decides both, because this class, the census that sizes the
+     * debt and the auditor that re-reads it must not answer "is this narrowed" differently: a leaf list spells the
+     * columns inside the literal (`student:a,b,c`), and a student that sits in the MIDDLE of a path narrows only
+     * through a closure (`'student' => fn ($q) => $q->select(…)`), where the list lives outside it.
      *
      * @return string[] `Controller::action` names, de-duplicated
      */
     private function wholeStudentLoadSites(): array
     {
+        require_once dirname(__DIR__, 3).'/storage/app/scratch/students-column-guard.php';
+
         $sites = [];
         $files = array_merge(
             glob($this->root().'/app/Http/Controllers/*Controller.php') ?: [],
@@ -136,11 +138,18 @@ class DeskStudentLoadColumnsTest extends TestCase
                         $action = $d[0];
                     }
                 }
-                preg_match_all("/'([a-zA-Z0-9_.]*)'/", $m[1][0], $pm);
-                foreach ($pm[1] as $path) {
-                    if (in_array('student', explode('.', $path), true) && ! str_contains($path, ':')) {
-                        $sites[$name.'::'.$action] = true;
+                preg_match_all("/'([a-zA-Z0-9_.]*)'/", $m[1][0], $pm, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+                foreach ($pm as $p) {
+                    $path = $p[1][0];
+                    if (! in_array('student', explode('.', $path), true)) {
+                        continue;
                     }
+                    $litAt = $p[1][1] - 1;
+                    $cols = student_load_path_columns($path, substr($src, $m[1][1] + $litAt + strlen("'".$path."'")));
+                    if ($cols !== null) {
+                        continue;
+                    }
+                    $sites[$name.'::'.$action] = true;
                 }
             }
         }

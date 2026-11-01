@@ -1217,4 +1217,58 @@ class PrintControllerTest extends TestCase
             DeskStudentPayload::assertNameOnly($student, $page['props']['enrollment']['student'] ?? null, $routeName, true);
         }
     }
+
+    #[Test]
+    public function the_clearance_slip_print_screen_ships_only_the_student_name(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $clearance = $this->createClearanceSlip($student);
+        $clearanceStaff = $this->createStaffForOffice(11);
+
+        // The slip's page reached the student only through `student.enrollments.course`, so the student sat in the
+        // MIDDLE of the path: a column list appended to the leaf would have asked the COURSE table for a surname.
+        // The narrowing therefore travels in a closure, and this is the case that proves the closure still selects —
+        // §28.3 G-52's last print site.
+        $page = $this->actingAs($clearanceStaff)
+            ->get(route('clearance.print-slip', $clearance))
+            ->assertOk()
+            ->viewData('page');
+
+        $this->assertSame('Clearance/PrintSlip', $page['component']);
+        $node = $page['props']['clearance']['student'] ?? null;
+        DeskStudentPayload::assertNameOnly($student, $node, 'clearance.print-slip', false, ['enrollments']);
+
+        // The relation key alone is NOT the claim, and a harness leg proved it: dropping the closure's
+        // `with('enrollments.course')` left `enrollments` in the payload anyway, because the same request reads
+        // $clearance->termEnrollment() and that lazy load fills the key — with whole enrollment rows and no course.
+        // So the case asks for what the paper prints: the program name, which only the eager `with` carries.
+        $rows = $node['enrollments'] ?? [];
+        $this->assertNotEmpty($rows, 'the slip student carried no enrollment row, so the course claim below would'
+            .' have been judged against an empty list');
+        foreach ($rows as $i => $row) {
+            $this->assertArrayHasKey('course', $row, "enrollment row {$i} of the slip's student carries no course —"
+                .' the closure stopped re-loading it and a lazy read filled the key without the program');
+        }
+        $this->assertSame($enrollment->courseId, $rows[0]['course']['courseId'] ?? null);
+    }
+
+    #[Test]
+    public function the_registrar_record_screen_ships_only_the_student_name(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrolledEnrollment($student);
+        $registrar = $this->createStaffForOffice(1);
+
+        // Same shape as the slip and the same reason: this page reads the student's addresses and guardians, so the
+        // identity list rides in a closure that re-loads those two relations. Their rows are the desk's work here —
+        // what must NOT arrive is the person's own demographic columns. §28.3 G-52's last desk site.
+        $page = $this->actingAs($registrar)
+            ->get(route('registrar.show', $enrollment))
+            ->assertOk()
+            ->viewData('page');
+
+        $this->assertSame('Registrar/Show', $page['component']);
+        DeskStudentPayload::assertNameOnly($student, $page['props']['enrollment']['student'] ?? null, 'registrar.show', true, ['addresses', 'guardians']);
+    }
 }
