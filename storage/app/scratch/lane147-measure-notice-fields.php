@@ -64,27 +64,31 @@ if ($schema !== null && ! preg_match('/\A[A-Za-z0-9_]+\z/', $schema)) {
 
 // The five parts, each with the vocabulary that would satisfy it on either side. Written as a table so a later
 // reader changes one list rather than three, and so the prompt's own words are the key.
+// The five parts, each with the vocabulary that would satisfy it on either side. On the SCREEN side the tokens are
+// payload ACCESSORS, not bare words: a layout file contains the word 'title' in a dozen unrelated places (a page
+// header, an aria label, a modal heading), and matching the bare word is what let an earlier run credit the bell
+// with fields it never read. Reading `n.data?.title` is the only shape that means "this screen shows that field".
 $PARTS = [
     'title' => [
         'writers' => ['title', 'subject'],
-        'screen' => ['title', 'subject'],
+        'screen' => ['n.data?.title', 'n.data.title'],
     ],
     'action required' => [
         'writers' => ['actionRequired', 'action', 'requiredAction'],
-        'screen' => ['actionRequired', 'actionRequired'],
+        'screen' => ['n.data?.actionRequired', 'n.data.actionRequired'],
     ],
     'record reference' => [
         'writers' => ['recordReference', 'schoolIdNumber', 'studentNumber', 'recordId', 'enrollmentId', 'reference'],
-        'screen' => ['recordReference', 'schoolIdNumber', 'studentNumber'],
+        'screen' => ['n.data?.recordReference', 'n.data.recordReference'],
     ],
     'timestamp' => [
         'writers' => [],
-        'screen' => ['created_at', 'formatSchoolMoment'],
+        'screen' => ['n.created_at', 'formatSchoolMoment'],
         'note' => 'the column, not the payload: notifications.created_at is the moment',
     ],
     'protected deep link' => [
         'writers' => ['url', 'link', 'route', 'target'],
-        'screen' => ['url', 'link', 'href', 'route('],
+        'screen' => ['n.data?.link', 'n.data.link'],
     ],
 ];
 
@@ -144,28 +148,42 @@ foreach ($writers as $f) {
 $payloadAt = strpos($writerText, "'message'");
 [$payloadStart, $payloadLen] = $payloadAt === false ? [0, 0] : $braceSpanFrom($writerText, $payloadAt);
 $writerPayload = $payloadLen > 0 ? substr($writerText, $payloadStart, $payloadLen) : '';
-if ($writerPayload === '') {
-    fwrite(STDERR, "REFUSED: no enclosing array literal was found for a `'message'` key in the listeners, so the "
-        ."writer surface read nothing and every field would be reported absent by accident.\n");
+// The listeners do not spell `title`, `actionRequired` or `link` in their own literal: both merge a shared builder
+// with `+ NoticeFacts::forEnrollment(…)`, which is the one-definition rule this repository applies everywhere. So
+// the writer surface reads that builder too, or a census of the listeners alone reports a field as absent when the
+// code writes it on every path — the shape where a busy instrument cannot report a negative.
+$factsPath = 'app/Support/NoticeFacts.php';
+if (! file_exists($root.'/'.$factsPath)) {
+    fwrite(STDERR, "REFUSED: {$factsPath} is not in the tree, so the fields the listeners merge in could not be read.\n");
 
     exit(1);
 }
-printf("writer payload block: %d bytes from the array that holds the 'message' key\n", $payloadLen);
+if ($writerPayload === '') {
+    // Checked BEFORE the builder is appended. The first version concatenated first and tested for emptiness after,
+    // so the refusal could never fire and a listener with no payload literal at all was read as "writer says NO for
+    // every field" — an unread surface reported as a measurement, which is the shape this repository refuses.
+    fwrite(STDERR, "REFUSED: no `'message'` payload literal was found in the listeners, so the writer surface read "
+        ."nothing and every field would be reported absent by accident.\n");
+
+    exit(1);
+}
+$writerPayload .= "\n".(string) file_get_contents($root.'/'.$factsPath);
+printf("writer surface: %d bytes (payload literals plus the shared builder they merge)\n", strlen($writerPayload));
 
 $screenFull = (string) file_get_contents($root.'/'.$screen);
-// The bell's ROW block only. The layout file also contains a logo, a menu and a profile dropdown, and words like
-// `title` and `route(` live there — crediting the whole file is the same over-scope that made the loading census
-// pass 24 pages for a Save button's pending state.
+// The bell's ROW block, taken to the end of the map callback rather than a fixed byte window: a 1,800-byte window
+// passed an earlier reading, and when the row grew the timestamp fell outside it and the census reported a field the
+// screen does read as missing. The bound is the block, so it moves with the code.
 $rowAt = strpos($screenFull, '<div key={n.id}');
-if ($rowAt === false) {
-    fwrite(STDERR, "REFUSED: the bell's row block ('<div key={n.id}') is not in {$screen}; the screen surface would "
-        ."judge a region it never located.\n");
+$mapEnd = strpos($screenFull, '))', $rowAt === false ? 0 : $rowAt);
+if ($rowAt === false || $mapEnd === false) {
+    fwrite(STDERR, "REFUSED: the bell's row block ('<div key={n.id}' … '))') is not in {$screen}; the screen "
+        ."surface would judge a region it never located.\n");
 
     exit(1);
 }
-$screenText = substr($screenFull, $rowAt, 1800);
-printf("writer payload block: %d bytes from the 'message' literal\n", strlen($writerPayload));
-printf("screen row block: %d bytes from '<div key={n.id}'\n\n", strlen($screenText));
+$screenText = substr($screenFull, $rowAt, $mapEnd - $rowAt);
+printf("screen row block: %d bytes, from '<div key={n.id}' to the end of the map callback\n\n", strlen($screenText));
 
 $rowsText = '';
 if ($wantRows) {
@@ -264,11 +282,20 @@ if ($fallback > 0) {
     $missing++;
 }
 
-printf("\n%s part(s) are asked for by prompt line 444 and are not carried by both surfaces.\n", 5);
-if ($missing === 0) {
-    echo "no gap.\n";
+// The rows surface cannot be satisfied by a code change: the 14 notices live `ems` holds were written before this
+// build, and a rebuilt payload does not rewrite a stored row. So the claim printed here is about the two surfaces a
+// batch can fix, and the row column is named as its own question rather than folded into a total.
+$gaps = intdiv($missing, 1);
+printf("\n%d side(s) of the writer/screen pair are missing across the five parts the prompt names (%d of 10 cells).\n",
+    $gaps, $gaps);
+if ($gaps === 0) {
+    echo "no gap: every part is written by the listeners and read by the bell.\n";
+    if ($wantRows) {
+        echo "rows surface: the stored notices keep the payload they were written with, so older rows carry fewer parts. "
+            ."That is history, not a defect, and it is why the row column is printed beside the pair rather than inside it.\n";
+    }
 } else {
-    echo 'this is §28.3 G-35\'s measured content — the register row says the bell renders a sentence and a moment.\n';
+    echo "this is §28.3 G-35's measured content: a part the writer or the screen does not carry.\n";
 }
 
 exit(0);

@@ -22,4 +22,30 @@ enum OfficeId: int
     case Academic = 7;
     case Clinic = 11;
     case IdOffice = 22;
+
+    /**
+     * The page that holds this office's work, by route NAME rather than by path.
+     *
+     * A notice has to take a desk somewhere (prompt §8: an intelligible title, action required, record reference,
+     * timestamp and protected deep link), and the only destination this repository can state without asking the
+     * school is the queue the record is now waiting in — which `WorkflowInbox` already resolves. The name is passed
+     * to `route()` by the screen that renders it, so no path is ever taken from a client, and the destination's own
+     * policy still refuses a reader who may not open it: a deep link is protected by the gate behind it, not by the
+     * link. Every named office has a queue page today; the absence that matters is an `offices` row this enum does
+     * not name at all, and `NoticeFacts::link()` answers that with no link rather than a guessed one.
+     */
+    public function deskRouteName(): string
+    {
+        return match ($this) {
+            self::Registrar => 'registrar.index',
+            self::Accounting => 'accounting.index',
+            self::Scholarship => 'assessment.index',
+            self::Guidance => 'shift.index',
+            self::Blocking => 'blocking.index',
+            self::Admission => 'admission.index',
+            self::Academic => 'evaluation.index',
+            self::Clinic => 'clinic.index',
+            self::IdOffice => 'id.index',
+        };
+    }
 }

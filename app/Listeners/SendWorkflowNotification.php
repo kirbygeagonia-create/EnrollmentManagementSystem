@@ -7,6 +7,7 @@ use App\Events\WorkflowStepSigned;
 use App\Models\Staffusers;
 use App\Services\WorkflowService;
 use App\Support\NoticeDelivery;
+use App\Support\NoticeFacts;
 use App\Support\WorkflowInbox;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -54,7 +55,7 @@ class SendWorkflowNotification implements ShouldQueue
                 $enrollment,
                 $workflow,
                 "{$who} · {$course}: enrollment form complete — all {$progress['total']} desks signed, last by {$signer} ({$stepLabel}). Ready for the records file.",
-                ['completed' => true]
+                ['completed' => true] + NoticeFacts::forEnrollment($enrollment, "Enrollment form complete for {$who}", OfficeId::Registrar->value)
             );
 
             return;
@@ -81,7 +82,7 @@ class SendWorkflowNotification implements ShouldQueue
                 'signed' => $progress['signed'],
                 'total' => $progress['total'],
                 'lastDesk' => $progress['last'],
-            ]
+            ] + NoticeFacts::forEnrollment($enrollment, "'{$stepLabel}' signed by {$signer}", $next?->officeId)
         );
     }
 

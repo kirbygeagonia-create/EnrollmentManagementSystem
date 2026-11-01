@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\EnrollmentStatusChanged;
 use App\Models\Staffusers;
 use App\Support\NoticeDelivery;
+use App\Support\NoticeFacts;
 use App\Support\WorkflowInbox;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -62,7 +63,7 @@ class SendEnrollmentNotification implements ShouldQueue
             'phase' => $progress['phase'],
             'signed' => $progress['signed'],
             'total' => $progress['total'],
-        ];
+        ] + NoticeFacts::forEnrollment($enrollment, $lead, WorkflowInbox::nextOffice($workflow, $event->toStatus));
 
         foreach (WorkflowInbox::actors(WorkflowInbox::nextOffice($workflow, $event->toStatus)) as $userId) {
             // One row per recipient, keyed by the transition that produced it: the recipient is part of the identity

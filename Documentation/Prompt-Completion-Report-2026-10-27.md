@@ -450,7 +450,7 @@ agreement is tested rather than structural (task #41). Thirty-four of the thirty
 order (task #28). The authority document's §28.3 does not yet carry G-44 … G-50 (task #37). The §24 paragraph that
 described the notification payload as double-encoded was re-taken inside this addendum (task #40 closed): it now
 states that both listeners pass the array, names `SendEnrollmentNotification.php:72` and
-`SendWorkflowNotification.php:95` — each asserted against the line it names before the write — and says the cast is
+`SendWorkflowNotification.php:96` — each asserted against the line it names before the write — and says the cast is
 the only encoder; the same pass tightened that sentence's model pointer from the range that began on `$fillable` and
 stopped one line short of `casts()` to the method's own span, and it spliced out a bare `:57` that sat alone in a
 styled run, which is the one edit no text needle could reach. `lane92`'s heading-level binding was added in this same addendum rather than left owed (task #42 closed): the

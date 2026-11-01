@@ -284,7 +284,25 @@ export default function AuthenticatedLayout({ header, children }) {
                                             ) : (
                                                 notifications.map((n) => (
                                                     <div key={n.id} className={`px-4 py-3 transition-colors ${n.read_at ? '' : 'bg-seait-50/50'}`}>
-                                                        <p className="text-xs text-slate-800 font-medium leading-snug">{n.data?.message || 'Notification'}</p>
+                                                        {/* Prompt §8's four readable parts, each shown only when the notice carries it.
+                                                            A missing field dashes rather than being filled in: the row used to substitute
+                                                            the word 'Notification' for a message that had not arrived, which reads as a
+                                                            label on the file while being nobody's words. */}
+                                                        {n.data?.title ? (
+                                                            <p className="text-xs text-slate-900 font-bold leading-snug">{n.data?.title}</p>
+                                                        ) : null}
+                                                        <p className="text-xs text-slate-800 font-medium leading-snug">{n.data?.message ?? '—'}</p>
+                                                        {n.data?.recordReference ? (
+                                                            <p className="text-[10px] text-slate-500 mt-0.5">{n.data?.recordReference}</p>
+                                                        ) : null}
+                                                        {n.data?.actionRequired ? (
+                                                            <p className="text-[10px] text-slate-500 mt-0.5">{n.data?.actionRequired}</p>
+                                                        ) : null}
+                                                        {n.data?.link ? (
+                                                            <Link href={route(n.data?.link.name)} className="text-[10px] font-semibold text-seait-700 hover:underline mt-1 inline-block">
+                                                                Open that desk
+                                                            </Link>
+                                                        ) : null}
                                                         <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? formatSchoolMoment(n.created_at) : ''}</p>
                                                     </div>
                                                 ))

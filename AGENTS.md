@@ -3171,7 +3171,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   Staffusers"), §20's FK-purpose row ("**Broken today**: writers store `App\Models\Students` rows that no reader
   queries"), and §24.14 ("Correction established in this edition: … both listeners write `notifiable_type =
   App\Models\Students`"). §28.3 closed N-1 on **2026-10-01** and the code agrees: both listeners write
-  `Staffusers::class` / `$userId` (`SendEnrollmentNotification.php:62-63`, `SendWorkflowNotification.php:88-89`),
+  `Staffusers::class` / `$userId` (`SendEnrollmentNotification.php:76-77`, `SendWorkflowNotification.php:109-110`),
   `WorkflowInbox::actors()` plucks staff userIds (`app/Support/WorkflowInbox.php:87-99`), and the listener's own
   docblock states that students are not notifiable. **The pass measures live `ems` instead of recalling it** — it
   refuses unless the table answers exactly one `notifiable_type`, `App\Models\Staffusers` (14 rows). The instrument
@@ -3664,7 +3664,36 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   reads must be addressable (`--screen=`, `--listeners=`), or a positive control means editing a desk screen; and every
   leg that must stay SILENT is asserted silent (deleting the `Notification` fallback removes the accusation, renaming
   the bell's row marker or the payload literal makes the run refuse rather than report absence).
-- **A `**` glob in PHP matches nothing, so a census written with one passes by reading no file.** The census case above first read
+- **A notice's four parts are one builder, and a destination is derived rather than asked** (G-35, prompt §8).
+  `App\Support\NoticeFacts::forEnrollment()` is the only writer of the title, the action required, the record
+  reference and the link, and both queued listeners merge its array into their own payload, so a notice cannot
+  arrive with a message and no way to act on it. `App\Enums\OfficeId::deskRouteName()` answers which queue holds
+  the row for that office, which is what retired the register's claim that the bell "waits on the school to say
+  where a notice goes" — the route a desk opens when its own card is clicked is already in the codebase, and the
+  only genuine question left is the WORDING each notice type should print and whether a desk should land on the
+  record instead of the queue that holds it. Three rules came out of building it. **The link is a route name, not a
+  signed path**: no signed-URL precedent exists in `app/` (measured, not recalled), so the notice points at the
+  desk and that desk's own policy and `CollegeScope` refuse a reader whose account cannot reach the row — a deep
+  link may not become a second, weaker authorization. **One vocabulary per part**: the record reference reads the
+  person through the relations the listener already has and spells the level through `App\Support\YearLevel`, so
+  the notice obeys the ruling that no surface may hand-write a year level. **And the bell may not invent what the
+  server did not send** — the row's `|| 'Notification'` was deleted, not reworded, because §48's rule about a
+  plausible value belongs to a title as much as to a peso figure. Pin:
+  `tests/Feature/Notification/NoticeReadabilityTest.php`, proved by
+  `php storage/app/scratch/mutate-lane147-notice-fields.php`, and the census that sized the debt is
+  `php storage/app/scratch/lane147-measure-notice-fields.php` (it prints each part per surface and refuses when a
+  surface answers nothing). Its `Route::has()` case is what makes the derivation safe: every `OfficeId` case must
+  answer a route that exists, so folding an office into a desk is caught on the day the enum changes. Two readings
+  worth keeping. **The fix was on the screen, not the write path** — the row said the record identifier never
+  travels, and it did: the listeners wrote it and the bell row never read it, which is lane 62's "ask what the
+  artefact really holds before ruling a change to how it is made". **And one import line aged every pointer below
+  it in both listeners**: the merged `NoticeFacts::forEnrollment()` calls were line-neutral, but the `use`
+  statement that carries them shifted each later line by one, so three citations landed on blank lines and the
+  rest stayed bounds-clean while sitting one row short of the construct their sentence names. Run
+  `lane76-shift-cites.php` after the LAST insertion of a batch, and treat a `GONE` refusal as a reading task: the
+  completion-branch window had been edited, so its replacement was asserted line by line before `--map=` wrote it.
+- **A `**` glob in PHP matches nothing, so a census written with one passes by reading no file.** The case in
+  `DeskRefreshPendingStateTest.php` first read
   `Pages/**/*.jsx`, returned zero paths, and would have certified the whole tree; the walk now uses a recursive iterator and the
   case asserts the population is non-empty before judging it.
 - **A figure wrapped off its instrument's citation is not clean, it is unseen.** In markdown the binder reads a physical line:
