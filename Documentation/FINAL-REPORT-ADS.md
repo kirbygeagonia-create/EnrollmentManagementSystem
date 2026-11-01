@@ -44,8 +44,8 @@ below is the claim, and the tool owns the number:
 
 | Bucket | Problems |
 |---|---|
-| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
-| Measured, not repaired | P08 search plan, P09 page query count, P10 subject-line race (10 writers: 6 proposed, 4 unretried `1213`, 0 duplicate rows — `lane190-out.txt`) |
+| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
+| Measured, not repaired | P08 search plan, P09 page query count |
 | Partly | P14 |
 | Not built | P13 |
 | Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
@@ -144,8 +144,8 @@ column is on `students` and not on its children), P17's rate-limit half (no
 `throttle` middleware sits on any desk route, so a stuck desk can resend one act ten times — the key makes each send
 answer the same record, not the sends fewer), P20's isolation half (no isolation level is declared anywhere, so a
 report that reads in more than one transaction still sees a moving drawer — the daily report now reads inside one),
-P13 and P14 (two load ceilings with no number), P10's subject-line act (driven by `lane190`, and what it shows is an
-act that no writer retries — the repair is P02's lock plus `RetryOnDeadlock`), and the room-capacity
+P13 and P14 (two load ceilings with no number), P10's simultaneous-process Pest case (the act is locked, retried and
+measured by `lane190`; SQLite cannot deadlock, so the shape has no single-connection case), and the room-capacity
 semantics named in report part 2. Open with the school: the term unit ceiling, any faculty cap, the search semantics that P08's
 measurement now prices, restoration policy behind P19, and the thirteen items on the dated decision sheets that a
 window has to answer.

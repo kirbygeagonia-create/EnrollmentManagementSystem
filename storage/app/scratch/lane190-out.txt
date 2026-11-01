@@ -33,13 +33,12 @@ these runs (lane 58's rule: a timing is a property of the run that printed it); 
 4-of-10 lock deaths and the row counts, not any single figure.
 
 ===== SAME COMMAND, THE REPAIR IN PLACE (lock the enrollment first + RetryOnDeadlock + move only when not already evaluated) =====
-MEASURED ON AN UNCOMMITTED WORKING COPY, NOT IN THE TREE. The repair works — the reading below is real — but landing
-it needs the authority document's 21 citations into `EvaluationController.php` moved with it, and `lane76-shift-cites`
-refused four of them (two GONE windows inside `proposeSubjects()`, one AMBIGUOUS, one bare tail belonging to another
-file). Resolving those by reading and re-running the five gates did not fit the session that measured this, so the
-tree was reverted to the pushed commit and the patch kept at `storage/app/scratch/lane191-p10-repair.patch`
-(untracked — scratch `.patch` is not re-included) with the recipe in task #44. A half-moved register is the defect
-this repository refuses, and a proven fix parked as a patch costs one session; a corrupted docx costs the authority.
+LANDED. This was measured on an uncommitted working copy first, then applied: the repair is in the tree, and landing
+it moved 58 citation number tokens into `EvaluationController.php` through `lane76-shift-cites.php` — two GONE windows
+mapped after reading both endpoints in both versions (`692-822` to `693-844`, the method's real span, and `814-824` to
+`837-844`, the transition-through-return window), one AMBIGUOUS bare `:620` re-pointed to `:621` by run because its
+bytes matched two identical `'evaluatedBy' =>` lines, and a bare `1194-1235` left alone because the document holds a
+*different* file's citation with the same digits. `sweep-docx-citations` then read 744 citations / 0 line problems.
 $ php storage/app/scratch/lane190-probe-subject-line-race.php --schema=ems_l190_a --pairs=5 --recreate
 
 children run: 10  proposed: 10  refused: 0  deadlock or lock-timeout: 0  other driver error: 0  policy-refused: 0

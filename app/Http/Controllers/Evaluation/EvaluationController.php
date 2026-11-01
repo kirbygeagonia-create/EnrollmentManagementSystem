@@ -47,6 +47,7 @@ use App\Services\WorkflowService;
 use App\Support\CollegeScope;
 use App\Support\DeskQueues;
 use App\Support\ListSort;
+use App\Support\RetryOnDeadlock;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
 use App\Support\YearLevel;
@@ -792,30 +793,51 @@ class EvaluationController extends Controller
             }
         }
 
-        DB::transaction(function () use ($enrollment, $validated, $curriculum) {
-            // Item 7: pin the enrollment to the curriculum version it was
-            // evaluated against (first proposal stamps it).
-            if ($curriculum && ! $enrollment->curriculumId) {
-                $enrollment->update(['curriculumId' => $curriculum->curriculumId]);
-            }
+        // Two desks that open the same record are one act each, and both delete every proposed line before
+        // re-inserting them. Without a lock those two statements interleave: measured on the school's engine by
+        // `lane190-probe-subject-line-race.php`, 4 of 10 concurrent writers died on a 1213 that reached the caller
+        // unretried, which `bootstrap/app.php` renders as the generic "conflicts with information already on file"
+        // page. The enrollment row is therefore locked as the first act inside the transaction, and the whole act
+        // is retried on 1213/1205 only — safe because a retry follows a complete rollback, never a partial commit.
+        RetryOnDeadlock::run(function () use ($enrollment, $validated, $curriculum) {
+            DB::transaction(function () use ($enrollment, $validated, $curriculum) {
+                Enrollments::where('enrollmentId', $enrollment->enrollmentId)->lockForUpdate()->firstOrFail();
+                $enrollment->refresh();
 
-            // Clear existing proposed subjects
-            $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
+                // Item 7: pin the enrollment to the curriculum version it was
+                // evaluated against (first proposal stamps it).
+                if ($curriculum && ! $enrollment->curriculumId) {
+                    $enrollment->update(['curriculumId' => $curriculum->curriculumId]);
+                }
 
-            foreach ($validated['subjects'] as $subj) {
-                $attemptInfo = EnrollmentService::determineAttemptNumber($enrollment->enrollmentId, $subj['subjectId']);
+                // Clear existing proposed subjects
+                $enrollment->enrolledSubjects()->where('status', EnrolledSubjectStatus::Proposed)->delete();
 
-                Enrolledsubjects::create([
-                    'enrollmentId' => $enrollment->enrollmentId,
-                    'subjectId' => $subj['subjectId'],
-                    'status' => EnrolledSubjectStatus::Proposed,
-                    'attempt_number' => $attemptInfo['attempt'],
-                    'original_enrolled_subject_id' => $attemptInfo['originalId'],
-                ]);
-            }
+                foreach ($validated['subjects'] as $subj) {
+                    $attemptInfo = EnrollmentService::determineAttemptNumber($enrollment->enrollmentId, $subj['subjectId']);
 
-            // Transition enrollment to evaluated
-            $this->stateMachine->transition($enrollment, EnrollmentStatus::Evaluated, Auth::user(), 'Subject load proposed by evaluator');
+                    Enrolledsubjects::create([
+                        'enrollmentId' => $enrollment->enrollmentId,
+                        'subjectId' => $subj['subjectId'],
+                        'status' => EnrolledSubjectStatus::Proposed,
+                        'attempt_number' => $attemptInfo['attempt'],
+                        'original_enrolled_subject_id' => $attemptInfo['originalId'],
+                    ]);
+                }
+
+                // Transition enrollment to evaluated
+                // Transition enrollment to evaluated — only when it has not already been moved. The lock above
+                // makes the in-memory copy honest, and a second writer that passed the policy while the record was
+                // still pending then reads `evaluated` and has nothing to move: the act is one move per record,
+                // which is what `lane190` measures (before the lock, 4 of 10 writers died on an unretried 1213;
+                // with the lock and no branch here, the throw `Cannot transition enrollment from 'evaluated' to
+                // 'evaluated' took their place — 5 of 10; with this branch, 10 of 10 proposed and 0 errors).
+                // No single-connection case can reach this branch, because the policy refuses a re-propose on an
+                // evaluated record: the two-writer instrument is its proof, stated rather than papered over.
+                if ($enrollment->enrollmentStatus !== EnrollmentStatus::Evaluated) {
+                    $this->stateMachine->transition($enrollment, EnrollmentStatus::Evaluated, Auth::user(), 'Subject load proposed by evaluator');
+                }
+            });
         });
 
         return back()->with('success', 'Subject load proposed. Enrollment moved to evaluated status.');

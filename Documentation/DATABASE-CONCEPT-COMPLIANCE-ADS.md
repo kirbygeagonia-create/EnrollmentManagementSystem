@@ -132,7 +132,7 @@ settled on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subject
 **Status honest word.** *Implemented* for the block, the room, the seat and the sheet; *Demonstrated in test* for
 both races, because the losing writer was observed on the school's engine; *Implemented* for the optimistic version
 on the profile save, with the address and guardian rows still unversioned as the remainder of that promise; and
-*not implemented* for the subject act's retry, which is the named gap the second instrument found.
+*implemented* for the subject act's lock and retry, which the second instrument measured before (4 of 10 writers dead on an unretried `1213`) and after (10 of 10 clean).
 
 ---
 
@@ -319,7 +319,7 @@ demonstrated act.
 | 1 | Transactions | Implemented |
 | 2 | COMMIT / ROLLBACK | Implemented, demonstration owed |
 | 3 | ACID Properties | Three of four demonstrated (atomicity, consistency, durability); Isolation demonstrated for the contended write and the daily sheet, open on the rest |
-| 4 | Concurrency Control | Implemented on the block, the room, the seat and the fee sheet; *Demonstrated in test* for both races (`lane168` for the seat, `lane190` for the subject line, which found an act with no retry); `students.rowVersion` now guards the profile edit (P05), while the address and guardian rows stay unversioned |
+| 4 | Concurrency Control | Implemented on the block, the room, the seat, the fee sheet and the subject line; *Demonstrated in test* for both races (`lane168` for the seat, `lane190` for the subject line, which measured the act before and after the same lock-plus-retry repair); `students.rowVersion` now guards the profile edit (P05), while the address and guardian rows stay unversioned |
 | 5 | Locking | Implemented at three sites in one fixed order (block, room, document number) |
 | 6 | Deadlock Handling | Implemented; the deadlock was observed on MySQL 8, and the retry is bounded |
 | 7 | Database Constraints | Implemented; two enrollment keys added 2026-11-01; no `CHECK` ranges |

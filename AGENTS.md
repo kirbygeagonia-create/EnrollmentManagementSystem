@@ -3906,6 +3906,24 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   thing to reach for here — a CLI boot has no started session, so `Auth::id()` answers null and every case dies on
   the policy with a misleading 403; `Auth::setUser($staff)` is the working spelling, measured by
   `storage/app/scratch/lane168-probe-desk-rights.php` before the child was written.
+- **A lock can expose a second defect in the same act, so re-measure after the first repair** (lane190, ADS P10, 2026-11-01).
+  `proposeSubjects()` deletes then inserts inside a transaction; the pre-fix race gave 4 unretried `1213` deaths in 10
+  writers. Adding `Enrollments::…->lockForUpdate()` as the transaction's first statement plus `RetryOnDeadlock` did not
+  make the act safe — it made the *stale model* visible: 5 writers then died on `Cannot transition enrollment from
+  'evaluated' to 'evaluated'`, because the lock is exactly what let the second writer read the record's real status for
+  the first time. Before the lock the transition ran twice from a copy every one of us had assumed was current, so the
+  second reading was not a regression, it was the previous bug changing costume. The act now re-reads after the lock
+  (`->refresh()`) and moves the record only when it has not already been moved; the delivered reading is 10 proposed,
+  0 deadlock, 0 driver error, every pair exactly the payload's rows. The rule generalises: **a fix that removes one
+  error class and leaves a different one is a partial fix, and only the same instrument re-run can show that.**
+  Landing it moved 58 citation tokens into that file; `lane76` resolved 17 windows, and the four it refused were each
+  read, not guessed — two GONE ranges mapped by asserting HEAD's signature line and the method's closing brace in the
+  working file, one AMBIGUOUS bare `:620` (two byte-identical `'evaluatedBy' =>` lines, at 621 inside profile capture
+  and 664 inside `decideStanding()`) re-pointed by run-anchor on the sentence's own words, and a bare `1194-1235` left
+  untouched because the document holds a *different* file's citation with the same digits — the tail-of-a-longer-
+  pointer hazard again, arriving as a deferral this time and correctly so. No single-connection case can reach the new
+  branch (the policy refuses a re-propose on an evaluated record), so the instrument is its proof and that limit is
+  written in the comment rather than papered over with a test that cannot fail.
 - **A race probe's SAFE bucket must charge every outcome that is not a success** (lane190, ADS problem 10, 2026-11-01).
   Its first version counted `1213` into a "deadlock or lock-timeout" bucket and then wrote `SAFE` while 4 of 10
   children had died there, because the unsafe clauses only looked at row counts, duplicates and *other* driver
