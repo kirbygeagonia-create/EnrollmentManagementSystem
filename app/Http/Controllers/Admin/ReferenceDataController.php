@@ -72,21 +72,51 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageCourses', Courses::class);
 
-        $courses = Courses::with('unit')
+        // The builder is split from the paging call so the order is applied in the action, the way every wired
+        // screen does it. `unitId` is NOT NULL in the migration and no row on live `ems` is missing one, so the
+        // unit hop can be INNER without deleting a row from the desk's list — the check that decides INNER versus
+        // LEFT, asked of the schema and the rows rather than assumed from the last screen. The four exam flags are
+        // columns the screen paints as badges, so each carries a header: a board desk that wants the flagged
+        // programs together is one click, and the query answers it.
+        $query = Courses::with('unit')
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('courseName', 'like', "%{$search}%")
                     ->orWhere('courseCode', 'like', "%{$search}%");
             }))
-            ->when($request->unit, fn ($q, $unit) => $q->where('unitId', $unit))
-            ->orderByDesc('courseId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->unit, fn ($q, $unit) => $q->where('unitId', $unit));
+
+        $sortable = [
+            'courseCode' => ['column' => 'courseCode'],
+            'courseName' => ['column' => 'courseName'],
+            'unit' => ['column' => 'unitName', 'join' => 'academicunits', 'foreign' => 'unitId', 'local' => 'courses.unitId'],
+            'requiresEntranceExam' => ['column' => 'requiresEntranceExam'],
+            'requiresCourseSpecificExam' => ['column' => 'requiresCourseSpecificExam'],
+            'entranceExamExemptsTransferee' => ['column' => 'entranceExamExemptsTransferee'],
+            'requiresRetentionExam' => ['column' => 'requiresRetentionExam'],
+            'courseId' => ['column' => 'courseId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'courseCode',
+            'courses.courseId'
+        );
+
+        $courses = $query->paginate(20)->withQueryString();
         $units = Academicunits::all(['unitId', 'unitName']);
 
         return Inertia::render('Admin/ReferenceData/Courses', [
             'courses' => $courses,
             'units' => $units,
-            'filters' => $request->only(['search', 'unit']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search', 'unit']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

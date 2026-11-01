@@ -1082,7 +1082,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   "0 problem(s)" also says how many it declined to judge, and names the documents it exempted. That naming is the
   guard against this bullet's own hazard — write the marker into a living document and the gate stops reading it.
   `--strict-dated` puts those pointers back into the problem column; it is the flag the harness uses to prove the
-  marker is *read* rather than accepted (the accepted-but-inert defect this file has met five times). Prove any
+  marker is *read* rather than accepted (the accepted-but-inert defect this file has met five times). Its plant is a
+  blank line **discovered at run time**: three legs once reported a clean tree because the line they had been citing
+  stopped being blank the day a sort block was inserted above it, which is a leg that cannot fail wearing the costume
+  of a broken instrument. Prove any
   change to this gate with `php storage/app/scratch/mutate-lane126-md-citation-gate.php`, which prints its own leg
   total and plants its own bytes for each: a stale pointer in a copy without the marker must print EMPTY LINE and
   exit 1, the same bytes with
@@ -1729,7 +1732,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 21 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+  still owed: 20 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
 2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
 handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
 while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
@@ -1745,10 +1748,23 @@ through the LEFT hop, because `staffusers.officeId` is nullable in the migration
 no office and requires it to stay on the list — an INNER hop answers four rows where the desk expects five, which is
 the absence the screen exists to paint; its order opens ascending like the catalogue's; and its class is
 `tests/Feature/Admin/StaffDirectorySortTest.php`, proved by `mutate-g40-staff-directory-tests.php` at six legs, one per
-promise; the delivered run gives that class 9 cases, with no assertion figure beside it. The delivered run that carries
-the fifteenth table answers 1,153 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
-`artisan test --list-tests` discovers the same 1,153, which is the check that no inserted method stole a `#[Test]`
-attribute; the difference over the run above is exactly the two classes this batch added, counted out of that run's own
+promise; the delivered run gives that class 9 cases, with no assertion figure beside it. The sixteenth is the courses catalogue, wired the same day, and it is where the
+nullable-key question answered differently: `courses.unitId` is `NOT NULL` in the migration and no row on live `ems`
+is missing one, so its Unit hop is the plain INNER kind — the rule is *ask the schema and the rows*, never *copy the
+last screen*. Four of its seven painted columns are booleans, and a flag is a column the query holds, so a board desk
+groups the flagged programs with one click instead of reading sixteen rows; its class is
+`tests/Feature/Sorting/CourseListSortTest.php` and `mutate-g40-course-sort-tests.php` kills five defects on it, two of
+which live in the hop (label the column without the join and the desk meets a 500, not a wrong order) and one in the
+tie-break. **Re-pointing that file's citations found two pointers that had never carried their claim:** §24's
+`academicunits` row cited `ReferenceDataController.php:83` and its `academicyears` row cited `:490` for "read as a
+dropdown", while the two reads — the `Academicunits::all(…)` and `Academicyears::all(…)` lines — sat five and
+thirty-one lines away in the same file. Both numbers land on live code in the right file, so the bounds sweep, the
+meaning sweep and lane 32 all agree with them: lane 70's wrong-target class arriving in a row this document had
+re-pointed once before. Pass 364 moved both to the line that holds the read, each asserted against that line's own
+bytes before the write. The delivered run that carries
+the fifteenth and sixteenth tables answer 1,161 passed on this box, with `SUITE_EXIT=0`, no failure, no error and no skip, and
+`artisan test --list-tests` discovers the same 1,161, which is the check that no inserted method stole a `#[Test]`
+attribute; the difference over the run above is exactly the three classes these two screens added, counted out of that run's own
 junit. The account-status guard is `tests/Feature/Admin/AccountStatusToneVocabularyTest.php`, four cases, and its
 assertion total is deliberately not stated here because it moved between a single-file run and the delivered whole run
 on this same box — lane 58's rule met from a surface nobody had seen it bite on. The audit log is

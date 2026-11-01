@@ -2,11 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Courses({ courses, units, filters = {} }) {
+export default function Courses({ courses, units, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [unit, setUnit] = useState(filters.unit || '');
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || 'asc');
     const [showModal, setShowModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -22,36 +24,48 @@ export default function Courses({ courses, units, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'courseCode', label: 'Code', className: 'font-mono text-sm' },
-        { key: 'courseName', label: 'Title' },
-        { key: 'unit', label: 'Unit', render: (row) => row.unit?.unitName || '—' },
-        { key: 'requiresEntranceExam', label: 'Entrance Exam', render: (row) => (
+        { key: 'courseCode', label: 'Code', sortKey: 'courseCode', className: 'font-mono text-sm' },
+        { key: 'courseName', label: 'Title', sortKey: 'courseName' },
+        { key: 'unit', label: 'Unit', sortKey: 'unit', render: (row) => row.unit?.unitName || '—' },
+        { key: 'requiresEntranceExam', label: 'Entrance Exam', sortKey: 'requiresEntranceExam', render: (row) => (
             <Badge tone={row.requiresEntranceExam ? 'success' : 'neutral'}>
                 {row.requiresEntranceExam ? 'Required' : 'Not Required'}
             </Badge>
         )},
-        { key: 'requiresCourseSpecificExam', label: 'Course-Specific Exam', render: (row) => (
+        { key: 'requiresCourseSpecificExam', label: 'Course-Specific Exam', sortKey: 'requiresCourseSpecificExam', render: (row) => (
             <Badge tone={row.requiresCourseSpecificExam ? 'success' : 'neutral'}>
                 {row.requiresCourseSpecificExam ? 'Required' : 'Not Required'}
             </Badge>
         )},
-        { key: 'entranceExamExemptsTransferee', label: 'Transferees', render: (row) => (
+        { key: 'entranceExamExemptsTransferee', label: 'Transferees', sortKey: 'entranceExamExemptsTransferee', render: (row) => (
             <Badge tone={row.entranceExamExemptsTransferee ? 'info' : 'neutral'}>
                 {row.entranceExamExemptsTransferee ? 'Exempt' : 'Must sit'}
             </Badge>
         )},
-        { key: 'requiresRetentionExam', label: 'Retention Exam', render: (row) => (
+        { key: 'requiresRetentionExam', label: 'Retention Exam', sortKey: 'requiresRetentionExam', render: (row) => (
             <Badge tone={row.requiresRetentionExam ? 'success' : 'neutral'}>
                 {row.requiresRetentionExam ? 'Required' : 'Not Required'}
             </Badge>
         )},
     ], []);
 
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.courses'), {
+            search: search || undefined,
+            unit: unit || undefined,
+            ...sortParams('courseCode', key, direction),
+        }, { preserveState: true, preserveScroll: true });
+    };
+
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.courses'), {
             search: search || undefined,
             unit: unit || undefined,
+            ...sortParams('courseCode', sortBy, sortDir),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -182,6 +196,8 @@ export default function Courses({ courses, units, filters = {} }) {
                             columns={columns}
                             rows={courses.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No courses found"
                         />
                         <div className="mt-4">

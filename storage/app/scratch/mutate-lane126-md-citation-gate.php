@@ -78,9 +78,26 @@ $say = function (string $name, bool $ok, string $detail) use (&$bad): void {
     }
 };
 
-// Line 238 of the user-management controller is blank today — it is the shape a one-row aging produces, and the
-// defect this batch actually found in the matrix. The fixture cites it on purpose.
-$blankPointer = 'app/Http/Controllers/Admin/UserManagementController.php:238';
+// The fixture cites a BLANK line of a real file, because a blank line is the one shape the gate refuses. The number
+// is found at run time, never remembered: these legs once pointed at line 238 of the user-management controller, and
+// the day a sort block was inserted above it the planted "defect" became a live line, three legs reported a clean
+// tree, and an aged leg looked like a broken instrument.
+$plantFile = 'app/Http/Controllers/Admin/UserManagementController.php';
+$plantLines = explode("\n", (string) file_get_contents($root.'/'.$plantFile));
+$blankAt = 0;
+foreach ($plantLines as $i => $line) {
+    if ($i > 5 && trim($line) === '') {
+        $blankAt = $i + 1;
+
+        break;
+    }
+}
+if ($blankAt === 0) {
+    fwrite(STDERR, "REFUSED: {$plantFile} holds no blank line for the fixture to cite, so the plant cannot be built.\n");
+
+    exit(1);
+}
+$blankPointer = $plantFile.':'.$blankAt;
 $fixture = "# Fixture\n\nThe deactivate act is `{$blankPointer}`.\n";
 
 // ── 1. green control over the whole scanned set ─────────────────────────────────────────────────────────────

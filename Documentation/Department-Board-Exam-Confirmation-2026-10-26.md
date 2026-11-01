@@ -49,7 +49,7 @@ If a fourth program should be flagged, name it in the margin; the Registrar adds
 | The answer is | It is carried by | It comes back off by |
 |---|---|---|
 | "confirmed" | nothing — the flag already stands; this page only records that its owning department said so | the page itself; no data moves |
-| "cleared" | one untick in Reference Data → Courses for that program (`app/Http/Controllers/Admin/ReferenceDataController.php:105`, `:130`) | tick the same box again |
+| "cleared" | one untick in Reference Data → Courses for that program (`app/Http/Controllers/Admin/ReferenceDataController.php:135`, `:160`) | tick the same box again |
 | "add a program" | the same screen, one box | the same box |
 
 No migration, no release, no re-seed. Ruled 2026-10-23 and re-affirmed 2026-10-26: **all five flags stand** until
