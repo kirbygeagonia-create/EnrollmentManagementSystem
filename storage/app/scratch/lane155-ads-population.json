@@ -1,0 +1,412 @@
+{
+    "problems": [
+        {
+            "id": 1,
+            "title": "Incomplete Enrollment Transaction",
+            "paragraphs": "41-50",
+            "scenario": "A student is enrolling in multiple subjects. An error occurs while processing one of the subjects.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 2,
+            "title": "Last Available Slot",
+            "paragraphs": "51-60",
+            "scenario": "A section has only one remaining slot, and two enrollment requests arrive at almost the same time. Requests may be entered by students or by registrar staff.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 3,
+            "title": "Duplicate Enrollment",
+            "paragraphs": "61-70",
+            "scenario": "The same enrollment request is submitted twice, either accidentally or through simultaneous requests.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 4,
+            "title": "Incorrect Section Capacity",
+            "paragraphs": "71-80",
+            "scenario": "The number of enrolled students and the section's maximum capacity become inconsistent, or a stored enrollment count is incorrect.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 5,
+            "title": "Simultaneous Student Updates",
+            "paragraphs": "81-90",
+            "scenario": "Two authorized users, such as two registrars, attempt to modify the same student's enrollment information at the same time.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 6,
+            "title": "Enrollment Cancellation",
+            "paragraphs": "91-100",
+            "scenario": "A student cancels an enrollment containing several subjects, either through an online request or with registrar assistance.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 7,
+            "title": "Database Deadlock",
+            "paragraphs": "101-110",
+            "scenario": "Two transactions need multiple records or resources but acquire them in different orders.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 8,
+            "title": "Student Search Performance",
+            "paragraphs": "111-120",
+            "scenario": "The school has thousands of student records, and searching for a student becomes slower as the database grows.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 9,
+            "title": "Enrollment History Performance",
+            "paragraphs": "121-130",
+            "scenario": "The school has hundreds of thousands of enrollment records, and the registrar needs to retrieve a student's complete enrollment history.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 10,
+            "title": "Concurrent Subject Registration",
+            "paragraphs": "131-140",
+            "scenario": "Several enrollment requests for different students target the same popular subject or section at the same time.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 11,
+            "title": "Invalid Enrollment Data",
+            "paragraphs": "141-150",
+            "scenario": "An enrollment record contains invalid or incomplete information, such as a non-existent student, non-existent subject, invalid section, or missing required information.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 12,
+            "title": "Prerequisite Checking",
+            "paragraphs": "151-160",
+            "scenario": "A student attempts to enroll in a subject without completing its prerequisite. The request may be handled online or by registrar staff.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 13,
+            "title": "Maximum Academic Load",
+            "paragraphs": "161-170",
+            "scenario": "A student attempts to enroll in subjects whose combined units exceed the school's maximum allowed academic load.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 14,
+            "title": "Faculty Teaching Load",
+            "paragraphs": "171-180",
+            "scenario": "A faculty member is assigned to sections that exceed the school's allowed teaching load. If your system does not manage faculty assignments, explain this limitation.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 15,
+            "title": "Conflicting Class Schedules",
+            "paragraphs": "181-190",
+            "scenario": "A student attempts to enroll in two subjects with overlapping schedules.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 16,
+            "title": "Transaction Failure During Enrollment",
+            "paragraphs": "191-200",
+            "scenario": "One database operation fails before the full enrollment process is complete.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 17,
+            "title": "Power Interruption During Enrollment",
+            "paragraphs": "201-211",
+            "scenario": "A student or registrar staff member submits an enrollment request, but the electricity suddenly goes out before the process is completed. The outage may affect the user's computer, the school network, or the database server.",
+            "guideQuestions": 5,
+            "checkboxes": 3
+        },
+        {
+            "id": 18,
+            "title": "Duplicate Student ID",
+            "paragraphs": "212-222",
+            "scenario": "Two staff members accidentally register different students using the same Student ID, either at different times or at almost the same time.",
+            "guideQuestions": 5,
+            "checkboxes": 3
+        },
+        {
+            "id": 19,
+            "title": "Accidental Deletion",
+            "paragraphs": "223-233",
+            "scenario": "A staff member accidentally deletes a student's enrollment record.",
+            "guideQuestions": 5,
+            "checkboxes": 3
+        },
+        {
+            "id": 20,
+            "title": "Reports During Active Enrollment",
+            "paragraphs": "234-244",
+            "scenario": "The dean generates an enrollment report while the registrar is still enrolling students.",
+            "guideQuestions": 5,
+            "checkboxes": 3
+        },
+        {
+            "id": 21,
+            "title": "Database Recovery",
+            "paragraphs": "245-254",
+            "scenario": "The database server unexpectedly fails while enrollment transactions are being processed.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 22,
+            "title": "Unauthorized Database Access",
+            "paragraphs": "255-264",
+            "scenario": "Different roles may include student, faculty, registrar, and administrator. Your actual roles may differ.",
+            "guideQuestions": 4,
+            "checkboxes": 3
+        },
+        {
+            "id": 23,
+            "title": "Heavy Enrollment Traffic",
+            "paragraphs": "265-275",
+            "scenario": "Enrollment opens at a scheduled time, and many users or registrar staff access the system simultaneously.",
+            "guideQuestions": 5,
+            "checkboxes": 3
+        },
+        {
+            "id": 24,
+            "title": "Complete Enrollment-Day Challenge",
+            "paragraphs": "276-364",
+            "scenario": "It is enrollment day. Many students access the system; multiple requests target the same section; some requests are duplicates, fail prerequisite or load checks, or conflict with registrar updates. Some transactions fail, and the database contains hundreds of thousands of enrollment records. Adapt the scenario to your system's actual workflow.",
+            "guideQuestions": 9,
+            "checkboxes": 39
+        }
+    ],
+    "questions": 106,
+    "subsections": [
+        {
+            "line": 9,
+            "letter": "I",
+            "name": "Project Overview"
+        },
+        {
+            "line": 21,
+            "letter": "A",
+            "name": "Flexible Enrollment Workflow"
+        },
+        {
+            "line": 30,
+            "letter": "B",
+            "name": "How to Answer Each Problem"
+        },
+        {
+            "line": 38,
+            "letter": "C",
+            "name": "Important Reminder"
+        },
+        {
+            "line": 320,
+            "letter": "V",
+            "name": "Final Presentation Requirements"
+        }
+    ],
+    "numbered": [
+        {
+            "line": 322,
+            "n": 1,
+            "name": "Database Design"
+        },
+        {
+            "line": 326,
+            "n": 2,
+            "name": "Transactions"
+        },
+        {
+            "line": 330,
+            "n": 3,
+            "name": "ACID Properties"
+        },
+        {
+            "line": 335,
+            "n": 4,
+            "name": "Concurrency"
+        },
+        {
+            "line": 339,
+            "n": 5,
+            "name": "Deadlock"
+        },
+        {
+            "line": 342,
+            "n": 6,
+            "name": "Indexing"
+        },
+        {
+            "line": 346,
+            "n": 7,
+            "name": "Testing"
+        },
+        {
+            "line": 351,
+            "n": 8,
+            "name": "Workflow and Applicability"
+        }
+    ],
+    "concepts": [
+        {
+            "line": 295,
+            "name": "Transactions",
+            "statuses": 3
+        },
+        {
+            "line": 297,
+            "name": "COMMIT \/ ROLLBACK",
+            "statuses": 3
+        },
+        {
+            "line": 299,
+            "name": "ACID Properties",
+            "statuses": 3
+        },
+        {
+            "line": 301,
+            "name": "Concurrency Control",
+            "statuses": 3
+        },
+        {
+            "line": 303,
+            "name": "Locking",
+            "statuses": 3
+        },
+        {
+            "line": 305,
+            "name": "Deadlock Handling",
+            "statuses": 3
+        },
+        {
+            "line": 307,
+            "name": "Database Constraints",
+            "statuses": 3
+        },
+        {
+            "line": 309,
+            "name": "Indexing",
+            "statuses": 3
+        },
+        {
+            "line": 311,
+            "name": "Query Optimization",
+            "statuses": 3
+        },
+        {
+            "line": 313,
+            "name": "Data Integrity",
+            "statuses": 3
+        },
+        {
+            "line": 315,
+            "name": "Database Security",
+            "statuses": 3
+        },
+        {
+            "line": 317,
+            "name": "Recovery",
+            "statuses": 3
+        }
+    ],
+    "presentation": [
+        {
+            "n": 1,
+            "title": "Database Design",
+            "line": 322,
+            "items": [
+                "ERD",
+                "Tables and relationships",
+                "Primary keys and foreign keys"
+            ]
+        },
+        {
+            "n": 2,
+            "title": "Transactions",
+            "line": 326,
+            "items": [
+                "At least one meaningful transaction (Can also use Try and Catch method)",
+                "COMMIT and ROLLBACK",
+                "A failure scenario and the observed result"
+            ]
+        },
+        {
+            "n": 3,
+            "title": "ACID Properties",
+            "line": 330,
+            "items": [
+                "Atomicity",
+                "Consistency",
+                "Isolation (Like the Use of FOR and UPDATE)",
+                "Durability (Must have a Backup Way or Method)"
+            ]
+        },
+        {
+            "n": 4,
+            "title": "Concurrency",
+            "line": 335,
+            "items": [
+                "A simultaneous enrollment scenario",
+                "Chosen concurrency-control strategy",
+                "Testing evidence"
+            ]
+        },
+        {
+            "n": 5,
+            "title": "Deadlock",
+            "line": 339,
+            "items": [
+                "A possible deadlock scenario",
+                "Prevention or handling strategy; a controlled demonstration or explanation if the application does not naturally produce one"
+            ]
+        },
+        {
+            "n": 6,
+            "title": "Indexing",
+            "line": 342,
+            "items": [
+                "Indexes implemented",
+                "Reason for selecting indexed columns",
+                "Query plan or performance evidence where feasible"
+            ]
+        },
+        {
+            "n": 7,
+            "title": "Testing",
+            "line": 346,
+            "items": [
+                "Test scenario",
+                "Expected result",
+                "Actual result",
+                "Screenshot, SQL output, logs, or other evidence"
+            ]
+        },
+        {
+            "n": 8,
+            "title": "Workflow and Applicability",
+            "line": 351,
+            "items": [
+                "Explain whether enrollment is student-initiated, registrar-assisted, walk-in, or a combination",
+                "Identify problems marked N\/A or partially applicable and justify each decision",
+                "Describe an equivalent test or design where needed"
+            ]
+        }
+    ],
+    "presentationItems": 25
+}

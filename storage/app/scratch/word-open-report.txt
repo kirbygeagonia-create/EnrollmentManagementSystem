@@ -1,0 +1,11 @@
+﻿source sha256 : FD2163D9EA9EDC46876C7D37D8316855351994DD4B625825B1AF793BDEEDF75A
+copy  sha256  : FD2163D9EA9EDC46876C7D37D8316855351994DD4B625825B1AF793BDEEDF75A  identical=True
+WINWORD pids before: 
+instance this script started: 12476
+OPENED OK
+pages     : 250
+words     : 127490
+paragraphs: 11987
+tables    : 186
+quit the instance this script started
+WINWORD pids after : 12476

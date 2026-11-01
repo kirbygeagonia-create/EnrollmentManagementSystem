@@ -1,0 +1,32 @@
+clone ems -> ems_l168_a
+cloned: 24 students, 37 enrollments, 5 blocks  (source `ems` verified unchanged at 24 students)
+
+=== 3 pairs of concurrent assigns, run three times (once per pass) ===
+  working            pair: #53 refused[capacity] seats=1 422.5ms   |   #91 assigned seats=1 518ms
+  working            pair: #53 refused[capacity] seats=1 259.9ms   |   #91 assigned seats=1 335.7ms
+  working            pair: #53 refused[capacity] seats=1 157.2ms   |   #91 assigned seats=1 294ms
+  working            => assigned 3, refused 3, deadlock 0, other 0, clean pairs 3/3, max seats 1 of 1
+
+
+  (HEAD's BlockingController.php is now the live file — 27959 bytes against the batch's 29844)
+
+  HEAD               pair: #53 assigned seats=2 370.4ms   |   #91 assigned seats=2 401.4ms
+  HEAD               pair: #53 assigned seats=2 343.3ms   |   #91 assigned seats=2 310.3ms
+  HEAD               pair: #53 assigned seats=2 385.2ms   |   #91 assigned seats=2 412.3ms
+  HEAD               => assigned 6, refused 0, deadlock 0, other 0, clean pairs 0/3, max seats 2 of 1   *** OVER CAPACITY ***
+
+  working-restored   pair: #53 assigned seats=1 286.1ms   |   #91 refused[capacity] seats=1 217ms
+  working-restored   pair: #53 assigned seats=1 342.3ms   |   #91 refused[capacity] seats=1 275.1ms
+  working-restored   pair: #53 refused[capacity] seats=1 200.4ms   |   #91 assigned seats=1 297ms
+  working-restored   => assigned 3, refused 3, deadlock 0, other 0, clean pairs 3/3, max seats 1 of 1
+
+=== verdict ===
+  working            clean 3/3  assigned 3  refused 3  deadlock 0  max seats 1 of 1
+  HEAD               clean 0/3  assigned 6  refused 0  deadlock 0  max seats 2 of 1
+  working-restored   clean 3/3  assigned 3  refused 3  deadlock 0  max seats 1 of 1
+  HEAD failed by: overbooking the last seat
+
+  ems_l168_a will be dropped as this run exits.
+
+RACE MEASURED AND CLOSED: HEAD lost the pair (seat overrun or a 1213 at the desk), the locked act refused exactly one writer per pair and never overran, twice.
+L168_EXIT=0

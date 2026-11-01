@@ -1,0 +1,33 @@
+scale ems_l163_a: 100,000 students, 101,484 enrollments, 507,420 subject lines
+
+=== P08 student search ===
+contains '%Scale12%'                              10.54 ms  rows=20
+    plan students:index:idx_students_names:rows=98795
+prefix 'Scale12%'                                  0.97 ms  rows=20
+    plan students:range:idx_students_names:rows=1111
+schoolIdNumber exact                               0.94 ms  rows=1
+    plan students:const:uq_students_schoolid:rows=1
+  added ft_students_names (scratch schema only)
+full-text MATCH AGAINST                           14.74 ms  rows=20
+    plan students:fulltext:ft_students_names:rows=1
+
+  ratio contains/prefix     10.8x
+  ratio contains/fulltext   0.7x
+
+=== P09 enrollment history ===
+one student, joined history                       41.22 ms  rows=1
+    plan e:ref:fk_enrollments_studentid:rows=1 | at:eq_ref:PRIMARY:rows=1 | ay:eq_ref:PRIMARY:rows=1 | c:eq_ref:PRIMARY:rows=1
+one student, subject lines                        13.05 ms  rows=5
+    plan e:ref:fk_enrollments_studentid:rows=1 | es:ref:uq_enrollment_subject_attempt:rows=4 | s:eq_ref:PRIMARY:rows=1
+per-row loop for 20 rows                       57.16 ms  (40 queries)
+same two reads batched for 20 rows              6.23 ms  (2 queries)
+
+=== P23 enrollment write path ===
+seat lookup (what the guard asks)                  3.07 ms  rows=1
+    plan enrollments:ref:fk_enrollments_studentid:rows=1
+capacity count for one block                       2.77 ms  rows=1
+    plan enrolledsubjects:ref:fk_enrolledsubjects_blockid:rows=200
+    block 377 holds 40 of maxStudents=40 — the invariant the lock must protect, on the fullest partition
+
+VERDICT is the table above: every figure is a measured millisecond against a plan the server printed.
+L164_EXIT=0

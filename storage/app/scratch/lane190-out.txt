@@ -1,0 +1,33 @@
+$ php storage/app/scratch/lane190-probe-subject-line-race.php --schema=ems_l190_a --pairs=5 --recreate
+(server: enrolledsubjects holds uq_enrollment_subject_attempt (enrollmentId,subjectId,attempt_number))
+
+cloned: 24 students, 37 enrollments  (source `ems` verified unchanged at 24 students)
+staged: enrollment 85, 6 subject line(s) — 15, 19, 58, 60, 61, 65
+  pair 1 pair A: proposed  (430.7 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 1 pair B: error — driver 1213 SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1,  (268.5 ms, 0 proposed rows after, enrollment reads pending)
+  pair 1 settles: 6 proposed row(s) on the enrollment, status evaluated
+  pair 2 pair A: proposed  (524.6 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 2 pair B: proposed  (454.2 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 2 settles: 6 proposed row(s) on the enrollment, status evaluated
+  pair 3 pair A: proposed  (444.3 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 3 pair B: error — driver 1213 SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1,  (268.1 ms, 0 proposed rows after, enrollment reads pending)
+  pair 3 settles: 6 proposed row(s) on the enrollment, status evaluated
+  pair 4 pair A: error — driver 1213 SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1,  (276.6 ms, 0 proposed rows after, enrollment reads pending)
+  pair 4 pair B: proposed  (509.7 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 4 settles: 6 proposed row(s) on the enrollment, status evaluated
+  pair 5 pair A: proposed  (481.7 ms, 6 proposed rows after, enrollment reads evaluated)
+  pair 5 pair B: error — driver 1213 SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1,  (278.7 ms, 0 proposed rows after, enrollment reads pending)
+  pair 5 settles: 6 proposed row(s) on the enrollment, status evaluated
+
+children run: 10  proposed: 6  refused: 0  deadlock or lock-timeout: 4  other driver error: 0  policy-refused: 0
+row counts after each pair: 6, 6, 6, 6, 6   the payload holds 6   duplicate (enrollment,subject,attempt) groups: 0
+
+UNSAFE — the subject-line race is not closed at the layer this probe can reach:
+  - 4 of 10 writers died on a lock (1213/1205) that reached the caller unretried
+
+L190_EXIT=1
+
+NOTE ON THIS CAPTURE: an earlier run of the same command over three pairs gave the same shape — 6 children,
+4 proposed, 2 unretried 1213, every pair settling on exactly 6 rows with 0 duplicates. The milliseconds belong to
+these runs (lane 58's rule: a timing is a property of the run that printed it); the claim that survives is the
+4-of-10 lock deaths and the row counts, not any single figure.

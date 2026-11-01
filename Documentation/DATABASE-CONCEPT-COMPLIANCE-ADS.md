@@ -118,13 +118,21 @@ lost update on that screen is refused with both numbers named (problem P05, buil
 holding two of *those* can overwrite one another; and the room count is per
 `scheduleId`, so a hall shared by ten sections is never weighed as a hall (P04's registered question).
 
-**Test method.** `php storage/app/scratch/lane168-probe-last-seat-race.php --pairs=3` drives one act over two real
-MySQL connections against a scratch clone and prints both sides: HEAD's bytes took 5 assigns, 0 refusals and left a
-block with `maxStudents` 1 holding 2 seats, and one pair ended in a genuine `SQLSTATE[40001]` deadlock that reached
-the desk as a 500; the locked bytes took 3 assigns, 3 capacity refusals, 0 deadlocks and never more than 1 seat.
-**Status honest word.** *Implemented* for the block, the room, the seat and the sheet; *Demonstrated in test* for the
-race, because the losing writer was observed on the school's engine; *not implemented* for the optimistic version,
-which is the honest half of this row.
+**Test method.** Two instruments, both two real MySQL connections against a scratch clone.
+`php storage/app/scratch/lane168-probe-last-seat-race.php --pairs=3` drives one assign act over one seat and prints
+both sides: HEAD's bytes took 5 assigns, 0 refusals and left a block with `maxStudents` 1 holding 2 seats, and one
+pair ended in a genuine `SQLSTATE[40001]` deadlock that reached the desk as a 500; the locked bytes took 3 assigns,
+3 capacity refusals, 0 deadlocks and never more than 1 seat.
+`php storage/app/scratch/lane190-probe-subject-line-race.php --pairs=5` drives the other concurrent act — two
+children calling `proposeSubjects()` for one enrollment with one identical payload — and its delivered run is the
+finding rather than the repair: 10 writers gave 6 proposals and **4 unretried `1213` deaths**, while every pair
+settled on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)`, which is
+`uq_enrollment_subject_attempt` doing its job and no retry doing the desk's (problem P10, capture
+`storage/app/scratch/lane190-out.txt`).
+**Status honest word.** *Implemented* for the block, the room, the seat and the sheet; *Demonstrated in test* for
+both races, because the losing writer was observed on the school's engine; *Implemented* for the optimistic version
+on the profile save, with the address and guardian rows still unversioned as the remainder of that promise; and
+*not implemented* for the subject act's retry, which is the named gap the second instrument found.
 
 ---
 
@@ -311,7 +319,7 @@ demonstrated act.
 | 1 | Transactions | Implemented |
 | 2 | COMMIT / ROLLBACK | Implemented, demonstration owed |
 | 3 | ACID Properties | Three of four demonstrated (atomicity, consistency, durability); Isolation demonstrated for the contended write and the daily sheet, open on the rest |
-| 4 | Concurrency Control | Implemented on the block, the room, the seat and the fee sheet; *Demonstrated in test* for the race; `students.rowVersion` now guards the profile edit (P05), while the address and guardian rows stay unversioned |
+| 4 | Concurrency Control | Implemented on the block, the room, the seat and the fee sheet; *Demonstrated in test* for both races (`lane168` for the seat, `lane190` for the subject line, which found an act with no retry); `students.rowVersion` now guards the profile edit (P05), while the address and guardian rows stay unversioned |
 | 5 | Locking | Implemented at three sites in one fixed order (block, room, document number) |
 | 6 | Deadlock Handling | Implemented; the deadlock was observed on MySQL 8, and the retry is bounded |
 | 7 | Database Constraints | Implemented; two enrollment keys added 2026-11-01; no `CHECK` ranges |

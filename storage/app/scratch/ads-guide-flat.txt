@@ -1,0 +1,364 @@
+ADVANCED DATABASE SYSTEMS
+FINAL PROJECT
+SEAIT Enrollment Management System
+Database Problem-Solving Guide
+Kirby A. Geagonia
+Fairah C. Alang
+BSIT-BA 3 / BLOCK 13
+November 4, 2026
+I. Project Overview
+For this final project, each pair will develop a School Enrollment System. The system must demonstrate not only functional features but also the proper application of Advanced Database Systems concepts.
+Your system should be designed to handle realistic enrollment situations involving multiple users, simultaneous transactions, large amounts of data, and possible database failures.
+Each pair will analyze the database problems in this guide and explain how the proposed or implemented system addresses them. The focus is on database design, correctness, reliability, security, and performance.
+Your task is to:
+Analyze each database problem.
+Identify the database concept involved.
+Design an appropriate solution that fits your system.
+Implement the solution where applicable.
+Test the solution or demonstrate an equivalent scenario.
+Provide evidence that the solution works, such as screenshots, SQL output, logs, or query plans.
+II. General Instructions
+A. Flexible Enrollment Workflow
+Your system may use a student-initiated online enrollment process, a registrar-assisted process, or a walk-in enrollment process. You do not need to add student login accounts if they are not part of your intended system. However, each enrollment must be associated with a valid student record.
+A student record is different from a user account. A student record stores academic/person information; a user account provides login access; an enrollment record connects a student to a subject or section. A walk-in student may have a student record and enrollment records without having a login account.
+For example, a registrar-assisted workflow may be:
+The registrar searches for an existing student or creates a student record for a new student.
+The registrar selects the subjects or sections requested by the student.
+The system validates requirements such as prerequisites, maximum academic load, schedule conflicts, duplicate enrollment, and section capacity.
+The database processes related enrollment operations safely, using transactions where appropriate.
+The system confirms the enrollment only after the required operations succeed.
+B. How to Answer Each Problem
+Use the workflow and features that your pair actually designed. Do not claim that your system has a feature that it does not have.
+If a problem directly applies, explain your solution and provide implementation/testing evidence.
+If a problem partially applies, explain which part applies and how your system handles it.
+If a problem does not apply to your current system, mark N/A and explain why. Then describe a reasonable equivalent scenario, alternative workflow, or what would be needed to support it.
+N/A does not automatically mean the concept can be ignored. The instructor may ask you to explain the concept or demonstrate it using a controlled database test, SQL script, or a proposed design.
+Where practical, demonstrate the database-level solution, not only an application screen. Examples include constraints, transactions, locks, indexes, permissions, and recovery procedures.
+Use test data. Do not expose real students' sensitive information in screenshots or presentation evidence.
+C. Important Reminder
+The objective is not only to create a working Enrollment System. Your pair must demonstrate an understanding of transactions, COMMIT/ROLLBACK, ACID properties, concurrency control, locking, deadlocks, constraints, indexing, query optimization, data integrity, security, and recovery.
+III. Database Problems to Solve
+Problem 1 — Incomplete Enrollment Transaction
+Scenario: A student is enrolling in multiple subjects. An error occurs while processing one of the subjects.
+Guide Questions
+What should happen to the other successfully processed subjects?
+How will you ensure the enrollment is completed as one operation when required?
+How will the system handle the failure?
+Which transaction operations are needed?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 2 — Last Available Slot
+Scenario: A section has only one remaining slot, and two enrollment requests arrive at almost the same time. Requests may be entered by students or by registrar staff.
+Guide Questions
+How will the system determine which request gets the available slot?
+How will you prevent the section from exceeding its capacity?
+How will simultaneous transactions be handled?
+What database mechanism can be used?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 3 — Duplicate Enrollment
+Scenario: The same enrollment request is submitted twice, either accidentally or through simultaneous requests.
+Guide Questions
+How will you prevent the same student from being enrolled in the same section more than once?
+Should the application, database, or both enforce the rule?
+What happens if both requests arrive simultaneously?
+Which database constraints can be used?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 4 — Incorrect Section Capacity
+Scenario: The number of enrolled students and the section's maximum capacity become inconsistent, or a stored enrollment count is incorrect.
+Guide Questions
+How should the system maintain accurate section capacity?
+Which operations should be processed together?
+How can the database prevent invalid capacity information?
+How will you test the solution?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 5 — Simultaneous Student Updates
+Scenario: Two authorized users, such as two registrars, attempt to modify the same student's enrollment information at the same time.
+Guide Questions
+What could happen to the changes?
+How should the system decide whether one change overwrites another or whether a conflict must be resolved?
+How will simultaneous modifications be handled?
+What concurrency problem could occur?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 6 — Enrollment Cancellation
+Scenario: A student cancels an enrollment containing several subjects, either through an online request or with registrar assistance.
+Guide Questions
+Which database records need to be modified?
+Should all cancellation operations succeed together?
+What happens if one cancellation operation fails?
+How will database consistency be maintained?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 7 — Database Deadlock
+Scenario: Two transactions need multiple records or resources but acquire them in different orders.
+Guide Questions
+How could this happen in an enrollment system?
+What happens when both transactions are waiting?
+How can the system prevent or handle the situation?
+What strategies can reduce the possibility of deadlocks?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 8 — Student Search Performance
+Scenario: The school has thousands of student records, and searching for a student becomes slower as the database grows.
+Guide Questions
+Which fields are commonly used to search for students?
+How can the database improve search performance?
+Which fields should be indexed, and why?
+How will you determine whether the index improves performance?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 9 — Enrollment History Performance
+Scenario: The school has hundreds of thousands of enrollment records, and the registrar needs to retrieve a student's complete enrollment history.
+Guide Questions
+Which tables and columns are involved?
+Which columns should be indexed?
+How can the query be optimized?
+How can performance improvement be measured?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 10 — Concurrent Subject Registration
+Scenario: Several enrollment requests for different students target the same popular subject or section at the same time.
+Guide Questions
+How will the database process multiple enrollment requests?
+How will you prevent incorrect enrollment counts?
+What concurrency-control mechanism will you use?
+How will you test simultaneous enrollment?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 11 — Invalid Enrollment Data
+Scenario: An enrollment record contains invalid or incomplete information, such as a non-existent student, non-existent subject, invalid section, or missing required information.
+Guide Questions
+How can the database prevent invalid records?
+Which constraints should be used?
+Which rules should be enforced by the database?
+How will you test these constraints?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 12 — Prerequisite Checking
+Scenario: A student attempts to enroll in a subject without completing its prerequisite. The request may be handled online or by registrar staff.
+Guide Questions
+Where should prerequisite information be stored?
+How will the system check the student's academic history?
+How should the system prevent an invalid enrollment?
+How will the rule be enforced consistently across different workflows?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 13 — Maximum Academic Load
+Scenario: A student attempts to enroll in subjects whose combined units exceed the school's maximum allowed academic load.
+Guide Questions
+How will the system calculate the student's total units?
+When should validation occur?
+How could concurrent enrollment requests affect this rule?
+How will the system prevent the student from exceeding the allowed load?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 14 — Faculty Teaching Load
+Scenario: A faculty member is assigned to sections that exceed the school's allowed teaching load. If your system does not manage faculty assignments, explain this limitation.
+Guide Questions
+How can the database track faculty teaching assignments?
+How can the system calculate teaching load?
+How can conflicting or excessive assignments be detected?
+How can assignment records be kept accurate?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 15 — Conflicting Class Schedules
+Scenario: A student attempts to enroll in two subjects with overlapping schedules.
+Guide Questions
+How will the system detect schedule conflicts?
+Which database records must be compared?
+How will overlapping time intervals be identified?
+How will an invalid enrollment be prevented?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 16 — Transaction Failure During Enrollment
+Scenario: One database operation fails before the full enrollment process is complete.
+Guide Questions
+Which operations should belong to the same transaction?
+What should happen when one operation fails?
+How will partially completed records be prevented where all-or-nothing behavior is required?
+How will COMMIT and ROLLBACK be used?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 17 — Power Interruption During Enrollment
+Scenario: A student or registrar staff member submits an enrollment request, but the electricity suddenly goes out before the process is completed. The outage may affect the user's computer, the school network, or the database server.
+Guide Questions
+What problems might occur if the enrollment process is interrupted halfway?
+What should happen to enrollment changes that were not yet committed?
+How will the system prevent a student from being left with a partially saved enrollment?
+How can the user confirm whether the enrollment was completed once power returns?
+Which database mechanisms (transactions, logs, backups, power protection) reduce the damage?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 18 — Duplicate Student ID
+Scenario: Two staff members accidentally register different students using the same Student ID, either at different times or at almost the same time.
+Guide Questions
+Why can a duplicate Student ID cause problems for enrollment records and reports?
+Which database constraint should prevent two student records from sharing the same Student ID?
+What happens if both staff members submit the registration at the same moment?
+How should the system inform the second staff member that the Student ID is already in use?
+How will you test that the duplicate registration is rejected?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 19 — Accidental Deletion
+Scenario: A staff member accidentally deletes a student's enrollment record.
+Guide Questions
+What data could be lost or become inconsistent after the deletion?
+How can the system prevent accidental or unauthorized deletion?
+How can the system record who deleted the data, and when?
+How can the deleted record be restored (e.g., soft delete, backup)?
+How will the section's enrolled count remain accurate after a deletion or restoration?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 20 — Reports During Active Enrollment
+Scenario: The dean generates an enrollment report while the registrar is still enrolling students.
+Guide Questions
+What incorrect or inconsistent results could the report show if enrollment data is changing while it is read?
+Which isolation level or read approach (e.g., a consistent snapshot) should be used for reports?
+Should the report block enrollment transactions, or should enrollment be allowed to continue? Why?
+How can the report reflect the data as of one specific point in time?
+How will you test generating a report during simultaneous enrollment?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 21 — Database Recovery
+Scenario: The database server unexpectedly fails while enrollment transactions are being processed.
+Guide Questions
+What happens to transactions that were not completed?
+What happens to transactions that were already committed?
+How does the database restore reliable data?
+What recovery mechanisms, backups, or logs should be considered?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 22 — Unauthorized Database Access
+Scenario: Different roles may include student, faculty, registrar, and administrator. Your actual roles may differ.
+Guide Questions
+Should every role have access to the same data?
+What operations should each role be allowed to perform?
+How can database permissions or application authorization be used?
+How can sensitive student information be protected?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 23 — Heavy Enrollment Traffic
+Scenario: Enrollment opens at a scheduled time, and many users or registrar staff access the system simultaneously.
+Guide Questions
+Which database operations are likely to become bottlenecks?
+Which queries should be optimized?
+Which tables may receive the most reads or writes?
+How can indexing improve performance?
+How can concurrency affect throughput and response time?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+Problem 24 — Complete Enrollment-Day Challenge
+Scenario: It is enrollment day. Many students access the system; multiple requests target the same section; some requests are duplicates, fail prerequisite or load checks, or conflict with registrar updates. Some transactions fail, and the database contains hundreds of thousands of enrollment records. Adapt the scenario to your system's actual workflow.
+Guide Questions
+How will the database maintain data consistency?
+How will concurrent transactions be handled?
+How will transactions and ACID properties be applied?
+How will duplicate enrollment and over-enrollment be prevented?
+How will deadlocks be prevented or handled?
+Which operations should be protected by transactions?
+Which fields should have indexes?
+How will performance be maintained as the database grows?
+How will you prove that the database handles these situations correctly?
+Your Analysis / Solution
+Applicability:  ☐ Applies to our system   ☐ Partially applies   ☐ N/A (explain below)
+If N/A or different from our workflow, explain why and describe the equivalent process or alternative test:
+IV. Required Database Concepts
+Mark the status of each concept in your project. If it is not implemented, state whether it is outside your current workflow, propose an appropriate design, or demonstrate it using a controlled test where required by the instructor.
+Database Concept
+Status
+Transactions
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+COMMIT / ROLLBACK
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+ACID Properties
+☐ Explained  ☐ Demonstrated in test  ☐ N/A (explain)
+Concurrency Control
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Locking
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Deadlock Handling
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Database Constraints
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Indexing
+☐ Implemented  ☐ Query plan/performance test  ☐ N/A (explain)
+Query Optimization
+☐ Implemented  ☐ Query plan/performance test  ☐ N/A (explain)
+Data Integrity
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Database Security
+☐ Implemented  ☐ Demonstrated in test  ☐ N/A (explain)
+Recovery
+☐ Backup/restore or recovery evidence  ☐ Explained  ☐ N/A (explain)
+N/A explanation / alternative demonstration plan:
+V. Final Presentation Requirements
+Each pair must present the Enrollment System and explain how the database addresses applicable problems.
+1. Database Design
+ERD
+Tables and relationships
+Primary keys and foreign keys
+2. Transactions
+At least one meaningful transaction (Can also use Try and Catch method)
+COMMIT and ROLLBACK
+A failure scenario and the observed result
+3. ACID Properties
+Atomicity
+Consistency
+Isolation (Like the Use of FOR and UPDATE)
+Durability (Must have a Backup Way or Method)
+4. Concurrency
+A simultaneous enrollment scenario
+Chosen concurrency-control strategy
+Testing evidence
+5. Deadlock
+A possible deadlock scenario
+Prevention or handling strategy; a controlled demonstration or explanation if the application does not naturally produce one
+6. Indexing
+Indexes implemented
+Reason for selecting indexed columns
+Query plan or performance evidence where feasible
+7. Testing
+Test scenario
+Expected result
+Actual result
+Screenshot, SQL output, logs, or other evidence
+8. Workflow and Applicability
+Explain whether enrollment is student-initiated, registrar-assisted, walk-in, or a combination
+Identify problems marked N/A or partially applicable and justify each decision
+Describe an equivalent test or design where needed
+VI. Final Defense Question
+“If 1,000 enrollment requests are submitted at the same time, how can you prove that your database will keep enrollment records accurate, consistent, secure, and reliable—even if enrollment is processed by registrar staff rather than directly by students?”
+Be prepared to support your answer with your database design, SQL or configuration, test cases, and evidence.
+VII. Pair and Presentation Details
+Student 1: ____________________________________________________
+Student 2: ____________________________________________________
+Instructor: ____________________________________________________
+Date of Presentation: ___________________________________________
+Final Note to Students
+Your solution should reflect the actual design of your system. You may explain a different workflow from the scenario, and you may mark a problem N/A when it genuinely does not apply. However, every N/A response must include a brief justification. The instructor may ask follow-up questions or require an equivalent demonstration to verify your understanding of the database concept.

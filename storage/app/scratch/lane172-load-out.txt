@@ -1,0 +1,28 @@
+clone ems_l172_a from ems: 24 students, 37 enrollments, source unchanged
+staged against term 11, course 1, desk userId 5
+VOLUME  10 workers, 1000 issues, one student each … created 1000, refused 0, error 0 in 20.41s
+CONTENTION 10 workers, student 81, one seat … created 1, refused 9, error 0 in 4.23s
+CANCEL-VS-ENROLL 5 pairs, one drop and one issue each … cancelled 5, created 2, refused 3, error 0 in 2.86s
+  students staged                        1000
+  enrollments the server holds           1002
+  duplicate active seats                 0
+  orphan workflow forms                  0
+  committed acts without a form          0
+  records with two forms                 0
+  blocks over declared capacity          0 (this act places no subject line)
+  contended seat rows                    1
+  drop raced an issue                    2 left one active, 3 left none, 0 left more than one
+  throughput                             49.0 per second over 20.41s
+  response time                          median 143.4 ms, slowest 150.5 ms, per request
+  session isolation                      REPEATABLE-READ
+  innodb_lock_wait_timeout               50 s
+  threads_connected                      1
+  threads_running                        2
+  max_used_connections                   11
+  ------------------------------------------------------------------
+  driver 1062                            12
+
+LOAD INTEGRITY HELD: 1000 issues through the act every desk routes through, across 10 real processes; the server kept one active seat per student per term, every committed enrollment carries exactly one workflow form, no form outlived a rolled-back act, and no block passed its own maxStudents. Contention on one seat gave exactly one winner and 9 refusals.
+Capacity under concurrent writers is lane168's own act; this run weighs the creation path, and says so.
+schema ems_l172_a left in place for reading (--keep).
+L172_EXIT=0

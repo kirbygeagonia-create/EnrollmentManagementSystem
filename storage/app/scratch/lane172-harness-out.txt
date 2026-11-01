@@ -1,0 +1,8 @@
+
+ok   control-clean — rc=0                  0 |   orphan-forms                 0 |   acts-without-form            0 |   records-with-two-forms       0 |   blocks-over-capacity         0 |   contended-seat-rows          1 |  | INTEGRITY CLEAN on this schema for the questions asked.
+ok   dup-seats-named — planted=true rc=1     1 |   orphan-forms                 0 |   acts-without-form            1 |   records-with-two-forms       0 |   blocks-over-capacity         0 |   contended-seat-rows          1 |  | INTEGRITY DEFECTS FOUND: |   - dup-seats = 1 |   - acts-without-form = 1
+ok   orphan-forms-named — rc=1 p-seats                    0 |   orphan-forms                 1 |   acts-without-form            0 |   records-with-two-forms       0 |   blocks-over-capacity         0 |   contended-seat-rows          1 |  | INTEGRITY DEFECTS FOUND: |   - orphan-forms = 1 (columns: workflowId,enrollmentId,currentStep,workflowStatus)
+ok   acts-without-form-named — rc=1 ts                    0 |   orphan-forms                 0 |   acts-without-form            1 |   records-with-two-forms       0 |   blocks-over-capacity         0 |   contended-seat-rows          1 |  | INTEGRITY DEFECTS FOUND: |   - acts-without-form = 1
+BAD  an exception stopped the run: PDOException — SQLSTATE[42S22]: Column not found: 1054 Unknown column 'enrollmentId' in 'where clause'
+  (the damage copy was dropped by the shutdown hook; the source schema was not written to)
+HARNESS_EXIT=1

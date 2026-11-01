@@ -30,7 +30,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 | P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
 | P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
 | P09 | Enrollment History Performance (¶121) | Applies | Measured, not repaired — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched |
-| P10 | Concurrent Subject Registration (¶131) | Applies | Partly — the P02 lock and a two-writer harness both exist now; the subject-line race itself is undriven |
+| P10 | Concurrent Subject Registration (¶131) | Applies | Measured, not repaired (2026-11-01) — the reading is a finding. `lane190-probe-subject-line-race.php` releases two children at ONE enrollment with ONE identical payload on a scratch clone of live `ems`: 10 writers, 6 proposed, **4 died on an unretried `1213`**, and every pair settled holding exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)`. So the data is protected — `uq_enrollment_subject_attempt` plus the transaction do that — while the desk is not: `proposeSubjects()` deletes then inserts with no lock on the enrollment and no retry, so 4 of 10 double-submits reach the caller as a `QueryException` and `bootstrap/app.php:140` answers the generic "conflicts with information already on file… reload and retry". The repair is the shape P02 already carries (lock the enrollment row first inside the transaction, wrap it in `RetryOnDeadlock`) and is owed — task #44 |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
 | P13 | Maximum Academic Load (¶161) | Partially — a band rule exists, a term unit cap does not | **Not built** (limit value is an open school question) |
@@ -326,11 +326,16 @@ not be read from code it says so, and no requirement is marked Verified without 
 - Same missing lock as P02, and no case in `tests/` opens two connections at once (grepped `tests/` for `curl_init`,
   `pcntl_fork`, `Http::post`, `parallel` — zero files). What exists now is the instrument rather than a case:
   `storage/app/scratch/lane168-probe-last-seat-race.php` runs two child processes against one MySQL server on a
-  scratch clone, which is the harness this row and P24 both need. It drives the *assign* path; the path that adds
-  subject lines to one enrollment concurrently is still undriven.
-- **Required solution.** The P02 lock (delivered) plus a concurrent harness (delivered); what remains is a case for
-  two writers adding subject lines to one enrollment, which needs the P03 database key before it can be settled
-  rather than merely observed. **Status.** Harness built 2026-11-01; scenario not yet driven.
+  scratch clone, which is the harness this row and P24 both need. It drives the *assign* path, and on 2026-11-01
+  `storage/app/scratch/lane190-probe-subject-line-race.php` drove the other one the same way: two children, one
+  enrollment, one payload, released at one shared instant.
+- **Required solution.** The P02 lock (delivered) plus a concurrent harness (delivered) plus a case for two writers
+  adding subject lines to one enrollment. The P03 key the row said it needed before the scenario could be *settled*
+  rather than merely observed arrived the same day, and the scenario is now driven: 10 writers gave 6 proposals and
+  4 unretried `1213` deaths, while every pair settled on exactly the payload's 6 rows with 0 duplicate
+  `(enrollmentId, subjectId, attempt_number)` — so the row set is settled by the key and the transaction, and what
+  the run exposes is an act that no writer retries. **Status.** Harness built and the race driven 2026-11-01; the
+  lock-plus-`RetryOnDeadlock` repair and the Pest case are owed (task #44).
 
 ### P11 — Invalid Enrollment Data (¶141-150)
 
@@ -584,7 +589,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 | Transactions (¶295) | Implemented | 38 `DB::transaction` sites; `EnrollmentIssuer.php:58` | T01, T02 |
 | COMMIT / ROLLBACK (¶297) | Implemented, partly demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest` | a printed failed-commit inside the enrolment path (T01) |
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
-| Concurrency Control (¶301) | Implemented for one act | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168` | P05 and P10's own races, which no writer yet serialises |
+| Concurrency Control (¶301) | Implemented for one act | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168`; the subject act is measured by `lane190` and waits on the same repair | P10's own subject-line race, which is driven and unretried |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
 | Deadlock Handling (¶305) | Implemented and observed | `App/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
 | Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php` — thirteen keys in ten tables on the 2026-11-01 schema, of which this batch contributes `uq_enrollments_request_key` on `enrollments` and `uq_studentassessments_enrollment` on `studentassessments`, and returns `uq_enrollments_active_seat` over the VIRTUAL `seatKey` the same batch added, withdrew and repaired the fixtures for | nothing owed for the keys; the range `CHECK`s are named in P11 |

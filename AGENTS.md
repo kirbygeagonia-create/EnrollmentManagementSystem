@@ -3906,6 +3906,41 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   thing to reach for here — a CLI boot has no started session, so `Auth::id()` answers null and every case dies on
   the policy with a misleading 403; `Auth::setUser($staff)` is the working spelling, measured by
   `storage/app/scratch/lane168-probe-desk-rights.php` before the child was written.
+- **A race probe's SAFE bucket must charge every outcome that is not a success** (lane190, ADS problem 10, 2026-11-01).
+  Its first version counted `1213` into a "deadlock or lock-timeout" bucket and then wrote `SAFE` while 4 of 10
+  children had died there, because the unsafe clauses only looked at row counts, duplicates and *other* driver
+  errors. A deadlock is not a refusal: the caller receives a `QueryException` and `bootstrap/app.php:140` answers the
+  generic "conflicts with information already on file… reload and retry" page, so the desk gets no reason and no
+  record of what it just did — which is the same 500 that lane168 measured as HEAD's *defect* on the seat act. The
+  bucket was fixed before the finding was quoted, and the delivered run then read `UNSAFE — 4 of 10 writers died on a
+  lock (1213/1205) that reached the caller unretried` with `row counts after each pair: 6, 6, 6, 6, 6` and
+  `duplicate (enrollment,subject,attempt) groups: 0` — captured in `storage/app/scratch/lane190-out.txt`. So the
+  subject-line race is now *driven* and its data is proven protected by `uq_enrollment_subject_attempt` plus the
+  transaction, while the act itself is owed the repair P02 already carries (`lockForUpdate()` on the enrollment as
+  the first act inside the transaction, then `RetryOnDeadlock::run()` around it) — task #44. Two transport mechanics
+  came out of building it: the JSON payload travels to the child **base64-encoded**, because `cmd.exe` does not
+  strip the single quotes `escapeshellarg()` wraps in and the array arrived mangled (this box's documented trap, met
+  in a new file), and a scratch schema left by a crashed run is **not** silently reused — the tool refuses and names
+  `--recreate`, which drops only a name matching the pattern the tool itself owns.
+  `storage/app/scratch/mutate-lane190-race-probe.php` proves those guards are read, and its first run found its own
+  defect: the tool has two refusal branches (`this tool does not understand` for a bare word, `flag(s) not read by
+  this tool: --x` for a well-formed unknown flag) and the leg expected the wrong one, so it printed BAD over a guard
+  that was answering correctly and naming the flag. The leg was re-cut onto the refusal it actually exercises and a
+  second leg added for the other branch, because a reachable branch with no leg is decoration. The verdict-word
+  check in the same harness is textual on purpose — that a lock death counts as UNSAFE cannot be re-planted without
+  two live writers, which is what the delivered capture in `lane190-out.txt` carries instead.
+- **A capture a document cites by name is not evidence until a clone can open it** (found while citing
+  `lane190-out.txt`, 2026-11-01). `storage/app/.gitignore` re-includes `scratch/` **by extension** (`.php`, `.ps1`,
+  `.mjs`), so every `.txt`/`.log`/`.json` capture was invisible to git — including `lane164-out.txt`, `lane168-out.txt`,
+  `lane172-load-out.txt` and the two suite logs, all of which the delivered ADS documents tell a reader to go and
+  read for the figures they quote. That is the tracked-record rule met from the other side: not a file that should be
+  ignored but shouldn't be, but prose that points at an artefact which exists on exactly one machine. Ten names are
+  now re-included literally (never by a `*.txt` wildcard, so a later scratch dump cannot join the repository by
+  accident), and `git check-ignore` is the control that proves the negations are targeted — `lane59-readings.json`
+  still answers `yes`. Two mechanics: a comment written through a double-quoted shell string **executes its
+  backticks** (`a figure quoted from \`laneNN-out.txt\` is` became an empty phrase plus a `command not found`), and
+  the scan before tracking anything was a `grep -ilE "password|secret|APP_KEY|token"` — both suite logs hit, and
+  both hits were Pest test names, which is the reading that made them safe to commit.
 - **A checker's vocabulary is a claim about the future, and a hand-kept file list is a blind spot that prints a
   clean verdict.** Three instruments in this repository went quietly inert while reporting success, and all three
   were caught by a plant or a NOTICE rather than by reading them: `repo-file-line-citations.php` carried a 25-file

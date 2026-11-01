@@ -31,3 +31,17 @@ scratch/lane54-pipeline-no-year-widening.php
 # of that instrument, and it is worth nothing if it lives on only the machine that made it. It holds file paths,
 # line ranges, a sentence hash and a reason per row — no institutional data, nothing a public remote must not see.
 !scratch/lane70-queue-reads.json
+# The ADS documents cite these captured runs by name — a figure quoted from a capture is evidence only if
+# the reader can open that file. scratch/ is re-included by extension (.php/.ps1/.mjs), so a capture is invisible
+# to a clone unless it is named here. Each line is one artefact a tracked document points at, added by literal
+# name rather than by a wildcard, so a later scratch .txt cannot join the repository by accident.
+!scratch/ads-guide-flat.txt
+!scratch/lane155-ads-population.json
+!scratch/lane164-out.txt
+!scratch/lane168-out.txt
+!scratch/lane172-harness-out.txt
+!scratch/lane172-load-out.txt
+!scratch/lane190-out.txt
+!scratch/word-open-report.txt
+!scratch/l170-suite.log
+!scratch/l171-suite.log

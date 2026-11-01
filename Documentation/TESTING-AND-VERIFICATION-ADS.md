@@ -107,19 +107,19 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Evidence | the probe's per-pair lines, which print each writer's status, its measured seats-after, and its milliseconds. |
 | Notes | Practical scale, not a load test: the guide forbids uncontrolled load against a live system, and this ran on a clone. |
 
-### T07 — concurrent student edit — **not executed**
+### T07 — concurrent student edit — **executed for the guard, not for two processes**
 
 | Field | |
 |---|---|
 | Description | Two authorized desks save the same student record at the same moment. |
-| Preconditions | Two authenticated writers, one `students` row, and a version column or row lock the schema does not have. |
-| Test data | The same record edited with two different telephone numbers in two processes. |
-| Steps | Both read the record; both save; read the row back and see whose number is on the file. |
-| Expected | The second save is refused with a named conflict, or nothing is silently lost. |
-| Actual | Not run. `database/migrations` holds no `version`, `lockVersion` or `revision` column and no enrollment or student write takes a lock, so a run today would only photograph last-write-wins and present it as coverage. |
-| Result | **Not executed**, and not executed because the protection does not exist — the case belongs with matrix P05, which is `Not built`. |
-| Logs / query output | none, because nothing was run. The measurement behind the refusal is the grep itself: a version-shaped column name appears in no migration in the repository. |
-| Evidence | P05's row in `REQUIREMENTS-TRACEABILITY-ADS.md`, and §4 of `DATABASE-CONCEPT-COMPLIANCE-ADS.md`, which keeps this as the honest half of the concurrency claim. |
+| Preconditions | Two authenticated writers and one `students` row — and the version column this row once said the schema does not have: `students.rowVersion` is `NOT NULL default 1`, added as matrix P05, and every desk save that touches the person record carries it. |
+| Test data | The same record edited with two different telephone numbers, one save sent with the version the first read returned and one with the version already superseded. |
+| Steps | Read; save; read again; save with the stale version; read the row back and see which number is on the file and what the version says. |
+| Expected | The second save is refused with a named conflict and the newer save survives. |
+| Actual | **Refused as designed**, on one connection. `tests/Feature/Evaluation/ProfileCaptureTest.php` carries four cases: `a_stale_version_is_refused_and_the_newer_save_survives`, `a_successful_save_bumps_the_version_by_exactly_one`, `a_payload_without_a_version_is_refused_rather_than_overwriting`, `the_version_is_not_something_a_payload_may_write_directly`. What they cannot show is two processes in the same instant, because one connection cannot contend with itself — that half is the shape `lane190` now uses for the subject act and has not yet been driven for the person record. |
+| Result | **Pass** for the lost-update rule; the simultaneous-process demonstration is owed and is named as owed rather than folded into this pass. |
+| Logs / query output | the four names above were read out of `tests/Feature/Evaluation/ProfileCaptureTest.php` itself, not recalled; the class runs inside the delivered whole-suite run, and no assertion total is quoted here, because a total belongs to the run that printed it. |
+| Evidence | P05's row in `REQUIREMENTS-TRACEABILITY-ADS.md` (now `Built`), `tests/Support/DeskStudentPayload.php` for the payload shape, and §4 of `DATABASE-CONCEPT-COMPLIANCE-ADS.md` for the concurrency claim this row belongs to. |
 | Notes | Prompt part 40 asks for this simulation and prompt part 39 forbids fabricating a result. Both are answered by writing the absence in the ten-field shape rather than inventing a run. |
 
 ### T02 — failure mid-commit — **not executed, and not reachable as posed**
@@ -182,7 +182,7 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Expected | Every act commits whole or is refused; no student holds two active seats in one term; no workflow form outlives the transaction that made it; legitimate business refusals counted apart from technical errors. |
 | Actual | 1,000 created, 0 refused, 0 error in 14.45 s — 69.2 acts per second, median 113.6 ms per request with ten workers resident. Contention on one seat: 1 winner, 9 refusals, exactly one active seat afterwards. The five cancel races left 2 students with one active seat, 3 with none (the drop won and its paired issue lost, which is legal and is what a desk re-runs), and **0 with more than one**. |
 | Logs / query output | the capture `storage/app/scratch/lane172-load-out.txt`: `duplicate active seats 0`, `orphan workflow forms 0`, `committed acts without a form 0`, `records with two forms 0`, `blocks over declared capacity 0`, `driver 1062 12`, `session isolation REPEATABLE-READ`, `innodb_lock_wait_timeout 50 s`, `threads_connected 1`, `max_used_connections 11`, `L172_EXIT=0`. |
-| Result | **Pass**, on the creation path and no further. The capacity race under concurrent writers is `lane168`'s act (T03/T11); the lost-update case (P05) and the consistent-read report case (P20) are not built, so this row does not claim them. |
+| Result | **Pass**, on the creation path and no further. The capacity race under concurrent writers is `lane168`'s act (T03/T11). The lost-update case is now built as P05 and pinned by four cases in `ProfileCaptureTest` (T07), and the daily report reads inside one transaction as P20 (T21) — but this run claims neither, because it drove the issue path only, and the subject-line act that `lane190` measured the same way still has no retry (P10). |
 | Evidence | `storage/app/scratch/lane172-enrollment-day-load.php` and `lane172-issue-child.php`; the integrity questions are falsified by `mutate-lane172-load-integrity.php`, which damages a copy of this very schema and requires the same tool to name each defect. |
 | Notes | The 12 refusals are all driver 1062 — the business rule refusing a second seat — and prompt part 40 says a high rejection rate is not a failure when the rejection is correct. The tool prints legitimate refusals and technical errors in separate columns for that reason; a single "failed" count would mix the rule working with the machine breaking. |
 
