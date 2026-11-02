@@ -1038,18 +1038,40 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageRooms', Rooms::class);
 
-        $rooms = Rooms::query()
+        $query = Rooms::query()
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('roomName', 'like', "%{$search}%")
                     ->orWhere('building', 'like', "%{$search}%");
-            }))
-            ->orderByDesc('roomId')
-            ->paginate(20)
-            ->withQueryString();
+            }));
+
+        // Every column this desk paints is a column the rooms table stores — Name, Building and Capacity — so all
+        // three carry headers. roomId is the tie-break, not an offered order, because no column on the screen shows
+        // it; and the catalogue opens on the name because a room list is read top to bottom, not newest first.
+        $sortable = [
+            'roomName' => ['column' => 'roomName'],
+            'building' => ['column' => 'building'],
+            'capacity' => ['column' => 'capacity'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'roomName',
+            'rooms.roomId'
+        );
+
+        $rooms = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/Rooms', [
             'rooms' => $rooms,
-            'filters' => $request->only(['search']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

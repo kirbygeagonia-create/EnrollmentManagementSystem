@@ -26,7 +26,7 @@
  *   - a mermaid parse error, a zero-sized box, or a PNG under the byte floor;
  *   - an unknown flag.
  *
- * Usage: node storage/app/scratch/lane208-use-case-figures.mjs [--out=<dir>] [--chrome=<path>] [--report-only]
+ * Usage: node storage/app/scratch/lane208-use-case-figures.mjs [--out=<dir>] [--chrome=<path>] [--report-only] [--audit-actor-edges]
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -35,7 +35,7 @@ import puppeteer from 'puppeteer';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..', '..');
-const guide = join(root, 'Documentation', 'Use-Case-Diagram-Guide.md');
+let guide = join(root, 'Documentation', 'Use-Case-Diagram-Guide.md');
 
 let outDir = join(root, 'Documentation', 'Diagrams');
 let chrome = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
@@ -43,8 +43,10 @@ let reportOnly = false;
 for (const a of process.argv.slice(2)) {
   if (a.startsWith('--out=')) outDir = resolve(root, a.slice(6));
   else if (a.startsWith('--chrome=')) chrome = a.slice(9);
+  else if (a.startsWith('--guide=')) guide = resolve(root, a.slice(8));
   else if (a === '--report-only') reportOnly = true;
-  else fail(`this tool reads --out=, --chrome= and --report-only; it was given [${a}].`);
+  else if (a === '--audit-actor-edges' || a === '--audit-complete-figure') { /* read by the audits below; they stop before any render */ }
+  else fail(`this tool reads --out=, --guide=, --chrome=, --report-only, --audit-actor-edges and --audit-complete-figure; it was given [${a}].`);
 }
 function fail(m) {
   console.error(`REFUSED: ${m}`);
@@ -259,24 +261,37 @@ function emitGraph(nodesIn, edgesIn, panelPrefix, dir = 'LR') {
     out.push('    end');
   }
   const seenEdge = new Set();
+  const dropped = [];
   for (const e of edgesIn) {
     const a = remap.get(`${e.desk}|${e.from}`);
     const b = remap.get(`${e.desk}|${e.to}`);
-    if (!a || !b) continue;
-    if (!keptKeys.has(`${a.desk}|${a.id}`) || !keptKeys.has(`${b.desk}|${b.id}`)) continue;
-    if (a.desk === b.desk && a.id === b.id) continue;
+    if (!a || !b) {
+      dropped.push({ e, why: !a ? 'FROM-ABSENT' : 'TO-ABSENT' });
+      continue;
+    }
+    if (!keptKeys.has(`${a.desk}|${a.id}`) || !keptKeys.has(`${b.desk}|${b.id}`)) {
+      dropped.push({ e, why: 'NOT-KEPT' });
+      continue;
+    }
+    if (a.desk === b.desk && a.id === b.id) {
+      dropped.push({ e, why: 'SELF' });
+      continue;
+    }
     const sig = `${a.desk}|${a.id}|${b.desk}|${b.id}|${e.kind}|${e.label}`;
-    if (seenEdge.has(sig)) continue;
+    if (seenEdge.has(sig)) {
+      dropped.push({ e, why: 'DEDUPE' });
+      continue;
+    }
     seenEdge.add(sig);
     out.push(edgeText({ ...e, from: `${a.id}_${a.desk}`, to: `${b.id}_${b.desk}` }));
   }
-  return { code: out.join('\n'), nodes: keep.length, edges: seenEdge.size };
+  return { code: out.join('\n'), nodes: keep.length, edges: seenEdge.size, dropped, shown: [...seenEdge] };
 }
 
 function figureFor(predicate, title) {
   const sub = emitGraph([...nodes.values()].filter(predicate), edges, `SYS${title.slug}_`);
   if (sub.nodes === 0 || sub.edges === 0) return null;
-  return sub.code;
+  return sub;
 }
 
 const jobs = [];
@@ -289,10 +304,12 @@ for (const b of rawBlocks) {
 }
 // (c) the complete diagram over every desk: the whole model, deduped by label so an overview restatement is drawn
 // once, with ids namespaced per desk so `UC01` in two panels stays two nodes.
+let completeReport = null;
 {
   const built = emitGraph([...nodes.values()], edges, 'SYS');
   if (built.nodes === 0 || built.edges === 0) fail('the complete figure would be empty');
   console.log(`complete figure: ${built.nodes} nodes and ${built.edges} edges after the overview restatements were folded into the desk spelling`);
+  completeReport = built;
   jobs.push({ name: 'use-case-complete-all-offices', heading: 'Complete use-case diagram over every desk and office', code: built.code });
   // The same model in the other layout direction: a figure nine thousand pixels tall is complete but unusable on a
   // slide or a printed page, so both are drawn and the reader keeps whichever fits.
@@ -311,20 +328,179 @@ for (const [label, firstKey] of actorLabels) {
     if (myIds.has(`${e.desk}|${e.to}`)) touched.add(`${e.desk}|${e.from}`);
   }
   // Include and extend chains hanging off the actor's own use cases, so the figure shows what the actor triggers.
-  for (const e of edges) {
-    if ((e.kind === 'include' || e.kind === 'extend' || e.kind === 'dependency') && touched.has(`${e.desk}|${e.from}`)) touched.add(`${e.desk}|${e.to}`);
+  // A fixpoint, not one pass: an included use case may itself include another, and a single sweep over `edges`
+  // would only extend the chain for edges that happen to sit later in the list — the figure would then drop the
+  // link whose start was added after it was examined, and print a diagram that looks complete.
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const e of edges) {
+      if ((e.kind === 'include' || e.kind === 'extend' || e.kind === 'dependency') && touched.has(`${e.desk}|${e.from}`) && !touched.has(`${e.desk}|${e.to}`)) {
+        touched.add(`${e.desk}|${e.to}`);
+        grew = true;
+      }
+    }
   }
   // Secondary actors that share those use cases.
   for (const e of edges) {
     if (e.kind === 'association' && touched.has(`${e.desk}|${e.to}`)) touched.add(`${e.desk}|${e.from}`);
   }
   const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  const code = figureFor((n) => touched.has(`${n.desk}|${n.id}`) || myIds.has(`${n.desk}|${n.id}`), { slug });
-  if (code === null) { fail(`the per-actor figure for [${label}] would be empty`); }
-  actorFigures.push({ name: `use-case-actor-${slug}`, heading: `Actor: ${label}`, code });
+  const selection = new Set([...touched, ...myIds]);
+  const fig = figureFor((n) => selection.has(`${n.desk}|${n.id}`), { slug });
+  if (fig === null) { fail(`the per-actor figure for [${label}] would be empty`); }
+  actorFigures.push({ name: `use-case-actor-${slug}`, heading: `Actor: ${label}`, code: fig.code, selection, dropped: fig.dropped, shown: fig.shown });
 }
 jobs.push(...actorFigures);
 console.log(`figures queued: ${jobs.length} (${deskBlocks.length} desks, 1 global, 1 complete, ${actorFigures.length} per actor)`);
+
+// ---------------------------------------------------------- 3b. the per-actor closure audit
+// The objective is that every actor's figure carries its associations AND the include / extend chains hanging off
+// them. That is a property of the emitter, so it is read from the emitter rather than asserted by this script's
+// comment: an actor figure may not drop a dependency edge whose own start is inside that actor's selection. One
+// implementation answers two surfaces — the `--audit-actor-edges` command and the manifest's own summary line —
+// because two answers to "is this figure complete" is the defect this repository has refused in every lane.
+function auditActorEdges(quiet) {
+  const depKind = (k) => k === 'include' || k === 'extend' || k === 'dependency';
+  const labelOf = (desk, id) => nodes.get(`${desk}|${id}`)?.label ?? `${id}@${desk}`;
+  const rows = [];
+  let violations = 0;
+  let withDeps = 0;
+  for (const j of actorFigures) {
+    const owed = edges.filter((e) => depKind(e.kind) && j.selection.has(`${e.desk}|${e.from}`));
+    const bad = j.dropped.filter(({ e, why }) => depKind(e.kind) && j.selection.has(`${e.desk}|${e.from}`) && why !== 'DEDUPE');
+    const counts = { include: 0, extend: 0, dependency: 0, association: 0 };
+    for (const sig of j.shown) {
+      const kind = sig.split('|')[4];
+      if (kind in counts) counts[kind]++;
+    }
+    if (counts.include + counts.extend + counts.dependency > 0) withDeps++;
+    violations += bad.length;
+    rows.push({ heading: j.heading, counts, owed: owed.length, bad, mark: bad.length === 0 ? 'ok  ' : 'FAIL' });
+    for (const { e, why } of bad) {
+      rows.at(-1).detail = `${rows.at(-1).detail ?? ''}\n        DROPPED ${why}: [${labelOf(e.desk, e.from)}] -${e.kind}-> [${labelOf(e.desk, e.to)}] (desk ${e.desk})`;
+    }
+  }
+  const summary = `${actorFigures.length} actor figure(s); ${withDeps} carry at least one include/extend chain; ${violations} owed dependency edge(s) dropped`;
+  if (!quiet) {
+    console.log('\nper-actor closure audit (edges the figure shows / owes):');
+    for (const r of rows) {
+      console.log(`  ${r.mark} ${r.heading.padEnd(46)} assoc ${String(r.counts.association).padStart(2)}  include ${String(r.counts.include).padStart(2)}  extend ${String(r.counts.extend).padStart(2)}  owed-deps ${String(r.owed).padStart(2)}  dropped ${r.bad.length}`);
+      if (r.detail) console.log(r.detail);
+    }
+    console.log(`\n${summary}.`);
+  }
+  if (actorFigures.length === 0) { fail('the audit read no actor figures — the reader is blind, not the model clean.'); }
+  if (violations > 0) { fail(`${violations} include/extend edge(s) the model owes an actor figure were not drawn there.`); }
+  return summary;
+}
+
+// "Complete" is the word the headline figure carries, so it is weighed by arithmetic rather than trusted: every
+// DISTINCT node in the model must be drawn, and the only edges allowed to disappear are a restatement folded into
+// the one it restates, or an edge whose two ends merged into the same label. Anything else is a lost relationship.
+function auditCompleteFigure(quiet) {
+  if (completeReport === null) { fail('the complete figure was never emitted, so its audit has nothing to weigh.'); }
+  const distinct = new Set([...nodes.values()].map((n) => `${n.kind}|${n.label}`)).size;
+  const why = {};
+  for (const d of completeReport.dropped) why[d.why] = (why[d.why] ?? 0) + 1;
+  const bad = completeReport.dropped.filter((d) => d.why !== 'DEDUPE' && d.why !== 'SELF');
+  const actorDecls = [...nodes.values()].filter((n) => n.kind === 'actor').length;
+  const cases = nodes.size - actorDecls;
+  const summary = `model ${nodes.size} nodes (${actorDecls} actor declarations, ${cases} use cases) fold to ${distinct} distinct shapes, drawn ${completeReport.nodes}; `
+    + `model ${edges.length} edges, drawn ${completeReport.edges}, folded as restatement ${(why.DEDUPE ?? 0)} and as merged endpoints ${(why.SELF ?? 0)}`;
+  if (!quiet) {
+    console.log('\ncomplete-figure accounting:');
+    console.log(`  ${summary}`);
+    for (const d of bad) {
+      console.log(`        LOST ${d.why}: ${d.e.kind} desk ${d.e.desk} ${d.e.from} -> ${d.e.to}`);
+    }
+  }
+  if (distinct !== completeReport.nodes) {
+    fail(`the complete figure drew ${completeReport.nodes} nodes but the model holds ${distinct} distinct shapes — a use case or an actor is absent from the headline figure.`);
+  }
+  if (bad.length > 0) {
+    fail(`${bad.length} relationship(s) vanished from the complete figure for a reason that is not a restatement fold.`);
+  }
+  // The emitter's own ledger must add up, or the audit is weighing a population that was never handed to it: a
+  // caller that quietly filtered one edge out would leave `dropped` untouched and every count above still closing.
+  if (completeReport.edges + completeReport.dropped.length !== edges.length) {
+    fail(`the complete figure accounts for ${completeReport.edges + completeReport.dropped.length} of the ${edges.length} edges the model holds — an edge never reached the emitter at all.`);
+  }
+  return summary;
+}
+
+// ---------------------------------------------------------------- 3b2. UML category guard
+// An «include» or an «extend» relates a use case to a use case. One edge in the guide pointed either at a stick
+// figure, which is a message to an external system and belongs on a plain dependency arrow; the guide is now
+// spelled that way, and this refuses the category error rather than drawing a diagram a reviewer will mark down.
+const misStereotyped = edges.filter((e) => (e.kind === "include" || e.kind === "extend")
+  && (nodes.get(`${e.desk}|${e.from}`)?.kind === "actor" || nodes.get(`${e.desk}|${e.to}`)?.kind === "actor"));
+if (misStereotyped.length > 0) {
+  for (const e of misStereotyped) {
+    console.error(`        desk ${e.desk}: [${nodes.get(`${e.desk}|${e.from}`)?.label}] -${e.kind}-> [${nodes.get(`${e.desk}|${e.to}`)?.label}]`);
+  }
+  fail(`${misStereotyped.length} «include»/«extend» edge(s) end on an ACTOR; a message to an external system is a plain dependency, not an inclusion or an extension.`);
+}
+
+// ---------------------------------------------------------------- 3c. the model as data
+// Everything downstream — the audits, the index, and any later probe that wants to ask a question about the actors —
+// reads THIS file rather than re-parsing the guide. A second parser is a second definition of "what is an actor",
+// and this batch met exactly that: a fresh probe counted 43 actor declarations where the generator's model holds 41,
+// because the two readers disagree about which lines are graph source. One reader decides; the others consume it.
+mkdirSync(outDir, { recursive: true });
+const modelPath = join(outDir, 'model.json');
+function emitModel() {
+  writeFileSync(modelPath, JSON.stringify({
+    generatedFrom: 'Documentation/Use-Case-Diagram-Guide.md',
+    generator: 'storage/app/scratch/lane208-use-case-figures.mjs',
+    census: {
+      nodes: nodes.size,
+      actors: [...nodes.values()].filter((n) => n.kind === 'actor').length,
+      useCases: [...nodes.values()].filter((n) => n.kind !== 'actor').length,
+      association: count('association'),
+      include: count('include'),
+      extend: count('extend'),
+    },
+    nodes: [...nodes.values()].map((n) => ({ desk: n.desk, id: n.id, label: n.label, kind: n.kind, isDesk: n.isDesk })),
+    edges: edges.map((e) => ({ desk: e.desk, from: e.from, to: e.to, kind: e.kind, label: e.label ?? null })),
+  }, null, 1));
+  console.log(`model written for other readers: ${modelPath}`);
+}
+emitModel();
+
+if (process.argv.includes('--audit-actor-edges') || process.argv.includes('--audit-complete-figure')) {
+  if (process.argv.includes('--audit-actor-edges')) {
+    auditActorEdges(false);
+    console.log('AUDIT CLEAN: every dependency edge an actor triggers is drawn in that actor\'s figure.');
+  }
+  if (process.argv.includes('--audit-complete-figure')) {
+    auditCompleteFigure(false);
+    console.log('AUDIT CLEAN: the complete figure draws every distinct node and loses no relationship but a fold.');
+  }
+  process.exit(0);
+}
+
+const buckets = [
+  { title: 'Complete diagram over every office and desk', pick: (n) => n === 'use-case-complete-all-offices' || n === 'use-case-complete-wide' },
+  { title: 'Global system boundary', pick: (n) => n === 'use-case-global-boundary' },
+  { title: 'One figure per desk', pick: (n) => n.startsWith('use-case-desk-') },
+  { title: 'One figure per actor — its associations, and the include and extend chains hanging off them', pick: (n) => n.startsWith('use-case-actor-') },
+];
+const assigned = new Map();
+for (const b of buckets) {
+  for (const m of jobs) {
+    if (b.pick(m.name)) {
+      if (assigned.has(m.name)) fail(`the index would show \`${m.name}\` twice, under [${assigned.get(m.name)}] and [${b.title}]`);
+      assigned.set(m.name, b.title);
+    }
+  }
+}
+// Weighed here, before a single figure is drawn: an unplanned name is a figure that would ship unlinked, and a run
+// that discovers it after two minutes of rendering has already written the artefacts nobody can find.
+if (assigned.size !== jobs.length) {
+  const unlisted = jobs.filter((m) => !assigned.has(m.name)).map((m) => m.name);
+  fail(`${jobs.length - assigned.size} figure(s) fall into no bucket of the index and would ship unlinked: ${unlisted.join(', ')}`);
+}
+
 
 // ---------------------------------------------------------------- 4. render
 mkdirSync(outDir, { recursive: true });
@@ -371,6 +547,10 @@ await browser.close();
 
 const table = ['| figure | what it shows | pixels | PNG bytes |', '| :--- | :--- | ---: | ---: |'];
 for (const m of manifest) table.push(`| \`${m.name}.png\` | ${m.heading} | ${m.width}×${m.height} | ${m.bytes} |`);
+// The manifest may not promise what the emitter did not draw: the same audit the hand command runs is weighed here,
+// and a dropped chain refuses the write rather than shipping a page that claims completeness.
+const closure = auditActorEdges(true);
+const completeness = auditCompleteFigure(true);
 writeFileSync(join(outDir, 'manifest.md'), [
   '# Use-case figures',
   '',
@@ -383,7 +563,57 @@ writeFileSync(join(outDir, 'manifest.md'), [
   'dashed arrows carrying their stereotype. One figure per actor shows that actor\'s associations, the include and',
   'extend chains hanging off each of them, and the secondary actors sharing those use cases.',
   '',
+  `Per-actor closure, weighed by \`--audit-actor-edges\` rather than asserted: ${closure}.`,
+  'An actor figure that prints no stereotype owes none in the model; the audit names any owed edge the emitter dropped.',
+  '',
+  `Completeness of the headline figure, weighed by \`--audit-complete-figure\`: ${completeness}.`,
+  'A node folds only when the same kind carries the same label twice (an overview restatement of its desk), and an',
+  'edge folds only when both ends merged. Any other disappearance stops this generator before it writes.',
+  '',
+  'The byte column is a reading of the render that wrote it, not a property of the model: re-rendering the same',
+  'undivided model gave every one of the 43 figures a different PNG size while all 43 kept identical pixel',
+  'dimensions. Ask the dimensions and the model counts whether a change moved; ask the bytes when you need to know',
+  'whether a file is the one this page describes.',
+  '',
   ...table,
   '',
 ].join('\n'));
 console.log(`\nwrote ${manifest.length} figure(s) to ${outDir}`);
+
+// ------------------------------------------------------------- 5. the page that points at them
+// 43 images in a folder are an artefact nobody reaches: no document linked any of them, so the deliverable existed
+// and the paper could not cite it. The index is written HERE, from the same manifest the figures were recorded in,
+// because a hand-kept list of derived files is the blind spot this repository has already paid for twice — and the
+// population is asserted, so a figure that fails to fall into exactly one bucket stops the run rather than going
+// unlinked silently.
+if (assigned.size !== manifest.length || manifest.some((m) => !assigned.has(m.name))) {
+  const unlisted = manifest.filter((m) => !assigned.has(m.name)).map((m) => m.name);
+  const unplanned = [...assigned.keys()].filter((n) => !manifest.some((m) => m.name === n));
+  fail(`the index was planned for ${assigned.size} figure(s) but the run produced ${manifest.length} — unlinked [${unlisted.join(', ') || 'none'}], never drawn [${unplanned.join(', ') || 'none'}]`);
+}
+const indexLines = [
+  '# Use-case diagrams',
+  '',
+  'Written by `node storage/app/scratch/lane208-use-case-figures.mjs` from the use-case graphs in',
+  '`Use-Case-Diagram-Guide.md`. Edit that guide, then re-run the generator; retyping a figure here would make this',
+  'page a second definition of a model the guide already owns.',
+  '',
+  `Model as read by the last run: ${nodes.size} nodes (${[...nodes.values()].filter((n) => n.kind === 'actor').length} actor declarations, ${[...nodes.values()].filter((n) => n.kind !== 'actor').length} use cases), ${count('association')} associations, ${count('include')} «include», ${count('extend')} «extend».`,
+  '',
+  'Both claims below are weighed by the generator before it writes this page — `--audit-actor-edges` and',
+  '`--audit-complete-figure` — so the figures are known to hold what they promise rather than assumed to:',
+  `- ${closure}.`,
+  `- ${completeness}.`,
+  '',
+];
+for (const b of buckets) {
+  const inBucket = manifest.filter((m) => assigned.get(m.name) === b.title);
+  indexLines.push('', `## ${b.title} (${inBucket.length})`, '');
+  for (const m of inBucket) {
+    indexLines.push(`### ${m.heading}`, '', `![${m.heading}](Diagrams/${m.name}.png)`, '');
+  }
+}
+lines.push('', `Every figure on disk is linked above: ${manifest.length} in the manifest, ${manifest.length} here.`, '');
+const indexPath = join(dirname(outDir), 'Use-Case-Diagrams.md');
+writeFileSync(indexPath, indexLines.join('\n'));
+console.log(`wrote the index that links them: ${indexPath}`);

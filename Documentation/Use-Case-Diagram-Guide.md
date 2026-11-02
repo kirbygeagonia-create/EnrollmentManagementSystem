@@ -11,6 +11,14 @@
 
 ---
 
+> **Rendered figures.** Every mermaid block below is the model; the images are drawn from it by
+> `node storage/app/scratch/lane208-use-case-figures.mjs` and linked from
+> [Use-Case-Diagrams.md](Use-Case-Diagrams.md) — one figure per desk, the global system boundary, the complete
+> diagram over every office and desk, and **one figure per actor** carrying that actor's associations plus the
+> «include» and «extend» chains hanging off them. The generator refuses to draw from a broken model (a use case no
+> actor can reach, a stereotype that would render as an empty box, an owed chain that vanishes from an actor's
+> page), so do not hand-edit a PNG: edit the block here and re-run.
+
 ## Table of Contents
 
 1. [Executive Overview & Purpose](#1-executive-overview--purpose)
@@ -297,7 +305,7 @@ flowchart LR
     UC_ValIDR --- A_Stud
     UC_PosPay --- A_Stud
     UC_AppReg -.->|"«include»"| UC_AudAct
-    UC_AppAdm -.->|"«extend»\n[Sends Notice]"| A_SMS
+    UC_AppAdm -.->|"sends notice"| A_SMS
 ```
 
 ---

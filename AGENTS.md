@@ -852,7 +852,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
   `%` — and
-  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 368 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 370 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
   that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
   three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
   only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
@@ -1377,6 +1377,77 @@ it in would draw "Record New Applicant" twice), and the leftover overview panel 
 the complete figure does not read as a thirteenth office. The PNGs are committed and the SVGs are ignored, because a
 committed intermediate is a second answer to "which file is the figure"; an earlier script that rendered the same
 model a second way was **deleted rather than kept** for the same reason.
+- **"Per actor" is a claim, so the closure is now measured rather than commented.** `lane208-use-case-figures.mjs
+--audit-actor-edges` walks each actor figure and compares the include/extend edges the model owes — every dependency
+whose start sits inside that actor's selection — with the edges the emitter actually drew, and refuses on any drop.
+It reads that from `emitGraph`, which now returns the edges it dropped and why, because a projection that silently
+loses a chain looks exactly like a projection that had none. The run answers 28 figures, 19 carrying at least one
+chain, 0 owed edges dropped — so the nine actors that print no stereotype owe none in the model, which is a reading
+rather than an unchecked absence. Falsified both ways in throwaway copies, deleted afterwards because `.mjs` under
+`scratch` is re-included by extension and a mutant copy would otherwise travel: removing the closure sweep loses 28
+owed edges and exits 1, while the single-pass sweep the delivered figures were built with answers the same 0 as the
+fixpoint — so that loop is insurance against a depth-2 chain the guide does not yet hold, and is stated as that
+rather than as a repair. `lane213-compare-figure-manifests.mjs` is the reader for the next question, and its answer
+was not the one expected: re-rendering the unchanged model moved the **PNG bytes of all 43 figures while every one
+kept identical pixel dimensions**, twice in a row. A figure's byte size is therefore a reading of the render that
+wrote it, not a property of the model — lane 58's rule for an assertion total, arrived at in an image pipeline. Ask
+the dimensions and the model counts whether a change moved; ask the bytes only whether a file is the one the
+manifest describes.
+- **"Complete" is a boundary claim, so the headline figure is weighed by arithmetic too.** `--audit-complete-figure`
+requires the number of DISTINCT `(kind, label)` shapes in the model to equal the nodes the complete figure drew, and
+the emitter's own ledger (`drawn + dropped`) to equal the edges the model holds; the only disappearances it allows are
+a restatement folded into what it restates and an edge whose two ends merged into one label. Today: 131 nodes (41
+actor declarations, 90 use cases) fold to **105 distinct shapes, all drawn**; 129 edges yield **122 drawn, 7 folded,
+0 lost**. `mutate-lane208-figure-audits.php` answers 13 legs, and its fourth leg is the one that taught me the lesson
+it tests: I asserted the blinded variant would print `drawn 121`, but the edge I sliced off turned out to be one of
+the seven folds, so the figure read `122 drawn, 6 folded` — still an open ledger, just not the number I remembered.
+The leg now asserts the **relation** (quiet run ∧ ledger does not close) rather than a figure, which is the verifier
+expectations-age class met inside a new harness. Same file, same batch: the flag allow-list had to grow before the
+strict parser would let its own new flag through, and it refused `--audit-nonsense-flag` by name on the first run —
+which is the guard earning its keep, not a bug to work around.
+- **An artefact nobody links is not a deliverable.** The 43 use-case figures sat in `Documentation/Diagrams/` with
+**zero** references from any document (`grep -rn "Diagrams/use-case" Documentation/*.md` answered nothing), so the
+thing the owner asked for existed and the paper could not reach it. `lane208-use-case-figures.mjs` now writes
+`Documentation/Use-Case-Diagrams.md` from the same manifest the images were recorded in, and the guide points at
+that page. Two rules came out of it. *The plan is built before anything is drawn:* the bucket assignment and its
+population guard sit above the render loop, which the falsifier's `dead-bucket-refuses-before-render` leg proved by
+watching the mutant refuse with **28 names and nothing rendered** — and that leg found a real ordering bug in the
+code I had just delivered, because the guard had sat *after* two minutes of drawing, where it could only advise.
+*A second check compares the planned set with the produced set*, so a figure that rendered but was never planned (or
+the reverse) stops the run rather than shipping a page with a dead link. `index-links-every-figure` asserts both
+directions against the disk: 43 files, 43 links, no ghost. The harness answers 15 legs, 0 bad.
+- **A stereotype is a claim about what kind of thing the arrow connects** (the use-case model, found by trying to
+count its actors twice). «include» and «extend» relate a **use case to a use case**; one edge in the guide pointed
+from `Approve Admission Application` at the stick figure `Institutional SMS / Mail Service` and was labelled
+«extend». The generator drew it without complaint because it classifies by line shape, not by endpoint. A UML
+category error survives every rendering check, so `lane208` now refuses before drawing:
+`N «include»/«extend» edge(s) end on an ACTOR`, and it fired on the delivered document (exit 1, the edge named)
+before the guide was re-spelled as a plain `sends notice` dependency — which is the guard's falsification on live
+bytes, so no plant was needed to prove it bites. Census after the repair: 131 nodes, 97 associations, 21 «include»,
+**10** «extend»; both generated pages re-took those figures from the run rather than carrying the old pair.
+**The probe that found it was itself the lesson.** It re-parsed the markdown and counted 43 actor declarations where
+the model holds 41: the two readers disagreed about one label's spelling (an emoji the renderer strips). So the
+generator now emits `Documentation/Diagrams/model.json` — one definition of the model, consumed by the audits, the
+index and `lane214-probe-actor-vocabulary.php`, which asserts its own count against the census it reads and refuses
+if the two are out of step. What that probe then found is a **question, not a defect**: 41 declarations fold to 28
+labels against 17 seated roles, with `Cashier / Accounting` beside `Cashier / Accounting Staff`, `Clearance Officer`
+beside `Clearance Staff`, and the student named five ways. Folding them would change what every desk block asserts
+about who performs each use case, so it is registered for the owner (task #62) instead of renamed on my reading of
+what the words mean. And `| tail` on the mutant run printed exit 0 for a refusal that exits 1: the pipe's status
+belongs to `tail`, which this file has said five times before.
+- **A queue is compared by SET, not by count** (`lane215-plan-remaining-screens.php`). The new planner derives the
+owed sort queue from the pages themselves — every `.jsx` under `resources/js/Pages` that renders `<DataTable>` and
+does not import the sort helpers — resolves each page to the action that renders it, to the model that action
+queries, and to that table's columns read from the migrations (the `down()` half is split off first, or a
+rollback's drop reads as a column), then compares its list against `lane140`'s owed list page for page and refuses
+naming the symmetric difference. A planted `Planted-Bogus.jsx` makes it exit 1 on the spot, which is the reading
+that justifies the guard: a count-only check would have passed had two pages swapped out and in. Its limits are
+printed, not implied: a page that renders two tables reports one merged column list, a dotted key is a relation
+read (a hop *can* order it; whether the painted value is one column is a different question — the Blocks row's Term
+label is a year-plus-semester concatenation with no single column behind it), an unreadable builder prints
+UNRESOLVED instead of guessing an offer set, and `--pages=` narrows the scan while saying the lane140 comparison is
+NOT JUDGED for that run, because a deliberate subset is not a disagreement. On its first run it agreed with
+lane140 at 13 owed pages, page for page.
 - **A generator that writes a partly hand-written document must splice on markers and refuse without them** (2026-11-01,
   `lane162-generate-erd.php`). `Documentation/DATABASE-DESIGN-ADS.md` says on its first line "This page is generated,
   not written", and the batch had since hand-written a load-test result into it; the first re-take of the diagram
@@ -2017,6 +2088,22 @@ the server cannot obey — §28.3's filter defect reached from the sort side. Th
 its predecessors lacked: it collects every citation into the changed controller out of the flat dump, takes the highest,
 and refuses if it sits at or below the line the batch grew, because a bounds sweep prints the identical clean verdict
 for a file that never moved and for one whose every pointer below the insert moved with it.
+- **A column's type is a claim the sort can test, and a harness plant can crash the helper instead of the promise**
+(the twenty-third table, `Admin/ReferenceData/Rooms`). The rooms directory is the office directory's mirror: every
+column the desk paints is a column `rooms` stores, so nothing is withheld and the two claims worth pinning are of a
+kind the earlier screens had no reason to make. `rooms.capacity` is an **integer**, so the case orders nine, twenty
+and one hundred and refuses the digit order — and its three fixtures are inserted so that the number order, the name
+order the directory opens on and both id orders each give a different sequence, which is the standing rule that a
+fixture must make the retired reading disagree rather than agree by accident. `rooms.building` is NOT NULL and the desk
+writes an empty string when nobody types one, which the screen paints as an em dash, so
+`a_room_with_no_building_stays_on_the_list_and_reads_first` asks that the row survive the header it is ordered by: an
+absent value is not a row the directory may drop. **The falsifier's first cut found the hazard in `ListSort`, not in
+the screen**: its fallback leg pointed the fallback at the record key, and `apply()` answered `Undefined array key` —
+a crash rather than a fallback, because the helper reads the allowed specification for whichever key it settles on.
+No request can reach it (the asked key is tested against the list before the fallback is ever consulted), so the leg
+was re-cut onto a key the list really holds and the guard is owed to the shared helper with its own falsifier over
+every wired screen. A leg that crashes instead of failing is the plant's story, not the promise's — the same family as
+a mutant that does not compile and still prints `1 failed`.
 - **A desk search's own alternatives must be grouped, or they widen the filters set beside them** (this batch, the
 staff directory). `UserManagementController::index()` chained `->where('firstName','like',…)->orWhere('lastName','like',…)`
 inside the same `when()` closure that carries the office and status filters, and Laravel puts every one of those at the

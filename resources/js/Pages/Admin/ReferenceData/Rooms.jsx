@@ -2,10 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Rooms({ rooms, filters = {} }) {
+export default function Rooms({ rooms, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The catalogue's own default is the room name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingRoom, setEditingRoom] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -17,15 +21,31 @@ export default function Rooms({ rooms, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'roomName', label: 'Name' },
-        { key: 'building', label: 'Building', render: (row) => row.building || '—' },
-        { key: 'capacity', label: 'Capacity', className: 'text-center' },
+        { key: 'roomName', label: 'Name', sortKey: 'roomName' },
+        { key: 'building', label: 'Building', sortKey: 'building', render: (row) => row.building || '—' },
+        { key: 'capacity', label: 'Capacity', sortKey: 'capacity', className: 'text-center' },
     ], []);
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.rooms'), {
             search: search || undefined,
+            ...sortParams('roomName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole directory.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.rooms'), {
+            search: search || undefined,
+            ...sortParams('roomName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -140,6 +160,8 @@ export default function Rooms({ rooms, filters = {} }) {
                             rows={rooms.data}
                             children={renderActions}
                             emptyMessage="No rooms found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={rooms} />

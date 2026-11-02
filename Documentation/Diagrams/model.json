@@ -1,0 +1,1836 @@
+{
+ "generatedFrom": "Documentation/Use-Case-Diagram-Guide.md",
+ "generator": "storage/app/scratch/lane208-use-case-figures.mjs",
+ "census": {
+  "nodes": 131,
+  "actors": 41,
+  "useCases": 90,
+  "association": 97,
+  "include": 21,
+  "extend": 10
+ },
+ "nodes": [
+  {
+   "desk": "00",
+   "id": "A_Adm",
+   "label": "Admission Officer",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Gui",
+   "label": "Guidance Counselor",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Eva",
+   "label": "Academic Evaluator",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Dea",
+   "label": "College Dean",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Sch",
+   "label": "Scholarship Officer",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Acc",
+   "label": "Cashier / Accounting",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Clr",
+   "label": "Clearance Officer",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Blo",
+   "label": "Blocking Coordinator",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Reg",
+   "label": "University Registrar",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Cli",
+   "label": "Medical Nurse / Clinic",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_IDO",
+   "label": "Student ID Officer",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_AdmStaff",
+   "label": "System Administrator",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Staff",
+   "label": "Institutional Staff (Any Desk)",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_Stud",
+   "label": "Student / Applicant",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "A_SMS",
+   "label": "Institutional SMS / Mail Service",
+   "kind": "actor",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AdmApp",
+   "label": "Record New Applicant",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_VerDoc",
+   "label": "Verify Requirement Documents",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AppAdm",
+   "label": "Approve Admission Application",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_RecExam",
+   "label": "Record Entrance Examination Score",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_EvaProf",
+   "label": "Capture Complete Student Profile",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_ProSub",
+   "label": "Propose Curriculum Subject Load",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_ComFee",
+   "label": "Compute Itemized Tuition Fees",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AppSch",
+   "label": "Apply Institutional Scholarship Grant",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_PosPay",
+   "label": "Post Student Payment Transaction",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_GenClr",
+   "label": "Generate Multi-Office Clearance Slip",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AppReq",
+   "label": "Sign Office Clearance Requirement",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AssBlk",
+   "label": "Assign Enrolled Students to Block",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AppReg",
+   "label": "Approve Final Student Enrollment",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_PrtCom",
+   "label": "Print Certificate of Matriculation",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_ScrCli",
+   "label": "Screen Physical Health Vitals",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_ValIDR",
+   "label": "Validate Student ID Request",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_MngUsr",
+   "label": "Manage Staff User Accounts",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_AudAct",
+   "label": "Audit Institutional Activity Logs",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "00",
+   "id": "UC_Srch360",
+   "label": "Inspect Unified Student 360° Profile",
+   "kind": "usecase",
+   "isDesk": false
+  },
+  {
+   "desk": "01",
+   "id": "A_Adm",
+   "label": "Admission Officer",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "A_App",
+   "label": "Applicant",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC01",
+   "label": "Record New Applicant",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC02",
+   "label": "Submit Admission Requirements",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC03",
+   "label": "Verify Requirement Documents",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC04",
+   "label": "Approve Admission Application",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC05",
+   "label": "Reject Admission Application",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC06",
+   "label": "Instantiate Pending Enrollment Record",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC07",
+   "label": "Notify Applicant of Decision",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "01",
+   "id": "UC08",
+   "label": "Provide Rejection Reason Modal",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "A_Gui",
+   "label": "Guidance Counselor",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "A_Eval",
+   "label": "Academic Evaluator",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "A_App",
+   "label": "Examinee / Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX01",
+   "label": "Schedule Entrance Examination",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX02",
+   "label": "Record General Entrance Exam Result",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX03",
+   "label": "Record Course-Specific Exam Result",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX04",
+   "label": "Record Program Retention Exam Result",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX05",
+   "label": "Auto-Approve Passing Admission",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX06",
+   "label": "Auto-Reject Failing Admission",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "02",
+   "id": "UC_EX07",
+   "label": "Export Examinee Results Roster",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "A_Eva",
+   "label": "Department Evaluator",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "A_Dea",
+   "label": "College Dean",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV01",
+   "label": "Search Pending Evaluation Dossier",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV02",
+   "label": "Capture Complete Student Profile",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV03",
+   "label": "Propose Curriculum Subject Load",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV04",
+   "label": "Process Transfer Subject Credits",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV05",
+   "label": "Validate Curriculum Prerequisites",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV06",
+   "label": "Override Prerequisite Restriction",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "03",
+   "id": "UC_EV07",
+   "label": "Sign Evaluation & Advance Workflow",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "A_Sch",
+   "label": "Scholarship & Assessment Officer",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "A_Stud",
+   "label": "Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS01",
+   "label": "Compute Itemized Tuition Fees",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS02",
+   "label": "Apply Institutional Scholarship Grant",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS03",
+   "label": "Apply Government Tertiary Subsidy (TES)",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS04",
+   "label": "Adjust Individual Fee Charges",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS05",
+   "label": "Verify Fee Breakdown Accuracy",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "04",
+   "id": "UC_AS06",
+   "label": "Finalize & Lock Financial Assessment",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "A_Acc",
+   "label": "Cashier / Accounting Staff",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "A_Stud",
+   "label": "Student / Payer",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC01",
+   "label": "Review Outstanding Assessment Balance",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC02",
+   "label": "Post Student Payment Transaction",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC03",
+   "label": "Issue Official Receipt (OR)",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC04",
+   "label": "Process Downpayment Installment",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC05",
+   "label": "Void Erroneous Payment",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC06",
+   "label": "Revert Enrollment Status on Void",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "05",
+   "id": "UC_AC07",
+   "label": "Generate Daily Cashier Collection Report",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "A_Clr",
+   "label": "Clearance Staff",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "A_Head",
+   "label": "Office Head / Signatory",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "A_Stud",
+   "label": "Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL01",
+   "label": "Define Academic Clearance Period",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL02",
+   "label": "Generate Multi-Office Clearance Slip",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL03",
+   "label": "Sign Individual Office Obligation",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL04",
+   "label": "Replace Lost Clearance Slip",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL05",
+   "label": "Assess Lost-Slip Penalty Fee",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "06",
+   "id": "UC_CL06",
+   "label": "Certify Final Institutional Clearance",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "A_Blo",
+   "label": "Blocking Coordinator",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "A_Inst",
+   "label": "Faculty Instructor",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL01",
+   "label": "Create Academic Block Section",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL02",
+   "label": "Define Room & Class Schedule",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL03",
+   "label": "Validate Schedule Conflict & Capacity",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL04",
+   "label": "Assign Enrolled Students to Block",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL05",
+   "label": "Unassign Student from Block",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "07",
+   "id": "UC_BL06",
+   "label": "Print Block Master Schedule",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "A_Reg",
+   "label": "University Registrar",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "A_Stud",
+   "label": "Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "UC_RG01",
+   "label": "Validate Pre-Enrollment Compliance Checklist",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "UC_RG02",
+   "label": "Approve Final Student Enrollment",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "UC_RG03",
+   "label": "Print Certificate of Matriculation (COM)",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "UC_RG04",
+   "label": "Print Official Class Cards",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "08",
+   "id": "UC_RG05",
+   "label": "Print Verified Subject Load",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "A_Cli",
+   "label": "School Clinic Nurse",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "A_Stud",
+   "label": "Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "UC_MD01",
+   "label": "Review Medical Intake Queue",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "UC_MD02",
+   "label": "Record Physical Examination & Vitals",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "UC_MD03",
+   "label": "Record PhilHealth Insurance Registration",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "UC_MD04",
+   "label": "Sign Health Clearance Step",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "09",
+   "id": "UC_MD05",
+   "label": "Reopen Completed Clinic Assessment",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "10",
+   "id": "A_IDO",
+   "label": "Student ID Officer",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "10",
+   "id": "A_Stud",
+   "label": "Student",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "10",
+   "id": "UC_ID01",
+   "label": "Initiate Student ID Request",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "10",
+   "id": "UC_ID02",
+   "label": "Capture / Upload Face Photo",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "10",
+   "id": "UC_ID03",
+   "label": "Validate ID Request",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "A_Staff",
+   "label": "Institutional Staff (Any Desk)",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "A_Head",
+   "label": "Office Head / Auditor",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "UC_S360_01",
+   "label": "Perform Quick Student Search",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "UC_S360_02",
+   "label": "Browse Student Master Directory",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "UC_S360_03",
+   "label": "Inspect Unified Student 360° Timeline",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "UC_S360_04",
+   "label": "Review Historical Term Assessments",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "11",
+   "id": "UC_S360_05",
+   "label": "Review Clearance & ID Issuance History",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "A_Sys",
+   "label": "System Administrator",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "A_Aud",
+   "label": "Compliance Officer / Auditor",
+   "kind": "actor",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD01",
+   "label": "Manage Staff User Accounts",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD02",
+   "label": "Assign Spatie Security Roles",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD03",
+   "label": "Configure System Reference Data",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD04",
+   "label": "Audit Institutional Activity Logs",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD05",
+   "label": "Deactivate Inactive Staff Account",
+   "kind": "usecase",
+   "isDesk": true
+  },
+  {
+   "desk": "12",
+   "id": "UC_AD06",
+   "label": "Filter Audit Logs by Date & Module",
+   "kind": "usecase",
+   "isDesk": true
+  }
+ ],
+ "edges": [
+  {
+   "desk": "00",
+   "from": "A_Adm",
+   "to": "UC_AdmApp",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Adm",
+   "to": "UC_VerDoc",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Adm",
+   "to": "UC_AppAdm",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Gui",
+   "to": "UC_RecExam",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Eva",
+   "to": "UC_EvaProf",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Eva",
+   "to": "UC_ProSub",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Dea",
+   "to": "UC_ProSub",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Sch",
+   "to": "UC_ComFee",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Sch",
+   "to": "UC_AppSch",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Acc",
+   "to": "UC_PosPay",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Clr",
+   "to": "UC_GenClr",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Clr",
+   "to": "UC_AppReq",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Blo",
+   "to": "UC_AssBlk",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Reg",
+   "to": "UC_AppReg",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Reg",
+   "to": "UC_PrtCom",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Cli",
+   "to": "UC_ScrCli",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_IDO",
+   "to": "UC_ValIDR",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_AdmStaff",
+   "to": "UC_MngUsr",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_AdmStaff",
+   "to": "UC_AudAct",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "A_Staff",
+   "to": "UC_Srch360",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "UC_AdmApp",
+   "to": "A_Stud",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "UC_PrtCom",
+   "to": "A_Stud",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "UC_ValIDR",
+   "to": "A_Stud",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "UC_PosPay",
+   "to": "A_Stud",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "00",
+   "from": "UC_AppReg",
+   "to": "UC_AudAct",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "00",
+   "from": "UC_AppAdm",
+   "to": "A_SMS",
+   "kind": "dependency",
+   "label": "sends notice"
+  },
+  {
+   "desk": "01",
+   "from": "A_Adm",
+   "to": "UC01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "A_Adm",
+   "to": "UC02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "A_Adm",
+   "to": "UC03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "A_Adm",
+   "to": "UC04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "A_Adm",
+   "to": "UC05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "UC02",
+   "to": "A_App",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "01",
+   "from": "UC04",
+   "to": "UC06",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "01",
+   "from": "UC04",
+   "to": "UC07",
+   "kind": "extend",
+   "label": "«extend»\\n[Notice Configured]"
+  },
+  {
+   "desk": "01",
+   "from": "UC05",
+   "to": "UC08",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "01",
+   "from": "UC05",
+   "to": "UC07",
+   "kind": "extend",
+   "label": "«extend»\\n[Notice Configured]"
+  },
+  {
+   "desk": "01",
+   "from": "UC07",
+   "to": "A_App",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_Gui",
+   "to": "UC_EX01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_Gui",
+   "to": "UC_EX02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_Gui",
+   "to": "UC_EX04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_Gui",
+   "to": "UC_EX07",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_Eval",
+   "to": "UC_EX03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "A_App",
+   "to": "UC_EX01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "02",
+   "from": "UC_EX03",
+   "to": "UC_EX05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "02",
+   "from": "UC_EX02",
+   "to": "UC_EX06",
+   "kind": "extend",
+   "label": "«extend»\\n[Exam Score < Passing Score]"
+  },
+  {
+   "desk": "03",
+   "from": "A_Eva",
+   "to": "UC_EV01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Eva",
+   "to": "UC_EV02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Eva",
+   "to": "UC_EV03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Eva",
+   "to": "UC_EV04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Eva",
+   "to": "UC_EV07",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Dea",
+   "to": "UC_EV06",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "A_Dea",
+   "to": "UC_EV07",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "03",
+   "from": "UC_EV03",
+   "to": "UC_EV05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "03",
+   "from": "UC_EV04",
+   "to": "UC_EV03",
+   "kind": "extend",
+   "label": "«extend»\\n[Student is Transferee/Shifter]"
+  },
+  {
+   "desk": "03",
+   "from": "UC_EV06",
+   "to": "UC_EV03",
+   "kind": "extend",
+   "label": "«extend»\\n[Dean Authorization Granted]"
+  },
+  {
+   "desk": "03",
+   "from": "UC_EV07",
+   "to": "UC_EV05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "A_Sch",
+   "to": "UC_AS06",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "04",
+   "from": "UC_AS02",
+   "to": "UC_AS01",
+   "kind": "extend",
+   "label": "«extend»\\n[Grantee Holds Valid Grant]"
+  },
+  {
+   "desk": "04",
+   "from": "UC_AS03",
+   "to": "UC_AS01",
+   "kind": "extend",
+   "label": "«extend»\\n[UniFAST Qualified]"
+  },
+  {
+   "desk": "04",
+   "from": "UC_AS06",
+   "to": "UC_AS05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "04",
+   "from": "UC_AS06",
+   "to": "A_Stud",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Acc",
+   "to": "UC_AC01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Acc",
+   "to": "UC_AC02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Acc",
+   "to": "UC_AC05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Acc",
+   "to": "UC_AC07",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Stud",
+   "to": "UC_AC02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "A_Stud",
+   "to": "UC_AC03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "05",
+   "from": "UC_AC02",
+   "to": "UC_AC03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "05",
+   "from": "UC_AC02",
+   "to": "UC_AC04",
+   "kind": "extend",
+   "label": "«extend»\\n[Partial Payment >= ₱3,000]"
+  },
+  {
+   "desk": "05",
+   "from": "UC_AC05",
+   "to": "UC_AC06",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "06",
+   "from": "A_Clr",
+   "to": "UC_CL01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Clr",
+   "to": "UC_CL02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Clr",
+   "to": "UC_CL04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Clr",
+   "to": "UC_CL06",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Head",
+   "to": "UC_CL03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Stud",
+   "to": "UC_CL02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "A_Stud",
+   "to": "UC_CL04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "06",
+   "from": "UC_CL04",
+   "to": "UC_CL05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "06",
+   "from": "UC_CL06",
+   "to": "UC_CL03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "07",
+   "from": "A_Blo",
+   "to": "UC_BL01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "A_Blo",
+   "to": "UC_BL02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "A_Blo",
+   "to": "UC_BL04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "A_Blo",
+   "to": "UC_BL05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "A_Blo",
+   "to": "UC_BL06",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "UC_BL02",
+   "to": "A_Inst",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "07",
+   "from": "UC_BL02",
+   "to": "UC_BL03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "07",
+   "from": "UC_BL04",
+   "to": "UC_BL03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "08",
+   "from": "A_Reg",
+   "to": "UC_RG01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Reg",
+   "to": "UC_RG02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Reg",
+   "to": "UC_RG03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Reg",
+   "to": "UC_RG04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Reg",
+   "to": "UC_RG05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Stud",
+   "to": "UC_RG03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "A_Stud",
+   "to": "UC_RG04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "08",
+   "from": "UC_RG02",
+   "to": "UC_RG01",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "08",
+   "from": "UC_RG02",
+   "to": "UC_RG03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "09",
+   "from": "A_Cli",
+   "to": "UC_MD01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "A_Cli",
+   "to": "UC_MD02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "A_Cli",
+   "to": "UC_MD03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "A_Cli",
+   "to": "UC_MD04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "A_Cli",
+   "to": "UC_MD05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "A_Stud",
+   "to": "UC_MD02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "09",
+   "from": "UC_MD04",
+   "to": "UC_MD02",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "09",
+   "from": "UC_MD04",
+   "to": "UC_MD03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "09",
+   "from": "UC_MD05",
+   "to": "UC_MD04",
+   "kind": "extend",
+   "label": "«extend»\\n[Medical Correction Required]"
+  },
+  {
+   "desk": "10",
+   "from": "A_IDO",
+   "to": "UC_ID01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "10",
+   "from": "A_IDO",
+   "to": "UC_ID02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "10",
+   "from": "A_IDO",
+   "to": "UC_ID03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "10",
+   "from": "A_Stud",
+   "to": "UC_ID01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "10",
+   "from": "UC_ID03",
+   "to": "UC_ID02",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "11",
+   "from": "A_Staff",
+   "to": "UC_S360_01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "11",
+   "from": "A_Staff",
+   "to": "UC_S360_02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "11",
+   "from": "A_Staff",
+   "to": "UC_S360_03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "11",
+   "from": "A_Head",
+   "to": "UC_S360_04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "11",
+   "from": "A_Head",
+   "to": "UC_S360_05",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "11",
+   "from": "UC_S360_03",
+   "to": "UC_S360_04",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "11",
+   "from": "UC_S360_03",
+   "to": "UC_S360_05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "12",
+   "from": "A_Sys",
+   "to": "UC_AD01",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "12",
+   "from": "A_Sys",
+   "to": "UC_AD02",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "12",
+   "from": "A_Sys",
+   "to": "UC_AD03",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "12",
+   "from": "A_Sys",
+   "to": "UC_AD04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "12",
+   "from": "A_Aud",
+   "to": "UC_AD04",
+   "kind": "association",
+   "label": ""
+  },
+  {
+   "desk": "12",
+   "from": "UC_AD01",
+   "to": "UC_AD05",
+   "kind": "extend",
+   "label": "«extend»\\n[Staff has Historical Records]"
+  },
+  {
+   "desk": "12",
+   "from": "UC_AD04",
+   "to": "UC_AD06",
+   "kind": "include",
+   "label": "«include»"
+  }
+ ]
+}
