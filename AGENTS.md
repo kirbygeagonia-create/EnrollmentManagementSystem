@@ -852,7 +852,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
   `%` — and
-  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 363 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 366 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
   that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
   three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
   only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
@@ -1780,7 +1780,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   new cases passed while that relation bug was in the code, because they ran as a staff account whose `unitId` is null and
   every `of*()` method returns the query untouched in that case; only the college-bound fixture executed the line.
   So a count-equality test written solely for an unbounded desk certifies nothing about scoping — pair them.
-  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (7 cases, 47 assertions) compares each badge to
+  `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (8 cases, 57 assertions) compares each badge to
   the number the desk itself prints in **both** directions, and `storage/app/scratch/mutate-g46-dashboard-queues.php`
   — a leg per promise, so this file states no leg count and the harness prints its own — is what showed the second
   direction was missing: its `admission` leg **survived** on the first run,

@@ -455,7 +455,7 @@ alone, so no bounded account can open any of the six unbounded desks today. Whet
 college-bounded is a dormant question, not a live contradiction, and it is recorded here rather than answered by a
 signature that implies a scope nobody applies.
 
-`tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (7 cases, 47 assertions) compares each badge to the
+`tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (8 cases, 57 assertions) compares each badge to the
 number the desk itself prints, in **both** directions: bounded where the list is bounded (`evaluation`, `admission`)
 and institution-wide where the list is (`assessment`, `accounting`, `registrar`, and the two shared-call desks). The
 second direction is the one the harness added, because a count-equality test written only for an unbounded desk
