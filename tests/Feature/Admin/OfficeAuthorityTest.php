@@ -66,15 +66,29 @@ class OfficeAuthorityTest extends TestCase
         $response = $this->actingAs($this->sysAdmin())
             ->get(route('admin.reference-data.offices'));
 
-        $response->assertInertia(fn ($page) => $page
-            ->component('Admin/ReferenceData/Offices')
-            ->where('offices.data.0.workflowName', 'Registrar')
-            ->where('offices.data.1.workflowName', 'Accounting')
-            ->where('offices.data.2.workflowName', null)
-            ->where('offices.data.2.staffCount', 0)
-            ->where('offices.data.2.requirementCount', 0)
-            ->where('offices.data.2.stepCount', 0)
-        );
+        $rows = $response->viewData('page')['props']['offices']['data'];
+        $this->assertSame('Admin/ReferenceData/Offices', $response->viewData('page')['component'],
+            'the route no longer serves the page this case reads');
+        // Read by identity, never by position. This case used `offices.data.0/1/2`, which was only ever a reading of
+        // the id-ascending order the directory kept until it was wired to the shared sort; under the catalogue's own
+        // name order the same three rows arrive in a different sequence, and an index would then describe whichever
+        // office happened to land there. The claim the screen makes is about a named office, so the assertion asks the
+        // page for that office.
+        $byId = [];
+        foreach ($rows as $row) {
+            $byId[(int) $row['officeId']] = $row;
+        }
+
+        $this->assertArrayHasKey(1, $byId, 'office 1 is not on the page this case is reading');
+        $this->assertArrayHasKey(2, $byId, 'office 2 is not on the page this case is reading');
+        $this->assertArrayHasKey(99, $byId, 'the office with no desk behind it is not on the page this case is reading');
+
+        $this->assertSame('Registrar', $byId[1]['workflowName'], 'the first office is not named by the enum the policies read');
+        $this->assertSame('Accounting', $byId[2]['workflowName'], 'the second office is not named by the enum the policies read');
+        $this->assertNull($byId[99]['workflowName'], 'a row the enum does not name gained a desk it has no claim to');
+        $this->assertSame(0, $byId[99]['staffCount'], 'an unmapped office should hold no staff');
+        $this->assertSame(0, $byId[99]['requirementCount'], 'an unmapped office should own no clearance requirement');
+        $this->assertSame(0, $byId[99]['stepCount'], 'an unmapped office should be no workflow step');
     }
 
     #[Test]
