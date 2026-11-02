@@ -36,7 +36,7 @@ server-side. The same rule applies to the load run: designed in `DATABASE-DESIGN
 | `storage/app/scratch/l170-suite.log` | the run before it, which answered two failures and is kept because each was a finding: the rule-count guard aging to twenty, and the seat key catching a fixture that minted a second enrollment |
 | `storage/app/scratch/lane164-out.txt`, `lane168-out.txt`, `lane172-load-out.txt`, `lane172-harness-out.txt` | the captured stdout of the scale measurement, the two-writer race, the thousand-request load run and its falsification harness — the files the *Logs / query output* field of each test case quotes, so no case rests on a line nobody saved |
 | `ems_l172_a` (scratch schema, left in place by `--keep`) | the schema the load run wrote: 1,000 `LOAD-` students, one thousand enrollments each with exactly one workflow form, and the harness's source of truth |
-| `storage/app/scratch/lane155-ads-guide-flat.txt` | the guide's own text, extracted from its docx with the markup-leak refusal that found 34,679 bytes of it were tags |
+| `storage/app/scratch/ads-guide-flat.txt` | the guide's own text, extracted from its docx with the markup-leak refusal that found 34,679 bytes of it were tags |
 | `storage/app/scratch/lane155-ads-population.json` | the measured population behind the matrix: 24 problems, 106 guide questions, 12 concepts, 8 presentation areas |
 | `C:\Users\ADMIN\ems-backups\ems-pre-db-enforcement-2026-11-01.sql` | the pre-migration dump of live `ems` (never in the repository, per its rule) |
 | `pass380-backup-*.docx` … `pass383-backup-*.docx` | the authority document before each edit in this batch |

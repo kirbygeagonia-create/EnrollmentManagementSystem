@@ -362,7 +362,7 @@ not be read from code it says so, and no requirement is marked Verified without 
   `:22`); the gate is `app/Support/EnrollmentReadiness.php:124-150`, which reads the student's satisfied subjects —
   including approved equivalencies — and refuses when a confirmed load sits behind an unmet prerequisite. The
   crediting decision that can satisfy one is `App\Models\Creditedsubjects::approved()`.
-- **Status.** Implemented. **Evidence.** `tests/Feature/Enrollment/EnrollmentReadinessTest.php` and the credit
+- **Status.** Implemented. **Evidence.** `tests/Feature/Registrar/PrerequisiteGateTest.php` and the credit
   cases in `tests/Feature/Evaluation/CreditEquivalencyDecisionTest.php`. T13 is therefore a re-read of an existing
   case, not new work.
 
@@ -577,7 +577,9 @@ not be read from code it says so, and no requirement is marked Verified without 
   finishes with the clone readable and the source weighed unchanged.
 - **Which two it does not reach, and why.** No load breach and no bypassed prerequisite: the creation act writes no
   subject line, so load and prerequisite are the *proposal* path (P13's ceiling is an open school figure; P12 is
-  already pinned by `EnrollmentReadinessTest`). No concurrent student modification either — that is P05, not built.
+  already pinned by `PrerequisiteGateTest`). No concurrent student modification either — the version guard is built
+  (P05, `students.rowVersion`, four cases in `ProfileCaptureTest`), and the simultaneous-process half of it is the
+  demo T07 still owes.
   Saying so is the difference between a challenge met and a claim stretched.
 - **Status.** Built and measured 2026-11-01 on the creation path, with its limits named above. This is the deliverable
   the defence question is asked about, and the answer it gives is a run, not a design.
@@ -593,7 +595,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
 | Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
-| Deadlock Handling (¶305) | Implemented and observed | `App/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
+| Deadlock Handling (¶305) | Implemented and observed | `app/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
 | Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php` — thirteen keys in ten tables on the 2026-11-01 schema, of which this batch contributes `uq_enrollments_request_key` on `enrollments` and `uq_studentassessments_enrollment` on `studentassessments`, and returns `uq_enrollments_active_seat` over the VIRTUAL `seatKey` the same batch added, withdrew and repaired the fixtures for | nothing owed for the keys; the range `CHECK`s are named in P11 |
 | Indexing (¶309) | Implemented, unusable by one query | `idx_students_names`, `idx_enrollments_term_status`, `idx_enrolledsubjects_block_status` | the plan is printed: a leading-wildcard search reads ~98,800 index rows where a prefix reads ~1,111, and the estimates agreed across two runs |
 | Query Optimization (¶311) | Measured 2026-11-01 | P08, P09, `lane164-measure-scale-queries.php` | the two repairs the measurements point at, which wait on a search-semantics ruling |

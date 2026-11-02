@@ -122,7 +122,7 @@ given; inventing 21 units would be data the school never approved."
 `App\Support\EnrollmentReadiness` answers per subject whether the prerequisites are satisfied, reading credited
 subjects through `Creditedsubjects::approved()` — the one definition of "counts" that the prerequisite gate, the
 mandatory-block diff and the standing derivation all share, so three readers cannot disagree. Pinned by
-`tests/Feature/Enrollment/EnrollmentReadinessTest.php`. A credit a department declined does not satisfy a
+`tests/Feature/Evaluation/CreditEquivalencyDecisionTest.php`. A credit a department declined does not satisfy a
 prerequisite, which is the case that keeps the shared scope honest.
 
 ## 8. How schedule conflicts are detected

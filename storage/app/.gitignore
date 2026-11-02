@@ -46,3 +46,5 @@ scratch/lane54-pipeline-no-year-widening.php
 !scratch/word-open-report.txt
 !scratch/l170-suite.log
 !scratch/l171-suite.log
+!scratch/l170-suite-junit.xml
+!scratch/l171-suite-junit.xml
