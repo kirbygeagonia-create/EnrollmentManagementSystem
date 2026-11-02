@@ -102,21 +102,21 @@ $report('control', $code === 0 && substr_count($out, 'AGREES') === 2 && str_cont
     "exit {$code}, ".substr_count($out, 'AGREES').' agree(s), dated row '.(str_contains($out, 'DATED') ? 'named' : 'MISSING'));
 
 // 2 — a stale WIRED figure in the Status cell (the defect the instrument actually found).
-$copy = $plant($matrix, 'lane140-mx-wired.php.txt', 'eighteen of thirty-six tables use it',
+$copy = $plant($matrix, 'lane140-mx-wired.php.txt', 'nineteen of thirty-six tables use it',
     'fourteen of thirty-six tables use it', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $report('stale-wired-cell', $code === 1 && str_contains($out, 'STALE') && str_contains($out, 'fourteen of thirty-six'),
     "exit {$code}");
 
 // 3 — a stale OWED figure in the row's prose.
-$copy = $plant($matrix, 'lane140-mx-owed.php.txt', '18 of the 36 pages using the shared table still offer no order',
+$copy = $plant($matrix, 'lane140-mx-owed.php.txt', '17 of the 36 pages using the shared table still offer no order',
     '19 of the 36 pages using the shared table still offer no order', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $report('stale-owed-prose', $code === 1 && str_contains($out, 'STALE') && str_contains($out, 'OWED claims 19'),
     "exit {$code}");
 
 // 4 — a stale figure in a LIVING document row must fire through --dump=.
-$copy = $plant($dump, 'lane140-dp-living.php.txt', 'the eighteen wired pages call',
+$copy = $plant($dump, 'lane140-dp-living.php.txt', 'the nineteen wired pages call',
     'the sixteen wired pages call', 1);
 [$code, $out] = $run('--check-docx --dump='.$copy);
 $report('docx-living-row-stale', $code === 1 && str_contains($out, 'WIRED claims 16'), "exit {$code}");
@@ -153,9 +153,9 @@ $report('dated-rule-proved-by-falsification', $code === 1 && str_contains($out, 
 // 7 — a dump with nothing left to judge must REFUSE, not certify. Every living claim is stripped (three of them
 // since pass 401); the dated rows' figures stay in the file and must not be counted as judged claims, which is what
 // makes this leg mean "read nothing" rather than "read something stale".
-$copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the eighteen wired pages call', 'the wired pages call', 1);
+$copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the nineteen wired pages call', 'the wired pages call', 1);
 $text = (string) file_get_contents($root.'/'.$copyA);
-$needle = '18 of the 36 pages that use the shared table';
+$needle = '17 of the 36 pages that use the shared table';
 if (substr_count($text, $needle) !== 1) {
     fwrite(STDERR, 'BAD: the owed needle occurs '.substr_count($text, $needle).' time(s) in the dump copy, wanted 1'
         ." — the leg would silently leave a claim standing.\n");
@@ -165,7 +165,7 @@ if (substr_count($text, $needle) !== 1) {
 $text = str_replace($needle, 'the pages that use the shared table', $text);
 // Pass 401 left the register a THIRD living claim in the spelled shape the extractor has now learned, so the leg
 // has to mute it too — otherwise the run judges something, agrees, and the "no JUDGED" refusal stays unreachable.
-$needle3 = 'eighteen of the thirty-six tables that render the shared component sort on the server';
+$needle3 = 'nineteen of the thirty-six tables that render the shared component sort on the server';
 if (substr_count($text, $needle3) !== 1) {
     fwrite(STDERR, 'BAD: the spelled wired needle occurs '.substr_count($text, $needle3).' time(s) in the dump copy, wanted 1'
         ." — the leg would silently leave a claim standing.\n");

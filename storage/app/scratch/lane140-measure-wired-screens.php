@@ -173,6 +173,14 @@ printf("\nwired pages (%d):\n", $screenCount);
 foreach ($usesSortHelper as $p) {
     echo '  '.$p."\n";
 }
+// The owed queue is printed by name rather than only counted: a line that says "seventeen still offer no order"
+// sends the next reader to grep the tree, while the list IS the work. Both sides come from the same two arrays the
+// counts above print, so no second definition of "wired" is introduced here.
+$owedPages = array_values(array_diff($rendersTable, $usesSortHelper));
+printf("\nowed pages (%d):\n", count($owedPages));
+foreach ($owedPages as $p) {
+    echo '  '.$p."\n";
+}
 printf("\nhandlers (%d):\n", $handlerCount);
 foreach ($handlerSites as $h) {
     echo '  '.$h."\n";

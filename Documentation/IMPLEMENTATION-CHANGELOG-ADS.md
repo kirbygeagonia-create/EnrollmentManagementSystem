@@ -206,10 +206,16 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
   own anchor". The engine reads slot 3 as a *different* string that must own the needle, so anchor == needle resolves
   to nothing and the pass refused with `no needle owned by the anchor`. The two-element shape is the one for a needle
   already proved unique, and the pass proves that uniqueness itself before opening the archive.
-- `lane127-resolve-lines.php` answered `12 HITS` for `DeskQueues.php:96`, because that HEAD line is a bare `}`. That
+- `lane127-resolve-lines.php` answered `12 HITS` for line ninety-six of `DeskQueues.php`, because that HEAD line is a bare `}`. That
   is the correct refusal — an ambiguous line is not a re-point — and the markdown pair came instead from the window
   the docx shift tool proved byte-identical across three copies (`87-96 → 85-94`), not from the delta arithmetic.
 
+- `mutate-lane140-wired-counts.php` carried six needles pointing at the counts **this batch legitimately corrected**
+  (`eighteen of thirty-six tables use it`, `18 of the 36 pages …`, `the eighteen wired pages call`), so the harness
+  refused with `nothing was planted` over a tree that had simply got truer. All six are re-cut onto the current bytes
+  and the run answers 13 legs, 0 bad. The instrument also gained its `owed pages` print: the register carries the
+  count, but a queue a reader can act on is a list of page paths, and both sides come from the same two arrays the
+  counts already print, so no second definition of "wired" entered the tool.
 - `lane163` filled blocks with `$sid % count($blockIds)`, which over-filled the first ones by the demo cast's id
   remainder — a block holding 41 seats against `maxStudents` 40. The fixture then violated the invariant its probes
   claimed to measure. Now filled in order, topped up from the real id high-water mark, and refused if any synthetic
