@@ -32,4 +32,18 @@ final class DenialReason
 
         return $message === '' || $message === self::PLACEHOLDER ? null : $message;
     }
+
+    /**
+     * What a closed account is told, by the two surfaces that close it.
+     *
+     * The login screen has said this sentence since the account-status gap was first worked; the mid-session guard
+     * added on 2026-11-02 (§28.3 G-42's second half) says the same one, because a person who is refused at the door
+     * and refused differently inside should not have to learn two explanations of the same state. Appended here
+     * rather than written at either call site for the reason this class exists at all: one place that decides what a
+     * refusal says, so the page and the JSON answer cannot drift.
+     */
+    public static function deactivated(): string
+    {
+        return 'Your staff account is currently deactivated. Please contact the administrator.';
+    }
 }

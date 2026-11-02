@@ -1,9 +1,11 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · nine items · 4 answered, 5 left for the school**
+**Issued 2026-10-29 · eleven items · 4 answered, 7 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
-development prompt on this date (matrix §7 and §8, gaps G33 to G42). Nothing here is owed by the
+development prompt on this date (matrix §7 and §8, gaps G33 to G42). Items 10 and 11 joined on
+2026-11-02 from the ADS guide's own problem list (13 and 14), where the missing thing is a number the
+school has never stated rather than a mechanism the build withholds. Nothing here is owed by the
 software: each item says what the answer costs to build and how it comes back off. Where a mechanism
 is cheap and only the vocabulary is the school's, that is said plainly, because a question that sounds
 like a migration will be deferred for a reason it does not deserve.
@@ -57,7 +59,14 @@ commit; the session cut is invisible to users until it fires.
   second question the item asked — what happens to a record the desk left half-written — is answered by design: the
   refusal is a `withErrors` answer on the record's own page, not a dead end, so nothing the desk typed is discarded
   and another account can finish the act. This is the ruling as decided; §28.3's G-42 row stays open until the guard
-  and its tests are in the tree, and the register is not ahead of the build.
+  and its tests are in the tree, and the register is not ahead of the build. **As built on 2026-11-02:**
+  `App\Http\Middleware\RejectDeactivatedAccount` in the web group re-reads the account on every request, says the
+  sentence the login screen already says (one holder, `App\Support\DenialReason`, because two explanations of one
+  state is the drift this project refuses), flashes the desk's own input so nothing typed is discarded, and signs
+  the session out. One half of the ruling is realised differently than the words above imagine: the desk lands on the
+  sign-in screen rather than on the record's own page, because the session that would carry it there has just been
+  closed — the record is still untouched and another account can finish the act, which is what that half of the
+  answer was protecting.
 
 ---
 
@@ -228,8 +237,43 @@ counts enrollments waiting, and the page says plainly that it lists blocks.
 
 ---
 
-**None of these nine is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
+**10. What is the maximum study load one student may carry in a term?** `[ADS problem 13, §28.5 — open]`
+
+**Why this is on the sheet and not in the code.** The application already sums units, refuses a proposal outside an
+elective group's own min–max band, and refuses a mandatory subject that is missing — but no figure exists anywhere
+in `app/` for a term ceiling (grepping `minUnits`, `maxUnits`, `maxLoad` and `unitLimit` answers nothing), so a
+student can be proposed any number of units in a term and nothing warns the desk. The number is the school's: a
+ceiling is a rule about students, not a technical limit, and inventing one would have the application certify a rule
+the school never stated.
+
+**What each answer costs.** A unit figure, or a subject count, or both, plus what happens on a breach — refuse the
+proposal, or propose with a warning the Registrar sees. Refusing is a guard in `EnrollmentReadiness` and one message;
+warning is the same plus a flag on the payload. Neither is a migration.
+
+**Cost and undo.** One rule and one message, revertible in a commit. Until then §28.3's register states the absence
+rather than a default, and the answer is asked in the same words in §28.5.
+
+---
+
+**11. What is a faculty member's teaching load limit?** `[ADS problem 14, §28.5 — open]`
+
+**Why this is on the sheet and not in the code.** Assignments are stored, and a timetable collision is judged inside
+one term, so the record can already answer how many units one instructor carries at a moment — the scale measurement
+counts the heaviest instructor today. What nothing decides is when that is too many. A limit is a school's academic
+policy, and the only thing withheld here is the number, not the mechanism.
+
+**What each answer costs.** A units-per-term figure per instructor, and the same breach question as item 10: refuse
+the assignment that exceeds it, or file it and report it. The first touches `BlockingController`'s assign guard, the
+second is a report line; both stay inside the term the collision rule already scopes.
+
+**Cost and undo.** One guard or one report line, revertible in a commit. A blank answer costs nothing today and is
+recorded as blank, so the gap cannot be mistaken for a rule that exists.
+
+---
+
+**None of these eleven is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
 need no ruling; item 8's safety-by-default holds while it waits; items 1, 2, 3, 6, 7 and 9 change only once the
-school says which behaviour is intended. Each
+school says which behaviour is intended; items 10 and 11 wait only on a number, and nothing in the build is invented
+to fill their place. Each
 answer comes back off the same way it went in: one commit, plus a reseed for anything that touches
 reference data.

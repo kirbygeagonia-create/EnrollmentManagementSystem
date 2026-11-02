@@ -3699,6 +3699,51 @@ titled for audit logs and its own subsection enumerates seven families, so the c
 lives outside this repository, which is why the row states what was read rather than a line number: no gate here can
 weigh a pointer into a file the clone cannot open.
 
+- **A deactivated account stops at its next request, and both doors say one sentence** (§28.3 G-42's second half,
+prompt §9's user accounts, ruled 2026-11-02 as item 2 of the 2026-10-29 sheet). Before this the refusal lived only in
+`LoginRequest`, so a desk switched off while its tab was open kept acting for the life of the cookie — and no policy,
+provider or controller anywhere else read `staffusers.status` at all (measured by grepping the word across
+`app/`). `App\Http\Middleware\RejectDeactivatedAccount` now sits in the web group and asks the account its own
+status on each request. Three rules travel with it. **Read the status, never the role** — §9 asks that account state
+and permission assignment stay distinct, and an account may hold every right and still be closed. **One sentence for
+one state**: the mid-session refusal calls `DenialReason::deactivated()`, the holder the login screen has always
+used, and `one_sentence_answers_a_closed_account_at_both_doors` reads the login source to refuse a literal copy —
+two explanations of one condition is how a drift between the doors becomes invisible. **A refusal that redirects must
+say why and keep what was typed** — `withErrors` under the field the sign-in form renders, plus `withInput()`, per
+the standing rule that a dead-end page is worse than an inline reason; the half of the ruling that imagined landing
+the desk back on its own record is realised on the sign-in screen instead, because the session that would carry it
+there has just been closed, and the sheet says so rather than the difference being smoothed.
+`tests/Feature/Auth/DeactivatedAccountStopsMidSessionTest.php` is directional on both sides of the flip — the same
+account and the same route while active and while deactivated — because a case that only shows the refusal also
+passes for a guard that refuses everything. Prove it with
+`php storage/app/scratch/mutate-g42-account-stop-tests.php` (its session-invalidation leg is WITHHELD with its
+reason in the file: `logout()` already ends the signed-in state, so dropping `invalidate()` cannot fail, and a leg
+that cannot fail is decoration). After any batch that touches the middleware, `LoginRequest`, `DenialReason` or
+`StaffStatus`: run that file and `tests/Feature/Auth/AuthenticationTest.php`, prove with the harness, then re-take
+every pointer into `bootstrap/app.php` and `LoginRequest.php` — registering a middleware is an import line, and the
+markdown gate sees only the pointer that hits a blank line. Its delivered gates are stated as properties, not totals:
+the whole run and `artisan test --list-tests` answer the *same* number, which is the check that no inserted method
+stole a `#[Test]` attribute, and Pint, PHPStan, ESLint and the build were each read off their own line rather than
+from the command I had run.
+
+- **A register's count cell is a claim about its rows, and closing a row moves the actor table too** (§28.5 and
+§29.4, 2026-11-02). Two question rows were added and §29.4's "Open decisions" cell kept the older number, which is
+lane 64's stated-range defect arriving in a cell this repository had never weighed — `lane61` reads status words and
+`lane69` counts rows, neither binds one section's cell to another section's physical rows. `php
+storage/app/scratch/lane212-weigh-question-register.php` does, and proves it from `word/document.xml` rather than the
+flat dump, because the dump drops empty cells and cannot state a row's structure; it locates the cell by shape (the
+cell whose whole text is the label, the next cell numeric), so a reworded heading refuses the run instead of judging
+nothing. Prove any change to it with `php storage/app/scratch/mutate-lane212-question-register.php`, which prints its
+own leg total and lists its planted copies afterwards rather than trusting its exit code. Two complaints came out of
+the passes that wrote those rows, and both are already-named classes: a row about the ADS guide spelled that guide's
+own numbering `§7.3` and `§7.9`, which every checker here resolves against *this* document's 196 headings — an
+internal reference to another document must name that document, and here the fix was this document's real section
+beside the ADS problem number; and §28.8's actor table still counted the two findings this batch closed as owed to an
+office, because closing a row moves its verdict cell, the actor lists, the family counts and the cross-references, and
+only the first of those is where the edit lands. When a register row closes: re-take §28.8's two list cells, §29.4's
+count, §28.5 if the question was a school one, and `lane69-owes-table-check.php` is the instrument that refuses when
+the table and the column disagree.
+
 ## Editing the authority docx
 
 `word/document.xml` is ~5.7M characters and its sentences are split across `<w:t>` runs, so:

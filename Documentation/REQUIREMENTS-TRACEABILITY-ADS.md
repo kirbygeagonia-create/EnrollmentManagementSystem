@@ -460,7 +460,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 ### P17 — Power Interruption During Enrollment (¶201-211)
 
 - **Existing implementation.** InnoDB durability and the transaction boundaries above; `LoginRequest` rate-limits
-  (`app/Http/Requests/Auth/LoginRequest.php:47-82`) and nothing else does.
+  (`app/Http/Requests/Auth/LoginRequest.php:48-83`) and nothing else does.
 - **Built in this batch.** `enrollments.requestKey` (varchar 64, nullable) with `uq_enrollments_request_key` over it,
   added by `database/migrations/2026_11_01_1800000000_add_request_key_to_enrollments_table.php`.
   `EnrollmentIssuer::issue($attributes, $issuer, $requestKey)` reads the key first and answers the enrollment that

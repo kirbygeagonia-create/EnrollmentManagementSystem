@@ -5,6 +5,7 @@ use App\Exceptions\PrintRendererMissing;
 use App\Exceptions\WorkflowAlreadySignedException;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\NameAuditAct;
+use App\Http\Middleware\RejectDeactivatedAccount;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\DenialReason;
 use Illuminate\Database\QueryException;
@@ -37,6 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
             // Names the desk act for every audit row the request writes (§28.3 G-37).
             NameAuditAct::class,
+            // A deactivated account stops here rather than at its next login (§28.3 G-42). Last in the list on
+            // purpose: the refusal is a redirect, and travelling back out through the appended middleware is what
+            // gives that redirect its security headers instead of a bare 302.
+            RejectDeactivatedAccount::class,
         ]);
 
         // Spatie permission middleware aliases for route-level RBAC (build plan 2.2)
