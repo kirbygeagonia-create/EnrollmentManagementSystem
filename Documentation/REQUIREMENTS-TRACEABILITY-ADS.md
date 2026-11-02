@@ -65,7 +65,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 - **Source / objective.** Enrollment spans several subjects; one fails; the rest must not stand.
 - **Applicability.** Applies. The build's enrollment act is `EnrollmentIssuer::issue()`.
-- **Existing implementation.** `app/Services/EnrollmentIssuer.php:109` opens `DB::transaction(fn)` and returns the
+- **Existing implementation.** `app/Services/EnrollmentIssuer.php:113` opens `DB::transaction(fn)` and returns the
   closure's value, so the `enrollments` insert and the workflow form written at `:76` and `:78` commit together or
   not at all. The Registrar's approve and drop acts wrap their subject lines, the status transition and the box
   signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:335`, `:373`). 38
@@ -126,7 +126,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 - **Existing implementation.** Subject lines: `database/migrations/2026_08_09_1000000004_extend_enrolledsubjects_table.php:33`
   declares `uq_enrollment_subject_attempt` on (`enrollmentId`, `subjectId`, `attempt_number`) — a second identical
   line is refused by the server. The active-seat rule is code: `EnrollmentIssuer::seatHolder()` at
-  `app/Services/EnrollmentIssuer.php:39-45` reads a non-dropped enrollment for a student and term, and a caller
+  `app/Services/EnrollmentIssuer.php:40-46` reads a non-dropped enrollment for a student and term, and a caller
   refuses when one exists. `studentassessments` has no unique key on `enrollmentId` (measured against
   `database/migrations` — no `unique(` names that table).
 - **What was delivered, and what was taken back out.** `uq_studentassessments_enrollment` on
@@ -450,7 +450,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 ### P16 — Transaction Failure During Enrollment (¶191-200)
 
-- As P01: the mechanism exists (`EnrollmentIssuer.php:109`) and the midway demonstration is now captured on that
+- As P01: the mechanism exists (`EnrollmentIssuer.php:113`) and the midway demonstration is now captured on that
   very act. A `try/catch` that swallows without rolling back is refused by the framework's own closure form, which
   is worth saying out loud in the defense, and the closure's other direction is measured: `lane198-probe-forced-rollback.php`
   lets the enrollment row be written, throws at the next statement from a query listener on the same connection, and
@@ -628,7 +628,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 | Concept (guide ¶) | Status | Where | Evidence owed |
 |---|---|---|---|
-| Transactions (¶295) | Implemented and demonstrated | 38 `DB::transaction` sites; `EnrollmentIssuer.php:58` | T01's two cases, and `lane198-out.txt` for the commit and the forced failure of one act |
+| Transactions (¶295) | Implemented and demonstrated | 38 `DB::transaction` sites; `EnrollmentIssuer.php:59` | T01's two cases, and `lane198-out.txt` for the commit and the forced failure of one act |
 | COMMIT / ROLLBACK (¶297) | Implemented and demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest`, the rollback by `lane198-probe-forced-rollback.php` | none for the general case; the subject-line injection is the one half still open (named under P01) |
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
 | Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |

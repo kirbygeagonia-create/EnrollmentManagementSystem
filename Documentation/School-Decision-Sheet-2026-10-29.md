@@ -107,7 +107,11 @@ reconciliation report, not a rewrite.
   `payment.void`, `step.sign`, `role.change` — with `created`, `updated` and `deleted` still written for a plain edit
   that belongs to no named act. The seven families prompt §9 lists then answer to a query, which is what the item
   asked for; no migration is involved, and the domain rows keep carrying their own actor, date and reason beside it.
-  §28.3's G-37 row stays open until the list and the writes are in the tree.
+  §28.3's G-37 row stays open until the list and the writes are in the tree. **It closed on 2026-11-02, the same day
+  as the ruling:** `App\Support\AuditAct` holds the vocabulary and the map from each desk route to the act it
+  performs, and `App\Http\Middleware\NameAuditAct` names the act for every row one request writes. The list is read
+  from that class rather than copied here, so this sheet cannot drift from it; the audit desk's own Action filter is
+  built from the same source, which retired nine options that named a word nothing writes.
 
 ---
 

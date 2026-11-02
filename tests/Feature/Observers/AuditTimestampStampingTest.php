@@ -5,6 +5,7 @@ namespace Tests\Feature\Observers;
 use App\Enums\StaffRole;
 use App\Models\Auditlogs;
 use App\Models\Staffusers;
+use App\Support\AuditAct;
 use Carbon\Carbon;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,7 +170,7 @@ class AuditTimestampStampingTest extends TestCase
         }
 
         $row = DB::table('auditlogs')
-            ->where('action', 'assigned')
+            ->where('action', AuditAct::ROLE_CHANGE)
             ->where('entityId', $target->userId)
             ->orderByDesc('auditId')
             ->first();

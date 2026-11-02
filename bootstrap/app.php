@@ -4,6 +4,7 @@ use App\Exceptions\InvalidStateTransitionException;
 use App\Exceptions\PrintRendererMissing;
 use App\Exceptions\WorkflowAlreadySignedException;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\NameAuditAct;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\DenialReason;
 use Illuminate\Database\QueryException;
@@ -34,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             SecurityHeaders::class,
             AddLinkHeadersForPreloadedAssets::class,
+            // Names the desk act for every audit row the request writes (§28.3 G-37).
+            NameAuditAct::class,
         ]);
 
         // Spatie permission middleware aliases for route-level RBAC (build plan 2.2)

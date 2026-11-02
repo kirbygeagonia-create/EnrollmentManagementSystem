@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Auditlogs;
 use App\Models\Staffusers;
+use App\Support\AuditAct;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -91,7 +92,9 @@ class AuditLogObserver
 
         Auditlogs::create([
             'userId' => $userId,
-            'action' => $action,
+            // The act's own name while an act is running (prompt §9's seven families), so a query can ask
+            // "who voided a receipt" without reading eight domain tables. A plain edit keeps the event word.
+            'action' => AuditAct::labelFor($action),
             'adminOverride' => $adminOverride,
             'entityTable' => $model->getTable(),
             'entityId' => (string) $model->getKey(),

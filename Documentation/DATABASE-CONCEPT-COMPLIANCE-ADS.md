@@ -20,7 +20,7 @@ never measured it is unfalsifiable.
 ## 1. Transactions (¶295) — Implemented
 
 **Actual implementation.** 38 `DB::transaction(...)` sites in `app/`. The enrollment act is
-`app/Services/EnrollmentIssuer.php:109`, whose closure writes the `enrollments` row and then the workflow form, so
+`app/Services/EnrollmentIssuer.php:113`, whose closure writes the `enrollments` row and then the workflow form, so
 a record and its desk checklist commit together or not at all. The Registrar's approve (`RegistrarController.php:335`)
 and drop (`:368`) wrap subject lines, the status transition and the box signature in one transaction. The status
 machine is the only writer of `enrollmentstatushistory` and transitions inside its own transaction
@@ -100,7 +100,7 @@ lost-update guard (P05) and the remaining report screens (P20's named remainder)
 ## 4. Concurrency Control (¶301) — Implemented on the shared resources; the profile edit is versioned, the child rows are not
 
 **What exists.** Optimistic serialization by status: a box that is already signed refuses a second signature
-(`WorkflowService`'s `WorkflowAlreadySignedException`), and `EnrollmentIssuer::seatHolder()` (`app/Services/EnrollmentIssuer.php:39-45`)
+(`WorkflowService`'s `WorkflowAlreadySignedException`), and `EnrollmentIssuer::seatHolder()` (`app/Services/EnrollmentIssuer.php:40-46`)
 answers the enrollment that already holds a student's seat in a term. Notifications dedupe on a unique key
 (`app/Support/NoticeDelivery.php:32-37` catching MySQL 1062), which is the database arbitrating a race.
 

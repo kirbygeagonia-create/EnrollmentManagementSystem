@@ -12,6 +12,7 @@ use App\Enums\StudentType;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
+use App\Models\Auditlogs;
 use App\Models\Courses;
 use App\Models\Enrollments;
 use App\Models\Enrollmentworkflow;
@@ -20,6 +21,7 @@ use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Students;
 use App\Services\EnrollmentIssuer;
+use App\Support\AuditAct;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,6 +114,33 @@ class EnrollmentRequestKeyTest extends TestCase
             'one act produced two enrollments — the interruption the guide asks about is still a duplicate.');
         $this->assertSame(1, Enrollmentworkflow::where('enrollmentId', $first->enrollmentId)->count(),
             'the replay opened a second workflow form on one enrollment.');
+    }
+
+    /**
+     * Prompt §9 asks that an act be answerable, not merely the row change behind it. The issuer is the act's only
+     * writer, so the audit row for the enrollment it creates must read `enrollment.issue` — and the replay must not
+     * add a second one, because a replay is the same act rather than a new one.
+     */
+    #[Test]
+    public function the_issuing_act_names_itself_in_the_audit_trail_and_a_replay_adds_no_second_entry(): void
+    {
+        $key = 'audit-'.uniqid();
+
+        $first = app(EnrollmentIssuer::class)->issue($this->attrs(), $this->desk, $key);
+        app(EnrollmentIssuer::class)->issue($this->attrs(), $this->desk, $key);
+
+        $actions = Auditlogs::where('entityTable', 'enrollments')
+            ->where('entityId', (string) $first->enrollmentId)
+            ->pluck('action')
+            ->values()
+            ->all();
+
+        $this->assertContains(AuditAct::ISSUE, $actions,
+            'the audit trail still says only `created`, so §9 cannot be answered as a query: '.json_encode($actions));
+        $this->assertNotContains('created', $actions,
+            'a named act must replace the event word, not sit beside it as a second spelling.');
+        $this->assertCount(1, $actions,
+            'a replay of one act wrote a second audit row; the trail would read two issues from one desk action.');
     }
 
     /**

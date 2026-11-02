@@ -141,7 +141,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   cascade (the RBAC pivots `RbacSeeder`'s prune relies on), one is RESTRICT (`shiftingrequests.requestedBy`),
   and 72 refuse a delete outright. Every desk delete answers those with a **hand-written list** of child tables
   — `blockedDeletionMessage()`, a `->exists()` chain, a private helper, or a relation check — and a list that omits
-  one does not produce a 500: `bootstrap/app.php:140` renders the `QueryException` as a generic "conflicts with
+  one does not produce a 500: `bootstrap/app.php:143` renders the `QueryException` as a generic "conflicts with
   information already on file… reload and retry", which names no record and tells the desk to repeat something
   that can never work. Lane 43 found exactly that in two screens: the shift module named `courses` twice and
   `staffusers` once, and neither guard had been told. A checker that reports zero sites must refuse (it once
@@ -803,7 +803,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   identity, not a census of `payments`), COMPARISON (one number repeated beside several tables — "They are two
   stages, two offices, two permissions" counts the flows being compared, while `offices` answers 9), CODEISH (a
   number on a class member: "the two `Enrollments::create` sites in app/" counts call sites, which a grep answers —
-  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:131`, so the sentence is true
+  and it answered exactly two, `AdmissionController.php:394` and `EnrollmentIssuer.php:135`, so the sentence is true
   and simply not this tool's question), and PER-RECORD (a *lone* number inside an enumeration of eleven table
   names: §3's walkthrough trail "…payments, enrollmentstatushistory, 7 workflowsteps, clinicrecords, idrequests"
   is one enrollment's own trail, not the 199 `workflowsteps` holds). **A census list and a trail list look alike and
@@ -1754,8 +1754,8 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   honoured rather than tolerated: blunting one cell raises the ambiguous count and names the row, renaming one
   header raises it for the whole table, and planting a Built claim in the prose of a row whose cell says "Not built"
   changes nothing. Two rows then stood out as `NO-ARTIFACT` — a Built claim naming no file — and both were made
-  resolvable by naming the files a grep confirmed, which is where the column earns its keep: nine rows now read
-  Not built, none is ambiguous, and every built claim points at a path the repository holds. **A markdown table row is
+  resolvable by naming the files a grep confirmed, which is where the column earns its keep: the tool prints the
+  not-built count on its own line, none is ambiguous, and every built claim points at a path the repository holds. **A markdown table row is
   ONE line, and an edit that wraps it mid-cell does not fail — it shrinks the table.** Re-typing this row with a hard
   break inside a cell made the next run read 27 of 28 gap rows and 33 artifacts instead of 47, a quiet loss of a whole
   row and fourteen pointers; the check is the tool's own row count, so re-run it after any edit to a table cell, and
@@ -3218,7 +3218,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   enrollment" row said `createWorkflow()` "is called once, from the Evaluation signature", and §18.6's workflow row said
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
-  answers **two**: `EnrollmentIssuer.php:133`, inside `create()` directly after `Enrollments::create` at :131, and
+  answers **two**: `EnrollmentIssuer.php:137`, inside `create()` directly after `Enrollments::create` at :131, and
   `EvaluationController.php:1005`, behind `if (! $enrollment->enrollmentworkflow)` at :1004. (Re-taken 2026-11-02 by
   reading both lines in the working file: the pair had aged some 76 lines through earlier batches and every instrument
   agreed with it, because a pointer that lands on live code in the right file is invisible to a bounds sweep — this
@@ -3660,6 +3660,45 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   for every later request in that same test — so three HSTS cases written in one method pass the third on the
   second case's leftover state and prove nothing. One method per case.
 
+- **An audit act is named once, at the request that performs it** (§28.3 G-37, prompt §9's audit families, built
+2026-11-02 on the owner's ruling of the 2026-10-29 sheet's item 4). `App\Support\AuditAct` holds three things and is
+the only place that holds them: the named acts, the map from each desk route to the act it performs, and the event
+words a plain edit keeps. `App\Http\Middleware\NameAuditAct` reads that map and brackets the request in
+`AuditAct::run()`, which restores the previous label in a `finally`, so a nested act (an enrollment issued inside an
+intake approval) cannot leak its name outward and a thrown act cannot leave it on the next request. The observer
+copies the label into `auditlogs.action`. **Adding an act is one map line** — the alternative this batch rejected was
+a wrapper at each write, which needs an import line in ten heavily-cited controllers and still names only the one row
+it wraps, whereas a desk act writes the record, its workflow box, its status history and its notice. The cost is
+stated rather than hidden: the act word is not visible at the write, so `AuditActNamingTest` carries the guards the
+reader would otherwise have to remember — every map key resolves to a real route name (a renamed route would leave
+its act unnamed and every other case green), every map value is a listed act, no listed word reaches nothing, and one
+case drives a **real request** because every other case in the class would still pass if the middleware were never
+registered. `mutate-g37-audit-act-tests.php` plants exactly that among its legs, and it is the leg that indicts the
+suite rather than the code. Queued work runs in a worker with no request, so a notice written by a delayed job keeps
+the event word — the act that caused it is on the same record's rows.
+  **A desk filter must be built from the words the code writes, not typed on the screen.** The audit page's Action
+list held thirteen entries and nine named an act nothing has ever written: live `ems` was asked and the column holds
+`created`, `updated` and `deleted` and no other word. `lane46-filter-contract.php` could not see this, because its
+FICTION verdict reads the column's MySQL **enum** and `auditlogs.action` is a varchar — every value is "producible" as
+far as the schema is concerned, while the repository's writers produce three. So the handler shares
+`AuditAct::vocabulary()` and the page maps that prop; the equality is pinned in the test class, and one harness leg
+re-types a dead option into the JSX to prove the guard bites. **After any batch that touches `AuditAct`, the
+middleware, the observer, or the audit page:** run `php artisan test tests/Feature/Audit/AuditActNamingTest.php`,
+prove it with `php storage/app/scratch/mutate-g37-audit-act-tests.php`, then
+`php storage/app/scratch/lane46-filter-contract.php` proved by `mutate-lane46-filter-contract.php`, then re-take the
+citations — `lane76-shift-cites.php` for the docx and `lane210-repoint-g37-md.php`-style byte reads for markdown,
+because this batch aged twenty-two markdown numbers — the sum the re-pointer prints per file, not arithmetic done here —
+and the citation gate reported **three**: a pointer that lands one row short of its construct is invisible to a bounds
+check, and an import line is enough to do it.
+  **Two residuals this batch recorded instead of papering over.** §13's narrative sentence still reads
+`(updated on workflowsteps)`; the words sit in four separate `<w:t>` runs — the pass prints them — and the `para` kind
+would flatten a paragraph carrying live citations, so the two §20.5 rows that tell a desk what to filter on were
+corrected and that one sentence was named. And the matrix had been asserting for weeks that prompt §9 is the
+section-capacity requirement and that the prompt states no seven-family audit vocabulary; the prompt was opened, §9 is
+titled for audit logs and its own subsection enumerates seven families, so the correction *was* the error. The prompt
+lives outside this repository, which is why the row states what was read rather than a line number: no gate here can
+weigh a pointer into a file the clone cannot open.
+
 ## Editing the authority docx
 
 `word/document.xml` is ~5.7M characters and its sentences are split across `<w:t>` runs, so:
@@ -4003,7 +4042,7 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
 - **A race probe's SAFE bucket must charge every outcome that is not a success** (lane190, ADS problem 10, 2026-11-01).
   Its first version counted `1213` into a "deadlock or lock-timeout" bucket and then wrote `SAFE` while 4 of 10
   children had died there, because the unsafe clauses only looked at row counts, duplicates and *other* driver
-  errors. A deadlock is not a refusal: the caller receives a `QueryException` and `bootstrap/app.php:140` answers the
+  errors. A deadlock is not a refusal: the caller receives a `QueryException` and `bootstrap/app.php:143` answers the
   generic "conflicts with information already on file… reload and retry" page, so the desk gets no reason and no
   record of what it just did — which is the same 500 that lane168 measured as HEAD's *defect* on the seat act. The
   bucket was fixed before the finding was quoted, and the delivered run then read `UNSAFE — 4 of 10 writers died on a

@@ -7,6 +7,7 @@ use App\Enums\EnrollmentType;
 use App\Models\Curriculums;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
+use App\Support\AuditAct;
 use App\Support\SchoolTime;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -83,7 +84,10 @@ class EnrollmentIssuer
         }
 
         try {
-            return $this->create($attributes, $issuer, $requestKey);
+            // The audit row for an issued enrollment says `enrollment.issue`, not `created`, so §9's family is
+            // answerable as one query. The label is bracketed: the replay path below returns without writing, and
+            // nothing after this call may inherit the name.
+            return AuditAct::run(AuditAct::ISSUE, fn () => $this->create($attributes, $issuer, $requestKey));
         } catch (UniqueConstraintViolationException $e) {
             // Two requests carrying one key can both pass the read above; the unique index is what refuses, and a
             // refusal here is a success with a different spelling. The pre-check is the fast path, never the guard.

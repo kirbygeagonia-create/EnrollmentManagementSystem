@@ -188,8 +188,11 @@ Documents: the five ADS files plus `TESTING-AND-VERIFICATION-ADS.md`, `IMPLEMENT
 
 ## 12. Next steps
 
-1. Answer the thirteen school items on the dated sheets — two of them (P13, P14) unblock tests that cannot be
-   written without a number.
+1. Answer the thirteen school items on the dated sheets. Two further figures are also owed by the school and are **not**
+   among those items: the term unit ceiling (P13) and the faculty teaching-load limit (P14). Both are recorded as
+   register gaps and narrated in the authority document's §1.1, and neither has a row in §28.5's school-question
+   register or an item on a sheet, so no packet currently carries them — which is why the tests that would price a
+   ceiling cannot be written without inventing a number the school never approved.
 2. Add `uq_enrollmentworkflow_enrollment`. P17's request key removed the reason it was unsafe — a re-sent act is now
    answered with the enrollment that exists rather than reaching the form at all — so the server can hold "one
    workflow form per enrollment", which today only `WorkflowService::createWorkflow()` does.

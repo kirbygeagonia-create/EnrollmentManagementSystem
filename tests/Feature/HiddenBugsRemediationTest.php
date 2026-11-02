@@ -35,6 +35,7 @@ use App\Models\Students;
 use App\Policies\AdmissionPolicy;
 use App\Policies\ClearancePolicy;
 use App\Services\EnrollmentStateMachine;
+use App\Support\AuditAct;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -227,7 +228,7 @@ class HiddenBugsRemediationTest extends TestCase
 
         $log = Auditlogs::where('entityTable', 'staffusers')
             ->where('entityId', $staff->userId)
-            ->where('action', 'assigned')
+            ->where('action', AuditAct::ROLE_CHANGE)
             ->first();
 
         $this->assertNotNull($log, 'Audit log should be recorded for role assignment');

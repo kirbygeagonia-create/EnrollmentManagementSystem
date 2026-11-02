@@ -13,6 +13,7 @@ use App\Models\Roles;
 use App\Models\Settings;
 use App\Models\Shiftingrequests;
 use App\Models\Staffusers;
+use App\Support\AuditAct;
 use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -219,7 +220,7 @@ class UserManagementController extends Controller
 
                 Auditlogs::create([
                     'userId' => $currentUserId,
-                    'action' => 'assigned',
+                    'action' => AuditAct::ROLE_CHANGE,
                     'entityTable' => 'staffusers',
                     'entityId' => $user->userId,
                     'oldValues' => ['roles' => $oldRoles],
@@ -317,7 +318,7 @@ class UserManagementController extends Controller
 
         Auditlogs::create([
             'userId' => $currentUserId,
-            'action' => 'assigned',
+            'action' => AuditAct::ROLE_CHANGE,
             'entityTable' => 'staffusers',
             'entityId' => $user->userId,
             'oldValues' => ['roles' => $oldRoles],
@@ -593,6 +594,9 @@ class UserManagementController extends Controller
         return Inertia::render('Admin/UserManagement/AuditLogs', [
             'logs' => $logs,
             'entityTables' => $entityTables,
+            // The words the column can hold, from the code that writes them. The screen used to type its own
+            // list, and nine of its thirteen options named a word no writer produces.
+            'actions' => AuditAct::vocabulary(),
             'stats' => [
                 'total' => $logs->total(),
                 'created' => (int) ($actionCounts['created'] ?? 0),

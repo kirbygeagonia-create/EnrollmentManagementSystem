@@ -119,9 +119,12 @@ declined does not drop its requirement. The band is pinned by `tests/Feature/Eva
 (11 cases, including the group sizes exactly at the minimum and exactly at the maximum, which pass).
 `App\Support\EnrollmentReadiness` is not one of those guards: it answers
 clearance, verified documents and prerequisites, and says nothing about a load. There is
-**no term unit ceiling**, because the number is the school's to state (matrix gap **P13**, still `Not built`, and one
-of the items on the open school-question register — `lane69-open-inventory.php` answers what waits on an office). The honest answer in a defence is "the rule is a figure we have not been
-given; inventing 21 units would be data the school never approved."
+**no term unit ceiling**, because the number is the school's to state (matrix gap **P13**, still `Not built`,
+recorded there and in the authority document's §1.1 revision row). Read this precisely: the figure is *not* yet on the
+school-question register. `php storage/app/scratch/lane69-open-inventory.php` answers what waits on an office, and its
+answer today is six open register rows and thirteen sheet items, none of them this ceiling — so the register owes an
+entry, and saying "it is on the register" would be a claim the instrument contradicts. The honest answer in a defence
+is "the rule is a figure we have not been given; inventing 21 units would be data the school never approved."
 
 ## 7. How prerequisite requirements are checked
 

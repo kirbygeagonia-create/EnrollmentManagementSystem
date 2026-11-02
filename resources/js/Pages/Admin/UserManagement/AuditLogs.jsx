@@ -4,38 +4,21 @@ import { useState, useMemo } from 'react';
 import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Select, EmptyState, Modal, StatCard, nextSortDirection, sortParams } from '@/Components/ui';
 import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 
-const actionOptions = [
-    { value: '', label: 'All Actions' },
-    { value: 'created', label: 'Created' },
-    { value: 'updated', label: 'Updated' },
-    { value: 'deleted', label: 'Deleted' },
-    { value: 'viewed', label: 'Viewed' },
-    { value: 'printed', label: 'Printed' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'status_changed', label: 'Status Changed' },
-    { value: 'assigned', label: 'Assigned' },
-    { value: 'unassigned', label: 'Unassigned' },
-    { value: 'login', label: 'Login' },
-    { value: 'logout', label: 'Logout' },
-];
+// The three event words get a colour of their own; every named act shares one tone, because a word like
+// `payment.refund` carries its meaning in the word rather than in a colour the page would have to keep in step
+// with a PHP list it cannot read.
+const eventTones = { created: 'success', updated: 'info', deleted: 'danger' };
 
-const actionToneMap = {
-    created: 'success',
-    updated: 'info',
-    deleted: 'danger',
-    viewed: 'neutral',
-    printed: 'accent',
-    approved: 'success',
-    rejected: 'danger',
-    status_changed: 'warning',
-    assigned: 'info',
-    unassigned: 'warning',
-    login: 'success',
-    logout: 'neutral',
-};
+const actionTone = (word) => eventTones[word] || 'info';
 
-export default function AuditLogs({ logs, stats = {}, entityTables = [], filters = {}, sort = null }) {
+// `payment.void` reads at a desk as "Payment Void", not as a dotted identifier.
+const actionLabel = (word) =>
+    word
+        .split(/[._]/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+
+export default function AuditLogs({ logs, stats = {}, entityTables = [], actions = [], filters = {}, sort = null }) {
     const [action, setAction] = useState(filters.action || '');
     const [entityTable, setEntityTable] = useState(filters.entityTable || '');
     const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
@@ -68,7 +51,7 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
         )},
         { key: 'action', label: 'Action', sortKey: 'action', render: (row) => (
             <div className="flex items-center gap-1.5">
-                <Badge tone={actionToneMap[row.action] || 'neutral'} className="capitalize">
+                <Badge tone={actionTone(row.action)} className="capitalize">
                     {row.action?.replace(/_/g, ' ')}
                 </Badge>
                 {/* Item 3: oversight-role write flag from the audit observer */}
@@ -145,6 +128,14 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
         { value: '', label: 'All Entities' },
         ...(entityTables || []).map((t) => ({ value: t, label: t })),
     ], [entityTables]);
+
+    // The Action choices are the words the server can actually write, sent by the handler that reads them back
+    // out of `auditlogs.action`. The page used to type its own list of thirteen, and nine of them named an act no
+    // code performs — a desk could filter for `logout`, get nothing, and read the log as quiet.
+    const actionOptions = useMemo(() => [
+        { value: '', label: 'All Actions' },
+        ...(actions || []).map((a) => ({ value: a, label: actionLabel(a) })),
+    ], [actions]);
 
     const renderActions = (row) => (
         <div className="flex items-center gap-1">
@@ -313,7 +304,7 @@ export default function AuditLogs({ logs, stats = {}, entityTables = [], filters
                             <div>
                                 <p className="text-xs uppercase tracking-wide text-brand-400 mb-1">Action</p>
                                 <div className="flex items-center gap-1.5">
-                                    <Badge tone={actionToneMap[viewingLog.action] || 'neutral'} className="capitalize">{viewingLog.action?.replace(/_/g, ' ')}</Badge>
+                                    <Badge tone={actionTone(viewingLog.action)}>{actionLabel(viewingLog.action)}</Badge>
                                     {viewingLog.adminOverride && (
                                         <span className="text-4xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full">
                                             Admin Override

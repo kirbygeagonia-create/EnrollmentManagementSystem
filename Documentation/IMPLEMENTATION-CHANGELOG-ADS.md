@@ -147,6 +147,13 @@ Two choices worth recording:
 | `storage/app/scratch/lane207-verify-guide-copy.php` | reads the copy back window by window: each problem's answer must sit between its own `Problem N —` heading and the next, with its title, its seven fields and its enumerated question count; refuses the school's blank form with 24 defects, which is its positive control. |
 | `storage/app/scratch/mutate-lane203-guide-form.php` | the writer's falsifier, 24 legs against throwaway copies of the form and the answer file (`--guide=` / `--answers=`): label-vs-position ticking, a concept row whose name is not the guide's, two ☑ in one applicability row, a verdict word the paper cannot show, a short §V list, a §VII line with no underscores, a duplicated §VII label, a missing required field, the retired `s`-modifier regression read back as 48 rows, and a control that re-reads the input form's hash because a writer that edits the school's blank original destroys it. |
 
+| `app/Support/AuditAct.php` | the one vocabulary of named desk acts, the map from each desk route to the act it performs, the event words a plain edit keeps, and the bracketed scope that restores the previous label in a `finally` so a nested act cannot leak its name. The word list lives here and nowhere else — two answers to "what is this act called" is how `assigned` and `role.change` would otherwise sit in one column. |
+| `app/Http/Middleware/NameAuditAct.php` | names the act for every row one desk request writes. The alternative — a wrapper at each write — needed an import line in ten controllers and would still have missed the second, third and fourth row an act touches; here an act is added by one map line, and the test refuses a map entry whose route name no longer resolves. |
+| `tests/Feature/Audit/AuditActNamingTest.php` | the mechanism (an act names its rows; a plain edit keeps the event word; nesting restores; a thrown act clears; an unknown word is refused by name), the map's two guards (every route named exists, every value is a listed act), the reachability guard (no act word that nothing writes), the vocabulary equality, and the case that drives a real request — because every other case would stay green if the middleware were never registered. |
+| `storage/app/scratch/mutate-g37-audit-act-tests.php` | the falsifier, one leg per promise, each requiring its named case to fail with its own assertion: the middleware unregistered, the middleware ignoring its map, a renamed route, a word outside the list, an act reaching nothing, the vocabulary emptied, the screen typing its own words, the observer ignoring the act, the label not restored, an unknown word accepted, a duplicate and a stray in the list, and the issuing act unwired. The harness prints its own leg total. |
+| `storage/app/scratch/lane210-repoint-g37-md.php` | re-points markdown pointers by byte-read endpoints, validating every pair before writing anything and applying longest-pointer-first because `:275,283` is the head of `:275,283,344`. Written because this batch aged twenty-one markdown numbers and the citation gate reported three. |
+| `storage/app/scratch/refresh-docx-pass403.php` / `refresh-docx-pass404.php` | close §28.3 G-37 and its three registers, re-take the two rows that told a reader to filter the log by `updated`, refuse unless the server answers the column counts the new cells quote, and clone the §1.1 revision row with every run emptied and order asserted on read-back. |
+
 ## 4. Documents changed
 
 - **Authority docx** (the record of this batch's own edits):
@@ -218,6 +225,28 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
   the authority document; the first run against the new copy read a stale report file and had to be re-taken after
   deleting it, which is the reading this project keeps paying for — decide from what the command printed, not from
   what the file beside it used to say.
+- `mutate-g37-audit-act-tests.php` reported, on thirteen of its seventeen legs, that the tree was not restored after
+  the vocabulary file — while the restore was working. Its hash table was built with `array_map('md5', $originals)`
+  over an array keyed by FILENAME, so `array_map` preserved those keys, and the guard compared each file against
+  `$hashes[$i]` with a numeric `$i` — an undefined key, compared to a real md5, which never agrees. A harness that
+  accuses a clean tree of staying dirty is worse than one that cannot fail, because the next reader relaxes the guard
+  instead of reading it; the comparison is keyed by filename now, and the leg that failed first is the one that found
+  it. (This bullet originally quoted the complaint's own text, and the artefact gate read the filename inside that
+  quotation as a path citation to a file at the repository root — which is the same lesson the citation gate already
+  carries: a citation-shaped token is a citation even inside prose about citations.)
+- The same harness's `page-types-its-own-words` leg demanded the case fail with `name a word nothing writes`, and the
+  case failed earlier with `the page is typing its own action words again` — its own assertion that fires first. A
+  leg's expected sentence must be read from the code's order, not from the last assertion in the list.
+- The register pass wrote its `read-back refused [...]` message with a `"` opening and a `'` closing, which parses as
+  one long string and fails at runtime rather than at lint; and `printf("%2$d")` inside double quotes interpolated
+  `$d` away, so the format became `%2 ` and PHP threw "Unknown format specifier". Both are this file's oldest trap —
+  a quote or a `$` inside a string that is built by interpolation — arriving in a pass script written ten minutes
+  after the last time it was named.
+- `Documentation/Prompt-Requirement-Matrix-2026-10-26.md` claimed for weeks that prompt §9 is the section-capacity
+  requirement and that the prompt states no seven-family audit vocabulary. The prompt was opened this session: §9 is
+  titled "Admin, Access Control, Audit Logs, and Archiving" and its Audit logs subsection enumerates exactly seven
+  families. The correction that had been made *to* the register was the error, and the row it accused was right — so
+  the reading of an outside document is a claim that needs the document, not a grep of the tree.
 
 ## 6. Deliberately not done
 
