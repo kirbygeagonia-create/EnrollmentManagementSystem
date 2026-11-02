@@ -50,7 +50,7 @@ if ($unknown !== []) {
 $pattern = $argvMap['docs'] ?? 'Documentation/*-ADS.md';
 $docs = glob($pattern) ?: [];
 if ($docs === []) {
-    fwrite(STDERR, "REFUSED: the pattern ".strtr($pattern, ['|' => '/']).' matched no document, so the run would be judging nothing.\n');
+    fwrite(STDERR, 'REFUSED: the pattern '.strtr($pattern, ['|' => '/']).' matched no document, so the run would be judging nothing.\n');
     exit(1);
 }
 
@@ -69,31 +69,140 @@ if (isset($argvMap['tracked'])) {
     $tracked = array_flip($trackedLines);
 }
 
-// What counts as a path citation: a backticked or bare token that looks like a repository path and names a file,
-// not a directory. Prose like `app/` or `resources/js` is excluded by requiring an extension.
-$patternPath = '(?<![\w/.-])((?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:php|md|txt|json|sql|log|ps1|mjs|docx|xml|jsx|tsx|js|neon|yml|yaml))';
+// What counts as a path citation. Two families, because a deliverable names an artefact both ways:
+//  (a) a token with a directory part — `storage/app/scratch/lane164-out.txt`, `Documentation/DATABASE-DESIGN-ADS.md`;
+//  (b) a **bare filename inside backticks** — `lane164-out.txt`, `ems-pre-live.sql`, `EMS Complete Documentation.docx`
+//      (the spaced title is a whole path with spaces in it, so a pattern of non-space characters could never see it).
+// Family (b) is resolved only against the tracked index, because a bare name has no directory to prove it.
+$exts = 'php|md|txt|json|sql|log|ps1|mjs|docx|xml|jsx|tsx|js|neon|yml|yaml';
+$patternPath = '(?<![\w/.-])((?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:'.$exts.'))';
+// Delimited with `/`, NOT with backticks: written as '`(...)`' the backticks are the delimiter and vanish
+// from the pattern, so the "code span" reader was really matching every bare filename anywhere in prose —
+// and matching the tail of `bootstrap/app.php` as `app.php`, which then looked ambiguous.
+$patternBare = '/`([A-Za-z0-9_][A-Za-z0-9 ._-]*\.(?:'.$exts.'))`/';
+// A full path with a space in it — `Documentation/EMS Complete Documentation.docx` — is a real artefact this
+// repository carries, and a pattern of non-space characters could never see it. Backticks are the boundary.
+$patternSpaced = '/`([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9 ._-]+)+\.(?:'.$exts.'))`/';
+
+/**
+ * Fenced code blocks are instructions, not claims that a file exists today: a usage block writes
+ * `git ls-files > storage/app/scratch/laneNN-tracked.txt` about a file the reader is about to create.
+ * They are skipped, and the skip is printed — an exemption a run does not show is the accepted-but-inert
+ * defect in a new costume.
+ */
+$stripFences = static function (string $text, int &$skipped): string {
+    $skipped += preg_match_all('/^```.*?^```/ms', $text);
+
+    return preg_replace('/^```.*?^```/ms', '', $text) ?? $text;
+};
+
+// The bare-name resolver, and where its population comes from. With `--tracked=` the index is git's own list,
+// which is what a clone receives — the exact question this gate asks. Without it the index is one walk of the
+// working tree, and the run says so, because an index built here cannot say whether a path travels.
+$index = [];
+$indexSource = '';
+if ($tracked !== null) {
+    foreach (array_keys($tracked) as $tp) {
+        $index[basename($tp)][] = $tp;
+    }
+    $indexSource = "git's index (".count($tracked).' paths)';
+} else {
+    $skip = ['vendor', 'node_modules', '.git', 'build', 'public/build'];
+    $it = new RecursiveIteratorIterator(
+        new RecursiveCallbackFilterIterator(
+            new RecursiveDirectoryIterator('.', FilesystemIterator::SKIP_DOTS),
+            static function ($cur) use ($skip): bool {
+                if ($cur->isDir()) {
+                    return ! in_array($cur->getBasename(), $skip, true);
+                }
+
+                return ! in_array(dirname(str_replace('\\', '/', $cur->getPathname())), $skip, true)
+                    && ! str_contains(str_replace('\\', '/', $cur->getPathname()), '/vendor/')
+                    && ! str_contains(str_replace('\\', '/', $cur->getPathname()), '/node_modules/');
+            }
+        )
+    );
+    $walked = 0;
+    foreach ($it as $f) {
+        if (! $f->isFile()) {
+            continue;
+        }
+        $rel = trim(str_replace('\\', '/', substr($f->getPathname(), 2)), '/');
+        $index[basename($rel)][] = $rel;
+        $walked++;
+    }
+    $indexSource = 'one walk of the working tree ('.$walked.' files) — tracking NOT judged';
+}
+if ($index === []) {
+    fwrite(STDERR, "REFUSED: the basename index read nothing, so every bare name would read MISSING.\n");
+    exit(1);
+}
+
+// Paths that live outside this repository by design, each named by its class rather than by a list a
+// later reader has to remember: the school's guide, the implementation prompt, the backup home, and the
+// HEAD exports the repository deliberately ignores.
+$externalClasses = [
+    '#^docs/[A-Za-z0-9_]+\.md$#' => 'the guide\'s own deliverable path (docs/), which this repository answers from Documentation/',
+    '#lane\d+-head-[A-Za-z0-9]+\.php$#' => 'a HEAD export, ignored by storage/app/.gitignore on purpose',
+    '#Master_Implementation\.md$#' => 'the implementation prompt, held outside the tree',
+    '#ADS_Final_Project_Guide[A-Za-z0-9 ._()-]*\.docx$#' => 'the school\'s guide docx, held outside the tree',
+    '#ems-pre-[A-Za-z0-9 ._()-]*\.sql$#' => 'a pre-change dump, which lives in the backup folder and never in the repository',
+    '#^EMS Complete Documentation\.docx$#' => 'the authority docx, cited by its own name',
+    '#^[A-Z][A-Z0-9_]+\.md$#' => "the implementation prompt's own deliverable name, answered here by a file under Documentation/",
+];
 
 $cited = [];
+$bare = [];
 $byDesign = [];
+$fences = 0;
 foreach ($docs as $doc) {
-    $text = (string) file_get_contents($doc);
+    $text = $stripFences((string) file_get_contents($doc), $fences);
     // Strip line-number citation tails first: `RegistrarController.php:321` is a pointer to a LINE in a file the
     // line gate already judges, and a bare path plus digits would double-count it here.
     preg_match_all('#'.$patternPath.'#i', $text, $m);
     foreach ($m[1] as $p) {
-        // The guide's own deliverable paths. Several ADS documents open by naming what the guide asks for
-        // (`docs/SYSTEM_ARCHITECTURE.md`) and then say which file in THIS repository carries it — a reference to a
-        // path the school's prompt names and the checkout does not hold. Exempted by prefix, printed by name:
-        // an exemption a run does not show is the accepted-but-inert defect in a new costume.
-        if (preg_match('#^docs/[A-Za-z0-9_]+\.md$#', $p)) {
-            $byDesign[$p][] = basename($doc);
+        $exempt = null;
+        foreach ($externalClasses as $rx => $why) {
+            if (preg_match($rx, $p)) {
+                $exempt = $why;
+                break;
+            }
+        }
+        if ($exempt !== null) {
+            $byDesign[$p][] = basename($doc).' — '.$exempt;
 
             continue;
         }
-        // A HEAD export is deliberately ignored (storage/app/.gitignore names the pattern, because it is a second
-        // copy of a tracked file). A document that cites one is describing the command that makes it.
-        if (preg_match('#lane\d+-head-[A-Za-z0-9]+\.php$#', $p)) {
-            $byDesign[$p][] = basename($doc);
+        $cited[$p][] = basename($doc);
+    }
+    // A spaced title may also carry a directory part, so the bare family is tried on the whole span and
+    // judged by the same rules; a span already counted by the path pattern is not counted twice.
+    preg_match_all($patternBare, $text, $mb);
+    foreach ($mb[1] as $p) {
+        $p = trim($p);
+        if (str_contains($p, '/') || isset($cited[$p])) {
+            continue;
+        }
+        $bare[$p][] = basename($doc);
+    }
+    // Spaced full paths join the separator family, with the same exemption classes applied, so a title with a
+    // space in it is judged rather than invisible.
+    preg_match_all($patternSpaced, $text, $msp);
+    foreach ($msp[1] as $p) {
+        $p = trim($p);
+        if (isset($cited[$p])) {
+            continue;
+        }
+        $exempt = null;
+        foreach ($externalClasses as $rx => $why) {
+            if (preg_match($rx, $p)) {
+                $exempt = $why;
+
+                break;
+            }
+        }
+        if ($exempt !== null) {
+            $byDesign[$p][] = basename($doc).' — '.$exempt;
 
             continue;
         }
@@ -101,13 +210,14 @@ foreach ($docs as $doc) {
     }
 }
 
-if ($cited === []) {
+if ($cited === [] && $bare === []) {
     fwrite(STDERR, 'REFUSED: no path citations were found in '.count($docs)." document(s) — a reader that extracts nothing prints a clean verdict over silence.\n");
     exit(1);
 }
 
 $missing = [];
 $untracked = [];
+$ambiguous = [];
 $ok = 0;
 foreach ($cited as $path => $where) {
     // A citation may be written relative to the repository root or as a trailing fragment (`Pages/Evaluation/
@@ -139,13 +249,64 @@ foreach ($cited as $path => $where) {
     $ok++;
 }
 
-printf("documents read: %d; distinct path citations: %d\n", count($docs), count($cited));
-// The population's limit is printed, never implied: the pattern needs a directory separator, so a citation written
-// as a bare filename (`lane164-out.txt`, no `storage/app/scratch/` in front) is NOT judged here. A gate whose scope
-// is wider than its reach is the fake-clean verdict this repository keeps meeting from the inside.
-echo "  scope limit: bare filenames with no directory part are out of scope; only paths containing a separator are resolved\n";
-printf("on disk and tracked: %d; missing: %d; on disk but NOT in git: %d\n",
-    $ok, count($missing), $tracked === null ? 0 : count($untracked));
+// Bare names are resolved by the index and never guessed: one hit judges the path it found, two hits is a claim
+// the document has not made precise enough to check, and zero is a name no clone can open — unless the name
+// belongs to an external class, which is exempted by class and printed with its reason. Existence is asked
+// before class, so a tracked `DEPLOYMENT.md` is never swallowed by the prompt-name exemption.
+foreach ($bare as $name => $where) {
+    if (! isset($index[$name])) {
+        $exempt = null;
+        foreach ($externalClasses as $rx => $why) {
+            if (preg_match($rx, $name)) {
+                $exempt = $why;
+
+                break;
+            }
+        }
+        if ($exempt !== null) {
+            $byDesign[$name][] = implode(', ', array_values(array_unique($where))).' — '.$exempt;
+
+            continue;
+        }
+        $missing[$name] = array_values(array_unique($where));
+
+        continue;
+    }
+    if (count($index[$name]) > 1) {
+        $ambiguous[$name] = [array_values($index[$name]), array_values(array_unique($where))];
+
+        continue;
+    }
+    $path = $index[$name][0];
+    if (! is_file($path)) {
+        $missing[$path] = array_values(array_unique($where));
+
+        continue;
+    }
+    if ($tracked !== null && ! isset($tracked[$path])) {
+        $untracked[$path] = array_values(array_unique($where));
+
+        continue;
+    }
+    $ok++;
+}
+
+printf("documents read: %d; distinct path citations: %d (%d with a directory part, %d bare names)\n",
+    count($docs), count($cited) + count($bare), count($cited), count($bare));
+echo '  scope: fenced code blocks are not judged (they write commands, not claims) — '.$fences." block(s) skipped\n";
+echo '  resolver: bare names answered by '.$indexSource."\n";
+// The population's limit is printed, never implied.
+echo "  scope: a basename held by more than one path is reported AMBIGUOUS rather than guessed\n";
+echo "  scope limit: a span is extracted only from characters the pattern knows, so a citation written with an\n"
+    ."               ellipsis (`tests/Feature/…/SomeTest.php`) or with a directory the writer never checked is\n"
+    ."               NOT judged here at all. Write the path a resolver can follow, or the gate is silent about it.\n";
+if ($ambiguous !== []) {
+    foreach ($ambiguous as $n => [$paths, $where]) {
+        echo '  AMBIGUOUS      '.str_pad($n, 44).'  matches '.count($paths).' tracked paths ('.implode(', ', array_slice($paths, 0, 3)).') — cited in '.implode(', ', $where)."\n";
+    }
+}
+printf("on disk and tracked: %d; missing: %d; on disk but NOT in git: %d; ambiguous: %d\n",
+    $ok, count($missing), $tracked === null ? 0 : count($untracked), count($ambiguous));
 
 foreach ($missing as $p => $where) {
     echo '  MISSING-FILE  '.$p.'  (cited in '.implode(', ', $where).")\n";
@@ -164,10 +325,11 @@ if ($tracked === null) {
     echo "  tracking half: NOT JUDGED — no --tracked= list was supplied, so nothing above was compared with git's index\n";
 }
 
-$problems = count($missing) + ($tracked === null ? 0 : count($untracked));
+$problems = count($missing) + count($ambiguous) + ($tracked === null ? 0 : count($untracked));
 if ($problems > 0) {
-    echo "\nREFUSE-LEVEL findings: a deliverable that cites an artefact a reader cannot open is a claim about evidence,\n"
-        ."not an absence of evidence. Either re-include the file by literal name or stop citing it.\n";
+    echo "\nREFUSE-LEVEL findings: a deliverable that cites an artefact a reader cannot open — or that names a\n"
+        ."basename two tracked files answer — is a claim about evidence, not an absence of evidence. Either\n"
+        ."re-include the file by literal name, write the citation with its directory, or stop citing it.\n";
     exit(1);
 }
 echo "VERDICT: every path the ADS deliverables cite exists and travels with the repository.\n";

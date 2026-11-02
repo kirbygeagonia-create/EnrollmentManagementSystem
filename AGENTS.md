@@ -4212,6 +4212,27 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the register grew and again to 1,031 when the revision row was written. A figure about an instrument is read
   LAST, from the instrument, after every prose edit that could move it.
 
+- **A path gate that reads only `directory/file.ext` is blind to half the citations in its own documents**
+  (lane 194 widened, 2026-11-02). The artefact census judged a citation only when it carried a directory part, and
+  printed that limit as a scope sentence. The ADS deliverables cite artefacts three other ways — a bare name in
+  backticks (`lane164-out.txt`), a spaced full path (`Documentation/EMS Complete Documentation.docx`), and the
+  prompt's own deliverable names (`SYSTEM_ARCHITECTURE.md`) — and all three were invisible: the census reported 131
+  path citations where the tree holds 189. Widening it to a basename index built from `git ls-files` (with a
+  working-tree walk and a named provenance when no list is supplied), a spaced-span pattern, `AMBIGUOUS` instead of
+  a first hit, exemptions by **class** rather than by list, and fenced blocks skipped as instructions found four
+  real defects the same morning: a test class that has never existed (`EnrollmentTransactionAtomicityTest.php`,
+  cited with an ellipsis in its own path — the reason the census still cannot see it, which the scope sentence now
+  says out loud), a phantom log quoted inside a sentence that exists to record that it was phantom (lane 98's
+  "a quoted false figure is still a figure", arriving in a path gate), and two citations that named a basename
+  fourteen and two files answer. Resolution order is existence **before** class, or a tracked `DEPLOYMENT.md`
+  would be swallowed by the prompt-name exemption. Three instrument bugs came out of its own harness (17 legs, all
+  killed): `$patternBare = '`(...)`'` used backticks as the **regex delimiter**, so the "code span" reader was
+  really matching every filename in prose and extracting `app.php` from `bootstrap/app.php` — an over-match that
+  manufactured two AMBIGUOUS findings out of nothing; the re-cut scope leg asserted the sentence the tool wrote
+  *before* the widening and reported BAD the day the tool got better (verifier expectations age, met from the
+  inside); and a leg that planted its fixture while an earlier leg's phantoms were still in the directory read
+  another plant's refusal as its own failure. A harness whose legs share a fixture directory must sweep before
+  each single-fixture leg, and a BAD leg is first read as a claim about the harness.
 - **A deliverable whose required shape is a list of questions needs a counter over the questions** (lane 195,
   2026-11-02). `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md` answers the ADS guide's own population — 106 guide
   questions across 24 problems, each problem's Applicability mark and its "If N/A or different from our workflow"

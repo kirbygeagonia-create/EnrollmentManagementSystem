@@ -85,11 +85,68 @@ $report($r['code'] === 1 && str_contains($r['text'], 'MISSING-FILE  storage/app/
     && str_contains($r['text'], 'MISSING-FILE  tests/Feature/Zz/NopeTest.php'), 'missing-file-is-found',
     str_contains($r['text'], 'MISSING-FILE') ? 'both phantoms named' : trim(substr($r['text'], 0, 200)));
 
-// Leg 5b — the scope limit is PRINTED. The first run of this harness found that a bare `file.md` with no directory
-// part is not matched at all, so a citation written that way would be silently unjudged; the tool now says so, and
-// this leg fails the day the sentence is dropped and the gap goes back to being invisible.
-$report(str_contains($r['text'], 'bare filenames with no directory part are out of scope'),
-    'scope-limit-is-printed', str_contains($r['text'], 'out of scope') ? 'stated in the run' : 'the limit line vanished');
+// Leg 5b — the scope sentences are PRINTED. The first cut of this leg asserted the sentence the tool wrote
+// before the widening ("bare filenames with no directory part are out of scope"), and reported BAD the day the
+// tool got better: a leg anchored on yesterday's bytes measures the harness's age, not the document's health.
+// It now names the three limits the widened tool states, including the one that keeps a gap from going back to
+// being invisible — a citation the pattern cannot extract at all.
+foreach (['fenced code blocks are not judged', 'resolver: bare names answered by', 'NOT judged here at all'] as $needle) {
+    $report(str_contains($r['text'], $needle), 'scope-limit-is-printed',
+        str_contains($r['text'], $needle) ? 'stated in the run: '.$needle : 'the limit line vanished: '.$needle);
+}
+
+// Leg 5c onward each need exactly one fixture in the directory, or the run's verdict belongs to a plant from an
+// earlier leg. That is what made the spaced-title leg read BAD on its first run: leg 5's phantom fixtures were
+// still sitting in the directory, so the tool correctly exited 1 about THEM and the leg mistook that refusal for
+// a failure of its own citation. Sweep first, then plant one thing per leg.
+foreach (glob($root.'/'.$fxDir.'/*.md') ?: [] as $stale) {
+    @unlink($stale);
+}
+
+// Leg 5c — a bare name IS judged now, and resolved through the tracked index rather than guessed.
+$fixture('BARE.md', "the capture is `lane164-out.txt` and nothing else\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$report(str_contains($r['text'], '1 bare names') && ! str_contains($r['text'], 'MISSING-FILE  lane164-out.txt'),
+    'bare-name-resolves', str_contains($r['text'], '1 bare names')
+        ? 'one bare name counted and resolved' : trim(substr($r['text'], 0, 200)));
+
+// Leg 5d — two tracked paths answer one basename: AMBIGUOUS, never the first hit.
+@unlink($root.'/'.$fxDir.'/BARE.md');
+$fixture('AMBIG.md', "the queue page is `Index.jsx`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$report($r['code'] === 1 && str_contains($r['text'], 'AMBIGUOUS') && str_contains($r['text'], 'Index.jsx'),
+    'ambiguous-is-reported', str_contains($r['text'], 'AMBIGUOUS')
+        ? 'named with its candidate count instead of guessed' : trim(substr($r['text'], 0, 200)));
+
+// Leg 5e — a spaced full path is extracted at all: `Documentation/EMS Complete Documentation.docx`.
+@unlink($root.'/'.$fxDir.'/AMBIG.md');
+$fixture('SPACED.md', "the authority is `Documentation/EMS Complete Documentation.docx`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$report(str_contains($r['text'], '1 with a directory part') && str_contains($r['text'], 'VERDICT'),
+    'spaced-title-is-judged', str_contains($r['text'], 'MISSING-FILE  Documentation/EMS')
+        ? 'a real file was called missing' : (str_contains($r['text'], '1 with a directory part')
+            ? 'the spaced path was extracted, resolved and counted' : trim(substr($r['text'], 0, 200))));
+
+// Leg 5f — a fenced block is NOT judged, and the same path outside the fence IS. One fixture carries both, so
+// the leg cannot pass by reading nothing: the verdict must name the outside path and stay silent on the inside.
+@unlink($root.'/'.$fxDir.'/SPACED.md');
+$fixture('FENCE.md', "```bash\nphp storage/app/scratch/zz-lane194-fenced-only-7c1.php --x=1\n```\n"
+    ."and outside: `storage/app/scratch/zz-lane194-outside-only-7c1.php`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$report(str_contains($r['text'], 'MISSING-FILE  storage/app/scratch/zz-lane194-outside-only-7c1.php')
+    && ! str_contains($r['text'], 'zz-lane194-fenced-only-7c1')
+    && str_contains($r['text'], 'block(s) skipped'),
+    'fence-is-not-judged', (str_contains($r['text'], 'zz-lane194-fenced-only-7c1')
+        ? 'the fenced command was judged as a claim' : 'inside skipped, outside named'));
+
+// Leg 5g — a trailing fragment still resolves through the candidate list (`Pages/…` for `resources/js/…`).
+@unlink($root.'/'.$fxDir.'/FENCE.md');
+$fixture('FRAG.md', "the evaluation queue is `Pages/Evaluation/Index.jsx`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$report(! str_contains($r['text'], 'MISSING-FILE  Pages/Evaluation/Index.jsx'),
+    'fragment-resolves', str_contains($r['text'], 'MISSING-FILE  Pages/Evaluation/Index.jsx')
+        ? 'the candidate list stopped answering a real file' : 'the fragment found its full path');
+@unlink($root.'/'.$fxDir.'/FRAG.md');
 
 // Leg 6 — UNTRACKED fires: a file that exists on this box (the planted probe, hidden by the extension rules) and
 // is cited, must be reported even though it exists. This is the morning's defect, made a gate.

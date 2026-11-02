@@ -73,11 +73,17 @@ verdict word and reports `DISAGREES-REGISTER`.
 - **Gap.** No test forces a failure *between* two subject writes and proves nothing survived.
 - **Required solution.** None new for the mechanism; the demonstration is owed.
 - **Affected components.** Backend, database.
-- **Testing method.** `tests/Feature/…/EnrollmentTransactionAtomicityTest.php` (to be written): throw inside the
-  transaction after the first line, assert `enrollments`, `enrolledsubjects`, `workflowsteps` and
-  `enrollmentstatushistory` all answer zero.
-- **Evidence.** Pending.
-- **Status.** Implemented; T01/T02 not started.
+- **Testing method.** T01, executed 2026-11-02 by two cases in
+  `tests/Feature/Evaluation/RetakeAttemptTest.php` — `a_multi_subject_commit_writes_every_line_it_names` (a
+  two-subject proposal writes two lines and exactly one `evaluated` history row) and
+  `a_refused_proposal_leaves_the_existing_load_in_place` (a proposal refused for a duplicate subject leaves the
+  line count and the status where they were). The forced throw *inside* the transaction after the first line,
+  asserting `enrollments`, `enrolledsubjects`, `workflowsteps` and `enrollmentstatushistory` all answer zero, is
+  still owed as T02; `php storage/app/scratch/mutate-g-t01-subject-commit.php` kills the two delivered cases by
+  planting exactly those two defects (insert only the first line; disable the duplicate guard).
+- **Evidence.** `storage/app/scratch/lane189-suite.log` and the delivered run recorded below; the case pair and
+  its falsifier are in the two files named a line above.
+- **Status.** Implemented and demonstrated for the commit half (T01); T02's forced-rollback print is owed.
 
 ### P02 — Last Available Slot (¶51-60)
 
@@ -207,8 +213,8 @@ verdict word and reports `DISAGREES-REGISTER`.
   `nullable`, refusal stripped of its message, column made fillable — each killed by the case that names it).
 - **Evidence.** `Tests: 11 passed` for that file locally; `storage/app/scratch/lane189-suite.log` carries the
   delivered whole-suite reading that contains it — `ProfileCaptureTest` present, `Tests: 1224 passed (7656
-  assertions)`, duration 2212.95 s. (The name this cell first carried, `lane181-suite.log`, was never a file: the
-  lane numbered 181 left two HEAD exports and no log, and the delivered run for its cases is the lane189 capture.
+  assertions)`, duration 2212.95 s. (The log name this cell first carried belonged to lane 181, which left two
+  HEAD exports and no log at all, and the delivered run for its cases is the lane189 capture.
   Found by `lane194-ads-artefact-citations.php`, which is the reason the correction names a path it can also prove
   is tracked.) A schema default is not returned to a model that was just created, which is why
   `Students` now declares `protected $attributes = ['rowVersion' => 1];` — without it the in-memory object posted a
