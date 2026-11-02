@@ -36,7 +36,11 @@ foreach (array_slice($GLOBALS['argv'], 1) as $a) {
         exit(1);
     }
 }
-foreach (array_diff(array_keys($argvMap), ['tracked', 'docs']) as $unknown) {
+$unknown = array_values(array_diff(array_keys($argvMap), ['tracked', 'docs']));
+if ($unknown !== []) {
+    // `implode` over the FOREACH VARIABLE fatals ("Argument #2 must be ?array, string given") — measured, and the
+    // reason this refusal is built from the array itself: a guard that dies instead of refusing hands a caller a
+    // status code from PHP's shutdown path rather than the tool's own, and the leg that tests it reads that as a pass.
     fwrite(STDERR, 'REFUSED: flag(s) not read by this tool: --'.implode(', --', $unknown).".\n");
     exit(1);
 }
@@ -136,6 +140,10 @@ foreach ($cited as $path => $where) {
 }
 
 printf("documents read: %d; distinct path citations: %d\n", count($docs), count($cited));
+// The population's limit is printed, never implied: the pattern needs a directory separator, so a citation written
+// as a bare filename (`lane164-out.txt`, no `storage/app/scratch/` in front) is NOT judged here. A gate whose scope
+// is wider than its reach is the fake-clean verdict this repository keeps meeting from the inside.
+echo "  scope limit: bare filenames with no directory part are out of scope; only paths containing a separator are resolved\n";
 printf("on disk and tracked: %d; missing: %d; on disk but NOT in git: %d\n",
     $ok, count($missing), $tracked === null ? 0 : count($untracked));
 
