@@ -3928,6 +3928,46 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   pointer hazard again, arriving as a deferral this time and correctly so. No single-connection case can reach the new
   branch (the policy refuses a re-propose on an evaluated record), so the instrument is its proof and that limit is
   written in the comment rather than papered over with a test that cannot fail.
+- **A preload is only safe when the two paths are asserted to agree, in both directions — and a query counter's
+  pattern is a claim about two drivers, not one** (P09 half 1, 2026-11-02). `RegistrarController::index()` resolves
+  `Gradescale::passingCeiling()` and `Curriculums::all()` once for the page and threads both into
+  `EnrollmentReadiness::prerequisitesMet()` as optional arguments that default to the fresh read — the shape
+  `clearanceVerdict()` already used for the clearance window, which is why no new concept was needed and the policy,
+  the record page and `blockingReasons()` kept calling with no argument. `lane191` measured it on live `ems` through
+  the HTTP stack: **5.0 repeated statements per listed row from five call sites → 3.0 from three**. Two cases in
+  `tests/Feature/Registrar/PrerequisiteGateTest.php` hold it, and the second bit twice before it proved anything:
+  the first pattern was written with MySQL's backticks (`max(\`maxGrade\`)`) and matched **nothing** on SQLite's
+  double quotes, so the fresh path counted 0 and the case would have credited the preload with doing nothing while
+  the rule stayed intact; the second matched `from "curriculums` as a **prefix**, which `from "curriculumsubjects"`
+  also satisfies, counting 4 where the truth was 2 — and an over-broad matcher of that shape does not merely
+  miscount, it would have indicted the fix for the prerequisite query it correctly still makes. So: match a
+  fully-quoted identifier on both sides or match nothing, and make the equality case run in both directions (a
+  blocked load *and* the same load after the prerequisite is genuinely passed), because a preload that disagrees
+  with the fresh path is a second definition of the gate, which is this file's oldest defect wearing a performance
+  costume.
+- **A docx shift is not the whole re-point; the markdown gate is the other half and it reported seven problems
+  after a clean docx sweep** (same batch). `lane76-shift-cites.php` moved 45 number tokens into
+  `RegistrarController.php` in one run and 12 into `EnrollmentReadiness.php` in the other — the tool prints its own
+  per-run total, so no combined figure is quoted here — and the four windows it refused were mapped only
+  after their endpoints were asserted byte-for-byte in both versions — all at +9, including the `blockingReasons()`
+  signature that the `221-241` range ends on. Then `repo-file-line-citations.php` still printed **7 problems**: ten
+  pointers across `AGENTS.md` and four deliverables, four landing on blank lines and three sitting bounds-clean on
+  the wrong construct, because `lane76` edits `word/document.xml` and cannot reach a `.md`. The pair that closes the
+  gap is `lane127-repoint-md-cites.php` (answers "where does HEAD's line N live now" by exact bytes, refuses to
+  guess when a line matches several rows, writes nothing) and `lane193-repoint-md.php` (applies only that list,
+  asserting each needle's count *and* that its replacement grew by exactly that count — a re-taken number that
+  already exists elsewhere cannot be post-checked by document-wide absence). `Documentation/UI-Workflow-Conformance-Audit-2026-09-17.md`
+  was deliberately NOT re-pointed: it carries the `Pointer currency` marker, so its stale digits are that day's
+  record, and re-typing them would state lines that were never true on its own day.
+- **A verdict quoted from the shape of a command is the same defect as a figure typed from memory** (same batch,
+  caught by reading the output I had already claimed). The commit that landed P09 half 1 said "Pint PASS and PHPStan
+  clean are read above". PHPStan was clean and the file linted; `pint --test` reported a style failure on
+  `RegistrarController.php` — `unary_operator_spaces`, `braces_position`, `not_operator_with_successor_space` — and
+  I had written the claim from the command I had run rather than from what it printed. Two rules follow, and both are
+  already in this file in other costumes: read the gate's own line before quoting its verdict, and prefer a second
+  commit that records the correction over amending the claim away. The fix was formatting-only (548 lines before and
+  after, so no citation moved) and the docx sweep, the markdown gate and the case file were re-run beside it to prove
+  the line-neutrality rather than assert it.
 - **A race probe's SAFE bucket must charge every outcome that is not a success** (lane190, ADS problem 10, 2026-11-01).
   Its first version counted `1213` into a "deadlock or lock-timeout" bucket and then wrote `SAFE` while 4 of 10
   children had died there, because the unsafe clauses only looked at row counts, duplicates and *other* driver
