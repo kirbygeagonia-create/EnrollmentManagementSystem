@@ -1,11 +1,11 @@
-﻿source sha256 : E9CC19891B1B9F6A5BC6996F17D192ECCBD0A17F893D0331A79FA14232D02A56
-copy  sha256  : E9CC19891B1B9F6A5BC6996F17D192ECCBD0A17F893D0331A79FA14232D02A56  identical=True
+﻿source sha256 : 78D3B266374818CAFB709EA2218065B8F820283E90B381919FF3FD07430B96BF
+copy  sha256  : 78D3B266374818CAFB709EA2218065B8F820283E90B381919FF3FD07430B96BF  identical=True
 WINWORD pids before: 
-instance this script started: 1152
+instance this script started: 7448
 OPENED OK
-pages     : 253
-words     : 130528
-paragraphs: 12013
+pages     : 254
+words     : 130940
+paragraphs: 12016
 tables    : 186
 quit the instance this script started
-WINWORD pids after : 1152
+WINWORD pids after : 7448

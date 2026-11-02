@@ -232,8 +232,9 @@ counts enrollments waiting, and the page says plainly that it lists blocks.
   number of rows the desk will act on — the ninth card to obey the rule the other eight already do, and the last
   exception in `App\Support\DeskQueues`. The enrollments-with-a-Blocking-box figure does not disappear: it is what
   the notice addresses and what the workflow counts, so it stays where it is read rather than being painted on a
-  card whose page shows blocks. §28.3's G-46 row closes when the badge, the equality case in both directions, and the
-  harness leg that plants the old predicate are in the tree.
+  card whose page shows blocks. **Built the same day it was answered:** the badge, the equality case in both
+  directions, and the harness leg that plants the old predicate are all in the tree, and §28.3's G-46 row now reads
+  that way.
 
 ---
 

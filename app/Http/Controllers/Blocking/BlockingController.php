@@ -21,6 +21,7 @@ use App\Models\Staffusers;
 use App\Models\Subjects;
 use App\Services\PrintService;
 use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use App\Support\ListSort;
 use App\Support\RetryOnDeadlock;
 use App\Support\TimetableConflicts;
@@ -53,11 +54,11 @@ class BlockingController extends Controller
         // three subjects each fill two seats, not six, and this is the number
         // assignStudents() weighs against maxStudents. Dropped rows are excluded so
         // a leave-out does not keep a seat reserved. One definition, used both for the
-        // rows the desk sees and for the tiles above them.
+        // rows the desk sees, for the tiles above them, and for the dashboard card that opens this page.
         $seats = fn ($q) => $q->select(DB::raw('count(distinct enrollmentId)'))
             ->where('status', '!=', EnrolledSubjectStatus::Dropped->value);
 
-        $query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
+        $query = DeskQueues::blocking()->with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
             ->withCount(['enrolledSubjects as students_in_block_count' => $seats])
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
             ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))

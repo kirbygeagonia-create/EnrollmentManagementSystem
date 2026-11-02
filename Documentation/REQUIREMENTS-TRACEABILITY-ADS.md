@@ -93,7 +93,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 - **Objective.** Two requests, one seat; the database must not let both have it.
 - **Applicability.** Applies. A section is `blocks` and its room capacity is `rooms.capacity`.
-- **Existing implementation.** Built 2026-11-01. `app/Http/Controllers/Blocking/BlockingController.php:471-473`
+- **Existing implementation.** Built 2026-11-01. `app/Http/Controllers/Blocking/BlockingController.php:472-474`
   de-duplicates the requested ids and sorts them into one canonical order; `:483` wraps the act in
   `App\Support\RetryOnDeadlock::run()`; `:484` opens the transaction; `:485` locks the block row with
   `lockForUpdate()` as the transaction's first act; `:488-491` re-counts distinct non-dropped `enrollmentId` values
@@ -168,7 +168,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 - **Objective.** Counts and capacity must not disagree.
 - **Existing implementation.** There is no stored counter to drift: the headcount is derived at read time — the
-  roster tiles at `app/Http/Controllers/Blocking/BlockingController.php:103-106` and the write guard's own count at
+  roster tiles at `app/Http/Controllers/Blocking/BlockingController.php:104-107` and the write guard's own count at
   `:488-491`, both excluding dropped lines (`:58` and `:489`), both counting *distinct* enrollments because one
   student carries several subject rows. A dropped line is therefore not a held seat on either surface.
 - **Gap.** A room is not weighed as a room. `:502-505` counts the rows stamped with **one** `scheduleId`, so when ten
@@ -232,7 +232,7 @@ verdict word and reports `DISAGREES-REGISTER`.
   runs one transaction that sets the enrollment to `dropped` and every proposed or confirmed subject line to
   dropped; `app/Services/EnrollmentStateMachine.php:48-50` states the ruling in code ("A drop is terminal"), and
   the exclusion of dropped rows is read wherever seats are counted — the roster's own closure at
-  `BlockingController.php:57-58` and the write guard at `:488-491`, with the same clause repeated at every other
+  `BlockingController.php:58-59` and the write guard at `:488-491`, with the same clause repeated at every other
   count site in that controller. The numbers of those further sites are deliberately not listed: a comma list of
   line numbers is judged only on its FIRST number by the citation gate, so the rest age unseen, and this batch's
   insertion aged all seven of them by one to nineteen rows while the gate printed `0 problem(s)`. See also
@@ -255,7 +255,7 @@ verdict word and reports `DISAGREES-REGISTER`.
   `codeOf()` at `:69-74` reads `errorInfo[1]` before falling back to `getCode()` because the two drivers word a
   refusal differently, and exhaustion raises a `ValidationException` at `:54-59` whose sentence says
   *Nothing was saved* — a desk told to retry without being told the record is unchanged will assume it was.
-  The lock order lives at `app/Http/Controllers/Blocking/BlockingController.php:485` (block) then `:500` (room),
+  The lock order lives at `app/Http/Controllers/Blocking/BlockingController.php:486` (block) then `:500` (room),
   with the requested ids sorted at `:472` so two overlapping assigns take the enrollment rows in one order.
   Before this batch, grepping `app/`, `tools/`, `tests/` for `1213`, `1205`, `deadlock` or a retry around writes
   answered nothing; the only deliberate driver-code catch was `app/Support/NoticeDelivery.php:32-37` on 1062.
@@ -631,7 +631,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 | Transactions (¶295) | Implemented and demonstrated | 38 `DB::transaction` sites; `EnrollmentIssuer.php:59` | T01's two cases, and `lane198-out.txt` for the commit and the forced failure of one act |
 | COMMIT / ROLLBACK (¶297) | Implemented and demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest`, the rollback by `lane198-probe-forced-rollback.php` | none for the general case; the subject-line injection is the one half still open (named under P01) |
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
-| Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
+| Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:486` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
 | Deadlock Handling (¶305) | Implemented and observed | `app/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
 | Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php` — thirteen keys in ten tables on the 2026-11-01 schema, of which this batch contributes `uq_enrollments_request_key` on `enrollments` and `uq_studentassessments_enrollment` on `studentassessments`, and returns `uq_enrollments_active_seat` over the VIRTUAL `seatKey` the same batch added, withdrew and repaired the fixtures for | nothing owed for the keys; the range `CHECK`s are named in P11 |

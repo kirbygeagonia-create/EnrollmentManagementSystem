@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EnrollmentStatus;
-use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Admissions;
@@ -154,12 +153,12 @@ class DashboardController extends Controller
                 // so an enrollment with both blocking and clinic steps pending must count once — at
                 // the desk whose step is first — not in both queues.
                 //
-                // `blocking` is the one badge whose *subject* is still a question rather than a filter: its
-                // badge counts enrollments waiting at that office, while BlockingController::index() lists
-                // timetable blocks. Which one the card should name is the school's to say — it is item 9 on the
-                // 2026-10-29 decision sheet, and the docx register does not hold that question yet. The predicate
-                // it waits on, though, is not in question and comes from the same helper.
-                'blocking' => DeskQueues::waitingAtFirstPendingBox(OfficeId::Blocking)->count(),
+                // `blocking` counts the blocks the desk lists, not the enrollments waiting at that office:
+                // ruled 2026-11-02 as item 9 of the 2026-10-29 sheet, so this is the ninth card to obey the
+                // rule the other eight already do — the number read before the click is the number of rows
+                // after it. The office's waiting enrollments were not deleted, they are what the bell
+                // addresses, and `DeskQueues::blocking()` says why that figure is read elsewhere.
+                'blocking' => DeskQueues::blocking()->count(),
                 'clinic' => DeskQueues::clinic()->count(),
                 'id' => DeskQueues::id()->count(),
                 'clearance' => DeskQueues::clearance()->count(),

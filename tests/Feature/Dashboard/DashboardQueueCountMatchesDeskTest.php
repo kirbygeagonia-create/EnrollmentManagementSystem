@@ -6,19 +6,25 @@ use App\Enums\AdmissionStatus;
 use App\Enums\ClearanceOverallStatus;
 use App\Enums\EnrollmentStatus;
 use App\Enums\EnrollmentType;
+use App\Enums\OfficeId;
 use App\Enums\StudentType;
+use App\Enums\WorkflowStepStatus;
 use App\Models\Academicterms;
 use App\Models\Academicunits;
 use App\Models\Academicyears;
 use App\Models\Admissions;
+use App\Models\Blocks;
 use App\Models\Clearanceperiods;
 use App\Models\Courses;
 use App\Models\Enrollments;
+use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
 use App\Models\Studentclearances;
 use App\Models\Students;
+use App\Services\WorkflowService;
+use App\Support\DeskQueues;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -40,18 +46,20 @@ use Tests\TestCase;
  * two would disagree under the retired filter. The college case is the same shape from the other side: a row in
  * another college is on the database and NOT on this desk, so an institution-wide count is provably wrong here.
  *
- * The `blocking` key is deliberately absent: its badge counts enrollments waiting at that office while
- * BlockingController::index() lists timetable blocks, and which subject the card names is a school question
- * (item 9 on the 2026-10-29 decision sheet), not a filter to unify.
+ * The `blocking` key joined the rule on 2026-11-02, when the owner ruled sheet item 9: the card counts what its own
+ * page lists, so it counts timetable blocks — the rows `BlockingController::index()` hands its tiles — rather than
+ * the enrollments waiting at that office. The retired predicate is the one thing the case below is built to refuse.
  *
  * Two directions are pinned, and only one of them was true before this batch. Bounded where the list is bounded:
  * `admission` and `evaluation` honour `CollegeScope` because those two controllers bound their own lists with it,
  * so a department's card must shrink with its page. Unbounded where the list is unbounded: the Assessment,
- * Accounting, Registrar, Clinic, ID and Clearance desks carry no college filter in their handlers or policies, so
- * their badges must not grow one either — `the_six_desks_without_a_college_filter_count_the_school_as_their_lists_do`
+ * Accounting, Registrar, Clinic, ID, Clearance and Blocking desks carry no college filter in their handlers or
+ * policies, so
+ * their badges must not grow one either — `desks_without_a_college_filter_count_the_school_as_their_lists_do`
  * is the case that would have failed under the first draft of this batch, which scoped the two assessment badges
- * and left their pages school-wide. `clinic` and `id` now build their desk lists from the very builder the badge
- * counts (`DeskQueues::clinic()` / `::id()`), so those two equalities are one call rather than a duplicated rule.
+ * and left their pages school-wide. `clinic`, `id` and `blocking` now build their desk lists from the very builder
+ * the badge counts (`DeskQueues::clinic()` / `::id()` / `::blocking()`), so those equalities are one call rather
+ * than a duplicated rule.
  */
 class DashboardQueueCountMatchesDeskTest extends TestCase
 {
@@ -225,13 +233,14 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
     }
 
     #[Test]
-    public function four_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge(): void
+    public function each_named_desk_list_builds_its_rows_from_the_helper_and_the_clearance_desk_still_lists_more_than_its_badge(): void
     {
         // The agreement between a badge and its list used to be only a tested one: two copies of a predicate, with a
-        // case watching whether they still said the same thing. Four desks now ask `DeskQueues` for their rows, so
-        // there is one copy and drift is not representable — a stronger claim than equality, and it needs its own
-        // guard, because a later batch that re-inlined the predicate would keep every number equal while putting the
-        // two copies back.
+        // case watching whether they still said the same thing. Each desk named below now asks `DeskQueues` for its
+        // rows, so there is one copy and drift is not representable — a stronger claim than equality, and it needs
+        // its own guard, because a later batch that re-inlined the predicate would keep every number equal while
+        // putting the two copies back. The population is named here rather than counted: a number in this method's
+        // name rots the day one more list joins, which is the membership defect §28.3 owns.
         //
         // The reading is scoped to each index ACTION, and that matters: `AssessmentController::pendingEvaluations()`
         // holds a file-wide search would have called a legitimate query in another action a duplicate. And a
@@ -253,6 +262,14 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
             'Evaluation/EvaluationController.php' => [
                 'DeskQueues::evaluation($desk)',
                 "->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])",
+            ],
+            // The blocking desk since the owner's ruling of 2026-11-02. The retired text is that act's own
+            // pre-ruling bytes, read off the file before this batch replaced them — not a guess at what a
+            // re-inline might look like, because a needle that matches nothing makes this half of the guard
+            // un-failable.
+            'Blocking/BlockingController.php' => [
+                'DeskQueues::blocking()',
+                "Blocks::with(['course', 'term.academicYear'",
             ],
         ];
         foreach ($shared as $path => [$call, $retired]) {
@@ -447,9 +464,11 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
     }
 
     #[Test]
-    public function the_six_desks_without_a_college_filter_count_the_school_as_their_lists_do(): void
+    public function desks_without_a_college_filter_count_the_school_as_their_lists_do(): void
     {
-        // Six desks apply no CollegeScope to their own lists, so their badges may not grow one either: a badge
+        // These desks apply no CollegeScope to their own lists — the population is named in `DeskQueues`' own
+        // docblock rather than counted here, because a number in a case name rots the day one more desk joins.
+        // Their badges may not grow one either: a badge
         // bounded while the page underneath it is not is the §8 contradiction with the sign flipped. The account
         // here is therefore college-bound on purpose — that is the only shape that can tell the two sides apart.
         // Under this batch's first draft, which scoped the assessment badge by college, the badge answered 1 and
@@ -488,5 +507,58 @@ class DashboardQueueCountMatchesDeskTest extends TestCase
         $this->assertSame(2, (int) $accounting['queueCounts']['due'], 'the accounting list is not college-bound');
         $this->assertSame((int) $assessment['assessments']['total'], (int) $badges['assessment']);
         $this->assertSame((int) $accounting['queueCounts']['due'], (int) $badges['accounting']);
+    }
+
+    #[Test]
+    public function the_blocking_badge_counts_the_rows_its_page_lists_and_not_the_enrollments_waiting_at_that_box(): void
+    {
+        // Sheet item 9, ruled 2026-11-02: the card counts what its own page lists. The fixture is built so the
+        // retired predicate answers a DIFFERENT number from the page — one enrollment whose first open box is the
+        // Blocking office, beside two blocks — because an equality between two zeros would certify any badge at all.
+        $staff = $this->unbounded();
+
+        // `workflowsteps.officeId` is a real foreign key, and this class seeded no offices before — the eight other
+        // cases never needed them, because none of them opens a workflow form. `firstOrCreate` because RbacSeeder
+        // already carries some of these rows, and a fixture that re-inserts a seeded id fails on its key rather than
+        // proving anything.
+        foreach ([1 => 'Registrar', 2 => 'Accounting', 3 => 'Scholarship', 4 => 'Guidance',
+            5 => 'Blocking', 11 => 'Clinic', 22 => 'ID Office'] as $officeId => $officeName) {
+            Offices::firstOrCreate(['officeId' => $officeId], ['officeName' => $officeName]);
+        }
+
+        $waiting = $this->enrollment($this->courseA, EnrollmentStatus::Enrolled);
+        $form = app(WorkflowService::class)->createWorkflow($waiting);
+        $steps = $form->workflowsteps()->get();
+        $blockingStep = $steps->first(fn ($s) => (int) $s->officeId === OfficeId::Blocking->value);
+        $this->assertNotNull($blockingStep, 'the workflow form holds no Blocking box, so this case has nothing to discriminate');
+        // Every box ahead of Blocking is closed, which is what makes the waiting enrollment the retired predicate's
+        // answer rather than an accident of insertion order.
+        foreach ($steps->where('stepOrder', '<', $blockingStep->stepOrder) as $earlier) {
+            $earlier->update(['stepStatus' => WorkflowStepStatus::Completed->value]);
+        }
+        $this->assertSame(1, DeskQueues::waitingAtFirstPendingBox(OfficeId::Blocking)->count(),
+            'the number the badge used to print; if this is not 1 the fixture does not hold the state this case tests');
+
+        foreach (['DQ-BLOCK-A', 'DQ-BLOCK-B'] as $offset => $name) {
+            Blocks::create([
+                'courseId' => $this->courseA->courseId, 'termId' => $this->term->termId,
+                'yearLevel' => 1, 'blockName' => $name, 'maxStudents' => 20 + $offset,
+            ]);
+        }
+
+        $badges = $this->badges($staff);
+        $page = $this->props($staff, 'blocking.index');
+
+        // Direction one: the card equals the figure the desk's own tile prints, and both name rows on its table.
+        $this->assertSame(2, (int) $page['stats']['blocks'], 'two blocks are the whole list with no filter applied');
+        $this->assertSame((int) $page['stats']['blocks'], (int) $badges['blocking'],
+            'the card must be the number of rows the page underneath it lists (§8)');
+        // Direction two: the retired subject is on the database and is provably not what the card prints.
+        $this->assertNotSame((int) $badges['blocking'], 1,
+            'the badge counts enrollments waiting at the Blocking box again, which is the reading this ruling retired');
+
+        // And the tile arithmetic travels with the rows, so a badge built over a different population would show up
+        // here as a card that agrees with nothing on the screen.
+        $this->assertSame(41, (int) $page['stats']['capacity'], 'the desk sums the ceilings of the rows it lists');
     }
 }

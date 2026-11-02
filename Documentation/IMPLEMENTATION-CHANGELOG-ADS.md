@@ -160,6 +160,9 @@ Two choices worth recording:
 | `storage/app/scratch/lane212-weigh-question-register.php` | weighs §29.4's "Open decisions" cell against the rows physically under §28.5's own heading, read from the archive rather than the flat dump because a dump that drops empty cells cannot state a row's structure. It exists because two docx rows were added to that register and no instrument could see the count cell stop growing. It finds the cell by shape (the cell whose whole text is the label, the next cell numeric), so a reworded heading refuses rather than silently judging nothing, and it tells a missing dump, an empty value, an unknown flag, a non-zip and a non-numeric cell apart by message. |
 | `storage/app/scratch/mutate-lane212-question-register.php` | the weigher's falsifier: a stale cell, a deleted row, a reworded label, a non-numeric cell, a missing heading, a text file named `.docx`, a missing path, an unknown flag, an empty flag value, and a byte-identical control that must change no verdict. The harness prints its own leg total and deletes its planted copies, verifying the deletion by listing the directory rather than by its own exit code. |
 | `storage/app/scratch/refresh-docx-pass405.php` to `refresh-docx-pass410.php` | the six docx passes this batch wrote: the two §28.3 rows for the session cut-off, the §1.1 revision row, the two new §28.5 question rows, the count cell re-taken from the weigher's own output, the §1.1 row and the `auditlogs` column cell for the act vocabulary, and the repair of the two complaints the earlier five created — a pointer that quoted the ADS guide's own numbering as though it were this document's section, and the §28.8 actor table left counting rows its own column no longer charges to an office. Pass 408 is the one that makes the weigher's verdict load-bearing: it writes the number the weigher printed, then re-runs the weigher as its own read-back. |
+| `App\Support\DeskQueues::blocking()` | the ninth dashboard card's population, ruled 2026-11-02 as item 9 of the 2026-10-29 sheet: the card counts what its own page lists. `BlockingController::index()` now builds its rows from it, so the card and the list are one call and the class holds no exception any more; the enrollments waiting at the Blocking box are still what the workflow bell addresses, and that method is unchanged. |
+| `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php` (the blocking case) | the badge equal to the tile the same page prints, on a fixture where the retired predicate answers a *different* number — one enrollment whose first open box is Blocking beside two blocks — because an equality between two zeros would certify any badge. The two method names in that class lost their numerals the day the counts moved (four lists, six desks), which is the membership defect this repository has refused in lanes 46, 61, 64 and 90 arriving inside a test name. |
+| `storage/app/scratch/refresh-docx-pass411.php` | closes §28.3 G-46's last sentence, which still told the reader the blocking card was owed. The row's `Closed 2026-10-30` verdict is not re-dated; the new sentence carries the day the ninth card moved, so the row reads as a record. |
 
 ## 4. Documents changed
 
@@ -189,6 +192,19 @@ Two choices worth recording:
 ## 5. Instruments repaired while doing the work
 
 Each of these produced a clean-looking verdict before it was fixed, which is the only reason they are listed.
+
+- `mutate-g46-dashboard-queues.php` carried two `case` strings naming test methods by their counts — `four_desk_lists…`
+  and `the_six_desks…` — so the day those lists grew, the harness would have reported `No tests found` as a failed
+  control over a green tree. Both methods are renamed without numerals and the legs follow; two new legs plant the
+  retired *subject* (the waiting-enrollments badge) and the re-inlined block list, and the delivered run answers
+  every leg killed with the control green before and after.
+- A first draft of `refresh-docx-pass411.php` wrote its text edit as `[from, to, from, 1]`, meaning "the needle is its
+  own anchor". The engine reads slot 3 as a *different* string that must own the needle, so anchor == needle resolves
+  to nothing and the pass refused with `no needle owned by the anchor`. The two-element shape is the one for a needle
+  already proved unique, and the pass proves that uniqueness itself before opening the archive.
+- `lane127-resolve-lines.php` answered `12 HITS` for `DeskQueues.php:96`, because that HEAD line is a bare `}`. That
+  is the correct refusal — an ambiguous line is not a re-point — and the markdown pair came instead from the window
+  the docx shift tool proved byte-identical across three copies (`87-96 → 85-94`), not from the delta arithmetic.
 
 - `lane163` filled blocks with `$sid % count($blockIds)`, which over-filled the first ones by the demo cast's id
   remainder — a block holding 41 seats against `maxStudents` 40. The fixture then violated the invariant its probes

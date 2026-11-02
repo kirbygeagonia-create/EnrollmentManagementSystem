@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\OfficeId;
 use App\Enums\WorkflowStepStatus;
 use App\Models\Admissions;
+use App\Models\Blocks;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Studentassessments;
@@ -25,35 +26,32 @@ use Illuminate\Database\Eloquent\Builder;
  * enrollments or requests where their pages list assessment sheets and enrollment rows.
  *
  * These builders carry the *population* only: no eager loading, no search, no ordering, no pagination. The
- * dashboard's badges are built from them, and so now are six desk lists — `AssessmentController`,
- * `RegistrarController`, `AccountingController` (its queue base), `EvaluationController`, `ClinicController` and
- * `IDController` each call the method below that names their rows, so the card and the list are one call rather than
- * two copies that a test merely watches. `AdmissionController` and `ClearanceController` still write their own
+ * dashboard's badges are built from them, and so now are seven desk lists — `AssessmentController`,
+ * `RegistrarController`, `AccountingController` (its queue base), `EvaluationController`, `ClinicController`,
+ * `IDController` and `BlockingController` each call the method below that names their rows, so the card and the list
+ * are one call rather than two copies that a test merely watches. `AdmissionController` and `ClearanceController`
+ * still write their own
  * queries and the docblock of each method below says why: their cards name a SUBSET (`Pending` applications,
  * `Pending` clearances) while the desk lists rows it may still act on beyond that subset, so unifying them would
  * hide records rather than align numbers. `DashboardQueueCountMatchesDeskTest` compares those two badges to the
  * desk's own tile for exactly that reason — the card counts a queue, the list counts rows. Nothing is left to move
- * except by that rule: the only queue with no method here is `blocking`, whose badge counts enrollments and whose
- * page lists timetable blocks.
+ * except by that rule: `blocking` joined on 2026-11-02, when the owner ruled that its card counts the blocks its own
+ * page lists rather than the enrollments waiting at that office.
  *
  * **Only two of these take a desk, and that is the boundary as it is built, not an oversight.** `admission` and
  * `evaluation` honour `CollegeScope` because `AdmissionController` and `EvaluationController` bound their own
- * lists with it. The other six carry no parameter because no list behind them is bounded: `AssessmentController`,
- * `AccountingController`, `RegistrarController`, `ClinicController`, `IDController` and `ClearanceController`
- * contain no `CollegeScope` call and their policies ask none of the desk. A badge bounded while its list is not
- * would be the same §8 contradiction in the opposite direction, so the six stay institution-wide. Measured on
+ * lists with it. The other seven carry no parameter because no list behind them is bounded: `AssessmentController`,
+ * `AccountingController`, `RegistrarController`, `ClinicController`, `IDController`, `ClearanceController` and
+ * `BlockingController` contain no `CollegeScope` call and their policies ask none of the desk. A badge bounded while
+ * its list is not
+ * would be the same §8 contradiction in the opposite direction, so the seven stay institution-wide. Measured on
  * live `ems`: the only college-bound accounts are six `office7` teachers (`dept.caf`, `dept.cjc`, `dept.cbg`,
  * `dept.ctic`, `dept.cee`, `dept.cte`) holding evaluation and admission rights alone, so today no bounded account
- * can open any of the six desks — the question *should those desks be college-bounded* is dormant, not live, and
+ * can open any of the seven desks — the question *should those desks be college-bounded* is dormant, not live, and
  * is recorded as G-46's second half rather than answered by a signature that implies a scope nobody applies.
  *
  * That is the shape the workflow monitor already proves: `WorkflowInbox::nextOffice()` is asked by both the list
  * and the bell, so that pair cannot disagree.
- *
- * The `blocking` queue deliberately has no method here. Its badge counts enrollments whose first open box is
- * Blocking, while `BlockingController::index()` lists timetable blocks — two different subjects, and which one the
- * card should name is the school's question, not a filter to unify. It is item 9 on the 2026-10-29 decision sheet;
- * the docx register does not carry that question yet, and this comment does not claim it does.
  */
 class DeskQueues
 {
@@ -184,9 +182,10 @@ class DeskQueues
      * Enrollments at the first open box of one office.
      *
      * Public because the Clinic and ID desks build their own queues from this same rule, and the dashboard card
-     * that opens one of those desks must be the desk's set rather than a second copy of it. The `blocking`
-     * badge is the one caller outside those two desks that asks this question of its own office; its card is a
-     * school question (sheet item 9), but the predicate it is waiting on is not.
+     * that opens one of those desks must be the desk's set rather than a second copy of it. The `blocking` badge
+     * called this method until 2026-11-02, when the owner ruled that its card names the blocks its page lists;
+     * the office's waiting enrollments remain what the bell addresses, so the call stays here for the two desks
+     * that list them.
      *
      * The raw subquery is portable SQL on purpose: the suite runs this on SQLite and the desk runs it on MySQL.
      *
@@ -201,5 +200,30 @@ class DeskQueues
                 ->where('officeId', $office->value)
                 ->whereRaw('stepOrder = (SELECT MIN(ws.stepOrder) FROM workflowsteps ws WHERE ws.workflowId = workflowsteps.workflowId AND ws.stepStatus = ?)', [WorkflowStepStatus::Pending->value])
             );
+    }
+
+    /**
+     * The timetable blocks the Blocking desk lists.
+     *
+     * Ruled 2026-11-02 as item 9 of the 2026-10-29 sheet: the card counts **what its own page lists**. Until then
+     * the badge counted `waitingAtFirstPendingBox(OfficeId::Blocking)` — enrollments whose first open box is that
+     * office — while `BlockingController::index()` lists blocks with their capacity and seats. The two numbers
+     * answer different questions, and the one a coordinator read before clicking was the one that did not match the
+     * rows waiting to be acted on. This is now the ninth card to obey the rule the other eight already do.
+     *
+     * No filter and no `CollegeScope`, because the page applies neither: its only narrowing comes from the desk's
+     * own search, course, term and year pickers, and `blocking.viewAny` bounds the *card* rather than the rows.
+     * A badge narrowed while its list is not is §8 with the sign flipped, which is the same reason `assessment` and
+     * `accounting` carry no desk parameter.
+     *
+     * The enrollments figure has not been deleted. `waitingAtFirstPendingBox(OfficeId::Blocking)` is still what the
+     * workflow bell addresses and what `WorkflowInbox::nextOffice()` walks, so it stays where it is read rather than
+     * being painted on a card whose page shows blocks.
+     *
+     * @return Builder<Blocks>
+     */
+    public static function blocking(): Builder
+    {
+        return Blocks::query();
     }
 }

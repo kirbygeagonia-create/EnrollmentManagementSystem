@@ -4,11 +4,12 @@
  * Lane 96 — proves `tests/Feature/Dashboard/DashboardQueueCountMatchesDeskTest.php`.
  *
  * Prompt §8 says a dashboard count must not contradict the list underneath it, and the register's answer (G-46)
- * is now one file: `App\Support\DeskQueues` builds the eight queue populations the badges count. A test that only
+ * is now one file: `App\Support\DeskQueues` builds the queue populations the badges count. A test that only
  * asserted "a number came back" would pass on every one of the retired bugs, so each leg here plants one retired
  * or newly-invented filter and requires the case that owns that promise to print `1 failed`.
  *
- * Four legs, and they are the two directions of the same rule:
+ * The legs are the two directions of the same rule, and this file states no leg total — the harness prints its own,
+ * because a number written here rots the day one more card joins the family.
  *
  *  1. BADGE-BOUNDS-LIST-DOESNT — the defect this batch *created and then removed*. The first draft applied
  *     `CollegeScope` to the assessment and accounting badges because the desk's *policies* bound the record, but
@@ -21,6 +22,13 @@
  *     own list by college.
  *  4. ACCOUNTING-ALL-ACCOUNTS — the badge counted every assessed sheet, including the settled ones the page puts
  *     on its other tab.
+ *  5. BLOCKING-COUNTS-WAITING-ENROLLMENTS — the subject the card had before the owner ruled sheet item 9 on
+ *     2026-11-02: enrollments whose first open box is the Blocking office, while the page lists blocks. Every
+ *     other leg plants a filter; this one plants a different *population*, which no equality-over-filters case
+ *     can see.
+ *  6. BLOCKING-LIST-RE-INLINED — the desk builds its rows from `Blocks::with(...)` again instead of from the
+ *     helper. Every number stays equal, so only the structural case that reads the action's body can see the two
+ *     predicates returning.
  *
  * Run it on its own, never beside a suite run: the legs execute `artisan test`, and two writers in one tree fake
  * each other's verdicts.
@@ -47,7 +55,7 @@ foreach (array_slice($argv, 1) as $a) {
 $legs = [
     [
         'name' => 'badge-bounds-list-doesnt',
-        'case' => 'the_six_desks_without_a_college_filter_count_the_school_as_their_lists_do',
+        'case' => 'desks_without_a_college_filter_count_the_school_as_their_lists_do',
         'file' => 'app/Support/DeskQueues.php',
         'from' => "        return Studentassessments::query()\n            ->whereHas('enrollment', fn (\$q) => \$q->where('enrollmentStatus', \$status->value));",
         'to' => "        \$unit = auth()->user()?->unitId;\n\n        return Studentassessments::query()\n            ->whereHas('enrollment', fn (\$q) => \$q->where('enrollmentStatus', \$status->value))\n            ->when(\$unit, fn (\$q) => \$q->whereHas('enrollment.course', fn (\$c) => \$c->where('unitId', \$unit)));",
@@ -78,10 +86,29 @@ $legs = [
     // that reads the action's body. A leg on the equality case would have slept.
     [
         'name' => 'evaluation-list-re-inlined',
-        'case' => 'four_desk_lists_call_the_helper_for_their_rows_and_the_clearance_desk_still_lists_more_than_its_badge',
+        'case' => 'each_named_desk_list_builds_its_rows_from_the_helper_and_the_clearance_desk_still_lists_more_than_its_badge',
         'file' => 'app/Http/Controllers/Evaluation/EvaluationController.php',
         'from' => '        $query = DeskQueues::evaluation($desk)',
         'to' => "        \$query = CollegeScope::ofEnrollments(Enrollments::query(), \$desk)->whereIn('enrollmentStatus', [EnrollmentStatus::Pending, EnrollmentStatus::ReturnedToEvaluation])",
+    ],
+    // The subject the blocking card carried before the owner ruled sheet item 9 on 2026-11-02. This leg plants a
+    // different POPULATION rather than a different filter, which is the shape no equality-over-filters case can see:
+    // the page still lists two blocks, the badge would answer one waiting enrollment.
+    [
+        'name' => 'blocking-counts-waiting-enrollments',
+        'case' => 'the_blocking_badge_counts_the_rows_its_page_lists_and_not_the_enrollments_waiting_at_that_box',
+        'file' => 'app/Http/Controllers/DashboardController.php',
+        'from' => "                'blocking' => DeskQueues::blocking()->count(),",
+        'to' => "                'blocking' => DeskQueues::waitingAtFirstPendingBox(\\App\\Enums\\OfficeId::Blocking)->count(),",
+    ],
+    // The desk building its rows inline again keeps every NUMBER equal — so only the structural case that reads the
+    // action's own body can see the two predicates returning.
+    [
+        'name' => 'blocking-list-re-inlined',
+        'case' => 'each_named_desk_list_builds_its_rows_from_the_helper_and_the_clearance_desk_still_lists_more_than_its_badge',
+        'file' => 'app/Http/Controllers/Blocking/BlockingController.php',
+        'from' => "        \$query = DeskQueues::blocking()->with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])",
+        'to' => "        \$query = Blocks::with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])",
     ],
 ];
 

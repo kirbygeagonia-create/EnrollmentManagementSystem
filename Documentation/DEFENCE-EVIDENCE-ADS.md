@@ -21,7 +21,7 @@ against the pre-fix code and against the fixed code, and the pre-fix code overbo
 
 `EnrollmentIssuer::issue()` writes the enrollment, its workflow form and its requirement rows inside one
 `DB::transaction`, so a record is never on file without the form the nine desks sign.
-`BlockingController::assignStudents()` at `app/Http/Controllers/Blocking/BlockingController.php:484` opens its
+`BlockingController::assignStudents()` at `app/Http/Controllers/Blocking/BlockingController.php:485` opens its
 transaction *before* it reads the block's held seats (`:488-491`) and closes it after the last box is signed, and
 `RetryOnDeadlock::run()` at `:483` wraps the whole thing.
 

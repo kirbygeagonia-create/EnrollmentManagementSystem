@@ -1733,7 +1733,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   prompt's own worked example of what must not be shared; **G-45** `afterCommit` appears 0 times while both
   notification listeners are `ShouldQueue` and `notifications` has only a non-unique index (`:20`); **G-46**
   `DashboardController::queueCounts()` counted institution-wide `Pending` while the page behind it was
-  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` — that predicate is `DeskQueues.php:87-96`,
+  `CollegeScope`-filtered over `Pending` *and* `ReturnedToEvaluation` — that predicate is `DeskQueues.php:85-94`,
   which the desk's own list has asked since 2026-10-31 (the lane-47 family, live, and closed by lane 96); **G-44** declines and
   rejections notify nobody; **G-47** the bell row is message-plus-time, no deep link, and a non-recipient's mark-read
   returns `{ok:true}`; **G-50** `documents` shares the private root with the served `local` disk. One sweep claim was
@@ -1786,10 +1786,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   direction was missing: its `admission` leg **survived** on the first run,
   because the college case asserted only the `evaluation` badge — the admission half of G-46 had no test until that
   leg refused to die. A second leg answered `needle matched 0 times`, which is the harness's own age and not a
-  surviving defect; both were repaired before the run answered `ALL KILLED: 4 leg(s), 0 bad`. `blocking` is
-  deliberately **not** unified: its badge counts enrollments whose
-  first open box is Blocking while the page lists timetable blocks, and picking one silently is a school decision —
-  it is item 9 on the 2026-10-29 sheet. **A sentence naming which lists call the helper is a membership claim, and it
+  surviving defect; both were repaired before the run answered `ALL KILLED: 4 leg(s), 0 bad`. `blocking` was then
+  the one card deliberately **not** unified: its badge counted enrollments whose
+  first open box is Blocking while the page lists timetable blocks, and picking one silently was a school decision —
+  item 9 on the 2026-10-29 sheet. **The school answered it on 2026-11-02: the card counts what its own page lists.**
+  `DeskQueues::blocking()` is therefore the base `BlockingController::index()` builds its rows from, the exception in
+  that class's docblock is gone, and the enrollments waiting at the box stay where they are read — the workflow bell.
+  The harness's two new legs are the first in the family that plant a different *subject* rather than a different
+  filter, which is the shape no equality-over-filters case can see. **A sentence naming which lists call the helper is a membership claim, and it
   rots the moment one more list joins.** This bullet said four lists still built their queries inline — naming
   assessment, accounting and registrar among them — through the whole batch that moved exactly those three onto the
   helper, because the batch edited the code and the register row and never re-read this sentence. Measured again on
@@ -1798,6 +1802,9 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   because their cards name a subset their pages must not lose — the admission card counts `Pending` while
   `AdmissionController::index()` applies no status filter at all, so draft, approved and rejected rows are on the page
   and off the badge, and the clearance card counts `Pending` while its desk lists every status it may still act on.
+  Measured again on 2026-11-02, after the Blocking desk became the seventh list to ask: seven desk lists take their
+  rows from `DeskQueues` (assessment, accounting, registrar, evaluation, clinic, ID, blocking) and the same two stay
+  inline by the same decision.
   `DashboardQueueCountMatchesDeskTest` reads each action's own body for the call *and* for the retired predicate, so a
   batch that re-inlines one is caught although every number stays equal; `mutate-g46-dashboard-queues.php` plants that
   re-inline, which is the leg the badge-equality cases structurally cannot see. After any batch that adds or removes
@@ -3726,6 +3733,23 @@ the whole run and `artisan test --list-tests` answer the *same* number, which is
 stole a `#[Test]` attribute, and Pint, PHPStan, ESLint and the build were each read off their own line rather than
 from the command I had run.
 
+- **A card counts what its own page lists, so the equality case must make the retired subject disagree** (§28.3 G-46's
+ninth card, sheet item 9 ruled 2026-11-02). `DeskQueues::blocking()` is now the base `BlockingController::index()`
+builds its rows from; the class holds no exception, and seven desk lists rather than six take their population from
+the call their card counts. The enrollments waiting at that office were not deleted — `waitingAtFirstPendingBox()` is
+still what the bell addresses — so this is a change of *subject*, not a deletion of a predicate. Three rules travel
+with it. **A fixture in which both readings answer zero proves nothing**: the case writes one enrollment whose first
+open box is Blocking beside two blocks, so the retired predicate is on the database and demonstrably not the number
+on the card; `assertNotSame` is what stops a future reader unifying the wrong subject. **A plant of a different
+subject is a leg no filter-equality harness has**: `mutate-g46-dashboard-queues.php` grew that leg plus
+`blocking-list-re-inlined`, and the re-inline leg is the one the badge cases structurally cannot see, because every
+number stays equal while the two copies come back. **A numeral in a test method name is a membership claim** —
+`four_desk_lists…` and `the_six_desks…` had aged the moment the counts moved, and the first thing they break is the
+`case` string of the harness that filters by them, which reports `No tests found` as a failed control over a green
+tree. Both names now carry no number. After any batch that adds or removes one of those calls: run the class, prove
+with that harness, and re-take the count in the three surfaces that state it — this bullet, `DeskQueues`' class
+docblock, and §28.3's G-46 row (the matrix's §8 row and its section heading state it too).
+
 - **A register's count cell is a claim about its rows, and closing a row moves the actor table too** (§28.5 and
 §29.4, 2026-11-02). Two question rows were added and §29.4's "Open decisions" cell kept the older number, which is
 lane 64's stated-range defect arriving in a cell this repository had never weighed — `lane61` reads status words and
@@ -4407,6 +4431,13 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the blank line deleted the closing caveat paragraph and welded the new label onto the middle of a sentence —
   silently, because the Edit reported one replacement. The file was caught by reading the region back, not by any
   gate: when an edit's anchor is adjacent to content you mean to keep, include the kept content in *both* strings.
+  **Its mirror bit the same day, and closer to the bone:** an insert anchored on the closing lines of
+  `DeskQueues::waitingAtFirstPendingBox()` re-typed that `whereRaw` into `new_string` from memory, and the memory was
+  wrong — the subquery lost its `stepStatus` bind, which would have silently changed which box counts as first for
+  the clinic, ID and blocking queues alike. Nothing failed to parse. The check that caught it is `git diff` on the
+  file read immediately after the edit: a change that adds a method should show **no `-` lines at all**, and any
+  removal is a claim about a line I did not intend to touch. Re-type a kept line only from the text just read, never
+  from recollection.
 
 - **A claim of "unreachable as posed" is a claim about which layer was searched** (guide T02/T17, built 2026-11-02).
   `TESTING-AND-VERIFICATION-ADS.md` carried T02 as not reachable because the only injection considered was an **input**
