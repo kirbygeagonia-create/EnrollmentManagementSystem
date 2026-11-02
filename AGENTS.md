@@ -3928,6 +3928,17 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   pointer hazard again, arriving as a deferral this time and correctly so. No single-connection case can reach the new
   branch (the policy refuses a re-propose on an evaluated record), so the instrument is its proof and that limit is
   written in the comment rather than papered over with a test that cannot fail.
+- **A queue page that batches its reads has to be rehearsed on the engine that runs it, in CI's order**
+  (2026-11-02, ADS §P09 half 2). `App\Support\ReadinessBatch` now feeds the Registrar queue's gate, and the whole
+  SQLite suite was green on it — which proves nothing about the school's server, because the queue page is only
+  walked by the E2E folder and that folder skips on `:memory:`. The rehearsal: create `ems_l197_a`,
+  `artisan migrate --force`, `db:seed --force`, `db:seed --class=DevReferenceDataSeeder --force`,
+  `php tools/seed_full_demo_pipeline.php`, then `E2E_DB_DATABASE=ems_l197_a php artisan test tests/Feature/E2E
+  --fail-on-skipped` — and only `E2E_DB_DATABASE`, because the classes pin their own connection and pinning
+  `DB_CONNECTION` too makes Laravel open a SQLite file named `:memory:`. That answered 8 passed with no skip on a
+  schema holding 29 enrollments, 22 students, 15 payments and 1,009 audit rows. Two notes: the folder run's totals
+  are not a suite total (lane 58's one-surface rule), and a `{ …; echo DONE=$?; }` wrapper reads the status of
+  whatever stood last in the pipe, not the pipeline's own — read its desk report, not the marker.
 - **A preload is only safe when the two paths are asserted to agree, in both directions — and a query counter's
   pattern is a claim about two drivers, not one** (P09 half 1, 2026-11-02). `RegistrarController::index()` resolves
   `Gradescale::passingCeiling()` and `Curriculums::all()` once for the page and threads both into
