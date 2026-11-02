@@ -4212,6 +4212,42 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the register grew and again to 1,031 when the revision row was written. A figure about an instrument is read
   LAST, from the instrument, after every prose edit that could move it.
 
+- **A deliverable whose required shape is a list of questions needs a counter over the questions** (lane 195,
+  2026-11-02). `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md` answers the ADS guide's own population — 106 guide
+  questions across 24 problems, each problem's Applicability mark and its "If N/A or different from our workflow"
+  line, part IV's 12 concept rows plus its N/A explanation, part V's 8 groups and 25 sub-items, part VI's defense
+  sentences, part VII's four fill-ins, part I's six task verbs. `php
+  storage/app/scratch/lane195-count-guide-answers.php` reads that population from
+  `storage/app/scratch/ads-guide-flat.txt` *before* judging the answers, prints it as its own denominator, and
+  refuses (exit 1, cause named) when a family reads short — including a guide dump holding other than 24 problems.
+  Applicability is cross-checked against the P register's verdict word (`DISAGREES-REGISTER`), because two
+  documents answering "does P13 apply" is the defect this file has refused in lanes 46, 69, 90 and 108. Proved by
+  `php storage/app/scratch/mutate-lane195-guide-answers.php` (18 legs, all killed, control green before and after,
+  every planted copy deleted and the deletion verified by `ls` rather than by the exit code). Four findings, each
+  already in this file in another costume. **(a)** The instrument's own first run refused because the task-verb
+  loop's *terminator* was one of the six verbs it was collecting — a census of 1 — which is the guard earning its
+  keep and the reason a refusal is read as a finding about the tool. **(b)** A sentence splitter written
+  `(?<=[.?!])\s+` never fires on `students?” Be prepared`, because the closing quote sits between the terminator
+  and the space: the whole section arrived as one item no answer could contain, so part VI looked unanswered until
+  the split allowed `[”"'\)]?` after the punctuation. **(c)** A markdown answer continues on the next line, so
+  measuring an answer on the line that carries its label judges a wrapped answer short and a five-character one
+  complete — the length test now walks the paragraph to the next blank line or bold label. **(d)** One leg
+  *survived* on the first harness run and the fixture was the defect: it shortened one sentence inside a long
+  wrapped paragraph, so the paragraph was still long and the counter was right. **(e)** The counter's first green
+  also caught a genuinely thin answer of mine — a bare "none." on Problem 16's workflow line — which is the point
+  of the shape counter, and the same reading corrected the register's P13 cell, which had been asserting that a
+  year-level load *band rule* exists; grepping `minUnits`, `maxUnits`, `minSubjects`, `maxUnits`, `maxLoad`,
+  `academicLoad` and `unitLimit` through `app/` finds no such predicate, so P13 now reads "the unit arithmetic
+  exists, no load rule is enforced anywhere" and the answers file says the ceiling is a school figure. A
+  `*-ADS.md` file is read by the artefact-citation gate, so its captures and its tool paths had to be staged before
+  `lane194` would stop reporting `UNTRACKED` — a new tool cited by a new deliverable is invisible to a clone until
+  it is added, which is the tracked-capture rule met one file earlier than the last time.
+- **An Edit whose `old_string` ends at a paragraph boundary eats the next paragraph** (same batch, third time this
+  file records the shape). Appending a sentence to the defense answer with a two-line `old_string` that spanned
+  the blank line deleted the closing caveat paragraph and welded the new label onto the middle of a sentence —
+  silently, because the Edit reported one replacement. The file was caught by reading the region back, not by any
+  gate: when an edit's anchor is adjacent to content you mean to keep, include the kept content in *both* strings.
+
 ## Agent dispatch
 
 Scope agents to non-overlapping paths, run independent lanes in background, reconcile before

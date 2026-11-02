@@ -15,6 +15,17 @@ left silent.
 **Every `Existing Implementation` line below was opened in the working tree on 2026-11-01.** Where a claim could
 not be read from code it says so, and no requirement is marked Verified without a named test or probe.
 
+**The guide's own questions are answered elsewhere, in the guide's own frame.** This register judges each
+problem's status; `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md` answers every item the guide asks — its 106
+guide questions, the Applicability mark and the N/A line of each of the 24 problems, the 12 concept rows of
+part IV, the 25 presentation sub-items of part V, the defense question of part VI and the four fill-ins of
+part VII. The two populations were read by two instruments and agree: `lane155` prints "24 problems, 106
+guide questions, 12 concept rows, 8 presentation areas", and
+`php storage/app/scratch/lane195-count-guide-answers.php` prints the same census as its own denominator and
+refuses until each item carries an answer — proved by `php storage/app/scratch/mutate-lane195-guide-answers.php`.
+Applicability here and there is one answer, not two: the counter compares each mark against this register's
+verdict word and reports `DISAGREES-REGISTER`.
+
 ---
 
 ## 1. Status summary
@@ -33,7 +44,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 | P10 | Concurrent Subject Registration (¶131) | Applies | **Built** (2026-11-01) — measured first, then repaired on the same instrument. `lane190-probe-subject-line-race.php` releases two children at ONE enrollment with ONE identical payload on a scratch clone of live `ems`, each calling the real `proposeSubjects()`. Before: 10 writers gave 6 proposals and **4 unretried `1213` deaths**, every pair still settling on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)` — the data was protected by `uq_enrollment_subject_attempt` and the transaction; the desk was not. The act now takes `Enrollments::…->lockForUpdate()` as its first statement inside the transaction, re-reads the model the lock made authoritative, runs inside `RetryOnDeadlock`, and moves the record only when it has not already been moved. After: **10 proposed, 0 deadlock, 0 driver error, 0 duplicates** (exit 0). The middle reading is why the last branch exists: lock and retry alone answered 5 proposals and 5 `Cannot transition enrollment from 'evaluated' to 'evaluated'` throws |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
-| P13 | Maximum Academic Load (¶161) | Partially — a band rule exists, a term unit cap does not | **Not built** (limit value is an open school question) |
+| P13 | Maximum Academic Load (¶161) | Partially — the unit arithmetic exists, no load rule is enforced anywhere in `app/` | **Not built** (limit value is an open school question; the year-level band the row once cited is not in the file that citation named) |
 | P14 | Faculty Teaching Load (¶171) | Partially — assignments are stored, no load limit is | Justified Partial with a controlled demonstration owed |
 | P15 | Conflicting Class Schedules (¶181) | Applies | Implemented for rooms, officers and blocks; the student-side overlap across two blocks is owed |
 | P16 | Transaction Failure During Enrollment (¶191) | Applies | Implemented, failure demonstration owed (T17) |
