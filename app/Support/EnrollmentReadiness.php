@@ -126,8 +126,10 @@ final class EnrollmentReadiness
      * @param  float|null  $passingCeiling  the queue resolves the maintained scale once for the page and passes
      *                                      it in; read fresh otherwise, exactly as the clearance window is (§P09)
      * @param  Collection<int,Curriculums>|null  $curriculums  the same page's curriculum rows, preloaded once
+     * @param  ReadinessBatch|null  $batch  the same page's passed, credited and prerequisite sets, read once
+     *                                      (§P09's second half); null means every record reads its own three
      */
-    public static function prerequisitesMet(Enrollments $enrollment, ?float $passingCeiling = null, ?Collection $curriculums = null): bool
+    public static function prerequisitesMet(Enrollments $enrollment, ?float $passingCeiling = null, ?Collection $curriculums = null, ?ReadinessBatch $batch = null): bool
     {
         $curriculum = self::curriculumFor($enrollment, $curriculums);
 
@@ -145,14 +147,28 @@ final class EnrollmentReadiness
             return true;
         }
 
-        $satisfied = self::satisfiedSubjectIds($enrollment, $passingCeiling);
+        $satisfied = $batch?->satisfiedFor($enrollment) ?? self::satisfiedSubjectIds($enrollment, $passingCeiling);
 
-        return ! Curriculumsubjects::where('curriculumId', $curriculum->curriculumId)
-            ->where('yearLevel', $enrollment->yearLevel)
-            ->whereIn('subjectId', $confirmedSubjectIds)
-            ->whereNotNull('prerequisiteSubjectId')
-            ->get()
-            ->contains(fn ($row) => ! in_array((int) $row->prerequisiteSubjectId, $satisfied, true));
+        // The batch answers the same question the query below asks, for every record on the page at once. When
+        // it was not built for this enrollment it answers null and the fresh read runs, so a page can never be
+        // judged from a set that does not contain it.
+        $rows = $batch !== null
+            ? $batch->prerequisitesFor((int) $curriculum->curriculumId, (int) $enrollment->yearLevel, $confirmedSubjectIds)
+            : Curriculumsubjects::where('curriculumId', $curriculum->curriculumId)
+                ->where('yearLevel', $enrollment->yearLevel)
+                ->whereIn('subjectId', $confirmedSubjectIds)
+                ->whereNotNull('prerequisiteSubjectId')
+                ->pluck('prerequisiteSubjectId')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+        foreach ($rows as $prerequisiteId) {
+            if (! in_array($prerequisiteId, $satisfied, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -447,8 +447,13 @@ fresh read, so every other caller keeps its old behaviour exactly.
 **Test or demonstration:** T09 and T21's query-count half. `php
 storage/app/scratch/lane191-attribute-registrar-queries.php` attributes each repeated statement to
 the application frame that issued it and counts repeats per listed row: **5.0 per row from five call
-sites before, 3.0 per row from three after.** The remaining three are per-row reads that batch by
-`enrollmentId`, and that work is registered as owed, not delivered.
+sites before, 3.0 per row from three after.** The remaining three — the passed set, the approved credits and the
+declared prerequisites — now come from `App\Support\ReadinessBatch`, constructed once from the page's own rows
+after `paginate()` and threaded through the checklist as an optional argument that defaults to the fresh read, so
+the record page and the approval policy keep answering from the table. `lane191` re-run attributes each of the
+three to one batch statement per page and answers **0 repeating statements per row**, then refuses its own verdict
+because a five-row queue page no longer holds a repeat to weigh: the refusal is the reading, and the
+before-and-after count is pinned by a case instead.
 **Evidence:** `storage/app/scratch/lane191-out.txt` and `lane164-out.txt`; pinned by two cases in
 `tests/Feature/Registrar/PrerequisiteGateTest.php` — one asserts the preloaded answer equals the
 fresh answer **in both directions** (a blocked load and the same load after the prerequisite is
@@ -1229,7 +1234,7 @@ pair, the notification dedupe key.
 **Q24.8** How will performance be maintained as the database grows?
 **Answer:** by keeping reads as seeks (verified per path on a 100,000-student schema), by removing
 loops rather than adding hints (5.0 repeated statements per row became 3.0, with three reads left
-registered as owed), by paginating and aggregating on the server, by naming the columns each screen
+registered once per page), by paginating and aggregating on the server, by naming the columns each screen
 actually paints, and by treating a timing as a property of the run that printed it — which is why the
 claim is a plan and a row estimate instead of a millisecond.
 
@@ -1291,7 +1296,8 @@ index that exists, ~98,800 rows touched where a prefix touches ~1,111.
 
 **Row 9 — Query Optimization.** ☐ Implemented ☑ Query plan/performance test ☐ N/A
 Four paths weighed with their plans; the readiness loop measured at 5.0 repeated statements per row,
-now 3.0, with the remaining three reads registered as owed. The two rewrites that remain are school
+now 0 repeating per row, the three remaining reads answered once per page by `App\Support\ReadinessBatch`. The two
+rewrites that remain are school
 decisions, not defaults to invent.
 
 **Row 10 — Data Integrity.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
@@ -1428,7 +1434,7 @@ that cannot fail has checked nothing.
   restoration N/A in the application because no desk delete is offered and no undo exists — answered
   instead by the executed dump-and-restore); **P08** measured and deliberately not repaired (the
   rewrite changes what a search may stop matching); **P09** partly (two of five per-row reads
-  removed, three owed); **P20** partial to the daily collection report, with the queue and dashboard
+  removed, all five answered once per page); **P20** partial to the daily collection report, with the queue and dashboard
   reads uncovered by name; **P22** partial at the database layer, one service account. Everything
   else is marked Applies above, and the same verdicts are the applicability column of the P register
   in `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` — one answer, not two.
@@ -1511,8 +1517,9 @@ Stated because §II.B's first rule is the one that is easiest to break under pre
    school questions and no default was invented for them.
 2. **P08 is measured, not repaired.** The index exists; the query still ignores it. The rewrite changes
    what a search may stop matching.
-3. **P09 is partly delivered.** Five repeated per-row reads became three; the remaining three are
-   registered as owed work, not as done.
+3. **P09's batching does not remove the ceiling question.** All five repeated reads are answered once per page now,
+   but no CI step enforces a query budget and only one desk page's counts are asserted by name; a later batch that
+   adds a per-row read to another desk would not be caught.
 4. **P15's student-side overlap across two blocks is not refused** — only the second active seat in
    one term is.
 5. **P19 has no desk-facing restore path.** Prevention and auditing are delivered; restoration is an

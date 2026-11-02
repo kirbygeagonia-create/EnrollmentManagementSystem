@@ -2960,7 +2960,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   **Printing the queue is what made it readable, and it found the twenty-third wrong target immediately.** §28's
   row 9 and §27's zero-balance deadlock row both name a checklist key **`registrar_ready`** — a key that exists
   nowhere in `app/`, `resources/`, `routes/`, `tools/`, `tests/`, the guides or CI. The array at
-  `RegistrarController.php:220-232` holds exactly seven keys and the one they mean is
+  `RegistrarController.php:225-237` holds exactly seven keys and the one they mean is
   `registrarApprovalPending` at **:216**, false precisely when the next pending box is another office — so the
   *claim* was right and the identifier it quoted was invented, which no bounds check can see because both line
   numbers are live in the named file. Pass 227 renamed both occurrences (`expect=2`, and it asserts the seven-key
@@ -4212,6 +4212,36 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the register grew and again to 1,031 when the revision row was written. A figure about an instrument is read
   LAST, from the instrument, after every prose edit that could move it.
 
+- **A batched read is a second definition unless the two paths are asserted equal *and* one record must differ**
+  (lane 196, ADS §P09 half 2, 2026-11-02). `App\Support\ReadinessBatch::forEnrollments()` answers the passed set,
+  the approved credits and the declared prerequisites once for the page, and
+  `EnrollmentReadiness::prerequisitesMet()` takes it as a fourth optional argument that defaults to the fresh
+  read, so the policy, the record page and `blockingReasons()` are untouched. `lane191` then answered **0
+  repeating statements per row** — and refused its own verdict, because a five-row queue page no longer holds a
+  repeat to weigh. That refusal is the reading; the number lives in the case. Three findings travel with it.
+  **(a)** The equality case needed a record whose prerequisite was *sat and failed*: with one blocked and one
+  passed record, deleting the batch's ceiling filter changed nothing and the harness leg reported SURVIVED —
+  the test was the defect, not the guard, and the lesson is that a set of records that all answer the same way
+  cannot detect an inversion. **(b)** A leg pointed at a case that calls the helper directly can never see
+  whether the *queue* builds one; the controller's wiring is now pinned by a source-reading case
+  (`the_queue_builds_the_batch_its_own_rows_are_answered_from`), the same shape
+  `DeskStudentLoadColumnsTest` uses where no request reaches the rule. **(c)** Counting a read by its table name
+  counts the wrong thing: `from "enrolledsubjects"` also matches the record's own relation load, so the fresh
+  path answered 4 where the gate makes 2, and the gate's read is identified by the join it alone writes —
+  spelled `join "enrollments" "e2"` on SQLite and `` join `enrollments` `e2` `` on MySQL, so a pattern with a
+  literal `as` matched **0** on both. Also: a batch must seed a key for every person on the page, including the
+  ones with nothing graded yet, or an absent key means "not built for you", the record falls back to a fresh
+  read, and the N-plus-one survives exactly where the page is emptiest. The falsifier is
+  `php storage/app/scratch/mutate-g-p09-readiness-batch.php` (8 legs: batch ignored in the gate, prerequisite read
+  never batched, ceiling filter dropped, student map unseeded, year-level key collapsed, controller builds no
+  batch, plus the control before and after); re-pointing this batch's two moved files needed 45 docx tokens
+  resolved by `lane76` (four GONE windows mapped only after each endpoint was read byte-for-byte at +5) and seven
+  markdown pointers re-taken by a new `php storage/app/scratch/lane196-repoint-md.php`, which validates every pair
+  before writing any and refuses a dated document — where *dated* means the marker `Pointer currency (YYYY-MM-DD)`
+  with the day in parentheses, not the bare phrase: `AGENTS.md` explains that marker in prose, and a first check on
+  the words alone refused to re-point the living file that needed it most. `lane193`'s frozen needle list, by
+  contrast, refused this run because all ten of its needles had been consumed by the batch that wrote it —
+  a one-shot re-pointer is a record of one day's pointers, which is why the pairs now come in as arguments.
 - **A path gate that reads only `directory/file.ext` is blind to half the citations in its own documents**
   (lane 194 widened, 2026-11-02). The artefact census judged a citation only when it carried a directory part, and
   printed that limit as a scope sentence. The ADS deliverables cite artefacts three other ways — a bare name in

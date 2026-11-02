@@ -40,7 +40,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 | P06 | Enrollment Cancellation (¶91) | Applies | Implemented, demonstration owed (T06) |
 | P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
 | P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
-| P09 | Enrollment History Performance (¶121) | Applies | Partly built, both halves measured (2026-11-02) — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched (that is `lane164`'s reading of its own run). Re-measured 2026-11-02 by `lane191-attribute-registrar-queries.php` against live `ems` through the HTTP stack, which names the call sites the older figure could only count: the queue listed **5 rows** and **5.0 statements repeated per row**, from `EnrollmentReadiness` lines 148 (`curriculumsubjects`), 160 (`curriculums`), 187 (best grade per subject) and 197 (approved credits), plus `Gradescale` line 36 (the passing ceiling). Two of those five are **school-wide constants re-read once per record**, so the cheapest half of the repair is a per-request memoize inside the class both the list and the record page already call — no second definition of any gate. Capture `storage/app/scratch/lane191-out.txt`. The two **school-wide** reads — the passing ceiling and the curriculum catalogue — are now resolved once per page and threaded in as optional arguments that default to the fresh read, the shape `clearanceVerdict()` already used for the window, and `lane191` re-run answers **3.0 per row from three sites** (`EnrollmentReadiness` lines 154, 218, 228). Pinned by two new `PrerequisiteGateTest` cases: the preloaded answer must equal the fresh answer in both directions, and the scale and catalogue must be read twice on the fresh path and **zero** times when handed in. Half 2 — batching those three by `enrollmentId` — stays open as task #45 |
+| P09 | Enrollment History Performance (¶121) | Applies | Partly built, both halves measured (2026-11-02) — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched (that is `lane164`'s reading of its own run). Re-measured 2026-11-02 by `lane191-attribute-registrar-queries.php` against live `ems` through the HTTP stack, which names the call sites the older figure could only count: the queue listed **5 rows** and **5.0 statements repeated per row**, from `EnrollmentReadiness` lines 148 (`curriculumsubjects`), 160 (`curriculums`), 187 (best grade per subject) and 197 (approved credits), plus `Gradescale` line 36 (the passing ceiling). Two of those five are **school-wide constants re-read once per record**, so the cheapest half of the repair is a per-request memoize inside the class both the list and the record page already call — no second definition of any gate. Capture `storage/app/scratch/lane191-out.txt`. The two **school-wide** reads — the passing ceiling and the curriculum catalogue — are now resolved once per page and threaded in as optional arguments that default to the fresh read, the shape `clearanceVerdict()` already used for the window, and `lane191` re-run answers **3.0 per row from three sites** (`EnrollmentReadiness` lines 154, 218, 228). Pinned by two new `PrerequisiteGateTest` cases: the preloaded answer must equal the fresh answer in both directions, and the scale and catalogue must be read twice on the fresh path and **zero** times when handed in. Half 2 is **built** (2026-11-02): the three remaining per-record reads now come from `App\Support\ReadinessBatch`, constructed once from the page's own rows and threaded through the checklist as an optional argument that defaults to the fresh read, so the record page and the policy keep calling the same predicate with no batch and get the same answer. `lane191` re-run over live `ems` attributes the three reads to the batch's own three statements, once per page, and answers **0 repeating per-row statements** — and then refuses its own verdict, because a 5-row queue page no longer contains a repeat to weigh; the refusal is the reading, and the quantified proof is in the case |
 | P10 | Concurrent Subject Registration (¶131) | Applies | **Built** (2026-11-01) — measured first, then repaired on the same instrument. `lane190-probe-subject-line-race.php` releases two children at ONE enrollment with ONE identical payload on a scratch clone of live `ems`, each calling the real `proposeSubjects()`. Before: 10 writers gave 6 proposals and **4 unretried `1213` deaths**, every pair still settling on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)` — the data was protected by `uq_enrollment_subject_attempt` and the transaction; the desk was not. The act now takes `Enrollments::…->lockForUpdate()` as its first statement inside the transaction, re-reads the model the lock made authoritative, runs inside `RetryOnDeadlock`, and moves the record only when it has not already been moved. After: **10 proposed, 0 deadlock, 0 driver error, 0 duplicates** (exit 0). The middle reading is why the last branch exists: lock and retry alone answered 5 proposals and 5 `Cannot transition enrollment from 'evaluated' to 'evaluated'` throws |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
@@ -68,7 +68,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 - **Existing implementation.** `app/Services/EnrollmentIssuer.php:109` opens `DB::transaction(fn)` and returns the
   closure's value, so the `enrollments` insert and the workflow form written at `:76` and `:78` commit together or
   not at all. The Registrar's approve and drop acts wrap their subject lines, the status transition and the box
-  signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:330`, `:368`). 38
+  signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:335`, `:373`). 38
   `DB::transaction` sites exist across `app/`.
 - **Gap.** No test forces a failure *between* two subject writes and proves nothing survived.
 - **Required solution.** None new for the mechanism; the demonstration is owed.
@@ -224,7 +224,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 ### P06 — Enrollment Cancellation (¶91-100)
 
 - **Objective.** A multi-subject cancellation must be consistent and must not count as enrolled.
-- **Existing implementation.** `RegistrarController::drop()` at `app/Http/Controllers/Registrar/RegistrarController.php:377`
+- **Existing implementation.** `RegistrarController::drop()` at `app/Http/Controllers/Registrar/RegistrarController.php:382`
   runs one transaction that sets the enrollment to `dropped` and every proposed or confirmed subject line to
   dropped; `app/Services/EnrollmentStateMachine.php:48-50` states the ruling in code ("A drop is terminal"), and
   the exclusion of dropped rows is read wherever seats are counted — the roster's own closure at
@@ -232,7 +232,7 @@ verdict word and reports `DISAGREES-REGISTER`.
   count site in that controller. The numbers of those further sites are deliberately not listed: a comma list of
   line numbers is judged only on its FIRST number by the citation gate, so the rest age unseen, and this batch's
   insertion aged all seven of them by one to nineteen rows while the gate printed `0 problem(s)`. See also
-  `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:139`.
+  `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:141`.
 - **Gap.** No test proves a mid-cancellation failure leaves nothing half-dropped.
 - **Required solution.** None new; the demonstration is owed.
 - **Affected components.** Backend, database.
@@ -320,12 +320,19 @@ verdict word and reports `DISAGREES-REGISTER`.
   relations, and `app/Services/AcademicStandingService.php:177` sums `lectureUnits + labUnits` inside a set-based
   read rather than per row. `enrollments` is indexed on `studentId`, `courseId` and `termId`, plus the composite
   `idx_enrollments_term_status` at `database/migrations/2026_08_04_1000000052_add_composite_indexes_for_heavy_screens.php:24`.
-- **Gap.** The Registrar queue loop at `app/Http/Controllers/Registrar/RegistrarController.php:106-115` calls the
-  checklist per page row, and `app/Support/EnrollmentReadiness.php:66,109-111,144,163,183` each issue a query, so a
-  20-row page costs roughly a hundred queries. No query-count ceiling guards it (the suite has exactly one such
-  assertion, `tests/Feature/Print/PrintEnrollmentFormPayloadTest.php:206-227`).
+- **Gap, and what closed it.** The Registrar queue used to call the checklist per page row while the checklist read
+  five things per record: the declared prerequisites, the curriculum, the best grade per subject, the approved
+  credits and the passing ceiling. The ceiling and the catalogue were resolved once per page first (half 1), and
+  the remaining three now arrive from `App\Support\ReadinessBatch::forEnrollments()`, built from the page's own
+  rows after `paginate()` — so it queries only the people already on screen, and a record outside the page still
+  reads fresh because the argument defaults to null. What is *not* closed: no query-count ceiling guards any desk
+  page in CI, and the same helper reads nothing for a page the desk has not opened.
 - **Required solution.** Batch the checklist's reads for the page (one query per relation, keyed by the page's
-  enrollment ids) and pin the count.
+  enrollment ids) and pin the count. Built and pinned by `tests/Feature/Registrar/PrerequisiteGateTest.php` — the
+  batched answer must equal the fresh answer for every record on the page with one record refused and one allowed,
+  the three reads must be issued twice on the fresh path and once per page through the batch, and the queue must
+  build the batch its rows are answered from. Proved by
+  `php storage/app/scratch/mutate-g-p09-readiness-batch.php`, which plants each of those six ways to be wrong.
 - **Affected components.** Backend, database.
 - **Testing method.** T10 with `DB::enableQueryLog()` and an asserted ceiling, plus a volume rehearsal on a
   generated schema.
@@ -380,7 +387,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 - **Existing implementation.** The relationship is `curriculumsubjects.prerequisiteSubjectId`
   (`database/migrations/2026_08_02_1000000029_create_curriculumsubjects_table.php:15`, indexed `:20`, foreign key
-  `:22`); the gate is `app/Support/EnrollmentReadiness.php:124-150`, which reads the student's satisfied subjects —
+  `:22`); the gate is `app/Support/EnrollmentReadiness.php:132-172`, which reads the student's satisfied subjects —
   including approved equivalencies — and refuses when a confirmed load sits behind an unmet prerequisite. The
   crediting decision that can satisfy one is `App\Models\Creditedsubjects::approved()`.
 - **Status.** Implemented. **Evidence.** `tests/Feature/Registrar/PrerequisiteGateTest.php` and the credit

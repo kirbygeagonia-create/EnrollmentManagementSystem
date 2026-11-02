@@ -22,6 +22,7 @@ use App\Models\Staffusers;
 use App\Models\Students;
 use App\Models\Subjects;
 use App\Support\EnrollmentReadiness;
+use App\Support\ReadinessBatch;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -348,5 +349,136 @@ class PrerequisiteGateTest extends TestCase
         EnrollmentReadiness::prerequisitesMet($second->fresh(), $ceiling, $catalogue);
         $this->assertSame(0, $scaleReads, 'a page that resolves the scale once must not re-query it per row');
         $this->assertSame(0, $catalogueReads, 'a page that preloads the catalogue must not re-query it per row');
+    }
+
+    /**
+     * P09's second half: the passed set, the credited set and the declared prerequisites were the three reads
+     * still issued per record. A batch that answers them for the page is only safe while it agrees with the
+     * read it replaced, so the equality is asserted per record AND one record is required to be refused while
+     * the other is allowed — an equality over two records that both pass would be satisfied by a batch that
+     * answers true for everything.
+     */
+    #[Test]
+    public function the_batched_gate_answer_is_the_fresh_answer_for_every_record_on_the_page(): void
+    {
+        $load = $this->curriculumWithPrerequisite();
+        $blocked = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+        $earned = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+        $this->gradeFor($earned->studentId, $load['prerequisite'], 2.5);
+        // A third record whose prerequisite was sat and FAILED. Without it the equality above is satisfied by a
+        // batch that calls every grade a pass — the ceiling filter could be deleted and both records would still
+        // agree, which is the directional-assertion defect this file has met from three sides already.
+        $failed = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+        $this->gradeFor($failed->studentId, $load['prerequisite'], 5.0);
+
+        $ceiling = Gradescale::passingCeiling();
+        $catalogue = Curriculums::all();
+        $batch = ReadinessBatch::forEnrollments([$blocked->fresh(), $earned->fresh(), $failed->fresh()], $ceiling);
+
+        foreach ([$blocked, $earned, $failed] as $enrollment) {
+            $this->assertSame(
+                EnrollmentReadiness::prerequisitesMet($enrollment->fresh(), $ceiling, $catalogue),
+                EnrollmentReadiness::prerequisitesMet($enrollment->fresh(), $ceiling, $catalogue, $batch),
+                'a batch that disagrees with the read it replaced is a second definition of the gate'
+            );
+        }
+
+        $this->assertFalse(
+            EnrollmentReadiness::prerequisitesMet($blocked->fresh(), $ceiling, $catalogue, $batch),
+            'the record with no passed prerequisite is still refused through the batch'
+        );
+        $this->assertFalse(
+            EnrollmentReadiness::prerequisitesMet($failed->fresh(), $ceiling, $catalogue, $batch),
+            'a failed prerequisite does not unlock the subject through the batch either'
+        );
+        $this->assertTrue(
+            EnrollmentReadiness::prerequisitesMet($earned->fresh(), $ceiling, $catalogue, $batch),
+            'the record that passed it is still allowed through the batch'
+        );
+    }
+
+    /**
+     * The claim this case exists to make is a count, and the count is read on both sides of the change:
+     * two records on the fresh path issue the same read twice, the page issues each of the three once at
+     * build time and never again while the gate runs. Counters are zeroed after the page's own constants
+     * are resolved, because charging a resolution to the path it serves is how this file's earlier
+     * versions failed a correct implementation.
+     */
+    #[Test]
+    public function the_page_batch_takes_the_passed_credited_and_prerequisite_reads_out_of_the_loop(): void
+    {
+        $load = $this->curriculumWithPrerequisite();
+        $first = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+        $second = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+
+        $counts = ['passed' => 0, 'credited' => 0, 'prerequisite' => 0];
+        DB::listen(function ($query) use (&$counts): void {
+            // Every identifier fully quoted on both sides and never as a prefix: `from "curriculumsubjects"`
+            // begins with the characters `from "curriculums"` ends, and a loose pattern counts one family as
+            // the other — measured in this file's own earlier case.
+            // The passed set is the gate's own read; a plain `from "enrolledsubjects"` also matches the record's
+            // `enrolledSubjects` relation, which the queue eager-loads and this case is not about. Asking for
+            // the join the gate's query alone writes is what makes the count the gate's, not the table's —
+            // measured, because the fresh path answered 4 against a pattern that named only the table.
+            if (preg_match('/join\s+["\x60]enrollments["\x60]\s+(?:as\s+)?["\x60]e2["\x60]/i', $query->sql)) {
+                $counts['passed']++;
+            }
+            if (preg_match('/from\s+["\x60]creditedsubjects["\x60]/i', $query->sql)) {
+                $counts['credited']++;
+            }
+            if (preg_match('/from\s+["\x60]curriculumsubjects["\x60]/i', $query->sql)) {
+                $counts['prerequisite']++;
+            }
+        });
+
+        EnrollmentReadiness::prerequisitesMet($first->fresh());
+        EnrollmentReadiness::prerequisitesMet($second->fresh());
+        $this->assertSame(2, $counts['passed'], 'the passed set was read once per record on the fresh path');
+        $this->assertSame(2, $counts['credited'], 'the credited set was read once per record on the fresh path');
+        $this->assertSame(2, $counts['prerequisite'], 'the prerequisite rows were read once per record on the fresh path');
+
+        $ceiling = Gradescale::passingCeiling();
+        $catalogue = Curriculums::all();
+        $counts = ['passed' => 0, 'credited' => 0, 'prerequisite' => 0];
+        $batch = ReadinessBatch::forEnrollments([$first->fresh(), $second->fresh()], $ceiling);
+        $this->assertSame(1, $counts['passed'], 'a page reads the passed set once, not once per row');
+        $this->assertSame(1, $counts['credited'], 'a page reads the credited set once');
+        $this->assertSame(1, $counts['prerequisite'], 'a page reads the declared prerequisites once');
+
+        $counts = ['passed' => 0, 'credited' => 0, 'prerequisite' => 0];
+        EnrollmentReadiness::prerequisitesMet($first->fresh(), $ceiling, $catalogue, $batch);
+        EnrollmentReadiness::prerequisitesMet($second->fresh(), $ceiling, $catalogue, $batch);
+        $this->assertSame(0, $counts['passed'], 'the gate itself must add no read once the page is batched');
+        $this->assertSame(0, $counts['credited'], 'the gate itself must add no read once the page is batched');
+        $this->assertSame(0, $counts['prerequisite'], 'the gate itself must add no read once the page is batched');
+    }
+
+    /**
+     * The queue's own wiring, read from the file rather than from an HTTP walk: the two cases above call
+     * `ReadinessBatch::forEnrollments()` themselves, so neither can see whether the page builds one — and a
+     * harness leg pointed at them reported the controller's wiring as a surviving defect when the plant deleted
+     * it, which was the leg's age rather than the guard's. This is the same source-audit shape
+     * `DeskStudentLoadColumnsTest` uses for a payload rule no request can reach.
+     */
+    #[Test]
+    public function the_queue_builds_the_batch_its_own_rows_are_answered_from(): void
+    {
+        $controller = (string) file_get_contents(base_path('app/Http/Controllers/Registrar/RegistrarController.php'));
+
+        $this->assertStringContainsString(
+            'ReadinessBatch::forEnrollments($enrollments->getCollection(), $passingCeiling)',
+            $controller,
+            'the queue must build the batch from the page it is about to map'
+        );
+        $this->assertStringContainsString(
+            '$this->checklist($enrollment, $openPeriod, $passingCeiling, $curriculums, $batch)',
+            $controller,
+            'and hand it to the checklist that answers every row — a batch nobody passes is a second copy of the read'
+        );
+        $this->assertStringContainsString(
+            'EnrollmentReadiness::prerequisitesMet($enrollment, $passingCeiling, $curriculums, $batch)',
+            $controller,
+            'which must hand it to the gate, or the page still reads per row'
+        );
     }
 }

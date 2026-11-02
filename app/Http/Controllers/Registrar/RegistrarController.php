@@ -27,6 +27,7 @@ use App\Services\WorkflowService;
 use App\Support\DeskQueues;
 use App\Support\EnrollmentReadiness;
 use App\Support\ListSort;
+use App\Support\ReadinessBatch;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -103,9 +104,13 @@ class RegistrarController extends Controller
         // the record page and the policy keep calling the same predicate with no argument and read it fresh.
         $passingCeiling = Gradescale::passingCeiling();
         $curriculums = Curriculums::all();
+        // P09's second half: the passed, credited and prerequisite sets used to be read per row as well. Built
+        // here, from the page's own rows, so it queries only the people already on screen — and every record
+        // outside this page still reads fresh, because the predicate's batch argument defaults to null.
+        $batch = ReadinessBatch::forEnrollments($enrollments->getCollection(), $passingCeiling);
         $readiness = collect($enrollments->getCollection())
-            ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod, $passingCeiling, $curriculums) {
-                $gates = $this->checklist($enrollment, $openPeriod, $passingCeiling, $curriculums);
+            ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod, $passingCeiling, $curriculums, $batch) {
+                $gates = $this->checklist($enrollment, $openPeriod, $passingCeiling, $curriculums, $batch);
 
                 return [$enrollment->enrollmentId => [
                     'met' => collect($gates)->filter()->count(),
@@ -205,7 +210,7 @@ class RegistrarController extends Controller
      *
      * @return array<string, bool>
      */
-    private function checklist(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null, ?float $passingCeiling = null, ?Collection $curriculums = null): array
+    private function checklist(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null, ?float $passingCeiling = null, ?Collection $curriculums = null, ?ReadinessBatch $batch = null): array
     {
         $assessment = $enrollment->studentassessments;
 
@@ -233,7 +238,7 @@ class RegistrarController extends Controller
             // verified, and that the load being approved is one the student is
             // entitled to take.
             'documents_verified' => EnrollmentReadiness::documentsVerified($enrollment),
-            'prerequisites_met' => EnrollmentReadiness::prerequisitesMet($enrollment, $passingCeiling, $curriculums),
+            'prerequisites_met' => EnrollmentReadiness::prerequisitesMet($enrollment, $passingCeiling, $curriculums, $batch),
         ];
     }
 

@@ -20,7 +20,7 @@ never measured it is unfalsifiable.
 
 **Actual implementation.** 38 `DB::transaction(...)` sites in `app/`. The enrollment act is
 `app/Services/EnrollmentIssuer.php:109`, whose closure writes the `enrollments` row and then the workflow form, so
-a record and its desk checklist commit together or not at all. The Registrar's approve (`RegistrarController.php:330`)
+a record and its desk checklist commit together or not at all. The Registrar's approve (`RegistrarController.php:335`)
 and drop (`:368`) wrap subject lines, the status transition and the box signature in one transaction. The status
 machine is the only writer of `enrollmentstatushistory` and transitions inside its own transaction
 (`app/Services/EnrollmentStateMachine.php`). Money writes one transaction per act (`AccountingController.php:268`
@@ -225,16 +225,23 @@ same command answered 2.68 ms and 10.54 ms for the contains search, 0.53 ms and 
 counts and treats a timing as a property of the run that printed it, the same rule the suite's assertion totals
 follow. Per-student history retrieval is an index seek at every hop (`ref` on the student FK, then `eq_ref:PRIMARY`),
 so the guide's worry about "hundreds of thousands of rows" lands on the *page loop*, not the read: a 20-row
-Registrar page costs 40 queries where the batched shape costs 2 — re-measured 2026-11-02 on live `ems` as **5.0 repeated statements per listed row**, from five named call sites in `EnrollmentReadiness` and `Gradescale`, two of which re-read a school-wide constant for every record; those two are now resolved once per page and the same instrument answers **3.0 per row from three sites**. An earlier reading of the capacity count, 410 ms,
+Registrar page costs 40 queries where the batched shape costs 2 — re-measured 2026-11-02 on live `ems` as **5.0 repeated statements per listed row**, from five named call sites in `EnrollmentReadiness` and `Gradescale`, two of which re-read a school-wide constant for every record; those two are now resolved once per page and the same instrument answers **3.0 per row from three sites**; the
+remaining three are the passed set, the approved credits and the declared prerequisites, and those now come from
+`App\Support\ReadinessBatch`, built once from the page's own rows, so the instrument answers **0 repeating
+statements per row** and then refuses its own verdict because a five-row queue page no longer holds a repeat to
+weigh — the refusal is the reading, and the quantified before-and-after (two per record fresh, one per page
+batched, zero inside the gate) is pinned by a case rather than by a stopwatch. An earlier reading of the capacity count, 410 ms,
 was a fixture artefact — the builder spread rows by a modulo that overfilled one block, and `lane163` now refuses
 that shape rather than measuring it.
 
 `app/Services/AcademicStandingService.php` reads the whole grade set in one joined, column-named query rather than
 per subject (`:177` sums `lectureUnits + labUnits` over that result), and the desk lists paginate server-side. The
-regressions the measurement confirmed are named, not guessed: the Registrar queue issues roughly five queries per page
-row through `app/Support/EnrollmentReadiness.php`, and `AccountingController.php:384` filters a datetime with
-`whereDate`, which is non-sargable. Only one test in the suite asserts a query count
-(`tests/Feature/Print/PrintEnrollmentFormPayloadTest.php:206-227`); there is no query budget in CI.
+regressions the measurement confirmed are named, not guessed: the Registrar queue issued roughly five queries per page
+row through `app/Support/EnrollmentReadiness.php` — two of them school-wide constants, three of them the page's own
+sets, and all five now answered once per page — and `AccountingController.php:384` filters a datetime with
+`whereDate`, which is non-sargable. Two cases in one class now assert query counts
+(`tests/Feature/Registrar/PrerequisiteGateTest.php`), where before this batch the only such assertion in the whole
+suite was in a print payload test; there is still no query budget in CI.
 
 **Test method.** Delivered for the four query paths, with `EXPLAIN` read per path. A ceiling assertion per desk page
 is still owed, and the two changes the measurements point at — what a search may stop matching, and how a page's
