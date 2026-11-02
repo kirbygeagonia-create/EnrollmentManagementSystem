@@ -14,7 +14,11 @@ chdir($root);
 $src = 'C:/Users/ADMIN/Downloads/ADS_Final_Project_Guide_EMS_updated.docx';
 $needle = null;
 foreach (array_slice($GLOBALS['argv'], 1) as $a) {
-    if (preg_match('/^--contains=(.*)$/s', $a, $m)) {
+    if (preg_match('/^--docx=(.*)$/s', $a, $m)) {
+        // The same reader has to look at the ANSWERED copy, or the only proof that a filled cell reads as
+        // prose is a byte count. One reader, one target chosen by argument.
+        $src = $m[1];
+    } elseif (preg_match('/^--contains=(.*)$/s', $a, $m)) {
         $needle = $m[1];
     } else {
         fwrite(STDERR, "REFUSED: this tool does not read the flag {$a}\n");

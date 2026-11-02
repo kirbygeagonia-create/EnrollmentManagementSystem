@@ -204,7 +204,22 @@ if ($problems !== []) {
         echo '  '.$p."\n";
     }
 }
-$fail = $problems !== [] || $conceptFail !== [] || $fillFail !== [] || $vAnswerLines !== $vLabels
+// Markdown emphasis must not reach the paper. The blank form holds no `*…*` and no backtick in any run (measured),
+// so any marker found here came from the answer file's own markup — the writer strips it, and this is where a
+// regression in that stripping becomes a refusal instead of a typographical error a panelist reads aloud.
+$markdown = [];
+foreach ($paras as $p) {
+    if (preg_match('/\*[^*<]{1,80}\*/u', $p['text']) === 1 || str_contains($p['text'], '`')) {
+        $markdown[] = mb_substr($p['text'], 0, 80);
+    }
+}
+printf("paragraphs still carrying markdown emphasis or code spans: %d\n", count($markdown));
+foreach (array_slice($markdown, 0, 5) as $m) {
+    echo '  MARKDOWN: '.$m."\n";
+}
+
+$fail = $problems !== [] || $conceptFail !== [] || $fillFail !== [] || $markdown !== []
+    || $vAnswerLines !== $vLabels
     || ! str_contains($text, 'Defense answer:') || ! str_contains($text, 'No row is N/A');
 printf("\n%s: %d window defect(s) over 24 problems\n", $fail ? 'REFUSED' : 'VERIFIED', count($problems));
 exit($fail ? 1 : 0);

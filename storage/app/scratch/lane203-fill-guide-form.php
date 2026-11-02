@@ -183,6 +183,12 @@ count($conceptRows) === 12 || $fail('the guide holds '.count($conceptRows).' §I
 $md = (string) file_get_contents($mdPath);
 $plain = static function (string $s): string {
     $s = str_replace(['**', '`'], '', $s);
+    // Markdown emphasis survives into a Word cell as literal asterisks and reads as a typographical error on
+    // paper: the answer file marks a phrase `*like this*` for a reader of the markdown, and the form must print
+    // the phrase. Only a paired marker with no space inside is treated as emphasis, so a stray `*` in prose is
+    // left alone rather than eaten.
+    $s = (string) preg_replace('/(?<!\*)\*([^*\n]{1,80}?)\*(?!\*)/u', '$1', $s);
+    $s = (string) preg_replace('/(?<![\w_])_([^_\n]{1,80}?)_(?![\w_])/u', '$1', $s);
     $s = preg_replace('/\s+/', ' ', $s);
 
     return trim((string) $s);
