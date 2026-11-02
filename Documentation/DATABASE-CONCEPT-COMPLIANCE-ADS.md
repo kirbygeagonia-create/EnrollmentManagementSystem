@@ -225,7 +225,7 @@ same command answered 2.68 ms and 10.54 ms for the contains search, 0.53 ms and 
 counts and treats a timing as a property of the run that printed it, the same rule the suite's assertion totals
 follow. Per-student history retrieval is an index seek at every hop (`ref` on the student FK, then `eq_ref:PRIMARY`),
 so the guide's worry about "hundreds of thousands of rows" lands on the *page loop*, not the read: a 20-row
-Registrar page costs 40 queries where the batched shape costs 2. An earlier reading of the capacity count, 410 ms,
+Registrar page costs 40 queries where the batched shape costs 2 — re-measured 2026-11-02 on live `ems` as **5.0 repeated statements per listed row**, from five named call sites in `EnrollmentReadiness` and `Gradescale`, two of which re-read a school-wide constant for every record. An earlier reading of the capacity count, 410 ms,
 was a fixture artefact — the builder spread rows by a modulo that overfilled one block, and `lane163` now refuses
 that shape rather than measuring it.
 

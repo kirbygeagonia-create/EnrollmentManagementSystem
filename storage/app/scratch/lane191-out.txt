@@ -1,0 +1,78 @@
+$ php storage/app/scratch/lane191-attribute-registrar-queries.php --rows=20   (live ems, read-only, students counted before and after)
+live `ems`, Registrar queue: 5 row(s) listed, 46 statement(s) after the page's own eager loads
+
+statements, in order:
+   1                                                                  select count(*) as `aggregate` from `students`
+   2  HandleInertiaRequests.php:44 __callStatic()                     select exists (select 1 from information_schema.tables where table_schema = schema() and
+   3  Academicterms.php:46 first()                                    select * from `academicterms` where date(`startDate`) <= ? and date(`endDate`) >= ? limi
+   4  HandleInertiaRequests.php:53 loadMissing()                      select * from `offices` where `offices`.`officeId` in (1)
+   5  HandleInertiaRequests.php:53 loadMissing()                      select `roles`.*, `staff_roles`.`model_id` as `pivot_model_id`, `staff_roles`.`roleId` a
+   6  HandleInertiaRequests.php:56 __get()                            select * from `academicyears` where `academicyears`.`academicYearId` = ? limit 1
+   7  HandleInertiaRequests.php:75 can()                              select `permissions`.*, `model_has_permissions`.`model_id` as `pivot_model_id`, `model_h
+   8  RegistrarController.php:91 paginate()                           select count(*) as `aggregate` from `enrollments` where `enrollmentStatus` in (?, ?)
+   9  RegistrarController.php:91 paginate()                           select * from `enrollments` where `enrollmentStatus` in (?, ?) order by `enrollments`.`e
+  10  RegistrarController.php:91 paginate()                           select `studentId`, `schoolIdNumber`, `lastName`, `firstName`, `middleName` from `studen
+  11  RegistrarController.php:91 paginate()                           select * from `courses` where `courses`.`courseId` in (1, 5)
+  12  RegistrarController.php:91 paginate()                           select * from `academicterms` where `academicterms`.`termId` in (11)
+  13  RegistrarController.php:91 paginate()                           select * from `studentassessments` where `studentassessments`.`enrollmentId` in (86, 87,
+  14  RegistrarController.php:91 paginate()                           select * from `enrollmentworkflow` where `enrollmentworkflow`.`enrollmentId` in (86, 87,
+  15  RegistrarController.php:91 paginate()                           select * from `workflowsteps` where `workflowsteps`.`workflowId` in (82, 230, 232, 234, 
+  16  RegistrarController.php:91 paginate()                           select * from `enrolledsubjects` where `enrolledsubjects`.`enrollmentId` in (86, 87, 88,
+  17  RegistrarController.php:91 paginate()                           select * from `subjects` where `subjects`.`subjectId` in (11, 13, 15, 17, 19, 40)
+  18  RegistrarController.php:91 paginate()                           select * from `payments` where `payments`.`enrollmentId` in (86, 87, 88, 264, 286)
+  19  RegistrarController.php:96 first()                              select * from `clearanceperiods` where `periodStatus` in (?, ?) limit 1
+  20  EnrollmentReadiness.php:160 __callStatic()                      select * from `curriculums` where `curriculums`.`curriculumId` = ? limit 1
+  21  Gradescale.php:36 __call()                                      select max(`maxGrade`) as `aggregate` from `gradescale` where `isPassing` = ?
+  22  EnrollmentReadiness.php:187 pluck()                             select enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade from `enrol
+  23  EnrollmentReadiness.php:197 pluck()                             select `creditedToSubjectId` from `creditedsubjects` where `creditDecision` = ? and `enr
+  24  EnrollmentReadiness.php:148 get()                               select * from `curriculumsubjects` where `curriculumId` = ? and `yearLevel` = ? and `sub
+  25  EnrollmentReadiness.php:67 first()                              select * from `studentclearances` where `studentId` = ? and `clearancePeriodId` = ? limi
+  26  EnrollmentReadiness.php:160 __callStatic()                      select * from `curriculums` where `curriculums`.`curriculumId` = ? limit 1
+  27  Gradescale.php:36 __call()                                      select max(`maxGrade`) as `aggregate` from `gradescale` where `isPassing` = ?
+  28  EnrollmentReadiness.php:187 pluck()                             select enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade from `enrol
+  29  EnrollmentReadiness.php:197 pluck()                             select `creditedToSubjectId` from `creditedsubjects` where `creditDecision` = ? and `enr
+  30  EnrollmentReadiness.php:148 get()                               select * from `curriculumsubjects` where `curriculumId` = ? and `yearLevel` = ? and `sub
+  31  EnrollmentReadiness.php:160 __callStatic()                      select * from `curriculums` where `curriculums`.`curriculumId` = ? limit 1
+  32  Gradescale.php:36 __call()                                      select max(`maxGrade`) as `aggregate` from `gradescale` where `isPassing` = ?
+  33  EnrollmentReadiness.php:187 pluck()                             select enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade from `enrol
+  34  EnrollmentReadiness.php:197 pluck()                             select `creditedToSubjectId` from `creditedsubjects` where `creditDecision` = ? and `enr
+  35  EnrollmentReadiness.php:148 get()                               select * from `curriculumsubjects` where `curriculumId` = ? and `yearLevel` = ? and `sub
+  36  EnrollmentReadiness.php:160 __callStatic()                      select * from `curriculums` where `curriculums`.`curriculumId` = ? limit 1
+  37  Gradescale.php:36 __call()                                      select max(`maxGrade`) as `aggregate` from `gradescale` where `isPassing` = ?
+  38  EnrollmentReadiness.php:187 pluck()                             select enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade from `enrol
+  39  EnrollmentReadiness.php:197 pluck()                             select `creditedToSubjectId` from `creditedsubjects` where `creditDecision` = ? and `enr
+  40  EnrollmentReadiness.php:148 get()                               select * from `curriculumsubjects` where `curriculumId` = ? and `yearLevel` = ? and `sub
+  41  EnrollmentReadiness.php:160 __callStatic()                      select * from `curriculums` where `curriculums`.`curriculumId` = ? limit 1
+  42  Gradescale.php:36 __call()                                      select max(`maxGrade`) as `aggregate` from `gradescale` where `isPassing` = ?
+  43  EnrollmentReadiness.php:187 pluck()                             select enrolledsubjects.subjectId, MIN(enrolledsubjects.grade) as best_grade from `enrol
+  44  EnrollmentReadiness.php:197 pluck()                             select `creditedToSubjectId` from `creditedsubjects` where `creditDecision` = ? and `enr
+  45  EnrollmentReadiness.php:148 get()                               select * from `curriculumsubjects` where `curriculumId` = ? and `yearLevel` = ? and `sub
+  46                                                                  select count(*) as `aggregate` from `students`
+
+attributed totals:
+   11  RegistrarController.php:91 paginate()
+    5  EnrollmentReadiness.php:160 __callStatic()
+    5  Gradescale.php:36 __call()
+    5  EnrollmentReadiness.php:187 pluck()
+    5  EnrollmentReadiness.php:197 pluck()
+    5  EnrollmentReadiness.php:148 get()
+    2  (unattributed)
+    2  HandleInertiaRequests.php:53 loadMissing()
+    1  HandleInertiaRequests.php:44 __callStatic()
+    1  Academicterms.php:46 first()
+    1  HandleInertiaRequests.php:56 __get()
+    1  HandleInertiaRequests.php:75 can()
+    1  RegistrarController.php:96 first()
+    1  EnrollmentReadiness.php:67 first()
+
+per-row cost: 9.20 statement(s) per listed row counting the page's own shared reads
+repeating per-row statements: 25 over 5 row(s) = 5.0 per row, from 5 call site(s)
+  - EnrollmentReadiness.php:160 __callStatic()
+  - Gradescale.php:36 __call()
+  - EnrollmentReadiness.php:187 pluck()
+  - EnrollmentReadiness.php:197 pluck()
+  - EnrollmentReadiness.php:148 get()
+The documents price P09 at 40 queries for a 20-row page against 2 batched; the totals above name which
+methods send them, which is the step the fix cannot skip — the same gates are read by the record page, so
+a batched answer has to live in the class both call, not beside the list that wants it.
+L191_EXIT=0

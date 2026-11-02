@@ -3214,7 +3214,11 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
   answers **two**: `EnrollmentIssuer.php:133`, inside `create()` directly after `Enrollments::create` at :131, and
-  `EvaluationController.php:929`, behind `if (! $enrollment->enrollmentworkflow)` at :928. (Re-taken 2026-10-31: the
+  `EvaluationController.php:1005`, behind `if (! $enrollment->enrollmentworkflow)` at :1004. (Re-taken 2026-11-02 by
+  reading both lines in the working file: the pair had aged some 76 lines through earlier batches and every instrument
+  agreed with it, because a pointer that lands on live code in the right file is invisible to a bounds sweep — this
+  batch's 22 added lines only moved it onto a blank, which is the one shape the gate refuses.
+  (Re-taken 2026-10-31: the
   two numbers this bullet carried had aged 126 lines, every one of them bounds-clean and every one landing on live
   code in the right file — the `.md` half of lane 88's defect, met again.) So the one-form rule is held
   by that existence check, not by a single call site — the row's conclusion stands, its stated reason does not — and

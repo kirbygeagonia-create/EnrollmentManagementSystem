@@ -187,7 +187,11 @@ Documents: the five ADS files plus `TESTING-AND-VERIFICATION-ADS.md`, `IMPLEMENT
 2. Add `uq_enrollmentworkflow_enrollment`. P17's request key removed the reason it was unsafe — a re-sent act is now
    answered with the enrollment that exists rather than reaching the form at all — so the server can hold "one
    workflow form per enrollment", which today only `WorkflowService::createWorkflow()` does.
-3. Batch the Registrar queue's checklist reads, which P09's measurement prices at 40 queries against 2.
+3. Batch the Registrar queue's checklist reads, which P09's measurement prices at 40 queries against 2. Re-priced
+2026-11-02 by `lane191-attribute-registrar-queries.php` on live `ems`: **5.0 repeated statements per listed row**, from
+four `EnrollmentReadiness` reads and `Gradescale`'s passing ceiling — and two of those five re-read a **school-wide
+constant** for every record, so a per-request memoize inside the class both the queue and the record page call is the
+first half of the fix and needs no second definition of any gate.
 4. Rule on the room's meaning, then make the room check either per-room or honest about being per-section.
 5. Take the load run further than the creation act: the thousand-issue bench is delivered (`lane172`,
    `storage/app/scratch/lane172-load-out.txt`), and what it does not yet reach is a thousand concurrent *assigns*
