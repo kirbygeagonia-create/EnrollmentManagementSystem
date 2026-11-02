@@ -660,14 +660,17 @@ disagrees with the read it replaced is a second definition of the gate wearing a
 **Applicability:** ☐ Applies to our system ☑ Partially applies ☐ N/A
 **Design:** the arithmetic and the timing exist; the threshold does not, and this build will not
 invent it.
-**Implementation:** `App\Services\AcademicStandingService` computes each subject's units as
+**Implementation:** what exists is two *membership* rules and the arithmetic, not a ceiling.
+`App\Services\AcademicStandingService` computes each subject's units as
 `lectureUnits + labUnits` and sums them, so a term's load is derivable today; `Blocks` and the
-curriculum carry the per-subject unit counts. **No maximum-load rule is enforced anywhere in `app/`.**
-That was checked rather than recalled: grepping `maxLoad`, `academicLoad`, `unitLimit`, `minUnits`,
-`maxUnits`, `minSubjects` and `maxSubjects` through the controllers and the readiness helper finds no
-such predicate. The year-level *band* the P register once cited as existing is not in the file its own
-citation names, and the register's P13 applicability cell is corrected by this batch rather than
-copied forward.
+curriculum carry the per-subject unit counts. `Evaluation\EvaluationController::proposeSubjects()` refuses a
+proposal on two load-shaped grounds that are enforced and tested: an elective group whose chosen count falls
+outside that curriculum row's `elective_min_choices` / `elective_max_choices`, and a non-elective curriculum
+subject that was never proposed (minus the subjects an **approved** credit row exempts). What does **not** exist
+is a term unit ceiling: no column holds one, no predicate compares a unit sum against a limit, and this build
+will not invent the school's number. The register's P13 applicability cell is corrected by this batch rather than
+copied forward, and so is an earlier reading of this row that had "found no such rule at all" by grepping four
+column names this schema has never held.
 **Test or demonstration:** T14 — **not executed**, because there is no expectation to assert until the
 school states the ceiling. The nearest delivered thing is Problem 1's refused-proposal case, which
 proves the transaction shape a load rule would sit inside.

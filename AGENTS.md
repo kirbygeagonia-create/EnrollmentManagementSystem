@@ -2789,10 +2789,15 @@ proved by comparing the whole window in both versions, which is the only claim a
   copy is `proposeSubjects()`'s closing brace, a blank line, and that method's own docblock, so the byte-for-byte
   re-take on 2026-10-31 proved the lines were *live*, not that they carried the claim. The same window now sits at
   `EvaluationController.php:689-694` (docblock, signature, opening brace, the `authorize` line), which is what the
-  number honestly points at today; the refusal itself is in neither that window nor the two blocks above it, and
-  grepping `minSubjects`/`maxSubjects`/`minUnits`/`maxUnits`/`band` through this controller and
-  `app/Support/EnrollmentReadiness.php` finds no such rule at all — which is a finding about the register row, not a
-  line number to guess at. This is the wrong-target shape again, met from the inside: a bounds sweep, a byte-match
+  number honestly points at today; **that reading was overtaken on 2026-11-02 and the rule was never absent**:
+  the band refusal lives in the same method at lines 725 to 741 (the comment `// Elective group validation`, the
+  `groupBy('elective_group')`, the `elective_min_choices` / `elective_max_choices` read and the
+  `ValidationException`), it is pinned by `tests/Feature/Evaluation/ElectiveValidationTest.php`, and §21's register
+  row now cites exactly that window. The earlier "finds no such rule at all" came from grepping
+  `minSubjects`/`maxSubjects`/`minUnits`/`maxUnits` — four names this schema has never held. Same paragraph, second
+  lesson: a wrong-target hunt ends when the *rule* is found, not when a grep comes back empty, and an
+  absent-name grep must never be written into this file as an absent rule. This is the wrong-target shape again, met
+  from the inside: a bounds sweep, a byte-match
   against HEAD and a confident reader all agree with a pointer that describes a different act than its sentence.
   Similarly, the staff row quoted
   the curriculum block for the seeding of `staff8` and the office heads (that is
