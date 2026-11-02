@@ -105,7 +105,9 @@ foreach ($owed as $p) {
     }
 }
 
-printf("sortable-table queue, read %s from the tree\n", gmdate('Y-m-d'));
+// Named as the UTC day, not "today": this box runs ~19 h ahead of UTC and the school's civil day is a third answer,
+// so a bare date in a print is the claim this repository refuses — say which clock stamped the reading.
+printf("sortable-table queue, read %s UTC from the tree\n", gmdate('Y-m-d H:i'));
 printf("population: %d pages render the shared table; %d are wired; %d owed (the sum is the denominator, asserted)\n\n",
     $denominator, $wired, count($owed));
 
