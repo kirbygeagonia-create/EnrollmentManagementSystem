@@ -31,15 +31,18 @@ $opt = static function (string $name, $default = null) {
     return $default;
 };
 foreach (array_slice($GLOBALS['argv'], 1) as $a) {
-    if (str_starts_with($a, '--') && ! preg_match('/^--(rows|verbose)=/', $a)) {
+    if (str_starts_with($a, '--rows')) {
+        // Deleted rather than left working: `RegistrarController::index()` hardcodes `paginate(20)`, so a page
+        // size asked for here is honoured by nothing and the flag would be accepted while changing only the
+        // label beside the number. The harness leg `rows-arg-refused` proves the refusal, not the intention.
+        fwrite(STDERR, "REFUSED: this tool reads no --rows — the queue's page size belongs to the controller.\n"
+            ."The divisor is the number of rows the page actually lists, read out of the payload below.\n");
+        exit(1);
+    }
+    if (str_starts_with($a, '--') && ! preg_match('/^--(verbose)=/', $a)) {
         fwrite(STDERR, 'REFUSED: this tool does not read '.escapeshellarg($a).".\n");
         exit(1);
     }
-}
-$rows = (int) $opt('rows', 20);
-if ($rows < 1 || $rows > 50) {
-    fwrite(STDERR, "REFUSED: --rows must be 1 to 50 (got {$rows}) — this is an attribution read, not a load test.\n");
-    exit(1);
 }
 
 $app = require $root.'/bootstrap/app.php';
@@ -81,7 +84,9 @@ if (! $desk) {
     exit(1);
 }
 
-$request = Illuminate\Http\Request::create('/registrar?per_page='.$rows, 'GET');
+// No per_page: the controller decides its own page size, and asking for another is what made the deleted
+// --rows flag inert.
+$request = Illuminate\Http\Request::create('/registrar', 'GET');
 $request->setLaravelSession($app['session']->driver());
 Illuminate\Support\Facades\Auth::setUser($desk);
 

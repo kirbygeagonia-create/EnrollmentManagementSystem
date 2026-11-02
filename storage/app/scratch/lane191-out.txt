@@ -76,3 +76,11 @@ The documents price P09 at 40 queries for a 20-row page against 2 batched; the t
 methods send them, which is the step the fix cannot skip — the same gates are read by the record page, so
 a batched answer has to live in the class both call, not beside the list that wants it.
 L191_EXIT=0
+
+NOTE ADDED AFTER THE CAPTURE: the --rows flag this command line carries was accepted and inert — the controller
+hardcodes paginate(20), so the queue listed 5 rows regardless. The figures above are unaffected (the divisor is
+the listed-row count read out of the payload, not the flag), but the flag has since been deleted rather than left
+working, and mutate-lane191-attribution.php now requires it to be refused by name.
+live `ems`, Registrar queue: 5 row(s) listed, 38 statement(s) after the page's own eager loads
+per-row cost: 7.60 statement(s) per listed row counting the page's own shared reads
+repeating per-row statements: 15 over 5 row(s) = 3.0 per row, from 3 call site(s)
