@@ -194,8 +194,12 @@ not be read from code it says so, and no requirement is marked Verified without 
   four cases in `tests/Feature/Evaluation/ProfileCaptureTest.php` and falsified by
   `storage/app/scratch/mutate-p05-version-tests.php` (comparison removed, bump removed, `required` downgraded to
   `nullable`, refusal stripped of its message, column made fillable — each killed by the case that names it).
-- **Evidence.** `Tests: 11 passed` for that file locally; `lane181-suite.log` carries the delivered whole-suite
-  reading that contains it. A schema default is not returned to a model that was just created, which is why
+- **Evidence.** `Tests: 11 passed` for that file locally; `storage/app/scratch/lane189-suite.log` carries the
+  delivered whole-suite reading that contains it — `ProfileCaptureTest` present, `Tests: 1224 passed (7656
+  assertions)`, duration 2212.95 s. (The name this cell first carried, `lane181-suite.log`, was never a file: the
+  lane numbered 181 left two HEAD exports and no log, and the delivered run for its cases is the lane189 capture.
+  Found by `lane194-ads-artefact-citations.php`, which is the reason the correction names a path it can also prove
+  is tracked.) A schema default is not returned to a model that was just created, which is why
   `Students` now declares `protected $attributes = ['rowVersion' => 1];` — without it the in-memory object posted a
   null version and the guard refused a screen that had done nothing wrong.
 - **Status.** Not started.
