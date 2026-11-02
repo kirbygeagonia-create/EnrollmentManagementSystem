@@ -906,7 +906,8 @@ new unique key is considered, so the preconditions are measured before the const
 **Applicability:** ☐ Applies to our system ☑ Partially applies ☐ N/A
 **Design:** refuse what must not be deleted, retire records by status rather than removing them, and
 say plainly that no desk-facing restore exists.
-**Implementation:** of live `ems`' 105 foreign keys, 72 refuse a delete outright, one is RESTRICT and
+**Implementation:** of live `ems`' 105 foreign keys, 72 refuse a delete outright (71 with NO ACTION plus the one
+RESTRICT on `shiftingrequests.requestedBy`) and
 only four cascade (the RBAC pivots the seeder's own prune relies on). Every desk delete answers those
 with a hand-written child list (`blockedDeletionMessage()` and its siblings) that
 `php storage/app/scratch/lane43-delete-guards.php` weighs against the server's actual referential
@@ -1334,8 +1335,9 @@ instrument ran; the rewrite is the open half.
   `php storage/app/scratch/lane162-generate-erd.php` — the generator splices between its own markers
   and **refuses** to overwrite a file that holds prose but no markers, so the hand-written readings
   outside the diagram survive a re-take.
-- *Tables and relationships:* 64 tables in live `ems` (54 to 56 domain plus the framework's own, the
-  partition derived from the migrations rather than recalled), 105 foreign keys, all catalogued per
+- *Tables and relationships:* 64 base tables in live `ems`, the domain-and-framework partition derived from the
+  migrations and the server by `php storage/app/scratch/lane60-ratio-claims.php --run` rather than recalled (that
+  instrument's own verdict today: 54 figures matching, 0 stale), 105 foreign keys, all catalogued per
   table in §23 of the authority document and weighed by `lane43-delete-guards.php` and
   `lane60-ratio-claims.php`.
 - *Primary keys and foreign keys:* camelCase surrogate keys on every domain table (`studentId`,
