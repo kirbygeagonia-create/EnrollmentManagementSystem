@@ -122,20 +122,20 @@ and no total is stated in prose in this file: a figure in a sentence no instrume
 | Evidence | P05's row in `REQUIREMENTS-TRACEABILITY-ADS.md` (now `Built`), `tests/Support/DeskStudentPayload.php` for the payload shape, and §4 of `DATABASE-CONCEPT-COMPLIANCE-ADS.md` for the concurrency claim this row belongs to. |
 | Notes | Prompt part 40 asks for this simulation and prompt part 39 forbids fabricating a result. Both are answered by writing the absence in the ten-field shape rather than inventing a run. |
 
-### T02 — failure mid-commit — **not executed, and not reachable as posed**
+### T02 — failure mid-commit — **executed at the database boundary**
 
 | Field | |
 |---|---|
-| Description | A fault arrives after some subject lines are written but before the commit, and the record must not be left half-enrolled. |
-| Preconditions | A way to fail inside the transaction the act opens. |
-| Test data | The assign act's own enrollment ids, one of them impossible. |
-| Steps | The first draft posted `enrollmentIds = […, 999999]` and believed it had produced a mid-loop failure. |
-| Expected | Nothing is written anywhere when the act fails part-way. |
-| Actual | Not reachable as posed: `enrollmentIds.*` is validated `exists:enrollments,enrollmentId`, so the bad id is refused before the transaction opens — the refusal the first draft counted as a mid-commit failure was a validation error, and the handler then renders it as a 500, which is not the state under test. |
-| Result | **Not executed.** What is proven instead is the reachable half: T05's all-or-nothing refusal (a three-student request that seats nobody and leaves both free seats available) and a shape guard that the whole act sits inside one `DB::transaction`. |
-| Logs / query output | none for the un-run case. T05's line in `l171-suite.log` reads `a request larger than the seats left seats nobody`, and the audit's `A block holding more students than it declares 0`. |
-| Evidence | `tests/Feature/Blocking/BlockCapacityAtomicityTest.php`, and `mutate-g-ads-capacity-tests.php` legs that put the count back outside the transaction and watch the named case go red. |
-| Notes | A mid-loop fault would need an injection seam the controller does not offer; adding one for a test is a change to the act, not evidence about it, so this row says unreachable rather than pretending a seam. |
+| Description | A fault arrives after some rows are written but before the commit, and the record must not be left half-enrolled. |
+| Preconditions | A scratch schema seeded from live `ems`, an active staff account to sign the act, and a term an enrollment already sits on. `lane198-probe-forced-rollback.php` refuses if any of those is missing. |
+| Test data | Two fresh students cloned from an active row, each with its own `requestKey` (`RBK-A-…`, `RBK-B-…`), so the two acts cannot be confused with each other or with the schema's standing rows. |
+| Steps | (1) Drive `App\Services\EnrollmentIssuer::issue()` once to completion and count `enrollments`, `enrollmentworkflow`, `workflowsteps` before and after. (2) Drive the same act again with a query listener registered on the same connection that throws the first time it sees the workflow-form insert, then re-read all three counts and ask whether the failed key left any row. |
+| Expected | The first act leaves one enrollment, one form and the box rows that form names. The second leaves nothing at all: no enrollment under its key, none for that student, and no movement in any of the three tables. |
+| Actual | **Both halves observed.** The commit added exactly +1 enrollment, +1 form, +7 boxes. The fault fired once, after the enrollment row was already visible on that connection (the probe measures this at the instant of the fault rather than assuming it from statement order), the act threw `RuntimeException`, and the re-read answered 0 rows for that key, 0 for that student, and +0/+0/+0 across the three tables. |
+| Result | **Pass.** The guide's failure scenario is demonstrated on the engine, at the boundary the application does not control. What is *still* not shown is a real power loss or a killed connection, which is T19 and P21's question rather than this row's. |
+| Logs / query output | `storage/app/scratch/lane198-out.txt`, four lines and a verdict, taken on `ems_l197_a`: `COMMIT key …: enrollment 1, form 1, boxes 7 (tables +1/+1/+7) ok`, `ORDER … YES (so the rollback had something to undo)`, `ROLLBACK key …: enrollments 0, that student's enrollments 0; tables +0/+0/+0 nothing survived`. |
+| Evidence | `storage/app/scratch/lane198-probe-forced-rollback.php` (the instrument), `storage/app/scratch/mutate-lane198-rollback-probe.php` (its falsifier), this row, and guide problems 1 and 16 in `GUIDE-PROBLEM-ANSWERS-ADS.md`. |
+| Notes | This row used to read "not reachable as posed", and the reason it stopped being true is worth keeping: that judgement looked for an **input** that fails mid-loop, and the assign act validates `enrollmentIds.*` with `exists:` before its transaction opens, so no bad id ever reaches it. A real mid-transaction fault is a **database** event (a deadlock, a lost connection, a refused write), and Laravel notifies a query listener after each statement inside that same transaction. Throwing there adds no seam to the act; it is the failure arriving where the act cannot choose whether to see it. |
 
 ---
 
@@ -218,17 +218,24 @@ than a technical error — the distinction prompt part 40 asks for.
 | Evidence | `php tools/ems-backup-drill.php --target=ems_drill` prints the verdict quoted above and refuses the run rather than proceeding when the dump carries a `DROP DATABASE`, when the target is a name it was not told to own, or when the file it wrote holds no `CREATE TABLE` for the schema it claims to copy; its output is kept in `Documentation/SECURITY-AND-RECOVERY-ADS.md` §2 rather than re-typed here. |
 | Notes | No scheduled job and no point-in-time recovery exist; the document says so rather than implying the drill is a policy. |
 
-### T17 DB exception mid-flow, T18 interruption and retry — **executed for the retry half**
+### T17 DB exception mid-flow, T18 interruption and retry — **executed on both halves**
 
 The exception taxonomy is pinned (`App/Support/RetryOnDeadlock` retries 1213 and 1205 only, propagates everything
-else, refuses `attempts: 0`, and says *Nothing was saved*). The interruption-and-retry half is now built and pinned by
+else, refuses `attempts: 0`, and says *Nothing was saved*). The mid-flow exception is now **observed, not argued**:
+`storage/app/scratch/lane198-probe-forced-rollback.php` registers a query listener on the act's own connection, lets
+the enrollment row be written, throws at the next statement, and re-reads `enrollments`, `enrollmentworkflow` and
+`workflowsteps` to report `+0/+0/+0 nothing survived` — the capture is `storage/app/scratch/lane198-out.txt`, and
+`storage/app/scratch/mutate-lane198-rollback-probe.php` proves the probe refuses when the fault never fires and when
+it fires before any write. The interruption-and-retry half is built and pinned by
 `tests/Feature/Enrollment/EnrollmentRequestKeyTest.php`: a replay of one `requestKey` answers the enrollment the first
 send created and opens no second workflow form; the UNIQUE index refuses a second row carrying that key **on the
 driver the suite runs on**, which is the property the generated-column seat key cannot have; two unkeyed acts stay two acts; a
 key that arrives naming a different student or term is refused rather than answered with somebody else's record; and
 the issuing page is read to prove the desk actually puts the key on the wire. What still no case does is kill a real
-process between the write and the commit — that belongs to the load harness (`lane172`), which drives separate
-processes but does not interrupt one mid-transaction, and is stated as a limit rather than papered over. Proved by
+process between the write and the commit — the injected fault arrives at the query boundary inside a live process,
+which is the transaction's own failure path but not the machine losing the worker. That half belongs to the load
+harness (`lane172`), which drives separate processes but does not interrupt one mid-transaction, and is stated as a
+limit rather than papered over. Proved by
 `storage/app/scratch/mutate-p17-idempotency-tests.php`, one leg per promise, including the leg that takes
 `requestKey` out of `Enrollments::$fillable` — the silent failure, since mass assignment drops an unlisted field with
 no error at all.

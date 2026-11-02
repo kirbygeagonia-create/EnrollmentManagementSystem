@@ -4319,6 +4319,38 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   silently, because the Edit reported one replacement. The file was caught by reading the region back, not by any
   gate: when an edit's anchor is adjacent to content you mean to keep, include the kept content in *both* strings.
 
+- **A claim of "unreachable as posed" is a claim about which layer was searched** (guide T02/T17, built 2026-11-02).
+  `TESTING-AND-VERIFICATION-ADS.md` carried T02 as not reachable because the only injection considered was an **input**
+  that fails mid-loop, and `enrollmentIds.*` is validated `exists:` before the transaction opens — true, and beside the
+  point: a real mid-transaction fault is a **database** event, and Laravel notifies a query listener after each
+  statement *inside* that transaction. `storage/app/scratch/lane198-probe-forced-rollback.php` uses that to print the
+  pair the guide asks for from one act: a commit (`enrollment 1, form 1, boxes 7`, tables `+1/+1/+7`) and a forced
+  failure (enrollment row written, fault thrown at the next statement, then `0` rows for the key and `+0/+0/+0`).
+  Three instrument bugs came out of it, each a class this file already names. **(a)** The first run died on two
+  columns it invented (`staffusers.isActive` — the table holds `status`; `academicterms.termStatus` — that table has
+  **no** status column at all) and the framework rendered the fatal while the process **exited 0**: a dead instrument
+  a wrapper would have recorded as a verdict. Anything escaping the named guards is now `set_exception_handler` →
+  `REFUSED: … exit(1)`, and the harness's last leg reaches that path on a schema that is not there. **(b)** The
+  listener's own visibility read (`did the enrollment row exist at the instant of the fault`) was issued **before**
+  the fire-once counter was set, so with the needle moved to `select ` that read re-entered the listener, fired
+  itself again, and the run died on a stack overflow with exit 255 and no cause. Set the flag, then query. **(c)**
+  `mutate-lane198-rollback-probe.php` found all of that, and its own needles were `"$sql"` in double quotes —
+  interpolating an undefined harness variable, the documented trap met a sixth time. So the rule for a probe that
+  measures its own trigger: state the guard *before* the read that could re-enter it, and refuse on the throw path
+  rather than letting the framework print one.
+  **Re-taking T02 found the row above it stale.** The traceability scenario table still said `T01 | multi-subject
+  commit | no` one day after its two cases were delivered, because the batch that closed T01 edited the P-register
+  rows and never re-read the table that lists the same scenarios. When a scenario is closed, re-take **every** table
+  that names it — the status column, the scenario list, the owed-demonstration list (this one went five → three), and
+  `FINAL-REPORT-ADS.md`'s two id lists, which were re-taken from `lane169-read-ads-status.php`'s own buckets rather
+  than typed; that is what showed the hand-kept Built list omitting four ids the census counts as built.
+- **Docx row clones inherit the previous pass's read-back needle** (pass 398, same batch). The read-back looked for
+  `$date.' ADS problem 9's second half is built'` — the *predecessor* row's opening sentence, which pass 397 had
+  written — so it found the old row (1 match, count guard satisfied), compared its text with the new body and refused
+  a correct write, restoring its own backup. Pass 394 met the same thing from the anchor side. When a pass is cloned,
+  grep it for every literal that names the *previous* batch's text and re-cut each onto this row's own words before
+  the first `--apply`.
+
 ## Agent dispatch
 
 Scope agents to non-overlapping paths, run independent lanes in background, reconcile before

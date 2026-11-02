@@ -32,7 +32,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 | ID | Problem (guide ¶) | Applicability | Status |
 |---|---|---|---|
-| P01 | Incomplete Enrollment Transaction (¶41) | Applies | Implemented, demonstration owed (T02) |
+| P01 | Incomplete Enrollment Transaction (¶41) | Applies | Built and demonstrated — T01's two cases on the subject-line act, and the commit / forced-failure pair on the issuing act (`lane198-out.txt`) |
 | P02 | Last Available Slot (¶51) | Applies | Built and measured 2026-11-01 — block row locked inside the transaction, count re-taken under it, room locked second; HEAD overbooked 2-of-1, the fix refused one writer per pair |
 | P03 | Duplicate Enrollment (¶61) | Applies | Built — subject lines guarded since the schema was written, the fee sheet by `uq_studentassessments_enrollment` since 2026-11-01, and the active seat by `uq_enrollments_active_seat` over the VIRTUAL `seatKey`: the key was added the same day, **withdrawn the same day** after CI showed test files writing two active seats for one student and term, and returned the same day after the census found eight such files and each was repaired and rehearsed on a scratch MySQL schema. `seatHolder()` stays the desk's guard on both drivers; the key is MySQL-only because SQLite compiles no generated `ALTER` |
 | P04 | Incorrect Section Capacity (¶71) | Applies | Built and pinned — count weighed against `maxStudents` by the assign guard and by the audit's twentieth rule; the room-level question stays open by name |
@@ -47,7 +47,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 | P13 | Maximum Academic Load (¶161) | Partially — the unit arithmetic exists, no load rule is enforced anywhere in `app/` | **Not built** (limit value is an open school question; the year-level band the row once cited is not in the file that citation named) |
 | P14 | Faculty Teaching Load (¶171) | Partially — assignments are stored, no load limit is | Justified Partial with a controlled demonstration owed |
 | P15 | Conflicting Class Schedules (¶181) | Applies | Implemented for rooms, officers and blocks; the student-side overlap across two blocks is owed |
-| P16 | Transaction Failure During Enrollment (¶191) | Applies | Implemented, failure demonstration owed (T17) |
+| P16 | Transaction Failure During Enrollment (¶191) | Applies | **Built and demonstrated** — one act, one transaction; the failure half is observed on the engine by `lane198-probe-forced-rollback.php`, which writes the enrollment, throws at the next statement and re-reads the three tables to `+0/+0/+0` |
 | P17 | Power Interruption During Enrollment (¶201) | Applies | **Built** — `enrollments.requestKey` names the act, `EnrollmentIssuer::issue()` answers the record that already exists, and a UNIQUE index refuses a second row for one key on both drivers |
 | P18 | Duplicate Student ID (¶212) | Applies | Implemented at the database — `uq_students_schoolid` |
 | P19 | Accidental Deletion (¶223) | Partially — status-based cancellation, no restore path | Implemented for protection; restoration is an owner question |
@@ -77,13 +77,17 @@ verdict word and reports `DISAGREES-REGISTER`.
   `tests/Feature/Evaluation/RetakeAttemptTest.php` — `a_multi_subject_commit_writes_every_line_it_names` (a
   two-subject proposal writes two lines and exactly one `evaluated` history row) and
   `a_refused_proposal_leaves_the_existing_load_in_place` (a proposal refused for a duplicate subject leaves the
-  line count and the status where they were). The forced throw *inside* the transaction after the first line,
-  asserting `enrollments`, `enrolledsubjects`, `workflowsteps` and `enrollmentstatushistory` all answer zero, is
-  still owed as T02; `php storage/app/scratch/mutate-g-t01-subject-commit.php` kills the two delivered cases by
+  line count and the status where they were). The *shape* of a forced throw inside the transaction after a row
+  was already written is now observed on the engine, on the issuing act:
+  `storage/app/scratch/lane198-probe-forced-rollback.php` writes the enrollment, throws at the next statement and
+  re-reads `enrollments`, `enrollmentworkflow` and `workflowsteps` to `+0/+0/+0`, with the row's visibility at the
+  instant of the fault measured rather than assumed. What is **not** captured that way is the same injection on
+  the subject-line act (`enrolledsubjects` zero after the first line); that half stays owed, and `php
+  storage/app/scratch/mutate-g-t01-subject-commit.php` kills the two delivered cases by
   planting exactly those two defects (insert only the first line; disable the duplicate guard).
-- **Evidence.** `storage/app/scratch/lane189-suite.log` and the delivered run recorded below; the case pair and
-  its falsifier are in the two files named a line above.
-- **Status.** Implemented and demonstrated for the commit half (T01); T02's forced-rollback print is owed.
+- **Evidence.** `storage/app/scratch/lane189-suite.log`, `storage/app/scratch/lane198-out.txt` and the delivered
+  run recorded below; the case pair and its falsifier are in the two files named a line above.
+- **Status.** Built and demonstrated on both acts for everything except the subject-line injection named above.
 
 ### P02 — Last Available Slot (¶51-60)
 
@@ -443,9 +447,12 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 ### P16 — Transaction Failure During Enrollment (¶191-200)
 
-- As P01: the mechanism exists (`EnrollmentIssuer.php:109`), the midway demonstration does not. A `try/catch` that
-  swallows without rolling back is refused by the framework's own closure form, which is worth saying out loud in
-  the defense. **Status.** Implemented; T17 demonstration not started.
+- As P01: the mechanism exists (`EnrollmentIssuer.php:109`) and the midway demonstration is now captured on that
+  very act. A `try/catch` that swallows without rolling back is refused by the framework's own closure form, which
+  is worth saying out loud in the defense, and the closure's other direction is measured: `lane198-probe-forced-rollback.php`
+  lets the enrollment row be written, throws at the next statement from a query listener on the same connection, and
+  re-reads the three tables to `+0/+0/+0`; the capture is `storage/app/scratch/lane198-out.txt` and the probe's own
+  guards are killed by `storage/app/scratch/mutate-lane198-rollback-probe.php`. **Status.** Built and demonstrated.
 
 ### P17 — Power Interruption During Enrollment (¶201-211)
 
@@ -618,8 +625,8 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 | Concept (guide ¶) | Status | Where | Evidence owed |
 |---|---|---|---|
-| Transactions (¶295) | Implemented | 38 `DB::transaction` sites; `EnrollmentIssuer.php:58` | T01, T02 |
-| COMMIT / ROLLBACK (¶297) | Implemented, partly demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest` | a printed failed-commit inside the enrolment path (T01) |
+| Transactions (¶295) | Implemented and demonstrated | 38 `DB::transaction` sites; `EnrollmentIssuer.php:58` | T01's two cases, and `lane198-out.txt` for the commit and the forced failure of one act |
+| COMMIT / ROLLBACK (¶297) | Implemented and demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest`, the rollback by `lane198-probe-forced-rollback.php` | none for the general case; the subject-line injection is the one half still open (named under P01) |
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
 | Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:485` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
@@ -646,8 +653,10 @@ same defect as a stale row, and six of the eight below said "owed" for things th
    by `lane60` and `lane44` rather than restated by hand.
 2. **Transactions** — **partly delivered.** One meaningful transaction per enrollment act, COMMIT and ROLLBACK
    evidenced by `BlockCapacityAtomicityTest` (a refusal that seats nobody, and the seats still free afterwards).
-   Still owed: a failure injected *inside* a commit, which the assign path cannot produce from a desk because its
-   ids are validated first — stated in `TESTING-AND-VERIFICATION-ADS.md` as T01/T02 rather than simulated.
+   Still owed on that path: a failure injected *inside* its commit, which the assign path cannot produce from a desk
+   because its ids are validated first. The injection is done instead on the issuing act, at the query boundary,
+   and is captured in `storage/app/scratch/lane198-out.txt` — stated in `TESTING-AND-VERIFICATION-ADS.md` under
+   T02 rather than simulated.
 3. **ACID** — **delivered as far as the build goes.** Isolation is the row lock the guide names (`FOR UPDATE`) for
    the write path and one transaction around the sheet the cashier prints, so a report no longer straddles two
    snapshots; durability is the executed restore; atomicity and consistency are the keys and the audit. What the
@@ -683,13 +692,13 @@ and the table above says which; the rest are this batch's own. Every case in
 preconditions, test data, steps, expected, actual, pass or fail, logs, evidence, notes — and a test that cannot run
 is marked **not executed** with the reason in the same shape rather than being left off the list. The prompt's ninth
 field, *relevant logs or query output*, is now its own row per case and is filled from a captured file
-(`lane164-out.txt`, `lane168-out.txt`, `lane172-load-out.txt`, `l171-suite.log`) or from the server's own message
-quoted in the artefact that holds it; nothing in that file quotes a line no run printed.
+(`lane164-out.txt`, `lane168-out.txt`, `lane172-load-out.txt`, `lane198-out.txt`, `l171-suite.log`) or from the
+server's own message quoted in the artefact that holds it; nothing in that file quotes a line no run printed.
 
 | Test | Scenario | Exists today? |
 |---|---|---|
-| T01 | multi-subject commit | no |
-| T02 | failure mid-commit | no — see the note under the table for why the assign path cannot produce it |
+| T01 | multi-subject commit | yes, executed 2026-11-02 — two cases in `tests/Feature/Evaluation/RetakeAttemptTest.php`, killed by `mutate-g-t01-subject-commit.php` |
+| T02 | failure mid-commit | yes on the issuing act, at the database boundary — `lane198-probe-forced-rollback.php`, captured in `lane198-out.txt`; the same injection on the subject-line act is the open half, and the note under the table records why the assign path cannot be reached from a desk |
 | T03 | two requests, one slot | yes, `lane168-probe-last-seat-race.php` (two writers, one MySQL server, HEAD vs working) |
 | T04 | duplicate enrollment | pass — the fee sheet is refused by `uq_studentassessments_enrollment` on both drivers, and the second active seat by `uq_enrollments_active_seat` on MySQL, where the delivered case also shows the drop releasing it; on SQLite the key is asserted absent rather than skipped, and `EnrollmentIssuer::seatHolder()` is the rule the suite can actually execute. `DatabaseLevelEnrollmentRulesTest` carries both halves, and its own totals belong to the run that printed them |
 | T05 | capacity reached | yes, `BlockCapacityAtomicityTest` (a request larger than the seats left seats nobody) |
@@ -713,13 +722,15 @@ quoted in the artefact that holds it; nothing in that file quotes a line no run 
 | T23 | unauthorized access | yes, `PermissionMatrixTest` and policy cases |
 | T24 | high-volume challenge | no — the design is written, the run is not |
 
-Two rows need their reason stated rather than left as a blank. **T02** asks that a failure mid-commit leave nothing
-half-written; on the assign path that failure is unreachable from a desk, because `enrollmentIds.*` is validated
-`exists:enrollments`, so a bad id is refused before the transaction opens — the first draft of this batch's test
-thought it had produced a mid-loop failure and had in fact produced a validation refusal, which is why the case is
-written as an over-large request instead. **T17** is pinned from the exception side, not from a real fault: the suite
-runs on SQLite, which does not deadlock, so the case hands the helper the two driver conditions rather than
-pretending the driver produced them.
+Two rows needed their reason stated rather than left as a blank, and both now carry a reading instead. **T02** asked
+that a failure mid-commit leave nothing half-written; on the assign path that failure is unreachable from a desk,
+because `enrollmentIds.*` is validated `exists:enrollments`, so a bad id is refused before the transaction opens —
+the first draft of this batch's test thought it had produced a mid-loop failure and had in fact produced a validation
+refusal. The judgement stopped one layer too early: a real mid-transaction fault is a database event, and a query
+listener on the act's own connection reaches it without changing the act, which is what
+`lane198-probe-forced-rollback.php` now does on the issuing act. **T17** is pinned from the exception side on the
+helper (the suite runs on SQLite, which does not deadlock, so the case hands the helper the two driver conditions
+rather than pretending the driver produced them) and from the engine side by the same probe.
 
 ---
 

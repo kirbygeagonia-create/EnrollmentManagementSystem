@@ -31,6 +31,22 @@ no login accounts in this build. Each enrollment still requires a valid student 
 `students.schoolIdNumber` is unique), so §II.A's "each enrollment must be associated with a valid
 student record" holds even though no student ever clicks.
 
+The same section's five-step example is walked here rather than left implied, because §II.B forbids
+answering a workflow the build does not have. The desk searches an existing person through the
+student quick-search or creates one at the Admission intake; the department then selects the load
+the student asked for in `proposeSubjects()`, and Blocking assigns the section (the block) afterwards.
+Of the five validations that example names, four are enforced where the guide says they belong:
+prerequisites by `EnrollmentReadiness::prerequisitesMet()`, schedule conflicts by
+`BlockingController::detectConflicts()` through `TimetableConflicts`, duplicate enrollment by
+`seatHolder()` plus `uq_enrollment_subject_attempt`, and section capacity by the assign guard reading
+the count under the block's row lock. The fifth, the maximum academic load, is **not** enforced,
+because the school has stated no ceiling — the unit arithmetic exists and the rule does not, and that
+is problem 13's own answer rather than something this paragraph should paper over. Related rows are
+processed under one transaction per act with a fixed lock order and a bounded retry, and the record is
+confirmed only when those writes succeed: the state machine is the sole writer of the status history,
+so a partial act leaves the enrollment in the state it started in, which is the last step of the
+example and the subject of problems 1 and 16.
+
 The six task verbs of §I are carried by every problem block below, in this order: the concept
 involved, the design, the implementation, the test or demonstration, the evidence, and the
 workflow difference or N/A justification. Each guide question is quoted verbatim and answered on
@@ -82,9 +98,12 @@ proposed lines and exactly one `evaluated` history row, and a refused proposal l
 load untouched and does not move the status. Proved by
 `php storage/app/scratch/mutate-g-t01-subject-commit.php` (insert only the first line; disable the
 duplicate guard; each must make its named case fail). The forced-failure print the guide also asks
-for (T02) is still owed.
+for (T02) is executed at the database boundary: `storage/app/scratch/lane198-probe-forced-rollback.php`
+drives the issuing act twice on a seeded scratch schema, once to a commit and once with a fault thrown
+from the query listener between that act's two writes, and the capture names both observations.
 **Evidence:** those two cases, `tests/Feature/E2E/EnrollmentWalkthroughTest.php` driving the whole
-chain, and `storage/app/scratch/lane190-out.txt` for the same act under two real writers.
+chain, `storage/app/scratch/lane190-out.txt` for the same act under two real writers, and
+`storage/app/scratch/lane198-out.txt` for the commit-and-rollback pair.
 **Workflow difference, or why this is N/A:** none. The registrar types the load the student asked
 for; the act is the same one transaction either way.
 
@@ -768,12 +787,17 @@ answered, not repeated.
 `refund`) writes its receipt, its balance and its status in one transaction; the print act reserves
 its Document No. under `lockForUpdate()` **before** rendering, so a failure cannot consume a number
 twice; the notification write dedupes on a unique key so a retried act does not ring twice.
-**Test or demonstration:** T17 — **failure demonstration owed.** The mechanism is pinned (T01's
-refused-proposal case shows a failure leaving the old load in place, and the state machine's own
-refusal is covered), but the guide asks for the pair of prints from one act: one commit, one forced
-failure. Neither print exists yet.
-**Evidence:** `tests/Feature/E2E/EnrollmentWalkthroughTest.php`, `storage/app/scratch/lane190-out.txt`
-(the forced failure was a live one), and the register's P16 row.
+**Test or demonstration:** T17 and T02, **executed as the pair the guide asks for.**
+`storage/app/scratch/lane198-probe-forced-rollback.php` drives `EnrollmentIssuer::issue()` twice on a
+seeded scratch schema and prints both observations: the commit (`enrollment 1, form 1, boxes 7`,
+tables `+1/+1/+7`) and the forced failure, where a query listener throws between the act's two writes
+and the re-read answers `enrollments 0 … tables +0/+0/+0 nothing survived`. The probe also measures
+the ordering its claim depends on — at the instant of the fault the enrollment row was visible on that
+same connection — and its falsifier moves that injection point to a statement that issues no write to
+prove the guard refuses rather than agreeing.
+**Evidence:** `storage/app/scratch/lane198-out.txt` (the pair), the two files just named,
+`tests/Feature/E2E/EnrollmentWalkthroughTest.php`, `storage/app/scratch/lane190-out.txt`
+(a failure that was live rather than injected), and the register's P16 row.
 **Workflow difference:** none in the database work — the only difference is who triggers the act. The
 guide's scenario is a student mid-submission; here the interrupted submission is the Registrar's or the
 department's, and the failure lands in the same place because the transaction boundary is the act, not
@@ -1257,14 +1281,16 @@ The guide's twelve rows, each marked with only its own vocabulary. A concept is 
 because a document discusses it; the word is credited to the instrument or delivered case that earns
 it. Full detail per row lives in `Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md`.
 
-**Row 1 — Transactions.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-38 closure transactions; the enrollment act and the approve/drop acts are pinned by T01's two cases.
-The forced-failure print (T02) is still owed.
+**Row 1 — Transactions.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
+38 closure transactions; the enrollment act and the approve/drop acts are pinned by T01's two cases,
+and the failure half is observed on the server by `lane198-probe-forced-rollback.php`: the same act
+captured committing (+1/+1/+7) and captured writing nothing when a fault lands between its two writes.
 
-**Row 2 — COMMIT / ROLLBACK.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
+**Row 2 — COMMIT / ROLLBACK.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
 The closure form commits on return and rolls back on throw, so no handler can leak a partial commit;
-the refusal path leaves the old load in place (T01's second case). One commit print and one failure
-print from the same act do not exist yet.
+the refusal path leaves the old load in place (T01's second case). The two prints the guide asks for
+come from one act now, in `storage/app/scratch/lane198-out.txt`: a commit line and a forced-failure
+line that re-reads the three tables and reports `+0/+0/+0 nothing survived`.
 
 **Row 3 — ACID Properties.** ☐ Implemented ☑ Explained ☑ Demonstrated in test ☐ N/A
 Atomicity as rows 1 and 2; Consistency by 105 foreign keys, enums, unique keys and twenty audit rules;
@@ -1319,13 +1345,13 @@ database, so the role rules are enforced by the application, not by MySQL grants
 tables compared row for row, three ordered digests matching, durability variables read from the
 server. Dumps live outside the repository, and the reason is a recorded finding, not a preference.
 
-**N/A explanation / alternative demonstration plan:** no row is N/A. Five rows carry an owed
-*demonstration print* rather than a missing mechanism — T02 (a forced rollback), T06 (a refused
-cancellation), T17 (the commit-and-failure pair), T20 (a restore path the school has not asked for),
-and T21's simultaneous report-during-enrollment reading — and two wait on a school figure, T14's load
-ceiling and T15's faculty limit, with their designs stated above so the demonstration can be executed
-the day the number arrives. Rows 8 and 9 are marked with the plan/performance vocabulary because the
-instrument ran; the rewrite is the open half.
+**N/A explanation / alternative demonstration plan:** no row is N/A. Three rows carry an owed
+*demonstration print* rather than a missing mechanism — T06 (a refused cancellation), T20 (a restore
+path the school has not asked for), and T21's simultaneous report-during-enrollment reading — and two
+wait on a school figure, T14's load ceiling and T15's faculty limit, with their designs stated above
+so the demonstration can be executed the day the number arrives. T02 and T17 left this list on
+2026-11-02, when the commit-and-forced-failure pair was captured on the engine. Rows 8 and 9 are
+marked with the plan/performance vocabulary because the instrument ran; the rewrite is the open half.
 
 ---
 
@@ -1357,7 +1383,9 @@ instrument ran; the rewrite is the open half.
   `storage/app/scratch/lane168-out.txt` (an overbooked one-seat section and a genuine 1213 under the
   old bytes, three refusals and never more than one seat under the new) and `lane190-out.txt` (four
   unretried deadlock deaths, then five stale-model refusals, then ten clean writes). The single-
-  connection failure print (T02, T17) is still owed.
+  connection failure print (T02, T17) is observed in `storage/app/scratch/lane198-out.txt`: the issuing
+  act commits +1/+1/+7, and with a fault thrown from the query listener between its two writes the same
+  three tables re-read +0/+0/+0.
 
 **3. ACID Properties.**
 - *Atomicity:* Problem 1, with T01's two cases as the demonstration and a mutation harness that makes
@@ -1532,8 +1560,9 @@ Stated because §II.B's first rule is the one that is easiest to break under pre
 6. **P20's snapshot guarantee is delivered for the daily collection report only.**
 7. **P22's role rules live in the application.** One database service account holds the data; per-role
    MySQL grants and column privileges are not configured.
-8. **Five demonstrations are owed prints, not missing mechanisms:** T02, T06, T17, T20, and T21's
-   both-sides-at-once reading.
+8. **Three demonstrations are owed prints, not missing mechanisms:** T06 (a refused cancellation), T20
+   (a restore path), and T21's both-sides-at-once reading. T02 and T17 were on this list and are
+   delivered; the sentence above records what they now print.
 9. **Two claims this file corrects as it was written:** the P register's P13 cell said a year-level
    band rule exists, and the cited lines do not hold such a rule; and T01's row had been credited to a
    test class that asserted nothing of the kind. Both were read in the file rather than copied, and

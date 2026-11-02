@@ -29,18 +29,20 @@ record, `:414` void, `:464` refund).
 
 **Applicability.** Applies to every enrollment act the system offers.
 
-**Test method.** Feature cases that assert the dependent rows appear or vanish together; a failure injection test is
-owed (traceability T02).
+**Test method.** Feature cases that assert the dependent rows appear or vanish together (T01, on the subject-line
+act), and a failure injected inside the transaction on the issuing act (`lane198-probe-forced-rollback.php`,
+captured in `storage/app/scratch/lane198-out.txt`).
 
-**Evidence.** The delivered suite passes whole; the atomicity demonstration is listed as owed in
-`Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` §5.
+**Evidence.** The delivered suite passes whole; the atomicity claim is now backed by a refusal case and by an
+observed rollback, both named in `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` §5.
 
-**Remaining limitation.** No case currently proves a rollback *between* two subject writes. That is T01/T02, not a
-missing mechanism.
+**Remaining limitation.** The injected fault is proven between two writes of the *issuing* act. The same injection
+between two `enrolledsubjects` lines is not yet captured, and no case proves a rollback there; that half is named
+under P01 rather than folded into this one.
 
 ---
 
-## 2. COMMIT and ROLLBACK (¶297) — Implemented; the printed demonstration is owed
+## 2. COMMIT and ROLLBACK (¶297) — Implemented and demonstrated on the issuing act
 
 **Actual implementation.** Laravel's closure form commits when the closure returns and rolls back when it throws,
 so a `try/catch` cannot accidentally swallow a partial commit — the transaction is the unit, not the handler. The
@@ -50,8 +52,11 @@ and in the authority document, not hidden.
 **Test method.** One successful commit print, one forced failure print, both from the same act, so the pair is the
 evidence.
 
-**Remaining limitation.** Neither print exists yet. This concept is therefore marked Implemented for the mechanism
-and *Demonstrated in test* only after T02 and T17 are delivered.
+**Remaining limitation.** Both prints now come from one act: the commit line reads `enrollment 1, form 1, boxes 7
+(tables +1/+1/+7) ok` and the failure line reads `enrollments 0, that student's enrollments 0; tables +0/+0/+0
+nothing survived`, with the row's visibility at the instant of the fault measured inside the listener. This concept
+is therefore marked Implemented for the mechanism *and* Demonstrated in test for the pair, on the issuing act; the
+subject-line act keeps its own limitation, named under section 1.
 
 ---
 
@@ -324,8 +329,8 @@ demonstrated act.
 
 | # | Concept | Status word for §IV's checkbox |
 |---|---|---|
-| 1 | Transactions | Implemented |
-| 2 | COMMIT / ROLLBACK | Implemented, demonstration owed |
+| 1 | Transactions | Implemented and demonstrated (T01 on the subject lines, `lane198-out.txt` on the issuing act) |
+| 2 | COMMIT / ROLLBACK | Implemented and demonstrated — one commit print and one forced-failure print from the same act |
 | 3 | ACID Properties | Three of four demonstrated (atomicity, consistency, durability); Isolation demonstrated for the contended write and the daily sheet, open on the rest |
 | 4 | Concurrency Control | Implemented on the block, the room, the seat, the fee sheet and the subject line; *Demonstrated in test* for both races (`lane168` for the seat, `lane190` for the subject line, which measured the act before and after the same lock-plus-retry repair); `students.rowVersion` now guards the profile edit (P05), while the address and guardian rows stay unversioned |
 | 5 | Locking | Implemented at three sites in one fixed order (block, room, document number) |

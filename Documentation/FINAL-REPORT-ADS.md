@@ -44,11 +44,11 @@ below is the claim, and the tool owns the number:
 
 | Bucket | Problems |
 |---|---|
-| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P09 the queue's checklist loop batched (5.0 repeated statements per listed row to 0 — `lane191-out.txt`), P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
+| Built (the census's own `built` bucket, read from `lane169-read-ads-status.php` rather than typed) | P01 both acts pinned and the rollback pair captured, P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P05 the version guard on the person record, P07 deadlock handling, P09 the queue's checklist loop batched (5.0 repeated statements per listed row to 0 — `lane191-out.txt`), P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P16 commit and forced failure from one act (`lane198-out.txt`), P17 request key, P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
 | Measured, not repaired | P08 search plan |
 | Partly | P14 |
 | Not built | P13 |
-| Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
+| Implemented, lead word only (the census's `implemented` bucket) | P06, P11, P12, P15, P18, P19, P22 — P01 and P16 left this list on 2026-11-02, when their demonstrations were captured |
 
 Demonstrated through a controlled test rather than argued: T01, T03, T04, T05, T08, T09, T10, T11, T22 — each named with
 its instrument and its measured outcome in `TESTING-AND-VERIFICATION-ADS.md`. No problem is marked N/A: the guide's

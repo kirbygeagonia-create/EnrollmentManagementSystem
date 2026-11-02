@@ -102,8 +102,10 @@ Uncommitted work is invisible by construction: every enrollment act runs inside 
 commits on return and rolls back on a throw, so a `try/catch` cannot accidentally report success for a partial write.
 `php artisan ems:audit:record-states` weighs the states a desk must not be able to reach (20 rules) and answers 0
 findings on live `ems`, which is the reading that says nothing partial is sitting on the records today. The
-presentation's remaining half — a printed COMMIT beside a printed ROLLBACK from the same act — is owed as
-traceability tests T02, T17 and T18, and the interruption case (a request key the desk can ask about after the
+presentation's other half — a printed COMMIT beside a printed ROLLBACK from the same act — was captured on
+2026-11-02 by `storage/app/scratch/lane198-probe-forced-rollback.php` and is read in
+`storage/app/scratch/lane198-out.txt` (+1/+1/+7 against `+0/+0/+0 nothing survived`), which closes traceability
+T02 and the exception half of T17; the interruption case (a request key the desk can ask about after the
 connection dies) is traceability row P17, **built on 2026-11-01**: `enrollments.requestKey` with
 `uq_enrollments_request_key`, `EnrollmentIssuer::issue($attrs, $issuer, $requestKey)` answering a replay with the
 enrollment the first send created, and a refusal when one key arrives naming a different student or term. What the

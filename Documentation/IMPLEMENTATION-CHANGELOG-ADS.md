@@ -132,6 +132,8 @@ Two choices worth recording:
 | `tests/Feature/Blocking/BlockCapacityAtomicityTest.php` | 12 cases: the count inside the transaction after the lock, both rows locked, the sorted request, a refusal that seats nobody, a dropped line that consumes no seat, and `RetryOnDeadlock`'s four boundaries. |
 | `tests/Feature/Enrollment/DatabaseLevelEnrollmentRulesTest.php` | the two keys, each on the driver that can hold it; SQLite names what it cannot judge instead of skipping. Rehearsed on MySQL on `ems_l170_a` before any push. |
 | `storage/app/scratch/lane168-probe-last-seat-race.php` + `lane168-assign-child.php` | two real MySQL writers against one seat, three passes (working, HEAD restored by hash, working again), refusing when HEAD produces the clean outcome. |
+| `storage/app/scratch/lane198-probe-forced-rollback.php` | the guide's failure pair from ONE act: the commit (one enrollment, one form, seven boxes) and a fault thrown from a query listener between the act's two writes, re-reading the three tables to `+0/+0/+0`, with the row's visibility at the instant of the fault measured in the listener. Refuses a `--schema=` that is the live database, an unpinned connection, an injection that never fires, a fault that fires before any write, or a throw that escapes its guards. |
+| `storage/app/scratch/mutate-lane198-rollback-probe.php` | its falsifier: a needle moved to a statement the act never issues must make the run refuse, a fault moved before any write must make the order line refuse, and the live schema, an unknown flag, an unpinned connection and an absent schema must each be refused by their own message. |
 | `storage/app/scratch/mutate-g-ads-capacity-tests.php` | 10 legs, one per promise above, each requiring its named case to go red; green control before and after; three files restored by hash. |
 | `storage/app/scratch/lane163-build-scale-schema.php` | builds `ems_l163_a` (100,000 students, 101,484 enrollments, 507,420 subject lines) and refuses a fixture that violates the invariants the probes measure. |
 | `storage/app/scratch/lane164-measure-scale-queries.php`, `lane167-probe-capacity-index.php` | timings with the `EXPLAIN` row beside each figure, on the busiest partition rather than the first one. |
@@ -198,6 +200,7 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
 
 ## 7. Rehearsal schemas
 
-`ems_l163_a` (scale measurements) and `ems_l170_a` (the migration rehearsed from empty) are named by tracked files
-and are therefore kept; `drop-retired-scratch-databases.php` will print KEEP for them. Live `ems` was verified
+`ems_l163_a` (scale measurements), `ems_l170_a` (the migration rehearsed from empty) and `ems_l197_a` (the
+MySQL-parity rehearsal and the commit-and-forced-failure pair) are named by tracked files and are therefore kept;
+`drop-retired-scratch-databases.php` will print KEEP for them. Live `ems` was verified
 unchanged before and after every clone, by row count read in both schemas.

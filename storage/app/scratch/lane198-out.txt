@@ -1,0 +1,7 @@
+COMMIT   key RBK-A-824FC49A2D: enrollment 1, form 1, boxes 7 (tables +1/+1/+7) ok
+FAULT    injected 1 time(s), threw RuntimeException: forced fault after the enrollment row was written
+ORDER    at the instant of the fault the enrollment row for that key was visible on the same connection: YES (so the rollback had something to undo)
+ROLLBACK key RBK-B-824FCA0EAD: enrollments 0, that student's enrollments 0; tables +0/+0/+0 nothing survived
+schema ems_l197_a held 39 enrollments before the pair and 40 after (the commit adds exactly one)
+VERDICT: the same act is observed committing every row it names and rolling back every row it wrote when the fault arrives between two of them.
+PROBE_EXIT=0
