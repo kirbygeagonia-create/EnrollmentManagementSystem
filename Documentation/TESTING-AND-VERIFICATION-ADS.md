@@ -239,7 +239,7 @@ no error at all.
 
 | Test | Scenario | State | Logs / query output |
 |---|---|---|---|
-| T01 | multi-subject commit | not executed — the enrolment act's happy path runs in `EnrollmentIssuer` tests; no case counts the subject lines written by one commit | none yet; the count would come from a case that does not exist, and quoting a number from the seed instead would be the fabricated result prompt part 39 forbids |
+| T01 | multi-subject commit | executed 2026-11-02 — two cases in `tests/Feature/Evaluation/RetakeAttemptTest.php`: `a_multi_subject_commit_writes_every_line_it_names` (a two-subject proposal leaves 2 proposed lines and exactly one `→ evaluated` row in `enrollmentstatushistory`) and `a_refused_proposal_leaves_the_existing_load_in_place` (a payload naming one subject twice is refused and the record's existing line survives, unmoved). Killed both ways by `php storage/app/scratch/mutate-g-t01-subject-commit.php`: inserting only the first line of the payload fails the first case with its own sentence, and disabling the duplicate-payload guard fails the second — each restore verified by hash, and the file answers 10 passed / 37 assertions on the clean tree |
 | T06 | multi-subject cancellation | not executed — `drop()` is one transaction; no case asserts the line set after a refusal | none yet; `RegistrarController.php:377` is the act a future case would drive |
 | T14 | load exceeded | not executed — the elective-band rule exists; the ceiling is a school figure | none; the band rule's own message is the only text a run could print, and P13 is the open figure |
 | T15 | faculty load | not executed — no limit is defined (matrix P14), so there is no expectation to assert | none; nothing in `app/` holds a faculty-load predicate to fail |

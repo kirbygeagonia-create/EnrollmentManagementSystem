@@ -9,6 +9,7 @@ use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Staffusers;
 use App\Models\Students;
+use App\Models\Subjects;
 use App\Services\EnrollmentService;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Database\QueryException;
@@ -464,5 +465,98 @@ class RetakeAttemptTest extends TestCase
             'attempt_number' => 1, // Duplicate
             'original_enrolled_subject_id' => null,
         ]);
+    }
+
+    /**
+     * ADS guide scenario T01 — a multi-subject commit writes all of its lines, and a payload the server refuses
+     * leaves the enrollment's existing load untouched.
+     *
+     * `proposeSubjects()` clears the record's proposed lines and re-inserts the payload inside one transaction.
+     * Nothing asserted the shape of the result: the cases above count a single line each, and the
+     * duplicate-payload case below-checks only that an error is raised — so a version that deleted the old lines
+     * and then threw would have satisfied every case in this file while the desk's screen showed an empty load.
+     * The status-trail half is the same claim from the other side: one commit, one recorded move.
+     *
+     * The refused half runs on a record whose lines were seeded directly, because a successful proposal moves the
+     * enrollment to `evaluated` and the policy then refuses a re-propose outright — a 403 would answer the POST
+     * before the duplicate-subject rule ever ran, and `assertSessionHasErrors` passes on a policy refusal exactly
+     * as it passes on a clean save.
+     */
+    #[Test]
+    public function a_multi_subject_commit_writes_every_line_it_names(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrollment($student);
+
+        $second = Subjects::create([
+            'subjectCode' => 'T01-'.uniqid(),
+            'subjectName' => 'T01 Second Subject',
+            'lectureUnits' => 3,
+            'labUnits' => 0,
+            'subjectType' => 'lecture',
+        ]);
+
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.subjects.propose', $enrollment), [
+                'subjects' => [
+                    ['subjectId' => $this->subjectId],
+                    ['subjectId' => $second->subjectId],
+                ],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            2,
+            Enrolledsubjects::where('enrollmentId', $enrollment->enrollmentId)
+                ->where('status', EnrolledSubjectStatus::Proposed)
+                ->count(),
+            'a proposal naming two subjects must leave two proposed lines, not one'
+        );
+
+        $this->assertSame(
+            1,
+            DB::table('enrollmentstatushistory')->where('enrollmentId', $enrollment->enrollmentId)
+                ->where('toStatus', EnrollmentStatus::Evaluated->value)
+                ->count(),
+            'one commit records exactly one move to evaluated'
+        );
+    }
+
+    #[Test]
+    public function a_refused_proposal_leaves_the_existing_load_in_place(): void
+    {
+        $student = $this->createStudent();
+        $enrollment = $this->createEnrollment($student);
+
+        // The record already carries a load, written the way a prior commit would have left it.
+        Enrolledsubjects::create([
+            'enrollmentId' => $enrollment->enrollmentId,
+            'subjectId' => $this->subjectId,
+            'status' => EnrolledSubjectStatus::Proposed,
+            'attempt_number' => 1,
+            'original_enrolled_subject_id' => null,
+        ]);
+
+        $this->actingAs($this->evaluator)
+            ->post(route('evaluation.subjects.propose', $enrollment), [
+                'subjects' => [
+                    ['subjectId' => $this->subjectId],
+                    ['subjectId' => $this->subjectId],
+                ],
+            ])
+            ->assertSessionHasErrors('subjects');
+
+        $this->assertSame(
+            1,
+            Enrolledsubjects::where('enrollmentId', $enrollment->enrollmentId)
+                ->where('status', EnrolledSubjectStatus::Proposed)
+                ->count(),
+            'a proposal the server refuses must not empty the load it was asked to replace'
+        );
+        $this->assertNotSame(
+            EnrollmentStatus::Evaluated->value,
+            $enrollment->fresh()->enrollmentStatus->value,
+            'the record must not have moved when its proposal was refused'
+        );
     }
 }

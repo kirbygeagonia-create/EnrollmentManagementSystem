@@ -50,7 +50,7 @@ below is the claim, and the tool owns the number:
 | Not built | P13 |
 | Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
 
-Demonstrated through a controlled test rather than argued: T03, T04, T05, T08, T09, T10, T11, T22 — each named with
+Demonstrated through a controlled test rather than argued: T01, T03, T04, T05, T08, T09, T10, T11, T22 — each named with
 its instrument and its measured outcome in `TESTING-AND-VERIFICATION-ADS.md`. No problem is marked N/A: the guide's
 own list applies to this schema, and where the school's number is missing that is recorded as `Not built` with the
 question attached, not as not-applicable.
