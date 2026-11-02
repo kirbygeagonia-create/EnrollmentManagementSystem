@@ -206,6 +206,15 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
   control over a green tree. Both methods are renamed without numerals and the legs follow; two new legs plant the
   retired *subject* (the waiting-enrollments badge) and the re-inlined block list, and the delivered run answers
   every leg killed with the control green before and after.
+- The delivered whole-suite run behind the fee-sheet catalogue came back **1272 passed, 1 failed**, and the failure
+  was not the code: `DemoDatasetRecordStatesTest` asks whether `DEMO-OR-TODAY-01` carries the school's current day,
+  and the dataset had aged past Manila midnight while the suite was in flight — the trap this project records as
+  lane 54's. The prescribed remedy ran rather than the assertion being softened: `ems` was dumped first (1,418,560
+  bytes, the `payments` INSERT verified present), `php tools/seed_full_demo_pipeline.php` re-dated the slip and
+  reported 0 on all seven `Ledger —` lines, and `tests/Feature/E2E` then answered 8 passed (210 assertions) with
+  `--fail-on-skipped` and exit 0. CI's own MySQL job seeds `ems_test` immediately before its walkthrough step, so it
+  cannot meet this failure; the reading is recorded here because a suite verdict that was cleared by re-seeding is a
+  different fact from a suite that was green.
 - A first draft of `refresh-docx-pass411.php` wrote its text edit as `[from, to, from, 1]`, meaning "the needle is its
   own anchor". The engine reads slot 3 as a *different* string that must own the needle, so anchor == needle resolves
   to nothing and the pass refused with `no needle owned by the anchor`. The two-element shape is the one for a needle
