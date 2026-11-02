@@ -3945,6 +3945,22 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   blocked load *and* the same load after the prerequisite is genuinely passed), because a preload that disagrees
   with the fresh path is a second definition of the gate, which is this file's oldest defect wearing a performance
   costume.
+- **A one-shot mutation tool can only be falsified against bytes that still hold the defect** (2026-11-02,
+  `mutate-lane193-repoint-md.php`). Its first version legged `lane193-repoint-md.php` against the live tree and
+  reported three BAD legs, all of them the harness's own age: the apply script's needles had been consumed by the
+  run that re-pointed ten pointers an hour earlier, so the tool correctly refused a no-op and the legs read that
+  refusal as a broken guard. The rewrite builds a fixture tree — five files carrying each needle at exactly the
+  count the tool expects — and runs every leg against it, then removes it. Two rules came out of it. **(a)** A
+  harness for a validating tool must include a leg that proves the apply path still works (`apply-reaches-the-bytes`),
+  or every refusal leg can be satisfied by a tool that never does anything. **(b)** Validate everything before
+  writing anything: the tool originally wrote per-file as it validated, so a bad needle in the last document would
+  have left the first four moved — the half-applied register again, this time inside my own re-pointer — and the leg
+  that catches it puts the defect in the LAST file and asserts the FIRST one is unchanged. A third guard was added
+  because a leg probed for it rather than assuming it: a needle whose replacement is identical passes both count
+  assertions by construction and would print `written.` having changed nothing, so it is refused by name. And one leg
+  failed on its own arithmetic first — it expected the fixture to say `occurs 2 time(s)` where the fixture holds one
+  occurrence — which is the same lesson as always: a leg's expected message is a measurement of the fixture, not a
+  remembered number from the real tree.
 - **A docx shift is not the whole re-point; the markdown gate is the other half and it reported seven problems
   after a clean docx sweep** (same batch). `lane76-shift-cites.php` moved 45 number tokens into
   `RegistrarController.php` in one run and 12 into `EnrollmentReadiness.php` in the other — the tool prints its own
