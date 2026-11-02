@@ -179,6 +179,7 @@ The newest capture is saved at `storage/app/scratch/lane164-out.txt`.
 | one student's joined history | `ref` on the student FK, then two `eq_ref:PRIMARY` | 1 |
 | 20-row page, per-row reads | 40 queries | one seek per row |
 | live queue, 2026-11-02, per-row repeats | 25 statements over 5 rows (5.0 per row) | five named call sites — `EnrollmentReadiness` lines 148, 160, 187 and 197, and `Gradescale` line 36 — the last of which re-reads a school-wide constant for every record |
+| same queue, after the school-wide reads were resolved once per page | 15 statements over 5 rows (3.0 per row) | `EnrollmentReadiness` lines 154, 218 and 228 remain per-row; the scale and catalogue reads drop to zero when handed in, pinned by `PrerequisiteGateTest` |
 | the same page, batched | 2 queries | one seek per relation |
 | block capacity count, fullest block 40 of 40 | `ref:fk_enrolledsubjects_blockid` | ~200 |
 

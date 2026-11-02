@@ -45,8 +45,8 @@ below is the claim, and the tool owns the number:
 | Bucket | Problems |
 |---|---|
 | Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
-| Measured, not repaired | P08 search plan, P09 page query count |
-| Partly | P14 |
+| Measured, not repaired | P08 search plan |
+| Partly | P09 (the two school-wide reads are resolved once per page — 5.0 statements per row to 3.0, `lane191-out.txt`; three per-enrollment reads remain), P14 |
 | Not built | P13 |
 | Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
 

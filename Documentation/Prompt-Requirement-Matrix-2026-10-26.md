@@ -165,7 +165,7 @@ because the recipient set is what `WorkflowInbox::nextOffice()` answers rather t
 button was guarded by `can.enrollmentReturn` read from a `can` map that page's own controller never sends, so the
 control could not paint at all — the reason the affordance is now decided by the record-scoped prop instead of a
 global flag. And retiring `RegistrarController::returnToEvaluation()` leaves **eleven** citations to
-`RegistrarController.php:304-326/328` in the authority document, each of which must be re-read against the span it
+`RegistrarController.php:313-335/328` in the authority document, each of which must be re-read against the span it
 is pointed at rather than shifted: the bounds sweep cannot see a pointer that lands on the comment recording the
 retirement, and the §27.2 E-4 row among them states a claim about the machine (`returnToEvaluation` requires
 `paid`) rather than pointing at a line — its companion paragraph repeats that claim against

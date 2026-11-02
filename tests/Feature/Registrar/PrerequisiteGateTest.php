@@ -15,6 +15,7 @@ use App\Models\Curriculums;
 use App\Models\Curriculumsubjects;
 use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
+use App\Models\Gradescale;
 use App\Models\Offices;
 use App\Models\Religions;
 use App\Models\Staffusers;
@@ -260,5 +261,92 @@ class PrerequisiteGateTest extends TestCase
             ->update(['status' => EnrolledSubjectStatus::Dropped->value]);
 
         $this->assertTrue(EnrollmentReadiness::prerequisitesMet($enrollment->fresh()));
+    }
+
+    /**
+     * P09's cheap half: the queue resolves the passing ceiling and the curriculum catalogue once for the page and
+     * threads both into the same predicate, instead of reading each one per row (`lane191` measured 5.0 repeated
+     * statements per listed row, two of them these school-wide constants; the patch takes it to 3.0).
+     *
+     * The parameters are optional and default to the fresh read, so the policy and the record page keep calling
+     * with no argument — which is exactly the shape `clearanceVerdict()` already uses for the clearance window.
+     * The risk of a preload is never the speed, it is a SECOND DEFINITION of the rule: an in-memory resolution of
+     * `curriculumFor()` that disagrees with the query would flip a gate on the queue while the very same record
+     * still passes or fails correctly one screen over. So each direction of the gate is asserted to agree, not
+     * merely asserted to be equal to itself, and the satisfied direction is built by actually passing the
+     * prerequisite rather than by removing it.
+     */
+    #[Test]
+    public function a_preloaded_gate_answer_is_the_fresh_answer_in_both_directions(): void
+    {
+        $load = $this->curriculumWithPrerequisite();
+        $enrollment = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+
+        $ceiling = Gradescale::passingCeiling();
+        $catalogue = Curriculums::all();
+
+        // Blocked: the child is confirmed, the prerequisite has neither been passed nor credited.
+        $this->assertFalse(EnrollmentReadiness::prerequisitesMet($enrollment->fresh()), 'the fixture must start blocked');
+        $this->assertFalse(
+            EnrollmentReadiness::prerequisitesMet($enrollment->fresh(), $ceiling, $catalogue),
+            'the preloaded answer refused a load the fresh reads also refuse — an agreement here proves nothing unless one direction fails'
+        );
+
+        // Satisfied: pass the prerequisite in an earlier record of the SAME student.
+        $this->gradeFor($enrollment->studentId, $load['prerequisite'], 1.00);
+
+        $this->assertTrue(EnrollmentReadiness::prerequisitesMet($enrollment->fresh()), 'the fresh reads see the passed prerequisite');
+        $this->assertTrue(
+            EnrollmentReadiness::prerequisitesMet($enrollment->fresh(), $ceiling, $catalogue),
+            'the preloaded catalogue and ceiling resolve the same record to the same verdict'
+        );
+    }
+
+    /**
+     * The movement test for the same change: with the ceiling handed in, the scale is not queried at all.
+     * Counted from the driver's own statements, because asserting the absence of a query by reading the source
+     * is the shape of claim that stays green when someone re-inlines the call.
+     */
+    #[Test]
+    public function handing_in_the_ceiling_and_the_catalogue_takes_both_out_of_the_per_row_loop(): void
+    {
+        $load = $this->curriculumWithPrerequisite();
+        $first = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+        $second = $this->enrollment($load['child'], ['curriculumId' => $load['curriculum']->curriculumId]);
+
+        $scaleReads = 0;
+        $catalogueReads = 0;
+        DB::listen(function ($query) use (&$scaleReads, &$catalogueReads): void {
+            // Driver-neutral on purpose: MySQL quotes identifiers with backticks and SQLite with double quotes,
+            // so a pattern written for one of them silently counts zero on the other and the case would pass by
+            // reading nothing.
+            if (preg_match('/max\(["\x60]?maxGrade/i', $query->sql)) {
+                $scaleReads++;
+            }
+            // Both quotes on both sides, and not a prefix: `from "curriculumsubjects"` begins with the same
+            // eleven characters as `from "curriculums"`, so a loose pattern counts the prerequisite rows as
+            // catalogue reads — measured at 4 where the truth was 2, which would have failed the preloaded
+            // path's own zero on an implementation that does not query the catalogue at all.
+            if (preg_match('/from\s+["\x60]curriculums["\x60]/i', $query->sql)) {
+                $catalogueReads++;
+            }
+        });
+
+        // Fresh path: one row, one of each. Two rows, two of each — the loop this batch exists to break.
+        EnrollmentReadiness::prerequisitesMet($first->fresh());
+        EnrollmentReadiness::prerequisitesMet($second->fresh());
+        $this->assertSame(2, $scaleReads, 'the ceiling was read once per record on the fresh path');
+        $this->assertSame(2, $catalogueReads, 'the curriculum was resolved once per record on the fresh path');
+
+        // Resolve both first, THEN zero the counters: the resolution itself is a read, and charging it to the
+        // preloaded path would make the case fail on a correct implementation (and pass on an inverted one).
+        $ceiling = Gradescale::passingCeiling();
+        $catalogue = Curriculums::all();
+        $scaleReads = 0;
+        $catalogueReads = 0;
+        EnrollmentReadiness::prerequisitesMet($first->fresh(), $ceiling, $catalogue);
+        EnrollmentReadiness::prerequisitesMet($second->fresh(), $ceiling, $catalogue);
+        $this->assertSame(0, $scaleReads, 'a page that resolves the scale once must not re-query it per row');
+        $this->assertSame(0, $catalogueReads, 'a page that preloads the catalogue must not re-query it per row');
     }
 }

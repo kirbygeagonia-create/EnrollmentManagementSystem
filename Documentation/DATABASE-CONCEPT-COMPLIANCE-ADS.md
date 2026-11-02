@@ -20,7 +20,7 @@ never measured it is unfalsifiable.
 
 **Actual implementation.** 38 `DB::transaction(...)` sites in `app/`. The enrollment act is
 `app/Services/EnrollmentIssuer.php:109`, whose closure writes the `enrollments` row and then the workflow form, so
-a record and its desk checklist commit together or not at all. The Registrar's approve (`RegistrarController.php:321`)
+a record and its desk checklist commit together or not at all. The Registrar's approve (`RegistrarController.php:330`)
 and drop (`:368`) wrap subject lines, the status transition and the box signature in one transaction. The status
 machine is the only writer of `enrollmentstatushistory` and transitions inside its own transaction
 (`app/Services/EnrollmentStateMachine.php`). Money writes one transaction per act (`AccountingController.php:268`
@@ -225,7 +225,7 @@ same command answered 2.68 ms and 10.54 ms for the contains search, 0.53 ms and 
 counts and treats a timing as a property of the run that printed it, the same rule the suite's assertion totals
 follow. Per-student history retrieval is an index seek at every hop (`ref` on the student FK, then `eq_ref:PRIMARY`),
 so the guide's worry about "hundreds of thousands of rows" lands on the *page loop*, not the read: a 20-row
-Registrar page costs 40 queries where the batched shape costs 2 — re-measured 2026-11-02 on live `ems` as **5.0 repeated statements per listed row**, from five named call sites in `EnrollmentReadiness` and `Gradescale`, two of which re-read a school-wide constant for every record. An earlier reading of the capacity count, 410 ms,
+Registrar page costs 40 queries where the batched shape costs 2 — re-measured 2026-11-02 on live `ems` as **5.0 repeated statements per listed row**, from five named call sites in `EnrollmentReadiness` and `Gradescale`, two of which re-read a school-wide constant for every record; those two are now resolved once per page and the same instrument answers **3.0 per row from three sites**. An earlier reading of the capacity count, 410 ms,
 was a fixture artefact — the builder spread rows by a modulo that overfilled one block, and `lane163` now refuses
 that shape rather than measuring it.
 

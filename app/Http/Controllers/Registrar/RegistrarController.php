@@ -24,6 +24,9 @@ use App\Services\ReturnRecorder;
 use App\Services\WorkflowService;
 use App\Support\DeskQueues;
 use App\Support\EnrollmentReadiness;
+use App\Models\Curriculums;
+use App\Models\Gradescale;
+use Illuminate\Support\Collection;
 use App\Support\ListSort;
 use App\Support\SchoolTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -94,9 +97,15 @@ class RegistrarController extends Controller
         // be approved. This prints the same five gates beside each row, keyed by
         // enrollment, naming the ones still outstanding.
         $openPeriod = Clearanceperiods::accepting()->first();
+        // P09: the passing ceiling and the catalogue are school-wide facts, but the queue used to read both once
+        // per row — `lane191` measured 5.0 repeated statements per listed row, two of them these constants.
+        // Resolved once for the page and threaded through, exactly the way the clearance window already is, so
+        // the record page and the policy keep calling the same predicate with no argument and read it fresh.
+        $passingCeiling = Gradescale::passingCeiling();
+        $curriculums = Curriculums::all();
         $readiness = collect($enrollments->getCollection())
-            ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod) {
-                $gates = $this->checklist($enrollment, $openPeriod);
+            ->mapWithKeys(function (Enrollments $enrollment) use ($openPeriod, $passingCeiling, $curriculums) {
+                $gates = $this->checklist($enrollment, $openPeriod, $passingCeiling, $curriculums);
 
                 return [$enrollment->enrollmentId => [
                     'met' => collect($gates)->filter()->count(),
@@ -196,7 +205,7 @@ class RegistrarController extends Controller
      *
      * @return array<string, bool>
      */
-    private function checklist(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null): array
+    private function checklist(Enrollments $enrollment, ?Clearanceperiods $openPeriod = null, ?float $passingCeiling = null, ?Collection $curriculums = null): array
     {
         $assessment = $enrollment->studentassessments;
 
@@ -224,7 +233,7 @@ class RegistrarController extends Controller
             // verified, and that the load being approved is one the student is
             // entitled to take.
             'documents_verified' => EnrollmentReadiness::documentsVerified($enrollment),
-            'prerequisites_met' => EnrollmentReadiness::prerequisitesMet($enrollment),
+            'prerequisites_met' => EnrollmentReadiness::prerequisitesMet($enrollment, $passingCeiling, $curriculums),
         ];
     }
 

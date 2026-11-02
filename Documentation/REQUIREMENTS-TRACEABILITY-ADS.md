@@ -29,7 +29,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 | P06 | Enrollment Cancellation (¶91) | Applies | Implemented, demonstration owed (T06) |
 | P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
 | P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
-| P09 | Enrollment History Performance (¶121) | Applies | Measured, not repaired — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched (that is `lane164`'s reading of its own run). Re-measured 2026-11-02 by `lane191-attribute-registrar-queries.php` against live `ems` through the HTTP stack, which names the call sites the older figure could only count: the queue listed **5 rows** and **5.0 statements repeated per row**, from `EnrollmentReadiness` lines 148 (`curriculumsubjects`), 160 (`curriculums`), 187 (best grade per subject) and 197 (approved credits), plus `Gradescale` line 36 (the passing ceiling). Two of those five are **school-wide constants re-read once per record**, so the cheapest half of the repair is a per-request memoize inside the class both the list and the record page already call — no second definition of any gate. Capture `storage/app/scratch/lane191-out.txt` |
+| P09 | Enrollment History Performance (¶121) | Applies | Partly built, both halves measured (2026-11-02) — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched (that is `lane164`'s reading of its own run). Re-measured 2026-11-02 by `lane191-attribute-registrar-queries.php` against live `ems` through the HTTP stack, which names the call sites the older figure could only count: the queue listed **5 rows** and **5.0 statements repeated per row**, from `EnrollmentReadiness` lines 148 (`curriculumsubjects`), 160 (`curriculums`), 187 (best grade per subject) and 197 (approved credits), plus `Gradescale` line 36 (the passing ceiling). Two of those five are **school-wide constants re-read once per record**, so the cheapest half of the repair is a per-request memoize inside the class both the list and the record page already call — no second definition of any gate. Capture `storage/app/scratch/lane191-out.txt`. The two **school-wide** reads — the passing ceiling and the curriculum catalogue — are now resolved once per page and threaded in as optional arguments that default to the fresh read, the shape `clearanceVerdict()` already used for the window, and `lane191` re-run answers **3.0 per row from three sites** (`EnrollmentReadiness` lines 154, 218, 228). Pinned by two new `PrerequisiteGateTest` cases: the preloaded answer must equal the fresh answer in both directions, and the scale and catalogue must be read twice on the fresh path and **zero** times when handed in. Half 2 — batching those three by `enrollmentId` — stays open as task #45 |
 | P10 | Concurrent Subject Registration (¶131) | Applies | **Built** (2026-11-01) — measured first, then repaired on the same instrument. `lane190-probe-subject-line-race.php` releases two children at ONE enrollment with ONE identical payload on a scratch clone of live `ems`, each calling the real `proposeSubjects()`. Before: 10 writers gave 6 proposals and **4 unretried `1213` deaths**, every pair still settling on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)` — the data was protected by `uq_enrollment_subject_attempt` and the transaction; the desk was not. The act now takes `Enrollments::…->lockForUpdate()` as its first statement inside the transaction, re-reads the model the lock made authoritative, runs inside `RetryOnDeadlock`, and moves the record only when it has not already been moved. After: **10 proposed, 0 deadlock, 0 driver error, 0 duplicates** (exit 0). The middle reading is why the last branch exists: lock and retry alone answered 5 proposals and 5 `Cannot transition enrollment from 'evaluated' to 'evaluated'` throws |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
@@ -57,7 +57,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 - **Existing implementation.** `app/Services/EnrollmentIssuer.php:109` opens `DB::transaction(fn)` and returns the
   closure's value, so the `enrollments` insert and the workflow form written at `:76` and `:78` commit together or
   not at all. The Registrar's approve and drop acts wrap their subject lines, the status transition and the box
-  signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:321`, `:368`). 38
+  signature in one transaction (`app/Http/Controllers/Registrar/RegistrarController.php:330`, `:368`). 38
   `DB::transaction` sites exist across `app/`.
 - **Gap.** No test forces a failure *between* two subject writes and proves nothing survived.
 - **Required solution.** None new for the mechanism; the demonstration is owed.
@@ -203,7 +203,7 @@ not be read from code it says so, and no requirement is marked Verified without 
 ### P06 — Enrollment Cancellation (¶91-100)
 
 - **Objective.** A multi-subject cancellation must be consistent and must not count as enrolled.
-- **Existing implementation.** `RegistrarController::drop()` at `app/Http/Controllers/Registrar/RegistrarController.php:368`
+- **Existing implementation.** `RegistrarController::drop()` at `app/Http/Controllers/Registrar/RegistrarController.php:377`
   runs one transaction that sets the enrollment to `dropped` and every proposed or confirmed subject line to
   dropped; `app/Services/EnrollmentStateMachine.php:48-50` states the ruling in code ("A drop is terminal"), and
   the exclusion of dropped rows is read wherever seats are counted — the roster's own closure at
@@ -211,7 +211,7 @@ not be read from code it says so, and no requirement is marked Verified without 
   count site in that controller. The numbers of those further sites are deliberately not listed: a comma list of
   line numbers is judged only on its FIRST number by the citation gate, so the rest age unseen, and this batch's
   insertion aged all seven of them by one to nineteen rows while the gate printed `0 problem(s)`. See also
-  `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:133`.
+  `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:139`.
 - **Gap.** No test proves a mid-cancellation failure leaves nothing half-dropped.
 - **Required solution.** None new; the demonstration is owed.
 - **Affected components.** Backend, database.
@@ -299,8 +299,8 @@ not be read from code it says so, and no requirement is marked Verified without 
   relations, and `app/Services/AcademicStandingService.php:177` sums `lectureUnits + labUnits` inside a set-based
   read rather than per row. `enrollments` is indexed on `studentId`, `courseId` and `termId`, plus the composite
   `idx_enrollments_term_status` at `database/migrations/2026_08_04_1000000052_add_composite_indexes_for_heavy_screens.php:24`.
-- **Gap.** The Registrar queue loop at `app/Http/Controllers/Registrar/RegistrarController.php:97-106` calls the
-  checklist per page row, and `app/Support/EnrollmentReadiness.php:65,109-111,144,163,183` each issue a query, so a
+- **Gap.** The Registrar queue loop at `app/Http/Controllers/Registrar/RegistrarController.php:106-115` calls the
+  checklist per page row, and `app/Support/EnrollmentReadiness.php:66,109-111,144,163,183` each issue a query, so a
   20-row page costs roughly a hundred queries. No query-count ceiling guards it (the suite has exactly one such
   assertion, `tests/Feature/Print/PrintEnrollmentFormPayloadTest.php:206-227`).
 - **Required solution.** Batch the checklist's reads for the page (one query per relation, keyed by the page's

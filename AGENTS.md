@@ -2770,10 +2770,10 @@ proved by comparing the whole window in both versions, which is the only claim a
   silently clears everyone" — which is the build before ruling 4; the method's own docblock says "Ruling 4 closes
   the silence that used to pass this gate." The range was live, the file was right, the prose described a retired
   state in the present tense, and it sits in the section a desk reads before approving anyone. It now states what
-  the check does (`EnrollmentReadiness.php:61-63`). Only reading the pointer's sentence against the method sees
+  the check does (`EnrollmentReadiness.php:62-64`). Only reading the pointer's sentence against the method sees
   this shape — it is the same defect lane 69 found in the decision sheet, reached from the code side.
   **A §1.1 record row moves the census it reports.** Pass 204 wrote the citation count measured after pass 203,
-  and its own new `( EnrollmentReadiness.php:61-63 )` pointer was one of the citations the next sweep counted, so
+  and its own new `( EnrollmentReadiness.php:62-64 )` pointer was one of the citations the next sweep counted, so
   pass 205 re-aged the figure it had just written (689 → 690). Lane 61's register-row lesson one level up: a
   sentence that states what an instrument prints must be measured after that instrument's own row exists.
   **A pointer can land on live code that belongs to the next field down** (pass 206). The §25 slip paragraph cited
@@ -2960,7 +2960,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   **Printing the queue is what made it readable, and it found the twenty-third wrong target immediately.** §28's
   row 9 and §27's zero-balance deadlock row both name a checklist key **`registrar_ready`** — a key that exists
   nowhere in `app/`, `resources/`, `routes/`, `tools/`, `tests/`, the guides or CI. The array at
-  `RegistrarController.php:211-223` holds exactly seven keys and the one they mean is
+  `RegistrarController.php:220-232` holds exactly seven keys and the one they mean is
   `registrarApprovalPending` at **:216**, false precisely when the next pending box is another office — so the
   *claim* was right and the identifier it quoted was invented, which no bounds check can see because both line
   numbers are live in the named file. Pass 227 renamed both occurrences (`expect=2`, and it asserts the seven-key

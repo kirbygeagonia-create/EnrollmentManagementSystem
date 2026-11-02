@@ -14,6 +14,7 @@ use App\Models\Enrolledsubjects;
 use App\Models\Enrollments;
 use App\Models\Gradescale;
 use App\Models\Studentclearances;
+use Illuminate\Support\Collection;
 
 /**
  * The gates the Registrar reads before it signs, computed in one place.
@@ -121,9 +122,14 @@ final class EnrollmentReadiness
      * curriculum moved. So the Registrar reads the curriculum the enrollment is
      * pinned to, exactly as Evaluation does.
      */
-    public static function prerequisitesMet(Enrollments $enrollment): bool
+    /**
+     * @param  float|null  $passingCeiling  the queue resolves the maintained scale once for the page and passes
+     *                                      it in; read fresh otherwise, exactly as the clearance window is (§P09)
+     * @param  Collection<int,Curriculums>|null  $curriculums  the same page's curriculum rows, preloaded once
+     */
+    public static function prerequisitesMet(Enrollments $enrollment, ?float $passingCeiling = null, ?Collection $curriculums = null): bool
     {
-        $curriculum = self::curriculumFor($enrollment);
+        $curriculum = self::curriculumFor($enrollment, $curriculums);
 
         if (! $curriculum) {
             return true;
@@ -139,7 +145,7 @@ final class EnrollmentReadiness
             return true;
         }
 
-        $satisfied = self::satisfiedSubjectIds($enrollment);
+        $satisfied = self::satisfiedSubjectIds($enrollment, $passingCeiling);
 
         return ! Curriculumsubjects::where('curriculumId', $curriculum->curriculumId)
             ->where('yearLevel', $enrollment->yearLevel)
@@ -154,8 +160,33 @@ final class EnrollmentReadiness
      * one, otherwise the newest for that course. Same rule Department Evaluation
      * applies, so the two desks cannot disagree about which catalogue is current.
      */
-    private static function curriculumFor(Enrollments $enrollment): ?Curriculums
+    private static function curriculumFor(Enrollments $enrollment, ?Collection $curriculums = null): ?Curriculums
     {
+        if ($curriculums !== null) {
+            // The same two-step rule answered from rows the caller already loaded, so a page of records resolves
+            // the catalogue once instead of once per row. The preload must hold every curriculum row for the
+            // fallback half to mean the same thing, which is why the queue passes `Curriculums::all()`; the case
+            // `the_preloaded_answer_and_the_fresh_answer_agree_for_every_record_on_file` is what makes that
+            // equivalence a checked fact rather than a claim in a comment.
+            if ($enrollment->curriculumId) {
+                return $curriculums->firstWhere('curriculumId', (int) $enrollment->curriculumId);
+            }
+
+            $newest = static function (Collection $rows) use ($enrollment): ?Curriculums {
+                return $rows
+                    ->where('courseId', $enrollment->courseId)
+                    ->when($enrollment->majorId, fn ($r) => $r->where('majorId', $enrollment->majorId))
+                    ->sortByDesc('effectiveYear')
+                    ->first();
+            };
+
+            return $newest($curriculums)
+                ?? $curriculums
+                    ->where('courseId', $enrollment->courseId)
+                    ->sortByDesc('effectiveYear')
+                    ->first();
+        }
+
         if ($enrollment->curriculumId) {
             return Curriculums::find($enrollment->curriculumId);
         }
@@ -174,9 +205,9 @@ final class EnrollmentReadiness
      *
      * @return list<int>
      */
-    private static function satisfiedSubjectIds(Enrollments $enrollment): array
+    private static function satisfiedSubjectIds(Enrollments $enrollment, ?float $passingCeiling = null): array
     {
-        $passingCeiling = Gradescale::passingCeiling();
+        $passingCeiling ??= Gradescale::passingCeiling();
 
         $passed = Enrolledsubjects::query()
             ->join('enrollments as e2', 'e2.enrollmentId', '=', 'enrolledsubjects.enrollmentId')
