@@ -29,7 +29,7 @@ foreach (array_slice($GLOBALS['argv'], 1) as $a) {
 
         continue;
     }
-    if (preg_match('/^--pair=(.+)$/', $a, $m)) {
+    if (preg_match('/^--pair=(.*)$/s', $a, $m)) {
         $bits = explode('|', $m[1]);
         if (count($bits) !== 3) {
             fwrite(STDERR, 'REFUSED: --pair needs FILE|OLD|NEW, got '.escapeshellarg($a).".\n");

@@ -4242,6 +4242,15 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the words alone refused to re-point the living file that needed it most. `lane193`'s frozen needle list, by
   contrast, refused this run because all ten of its needles had been consumed by the batch that wrote it —
   a one-shot re-pointer is a record of one day's pointers, which is why the pairs now come in as arguments.
+  Its own falsifier is `php storage/app/scratch/mutate-lane196-repoint-md.php` (11 legs, all killed, against a
+  fixture tree rather than the live documents, because its needles are consumed by the run they were written
+  for), and two of its first runs were the harness's own age, not the patcher's: `|` inside an unquoted
+  argument is a **pipe to cmd.exe**, which PHP's `exec()` hands every command through, so the legs reported eight
+  failures while the tool answered correctly — quote each argument in double quotes (single quotes arrive
+  literally, this box's documented trap); and a refusal written as `--pair=(.+)` reports "I do not understand
+  `--pair=`" for an empty value, which is the wrong message for the right refusal, so the pattern is `(.*)` and
+  the shape is named. The dated-marker leg is the one that keeps the exemption honest: a file that merely
+  mentions the phrase must still be re-pointed.
 - **A path gate that reads only `directory/file.ext` is blind to half the citations in its own documents**
   (lane 194 widened, 2026-11-02). The artefact census judged a citation only when it carried a directory part, and
   printed that limit as a scope sentence. The ADS deliverables cite artefacts three other ways — a bare name in
