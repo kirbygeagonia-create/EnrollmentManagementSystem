@@ -9,9 +9,10 @@ evidence*, *Explained*, *N/A with explanation*. A concept is not Implemented bec
 The system is Laravel 13.23 on MySQL 8 (Laragon), Inertia/React on the desk side, an SQLite `:memory:` suite, and
 CI with three jobs (`.github/workflows/ci.yml`). Live `ems` answers **64 tables, 105 foreign keys, 96 permissions**
 as read by `php storage/app/scratch/lane60-ratio-claims.php --run` on 2026-11-01 (its own verdict: 54 match, 0 stale,
-0 unbound), and **15 unique constraints over 184 table constraints, 237 index rows** as printed by
-`php storage/app/scratch/lane154-probe-duplicate-keys.php` on the same schema after this batch's two enrollment keys
-landed. Each figure is credited to the one instrument that prints it, because a number attributed to a tool that
+0 unbound), and **16 unique constraints over 185 table constraints, 238 index rows** as printed by
+`php storage/app/scratch/lane154-probe-duplicate-keys.php` re-run on 2026-11-02 — the earlier reading this file
+first quoted (15 over 184, 237 rows) is that day's record and is left in the places that date it, because a figure
+about a schema is re-taken rather than re-typed. Each figure is credited to the one instrument that prints it, because a number attributed to a tool that
 never measured it is unfalsifiable.
 
 ---

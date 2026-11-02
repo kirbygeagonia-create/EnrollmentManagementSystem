@@ -1285,8 +1285,9 @@ words when the bound is spent. A genuine `SQLSTATE[40001]` was observed pre-fix 
 SQLite never deadlocks, so four boundary cases hand the helper the driver codes instead.
 
 **Row 7 — Database Constraints.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-Primary and foreign keys with per-table delete behaviour catalogued and weighed, NOT NULL, enums, 15
-unique constraints listed in §23.6.1. Gap named in the guide's own words: no `CHECK` expresses a
+Primary and foreign keys with per-table delete behaviour catalogued and weighed, NOT NULL, enums, and the thirteen
+unique constraints §23.6.1 lists, which `php storage/app/scratch/lane44-unique-keys.php` weighs against the server.
+Gap named in the guide's own words: no `CHECK` expresses a
 range rule (capacity non-negative, units non-negative), which MySQL 8 supports.
 
 **Row 8 — Indexing.** ☑ Implemented ☑ Query plan/performance test ☐ N/A
@@ -1487,7 +1488,7 @@ server, and three per-row readiness reads remain unbatched.
 *Be prepared to support your answer with your database design, SQL or configuration, test cases, and
 evidence.* That is exactly what the four paragraphs above are made of, and the four kinds are named so
 the answer can be checked rather than admired: the **design** is §23's tables and foreign keys with the
-generated `seatKey` column and the 15 unique constraints of §23.6.1; the **configuration** is the
+generated `seatKey` column and the thirteen unique constraints §23.6.1 lists; the **configuration** is the
 engine's own REPEATABLE READ default left unmodified, `innodb_flush_log_at_trx_commit` read from the
 server by the drill, and `TRUSTED_PROXIES` naming one real proxy instead of a wildcard; the **test
 cases** are `BlockCapacityAtomicityTest`, `DatabaseLevelEnrollmentRulesTest`,
