@@ -852,7 +852,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
   `%` — and
-  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 366 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 368 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
   that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
   three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
   only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
