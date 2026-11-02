@@ -94,9 +94,12 @@ helper, and is addressed through `CollegeScope`; the workflow monitor gives an o
 pipeline.
 
 Frontend: no screen changed in this batch's capacity work, which is deliberate — the refusal arrives as an existing
-`capacity` error and the desk already renders it. The wider tranche wired eighteen of the thirty-six list tables to
+`capacity` error and the desk already renders it. The wider tranche wired the list tables to
 one sortable mechanism with the sort applied server-side, and put the refresh-pending state in the shared table so a
-page cannot forget it.
+page cannot forget it. How many tables are wired and how many still offer no order is answered by
+`lane140-measure-wired-screens.php`, which reads the tree and refuses any register that disagrees with it — this
+sentence deliberately carries no count, because a figure in a report ages with the next screen and no checker in this
+repository reads a number that names no instrument.
 
 Endpoints: none added, none removed. The route the race lives on is `POST /blocking/{block}/assign`.
 

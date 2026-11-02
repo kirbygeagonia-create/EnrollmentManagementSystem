@@ -241,7 +241,13 @@ function wired_owed_claims(string $t): array
     // Single-digit words joined the list because §28.3's G-40 row carried "eight of the thirty-six tables …" and
     // this extractor could not read a number below eleven: a spelled figure outside the vocabulary is not
     // "unread", it is silently absent, and the row contradicted the same row's own "18 of the 36" two sentences away.
-    $word = 'one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|\d{2}';
+    // Compounds joined the same way for the same reason: when the twenty-first table landed the row read
+    // "twenty-one of the 36 pages", and the reader took `twenty` then `one` as its own number and reported a claim
+    // of ONE. A figure the prose can write and the tool cannot read is the fake-clean verdict wearing the opposite
+    // costume — here it was a fake STALE, which sends a reader to re-type a sentence that was already true.
+    // Longest alternatives first, so `sixteen` is never harvested as `six`.
+    $ones = 'one|two|three|four|five|six|seven|eight|nine';
+    $word = '(?:\d{2}|(?:twenty|thirty)[- ](?:'.$ones.')|(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(?:twenty|thirty)|ten|'.$ones.')';
     $out = [];
     $forms = [
         ['the ('.$word.') wired pages call', 'wired'],
@@ -274,12 +280,27 @@ function wired_owed_claims(string $t): array
 /** A spelled number is read as a number; anything else is compared as the word it is. */
 function claim_value(string $token, array $map): ?int
 {
-    $lower = strtolower($token);
+    $lower = strtolower(trim($token));
     if (is_numeric($lower)) {
         return (int) $lower;
     }
 
-    return $map[$lower] ?? null;
+    if (isset($map[$lower])) {
+        return $map[$lower];
+    }
+
+    // A compound is TWO mapped numbers written as one figure: "twenty-one" is 20 + 1. Read as a sum, because a
+    // reader that returns null here would report the claim as unread, and an unread claim refuses the run — which
+    // is the honest direction, but the prose is allowed to say twenty-one.
+    $parts = preg_split('/[-\s]+/', $lower) ?: [];
+    if (count($parts) !== 2) {
+        return null;
+    }
+    if (! isset($map[$parts[0]], $map[$parts[1]])) {
+        return null;
+    }
+
+    return $map[$parts[0]] + $map[$parts[1]];
 }
 
 $WORDNUM = [

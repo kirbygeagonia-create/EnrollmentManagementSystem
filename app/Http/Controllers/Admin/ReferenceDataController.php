@@ -834,17 +834,40 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageScholarshipTypes', Scholarshiptypes::class);
 
-        $types = Scholarshiptypes::query()
+        $query = Scholarshiptypes::query()
             ->when($request->search, fn ($q, $search) => $q->where('scholarshipName', 'like', "%{$search}%"))
-            ->when($request->coverage, fn ($q, $coverage) => $q->where('coverageType', $coverage))
-            ->orderByDesc('scholarshipTypeId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->coverage, fn ($q, $coverage) => $q->where('coverageType', $coverage));
+
+        // The same catalogue shape as the fee sheet one action above it: three columns, every one of them on the row
+        // the board paints, so the screen writes no hop and an order can neither widen a payload nor drop a record.
+        // `coverageType` is `enum('full','partial')` on the school's server and carries a header under the owner's
+        // ruling of 2026-10-31, and `coveragePercent` is `decimal(10,2)` — a number, not a percentage of anything
+        // the query has to compute. The default is the name ascending because a catalogue is read top to bottom.
+        $sortable = [
+            'scholarshipName' => ['column' => 'scholarshipName'],
+            'coverageType' => ['column' => 'coverageType'],
+            'coveragePercent' => ['column' => 'coveragePercent'],
+            'scholarshipTypeId' => ['column' => 'scholarshiptypes.scholarshipTypeId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'scholarshipName',
+            'scholarshiptypes.scholarshipTypeId'
+        );
+
+        $types = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/ScholarshipTypes', [
             'types' => $types,
             'coverageTypes' => collect(CoverageType::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'filters' => $request->only(['search', 'coverage']),
+            'filters' => $request->only(['search', 'coverage']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

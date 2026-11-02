@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, nextSortDirection, sortParams, formatStatusLabel } from '@/Components/ui';
 
 const coverageOptions = [
     { value: '', label: 'All Coverage Types' },
@@ -15,9 +15,13 @@ const coverageToneMap = {
     partial: 'warning',
 };
 
-export default function ScholarshipTypes({ types, coverageTypes, filters = {} }) {
+export default function ScholarshipTypes({ types, coverageTypes, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [coverage, setCoverage] = useState(filters.coverage || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the board is looking at rather than
+    // resetting it under them. The catalogue's own default is the name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingType, setEditingType] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -29,13 +33,13 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
     });
 
     const columns = useMemo(() => [
-        { key: 'scholarshipName', label: 'Name' },
-        { key: 'coverageType', label: 'Coverage', render: (row) => (
+        { key: 'scholarshipName', label: 'Name', sortKey: 'scholarshipName' },
+        { key: 'coverageType', label: 'Coverage', sortKey: 'coverageType', render: (row) => (
             <Badge tone={coverageToneMap[row.coverageType] || 'neutral'}>
                 {formatStatusLabel(row.coverageType)}
             </Badge>
         ), className: 'text-center' },
-        { key: 'coveragePercent', label: 'Coverage %', render: (row) => `${parseFloat(row.coveragePercent).toFixed(2)}%`, className: 'text-center font-mono' },
+        { key: 'coveragePercent', label: 'Coverage %', sortKey: 'coveragePercent', render: (row) => `${parseFloat(row.coveragePercent).toFixed(2)}%`, className: 'text-center font-mono' },
     ], []);
 
     const handleFilter = (e) => {
@@ -43,6 +47,23 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
         router.get(route('admin.reference-data.scholarship-types'), {
             search: search || undefined,
             coverage: coverage || undefined,
+            ...sortParams('scholarshipName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole catalogue.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.scholarship-types'), {
+            search: search || undefined,
+            coverage: coverage || undefined,
+            ...sortParams('scholarshipName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -174,6 +195,8 @@ export default function ScholarshipTypes({ types, coverageTypes, filters = {} })
                             rows={types.data}
                             children={renderActions}
                             emptyMessage="No scholarship types found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={types} />

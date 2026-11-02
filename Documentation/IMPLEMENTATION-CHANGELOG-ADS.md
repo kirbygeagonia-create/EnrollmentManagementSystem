@@ -171,6 +171,10 @@ Two choices worth recording:
 | `ReferenceDataController::feeTypes()` + `resources/js/Pages/Admin/ReferenceData/FeeTypes.jsx` | the twentieth list table wired to the one sort mechanism. Three columns carry a header — name, amount, unit basis — all of them on the row the board already paints, so no hop is written and an order cannot widen or drop a row. The default is the name **ascending**: the helper's absence-of-direction answer is descending for a queue of newest-first records, and a catalogue is read top to bottom. |
 | `tests/Feature/Admin/FeeTypeSortTest.php` + `storage/app/scratch/mutate-g40-feetype-sort-tests.php` | seven directional cases and the falsifier that kills six plants (the name column pointed at the key, the ascending default flipped, the amount withheld, the ENUM withheld, the applied order never echoed, the hard-coded order returning). The enum case needed **three rows**: with two, a withheld column fell back to the name order and produced exactly the sequence the case expected, so the leg survived and the fixture was the defect — the lesson this project first wrote down for a sort mutant and met again in a new screen. |
 | `storage/app/scratch/refresh-docx-pass415.php` | re-takes §28.3's three living wired/owed counts and re-runs `lane140 --check-docx` as its own read-back, the shape pass 413 established; the dated §1.1 rows are left as written. |
+| `ReferenceDataController::scholarshipTypes()` + `resources/js/Pages/Admin/ReferenceData/ScholarshipTypes.jsx` | the twenty-first list table wired to the one sort mechanism. Four keys are offered — name, coverage type, coverage figure, record key — and all of them sit on the row the board paints, so no hop is written and an order can neither widen a payload nor drop a record. The coverage column is `enum(full, partial)` and its case asks the connection for the order even though the declaration and the alphabet coincide on this column, so the owner's ruling stays a derived expectation rather than a typed pair. |
+| `tests/Feature/Admin/ScholarshipTypeSortTest.php` + `storage/app/scratch/mutate-g40-scholarship-sort-tests.php` | eight directional cases and the falsifier that plants one defect per promise (that harness prints its own leg total, so no number for it is written here). The new case is the one no backend test can make: the shared table paints a header only for a key listed in `sort.available`, so a `sortKey` the handler does not know is an ABSENT control with every figure on the screen still correct — the case reads the page's own `sortKey` list and asks the payload for each one, and its plant lives in the `.jsx`, which is why this harness patches two surfaces. Its first run reported one BAD leg that was the harness's own check, not a surviving defect: the check demanded every plant retire its needle, which an inserted line cannot do. |
+| `storage/app/scratch/lane140-measure-wired-screens.php` (widened) + `mutate-lane140-wired-counts.php` | the register said "twenty-one of the 36 pages" and the wired-count checker read that as a claim of ONE, because its number reader matched `twenty` and stopped: a compound it cannot add was truncated rather than refused, and a fake STALE sends a reader to re-type a sentence that was already true. It now sums compounds and orders its alternatives longest-first so `sixteen` cannot be harvested as `six`, and the harness grew two legs — the compound spelling, and the single word `ten`, which is the check that a widening has not quietly retired a shape the prose uses. |
+| `storage/app/scratch/refresh-docx-pass416.php` | one §1.1 row plus §28.3's three living counts, with `lane140 --check-matrix --check-docx` re-run as the read-back. The row carries the school's day, which had rolled past midnight while the batch ran, and it finds its template row by title rather than by date-plus-title — a date-joined anchor refuses a correct write the moment the day moves. The row also carries the previous batch's record, which retook every count and wrote no row of its own. |
 
 ## 4. Documents changed
 
@@ -230,9 +234,23 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
 - `mutate-lane140-wired-counts.php` carried six needles pointing at the counts **this batch legitimately corrected**
   (`eighteen of thirty-six tables use it`, `18 of the 36 pages …`, `the eighteen wired pages call`), so the harness
   refused with `nothing was planted` over a tree that had simply got truer. All six are re-cut onto the current bytes
-  and the run answers 13 legs, 0 bad. The instrument also gained its `owed pages` print: the register carries the
+  and the run answers no bad leg — this file states no leg total, because the harness prints its own and the number
+  moves the day a class gains a case. The instrument also gained its `owed pages` print: the register carries the
   count, but a queue a reader can act on is a list of page paths, and both sides come from the same two arrays the
   counts already print, so no second definition of "wired" entered the tool.
+- `lane140-measure-wired-screens.php` truncated a compound. When the register's prose moved to `twenty-one of the 36
+  pages`, its number reader matched `twenty`, stopped, and reported a true sentence as a claim of ONE — so the defect
+  is not that a figure went stale but that a fake STALE sends a reader to re-type a sentence that was already correct.
+  A spelled figure the reader cannot add was silently truncated rather than refused, which is the same family as the
+  unread claim this project refuses everywhere else. The reader now sums compounds and orders its alternatives
+  longest-first so `sixteen` cannot be harvested as `six`; `mutate-lane140-wired-counts.php` grew a leg for the
+  compound spelling and a second for the single word `ten`, because a widening that adds one shape while retiring
+  another is the defect lanes 44, 69 and 71 already name, and only the second leg can see it.
+- `mutate-g40-scholarship-sort-tests.php`'s first run reported one BAD leg that was its own check rather than a
+  surviving defect: it demanded that every plant retire its needle, which an inserted line cannot do — the appended
+  text contains the needle it followed. The landing check now follows the plant's shape (a deletion must leave nothing
+  behind, an insertion must change bytes and add its text), which is the same per-edit residual expectation the docx
+  passes record for an appending read-back, arrived at in a mutation harness.
 - `lane163` filled blocks with `$sid % count($blockIds)`, which over-filled the first ones by the demo cast's id
   remainder — a block holding 41 seats against `maxStudents` 40. The fixture then violated the invariant its probes
   claimed to measure. Now filled in order, topped up from the real id high-water mark, and refused if any synthetic

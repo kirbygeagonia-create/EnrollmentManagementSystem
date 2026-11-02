@@ -1963,6 +1963,27 @@ AFTER the five tiles are cloned and the handler says why: the select pin that a 
   file exists to refuse. The stable tie-break has no test, and that is stated rather than papered over: on SQLite
   two tied rows usually return in insertion order anyway, so a leg asserting a failure there would measure the
   database's mood, not a defect.
+- **A header the page paints must be a key the handler obeys, and its failure is an ABSENT control** (the newest sortable
+table, `Admin/ReferenceData/ScholarshipTypes`). `DataTable` renders a sort button only for a key listed in the payload's
+`sort.available`, so a `sortKey` spelled for a column the action does not declare paints nothing: every number on the
+screen stays correct, no case under `tests/Feature/Sorting` notices, and the desk has quietly lost the affordance —
+lane 46's DEAD-SEND seen from the screen side. `ScholarshipTypeSortTest.php`'s `every_header_the_page_paints_is_a_key_the_action_obeys`
+case reads the page's own `sortKey` list and asks the payload for each one, and `mutate-g40-scholarship-sort-tests.php`
+plants the invented key in the `.jsx` rather than in the controller, because the promise spans two runtimes and the
+harness has to reach both. Three lessons from the same batch, each an old class in a new costume. **A widening is not an
+off switch:** `lane140-measure-wired-screens.php` read the register's new compound figure as a claim of ONE, because its
+number reader matched `twenty` and stopped — a compound it cannot add was silently truncated, and the fake STALE sends a
+reader to re-type a sentence that was already true. It now sums compounds and orders its alternatives longest-first so
+`sixteen` cannot be harvested as `six`, and the harness carries one leg for the compound spelling and a second for the
+single word `ten`, because a rewrite that adds one shape while retiring another is the defect this file has refused for
+lanes 44, 69 and 71. **A read-back must be taken from the plant's own shape:** the harness demanded that every plant
+retire its needle, which an inserted line cannot do, so a correct insertion reported BAD — the docx append hazard, met
+inside a mutation harness. A deletion must leave nothing behind; an insertion must change bytes and add its text.
+**A batch that re-takes a register's counts must write its own row:** the previous table moved every count and left no
+§1.1 row behind, so this batch's row carries both records rather than back-dating the missing one, and the dated rows
+above it stay as written — the school's clock rolled to its next civil day while the batch ran, which is why the pass
+reads `SchoolTime::today()` instead of typing a date, and why its anchor matches the template row by title rather than
+by date-plus-title (a date-joined anchor refuses a correct write the moment the day moves).
 - **A desk search's own alternatives must be grouped, or they widen the filters set beside them** (this batch, the
 staff directory). `UserManagementController::index()` chained `->where('firstName','like',…)->orWhere('lastName','like',…)`
 inside the same `when()` closure that carries the office and status filters, and Laravel puts every one of those at the
