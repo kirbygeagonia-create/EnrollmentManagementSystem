@@ -1841,7 +1841,10 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 17 of the 36 pages that render `DataTable` offer no order. The nineteenth is the workflow monitor, wired
+  still owed: 16 of the 36 pages that render `DataTable` offer no order. The twentieth is the fee-sheet catalogue,
+wired 2026-11-02 — the first screen in this family whose ENUM column had to be proved with THREE rows, because with
+two rows the withheld-column fallback happened to produce the same sequence as the real order on the suite's driver,
+so the leg survived and the fixture was the defect. The nineteenth is the workflow monitor, wired
 2026-11-02 — the first screen in this family whose two name-hops were chosen by asking the schema and the rows
 (`enrollments.studentId` and `enrollments.courseId` are NOT NULL and hold no null row), not by copying the audit log's
 LEFT hop or the courses catalogue's INNER one. **The re-take list came from the instrument, not from a hunt**:

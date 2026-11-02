@@ -2,14 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, nextSortDirection, sortParams, formatStatusLabel } from '@/Components/ui';
 
 const unitBasisToneMap = {
     perUnit: 'info',
     flat: 'warning',
 };
 
-export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
+export default function FeeTypes({ feeTypes, unitBases = [], filters = {}, sort = null }) {
     // The filter's choices come from the same FeeUnitBasis list the server shares, so a third
     // unit basis appears in the dropdown without anyone remembering to edit this file. The
     // empty-value sentinel is the screen's own "show everything", not a stored basis.
@@ -18,6 +18,9 @@ export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
         [unitBases],
     );
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the board is looking at.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [unitBasis, setUnitBasis] = useState(filters.unitBasis || '');
     const [showModal, setShowModal] = useState(false);
     const [editingFeeType, setEditingFeeType] = useState(null);
@@ -30,9 +33,9 @@ export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'feeName', label: 'Name' },
-        { key: 'defaultAmount', label: 'Amount', render: (row) => `₱${parseFloat(row.defaultAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, className: 'text-right font-mono' },
-        { key: 'unitBasis', label: 'Unit Basis', render: (row) => (
+        { key: 'feeName', label: 'Name', sortKey: 'feeName' },
+        { key: 'defaultAmount', label: 'Amount', sortKey: 'defaultAmount', render: (row) => `₱${parseFloat(row.defaultAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, className: 'text-right font-mono' },
+        { key: 'unitBasis', label: 'Unit Basis', sortKey: 'unitBasis', render: (row) => (
             <Badge tone={unitBasisToneMap[row.unitBasis] || 'neutral'}>
                 {row.unitBasis === 'perUnit' ? 'Per Unit' : 'Flat Rate'}
             </Badge>
@@ -44,6 +47,23 @@ export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
         router.get(route('admin.reference-data.fee-types'), {
             search: search || undefined,
             unitBasis: unitBasis || undefined,
+            ...sortParams('feeName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query, not of the twenty rows on screen: the list paginates on the server, so a
+    // client sort would order one page and present that as the catalogue — the page-versus-set defect §28.3 owns.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.fee-types'), {
+            search: search || undefined,
+            unitBasis: unitBasis || undefined,
+            ...sortParams('feeName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -174,6 +194,8 @@ export default function FeeTypes({ feeTypes, unitBases = [], filters = {} }) {
                             columns={columns}
                             rows={feeTypes.data}
                             children={renderActions}
+                            sort={sort}
+                            onSort={handleSort}
                             emptyMessage="No fee types found"
                         />
                         <div className="mt-4">

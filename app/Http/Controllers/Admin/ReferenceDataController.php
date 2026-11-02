@@ -631,17 +631,45 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageFeeTypes', Feetypes::class);
 
-        $feeTypes = Feetypes::query()
+        // Split from the paging call because the order is applied to the builder in the action, the way every wired
+        // screen does it — a key consumed one call deeper reads to `lane46` as a key the handler never obeys.
+        $query = Feetypes::query()
             ->when($request->search, fn ($q, $search) => $q->where('feeName', 'like', "%{$search}%"))
-            ->when($request->unitBasis, fn ($q, $basis) => $q->where('unitBasis', $basis))
-            ->orderByDesc('feeTypeId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->unitBasis, fn ($q, $basis) => $q->where('unitBasis', $basis));
+
+        // Every column here sits on the row the desk already reads, so no hop is written and nothing can widen the
+        // payload. `unitBasis` is `enum('perUnit','flat')` on the school's server, which carries a header under the
+        // owner's ruling of 2026-10-31 because the order it gives is the declaration the school wrote into the
+        // migration. The default is the name ascending: a catalogue is read top to bottom, and the helper's
+        // absence-of-direction answer serves a queue of newest-first records, not this list.
+        $sortable = [
+            'feeName' => ['column' => 'feeName'],
+            'defaultAmount' => ['column' => 'defaultAmount'],
+            'unitBasis' => ['column' => 'unitBasis'],
+            // The list's own key: the fallback is read from here, never painted as a header.
+            'feeTypeId' => ['column' => 'feetypes.feeTypeId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'feeName',
+            'feetypes.feeTypeId'
+        );
+
+        $feeTypes = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/FeeTypes', [
             'feeTypes' => $feeTypes,
             'unitBases' => collect(FeeUnitBasis::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'filters' => $request->only(['search', 'unitBasis']),
+            // Both order keys travel back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns for filters.
+            'filters' => $request->only(['search', 'unitBasis']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
