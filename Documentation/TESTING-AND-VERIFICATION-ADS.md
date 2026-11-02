@@ -247,7 +247,7 @@ no error at all.
 | Test | Scenario | State | Logs / query output |
 |---|---|---|---|
 | T01 | multi-subject commit | executed 2026-11-02 — two cases in `tests/Feature/Evaluation/RetakeAttemptTest.php`: `a_multi_subject_commit_writes_every_line_it_names` (a two-subject proposal leaves 2 proposed lines and exactly one `→ evaluated` row in `enrollmentstatushistory`) and `a_refused_proposal_leaves_the_existing_load_in_place` (a payload naming one subject twice is refused and the record's existing line survives, unmoved). Killed both ways by `php storage/app/scratch/mutate-g-t01-subject-commit.php`: inserting only the first line of the payload fails the first case with its own sentence, and disabling the duplicate-payload guard fails the second — each restore verified by hash, and the file answers 10 passed / 37 assertions on the clean tree |
-| T06 | multi-subject cancellation | not executed — `drop()` is one transaction; no case asserts the line set after a refusal | none yet; `RegistrarController.php:382` is the act a future case would drive |
+| T06 | multi-subject cancellation | executed 2026-11-02 — nine cases in `tests/Feature/Registrar/EnrollmentDropTest.php`, of which the guide's own third question is `a fault between the two writes of a drop leaves the load and the status exactly as they were`: a query listener throws the moment the load retire is issued, after the status transition and its history row are already written on that connection, and the case re-reads the status, every line's status, the reason column and the history count. It refuses its own run if the injection never fired or if the controller swallowed the throw | the case is in the delivered run; `php storage/app/scratch/mutate-t06-drop-atomicity-tests.php` answers `ALL KILLED`, planting the transaction removed, the load update hoisted out of it, and the fault caught by the controller — each required to make that case fail **naming its own assertion**, because a plant that does not compile also prints `1 failed`. Control green before and after, controller restored by hash; the harness prints its own leg total. `RegistrarController.php:382` is the act it drives |
 | T14 | load exceeded | not executed — the elective-band rule exists; the ceiling is a school figure | none; the band rule's own message is the only text a run could print, and P13 is the open figure |
 | T15 | faculty load | not executed — no limit is defined (matrix P14), so there is no expectation to assert | none; nothing in `app/` holds a faculty-load predicate to fail |
 | T16 | schedule conflict | partly — rooms, officers and the block's own hour are covered by `TimetableConflicts` and its tests; two blocks for one student are not (P15) | the suite's own lines in `l171-suite.log` for the three covered branches; the two-block case is the gap |
@@ -258,13 +258,21 @@ no error at all.
 
 ## What the suite says as a whole
 
-The run that contains this batch's cases is
+The run that contained the 2026-11-01 batch's cases is
 `storage/app/scratch/l171-suite-junit.xml` / `l171-suite.log`, read on 2026-11-01. Its
 `Tests:` line, the discovery count from `artisan test --list-tests`, and the per-class figures for
 `BlockCapacityAtomicityTest` and `DatabaseLevelEnrollmentRulesTest` are the three readings that must agree, and the
 reason no total is quoted in this file's prose: an assertion count is a property of a run, and the two MySQL and
 SQLite jobs answer different ones. The three do agree: the log answers 1212 passed with no failure and no skipped
 line, `--list-tests` discovers 1212, and the junit carries the per-class entries the retake tool reads.
+
+The run that contains the 2026-11-02 cases — the rollback case on the issuing act's sibling, `T02`'s probe being an
+instrument rather than a phpunit case, and the forced-failure case on the cancellation act — is
+`storage/app/scratch/l199-suite-junit.xml` / `l199-suite.log`. On this box it answers **1232 passed with 7,695
+assertions**, `SUITE_EXIT=0`, no failure and no skip, and `artisan test --list-tests` discovers the same 1232, which
+is the check that the inserted method did not steal the `#[Test]` attribute of the case below it. One surface is
+named, deliberately: the runner answers a different assertion total for the same code, and a sentence that carried
+both would be one claim judged on its first figure.
 
 The run before it, `l170-suite.log`, answered two failures, and both were this batch's own consequences rather than
 unrelated rot — recorded here because each is a finding:

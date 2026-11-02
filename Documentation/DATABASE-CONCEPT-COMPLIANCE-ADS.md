@@ -36,9 +36,12 @@ captured in `storage/app/scratch/lane198-out.txt`).
 **Evidence.** The delivered suite passes whole; the atomicity claim is now backed by a refusal case and by an
 observed rollback, both named in `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` §5.
 
-**Remaining limitation.** The injected fault is proven between two writes of the *issuing* act. The same injection
-between two `enrolledsubjects` lines is not yet captured, and no case proves a rollback there; that half is named
-under P01 rather than folded into this one.
+**Remaining limitation.** The injected fault is proven between two writes of the *issuing* act and between two
+writes of the *cancellation* act (`a fault between the two writes of a drop…`, which throws at the load retire
+after the status transition and its history row are already on the connection, and re-reads all four facts).
+What is still not captured is the same injection **between two `enrolledsubjects` INSERTs** in the proposal
+loop — retiring a whole load in one statement is not the same write as building it line by line — and that half
+is named under P01 rather than folded into this one.
 
 ---
 

@@ -37,7 +37,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 | P03 | Duplicate Enrollment (¶61) | Applies | Built — subject lines guarded since the schema was written, the fee sheet by `uq_studentassessments_enrollment` since 2026-11-01, and the active seat by `uq_enrollments_active_seat` over the VIRTUAL `seatKey`: the key was added the same day, **withdrawn the same day** after CI showed test files writing two active seats for one student and term, and returned the same day after the census found eight such files and each was repaired and rehearsed on a scratch MySQL schema. `seatHolder()` stays the desk's guard on both drivers; the key is MySQL-only because SQLite compiles no generated `ALTER` |
 | P04 | Incorrect Section Capacity (¶71) | Applies | Built and pinned — count weighed against `maxStudents` by the assign guard and by the audit's twentieth rule; the room-level question stays open by name |
 | P05 | Simultaneous Student Updates (¶81) | Applies | **Built** — `students.rowVersion` is compared before the profile write, a mismatch is refused naming both numbers and writing nothing, and a successful save spends exactly one version |
-| P06 | Enrollment Cancellation (¶91) | Applies | Implemented, demonstration owed (T06) |
+| P06 | Enrollment Cancellation (¶91) | Applies | **Built and demonstrated** — nine cases pin the reason, the retired load, the released seat, the terminal state and who may act; the guide's failure half is driven by a fault thrown between the transition and the line retire, and the whole cancellation comes back unchanged |
 | P07 | Database Deadlock (¶101) | Applies | Built for the assign path — one lock order, `RetryOnDeadlock` on 1213/1205 only, and the deadlock was observed on the school's server, not assumed |
 | P08 | Student Search Performance (¶111) | Applies | Measured, not repaired — the leading-wildcard search scans ~98,800 index rows where a prefix touches ~1,111 (plans, both runs agreeing); timings move between runs and are quoted from the captured file; the semantic choice waits on the school |
 | P09 | Enrollment History Performance (¶121) | Applies | Built, both halves measured (2026-11-02) — every history read is an index seek, but a 20-row page costs 40 queries against 2 batched (that is `lane164`'s reading of its own run). Re-measured 2026-11-02 by `lane191-attribute-registrar-queries.php` against live `ems` through the HTTP stack, which names the call sites the older figure could only count: the queue listed **5 rows** and **5.0 statements repeated per row**, from `EnrollmentReadiness` lines 148 (`curriculumsubjects`), 160 (`curriculums`), 187 (best grade per subject) and 197 (approved credits), plus `Gradescale` line 36 (the passing ceiling). Two of those five are **school-wide constants re-read once per record**, so the cheapest half of the repair is a per-request memoize inside the class both the list and the record page already call — no second definition of any gate. Capture `storage/app/scratch/lane191-out.txt`. The two **school-wide** reads — the passing ceiling and the curriculum catalogue — are now resolved once per page and threaded in as optional arguments that default to the fresh read, the shape `clearanceVerdict()` already used for the window, and `lane191` re-run answers **3.0 per row from three sites** (`EnrollmentReadiness`, one for the prerequisite rows and two inside `satisfiedSubjectIds`). Pinned by cases in `PrerequisiteGateTest` (no totals stated, because a class total belongs to the run that printed it): the preloaded answer must equal the fresh answer in both directions, and the scale and catalogue must be read twice on the fresh path and **zero** times when handed in. Half 2 is **built** (2026-11-02): the three remaining per-record reads now come from `App\Support\ReadinessBatch`, constructed once from the page's own rows and threaded through the checklist as an optional argument that defaults to the fresh read, so the record page and the policy keep calling the same predicate with no batch and get the same answer. `lane191` re-run over live `ems` attributes the three reads to the batch's own three statements, once per page, and answers **0 repeating per-row statements** — and then refuses its own verdict, because a 5-row queue page no longer contains a repeat to weigh; the refusal is the reading, and the quantified proof is in the case |
@@ -237,12 +237,15 @@ verdict word and reports `DISAGREES-REGISTER`.
   line numbers is judged only on its FIRST number by the citation gate, so the rest age unseen, and this batch's
   insertion aged all seven of them by one to nineteen rows while the gate printed `0 problem(s)`. See also
   `AssessmentController.php:191` and `app/Support/EnrollmentReadiness.php:141`.
-- **Gap.** No test proves a mid-cancellation failure leaves nothing half-dropped.
-- **Required solution.** None new; the demonstration is owed.
+- **Gap.** Closed: the mid-cancellation failure is now driven, not argued.
+- **Required solution.** None new; the demonstration was the whole gap.
 - **Affected components.** Backend, database.
-- **Testing method.** T06 with an injected failure between the line update and the status write.
-- **Evidence.** Pending.
-- **Status.** Implemented; test not started.
+- **Testing method.** T06 — `a fault between the two writes of a drop leaves the load and the status exactly as
+  they were`, which throws from a query listener at the load retire (after the status transition and its history
+  row are already written on the same connection) and re-reads the status, every line's status, the reason column
+  and the history count. Proven to bite by `storage/app/scratch/mutate-t06-drop-atomicity-tests.php`.
+- **Evidence.** `tests/Feature/Registrar/EnrollmentDropTest.php` (nine cases) and the harness's own verdict line.
+- **Status.** Built and demonstrated.
 
 ### P07 — Database Deadlock (¶101-110)
 
@@ -702,7 +705,7 @@ server's own message quoted in the artefact that holds it; nothing in that file 
 | T03 | two requests, one slot | yes, `lane168-probe-last-seat-race.php` (two writers, one MySQL server, HEAD vs working) |
 | T04 | duplicate enrollment | pass — the fee sheet is refused by `uq_studentassessments_enrollment` on both drivers, and the second active seat by `uq_enrollments_active_seat` on MySQL, where the delivered case also shows the drop releasing it; on SQLite the key is asserted absent rather than skipped, and `EnrollmentIssuer::seatHolder()` is the rule the suite can actually execute. `DatabaseLevelEnrollmentRulesTest` carries both halves, and its own totals belong to the run that printed them |
 | T05 | capacity reached | yes, `BlockCapacityAtomicityTest` (a request larger than the seats left seats nobody) |
-| T06 | multi-subject cancellation | no |
+| T06 | multi-subject cancellation | yes — `EnrollmentDropTest` (nine cases) including the injected failure between the transition and the load retire, killed by `mutate-t06-drop-atomicity-tests.php`, which names each plant it applies |
 | T07 | concurrent student edit | no |
 | T08 | controlled deadlock | yes, same probe — HEAD answered a real `1213`, the locked act answered none |
 | T09 | search at volume | yes, `lane164-measure-scale-queries.php` over 100,000 students with each plan printed |

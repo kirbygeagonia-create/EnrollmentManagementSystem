@@ -23,9 +23,12 @@ use App\Models\Subjects;
 use App\Services\EnrollmentStateMachine;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Ruling 17: an enrollment is dropped by the Registrar alone, and only with a reason.
@@ -235,6 +238,61 @@ class EnrollmentDropTest extends TestCase
             [EnrolledSubjectStatus::Dropped->value],
             $enrollment->enrolledSubjects()->pluck('status')->map(fn ($status) => $status->value)->all(),
             'A dropped student must stop holding a seat in a block — Blocking counts the students who are not dropped.'
+        );
+    }
+
+    /**
+     * The guide's third cancellation question — what happens if ONE cancellation operation fails —
+     * answered on the server rather than argued. A query listener on the same connection throws the
+     * first time it sees the load retire, which is after the state transition and its history row have
+     * already been written, so the only thing that can keep the record whole is the transaction.
+     *
+     * The injection is proven to have fired and the throw is proven to escape: a rollback of nothing is
+     * not evidence, and a controller that swallowed the fault would leave this case asserting a
+     * half-cancelled record the desk was told about.
+     */
+    #[Test]
+    public function a_fault_between_the_two_writes_of_a_drop_leaves_the_load_and_the_status_exactly_as_they_were(): void
+    {
+        $enrollment = $this->enrolledRecord();
+        $loadBefore = $enrollment->enrolledSubjects()->pluck('status')->map(fn ($status) => $status->value)->sort()->values()->all();
+        $historyBefore = Enrollmentstatushistory::where('enrollmentId', $enrollment->enrollmentId)->count();
+
+        $fired = 0;
+        DB::listen(function ($query) use (&$fired): void {
+            $sql = strtolower(str_replace(['`', '"'], '', $query->sql));
+            if ($fired === 0 && str_contains($sql, 'update enrolledsubjects')) {
+                // The flag moves before anything else this listener could do, so a later read on this
+                // connection cannot re-enter it — the defect the falsifier found in the sibling probe.
+                $fired++;
+
+                throw new RuntimeException('forced fault between the transition and the load');
+            }
+        });
+
+        $thrown = null;
+        try {
+            $this->withoutExceptionHandling()->actingAs($this->registrar)
+                ->post(route('registrar.drop', $enrollment), ['dropReason' => 'Withdrew before the term began.']);
+        } catch (Throwable $e) {
+            $thrown = $e;
+        }
+
+        $this->assertSame(1, $fired, 'the fault never reached the cancellation, so this case measured nothing');
+        $this->assertNotNull($thrown, 'a cancellation that dies quietly is how a half-dropped record reaches the desk');
+
+        $fresh = $enrollment->fresh();
+        $this->assertSame('paid', $fresh->enrollmentStatus->value, 'the status write was rolled back with the load');
+        $this->assertNull($fresh->dropReason);
+        $this->assertSame(
+            $loadBefore,
+            $enrollment->enrolledSubjects()->pluck('status')->map(fn ($status) => $status->value)->sort()->values()->all(),
+            'no subject line may be retired while the record still stands'
+        );
+        $this->assertSame(
+            $historyBefore,
+            Enrollmentstatushistory::where('enrollmentId', $enrollment->enrollmentId)->count(),
+            'the history row the transition wrote belongs to the failed act, not to the record'
         );
     }
 

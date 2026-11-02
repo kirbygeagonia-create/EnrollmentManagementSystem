@@ -4351,6 +4351,44 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   grep it for every literal that names the *previous* batch's text and re-cut each onto this row's own words before
   the first `--apply`.
 
+- **A plant's anchor must be unique inside the method it targets, not inside the file** (guide T06, 2026-11-02).
+  `mutate-t06-drop-atomicity-tests.php` breaks `RegistrarController::drop()` three ways to prove the new case
+  bites, and its first cut refused all three legs for the same wrong reason: the closure signature line
+  `DB::transaction(function () use ($enrollment, $validated) {` and the whole `enrolledSubjects()->…->update(…)`
+  block occur **twice** in that controller, because `approve()` writes the same shape. A document-wide
+  `str_replace` would have planted the defect in the sibling method and the named case would have stayed green —
+  the mutation harness equivalent of a needle that is another citation's tail. The fix is to locate the act's byte
+  span (`strpos` on its signature, end at the next `public function`), assert `substr_count($body, …) === 1`
+  inside that span, and re-embed with `substr_replace`. Two more rules from the same run: a leg must require the
+  case to fail **naming its own assertion**, because a plant that does not compile also prints `1 failed`; and a
+  plant that cannot be observed is withheld and the reason written into the file — hoisting only the
+  `dropReason` update is invisible to a case whose fault fires earlier, so that leg would have been decoration.
+  The T06 case itself is the third instance of this session's pattern: `lane198` proved the commit/rollback pair
+  on the issuing act, this case proves it on the cancellation act, and what remains genuinely unproven is the
+  proposal loop's *two separate INSERTs* — stated in the concept-compliance §1 limitation rather than folded into
+  the claim.
+- **When a scenario is closed, re-take every table that names it, and count nothing you can name instead** (same
+  batch). T06's closure moved the Group-D row, the census row, the detail block and the scenario table in the
+  traceability matrix, the answers file's Problem 6 pair and two membership lists (owed demonstrations three →
+  two), the concept-compliance limitation and the changelog. The draft sentences carried `over six legs` and
+  `three plants`; both are now the names of the plants, because a figure about what a harness prints rots the day a
+  leg is added and no instrument binds a tool that is not in its table — lane 58's rule for a revision row,
+  applied to a harness.
+
+- **After any batch that moves a problem between the ADS census buckets, re-take the final report's two id rows
+  with `php storage/app/scratch/lane200-check-report-buckets.php`** and prove it with
+  `php storage/app/scratch/mutate-lane200-report-buckets.php`. `FINAL-REPORT-ADS.md` states the same partition
+  twice in prose while `lane169-read-ads-status.php` computes it from the matrix's lead words, and nothing
+  compared the two until 2026-11-02, when the hand-kept Built list turned out to omit four ids the census
+  counted as built. Membership is read from the row's **second cell only**, which is why the record clause
+  ("P01, P06 and P16 left this list…") now lives below the table instead of inside that cell: the first draft
+  cut the cell at the first em dash and read the Built row as eight ids, because a capture name inside a
+  description carries a dash too — a field boundary guessed by shape rather than taken from where the table
+  puts it. The harness's `tail-inside-cell` leg is what keeps that boundary honest: moving a clause back into
+  the cell must inflate it and disagree, so the rule is measured, not stated. It refuses a renamed marker, a
+  row whose cell count is not 2, an unknown flag, and a `--report=` that is not a file, and it proves
+  `--report=` is read by mutating copies rather than the delivered document.
+
 ## Agent dispatch
 
 Scope agents to non-overlapping paths, run independent lanes in background, reconcile before

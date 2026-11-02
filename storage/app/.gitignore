@@ -50,3 +50,5 @@ scratch/lane54-pipeline-no-year-widening.php
 !scratch/l170-suite-junit.xml
 !scratch/l171-suite-junit.xml
 !scratch/lane189-suite.log
+!scratch/l199-suite.log
+!scratch/l199-suite-junit.xml

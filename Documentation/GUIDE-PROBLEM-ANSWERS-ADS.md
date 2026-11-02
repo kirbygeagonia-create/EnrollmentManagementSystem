@@ -328,13 +328,21 @@ enrollment's own transition and the box signature in one transaction;
 `App\Services\EnrollmentStateMachine` is the only writer of `enrollmentstatushistory` and validates
 the edge before it moves; the money rows (fee sheet, receipts) are left as evidence rather than
 erased, because a refund is a different act with its own transaction.
-**Test or demonstration:** the delivered walkthrough drops lines and the state machine refuses an
-illegal edge, but the guide's specific demonstration (which rows exist after a *refused*
-cancellation) is **T06, not executed**: `drop()` is one transaction and no case yet asserts the line
-set after a refusal.
-**Evidence:** `tests/Feature/Enrollment/EnrollmentReturnTest.php` covers the neighbouring return act
-end to end, `php storage/app/scratch/lane43-delete-guards.php` prints which foreign keys would refuse
-a delete of any of these rows, and the register keeps T06 open by name.
+**Test or demonstration:** T06, **executed on both sides of the failure.**
+`tests/Feature/Registrar/EnrollmentDropTest.php` carries nine cases: a drop with no reason is refused and the
+record stands (asserted three ways — blank, too short, whitespace only), a successful drop retires the whole
+load so the seat in the term is released, and the guide's own third question is answered by
+`a fault between the two writes of a drop leaves the load and the status exactly as they were`, which throws
+from a query listener the moment the load retire is issued — after the transition and its history row have
+already been written — and then re-reads the status, every line's status, the reason column and the history
+count. The case refuses its own run if the injection never fires or if the throw is swallowed.
+**Evidence:** that class, `php storage/app/scratch/mutate-t06-drop-atomicity-tests.php` (plants the transaction
+removed, the load update hoisted out of it, and the fault caught by the controller, each required to make the
+named case fail with its own sentence; control green before and after, controller restored by hash — the harness
+prints its own leg total),
+`tests/Feature/Enrollment/EnrollmentReturnTest.php` for the neighbouring return act, and
+`php storage/app/scratch/lane43-delete-guards.php` for which foreign keys would refuse a delete of any of
+these rows.
 **Workflow difference:** "a student cancels through an online request" is not this build; a student
 asks and the Registrar or the department performs the drop. The database work is identical.
 
@@ -353,7 +361,10 @@ one transaction, because a half-cancelled enrollment is a record no desk can rea
 **Answer:** every one of them is undone, the load stays as it was, no box is left half-signed, and the
 desk is given the reason. The status machine's own refusal (`InvalidStateTransitionException`) is the
 failure this project met live while fixing Problem 10, which is why the act re-reads the record
-inside the lock before moving it.
+inside the lock before moving it. This answer is now measured rather than promised:
+`a fault between the two writes of a drop leaves the load and the status exactly as they were` throws at
+the load retire, after the status transition and its history row are on the connection, and re-reads the
+status, every line's status, the reason column and the history count — all of which come back unchanged.
 
 **Q6.4** How will database consistency be maintained?
 **Answer:** one writer per kind of fact (the state machine for status and history), enums so an
@@ -1345,9 +1356,9 @@ database, so the role rules are enforced by the application, not by MySQL grants
 tables compared row for row, three ordered digests matching, durability variables read from the
 server. Dumps live outside the repository, and the reason is a recorded finding, not a preference.
 
-**N/A explanation / alternative demonstration plan:** no row is N/A. Three rows carry an owed
-*demonstration print* rather than a missing mechanism — T06 (a refused cancellation), T20 (a restore
-path the school has not asked for), and T21's simultaneous report-during-enrollment reading — and two
+**N/A explanation / alternative demonstration plan:** no row is N/A. Two rows carry an owed
+*demonstration print* rather than a missing mechanism — T20 (a restore path the school has not asked
+for) and T21's simultaneous report-during-enrollment reading — and two
 wait on a school figure, T14's load ceiling and T15's faculty limit, with their designs stated above
 so the demonstration can be executed the day the number arrives. T02 and T17 left this list on
 2026-11-02, when the commit-and-forced-failure pair was captured on the engine. Rows 8 and 9 are
@@ -1567,9 +1578,9 @@ Stated because §II.B's first rule is the one that is easiest to break under pre
 6. **P20's snapshot guarantee is delivered for the daily collection report only.**
 7. **P22's role rules live in the application.** One database service account holds the data; per-role
    MySQL grants and column privileges are not configured.
-8. **Three demonstrations are owed prints, not missing mechanisms:** T06 (a refused cancellation), T20
-   (a restore path), and T21's both-sides-at-once reading. T02 and T17 were on this list and are
-   delivered; the sentence above records what they now print.
+8. **Two demonstrations are owed prints, not missing mechanisms:** T20 (a restore path) and T21's
+   both-sides-at-once reading. T02, T06 and T17 were on this list and are delivered; the sentences
+   above record what each now prints.
 9. **Two claims this file corrects as it was written:** the P register's P13 cell said a year-level
    band rule exists, and the cited lines do not hold such a rule; and T01's row had been credited to a
    test class that asserted nothing of the kind. Both were read in the file rather than copied, and

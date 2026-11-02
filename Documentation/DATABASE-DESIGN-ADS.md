@@ -8,6 +8,14 @@ only when the referencing column set is actually UNIQUE, and the domain/framewor
 no base tables or no foreign keys, because a confident empty diagram is the fake-clean verdict, not a measurement.
 It also refuses to write over prose that sits outside its markers, which is what a first attempt at this file did.
 
+**Currency, proven rather than asserted (2026-11-02).** The generated region was re-taken against live `ems` into a
+throwaway copy under `storage/app/scratch` (its `--out=` pointed at that copy, never at the delivered file, and the
+copy was removed after the reading), and the bytes between the markers were diffed against what this page ships: the
+diff is empty. The read answered 64 tables (56 domain, 8 framework), 105 foreign keys and 105 drawn edges, which is
+the same partition `lane60-ratio-claims.php` weighs the docx against. Copy-then-diff is the non-destructive form of
+this check; regenerating in place would leave no way to see what the server had changed. A named path in a document
+is a claim that the file exists, so this sentence names the directory rather than the deleted file.
+
 **Authoritative detail lives in the docx.** `Documentation/EMS Complete Documentation.docx` §24 is the data
 dictionary (its per-table "N columns" headings are cross-checked column-by-column against the server by
 `php storage/app/scratch/lane60-ratio-claims.php --run`) and §23.6.1 lists every unique index in the domain tables,
