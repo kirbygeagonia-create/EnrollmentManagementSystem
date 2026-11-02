@@ -60,6 +60,14 @@ second answer to the same question.
 | `docs/SECURITY_AND_RECOVERY.md` | `Documentation/SECURITY-AND-RECOVERY-ADS.md` | the restore drill's own verdict line |
 | `docs/IMPLEMENTATION_CHANGELOG.md` | `Documentation/IMPLEMENTATION-CHANGELOG-ADS.md` | every file, migration and docx pass in the batch |
 
+The seven names in the left column are not a hand-kept wish list: they were enumerated on 2026-11-02 from the
+prompt's own text, by reading every `docs/…md` token it writes, and each was then opened against
+`Documentation/` to prove a counterpart exists. `lane194-ads-artefact-citations.php` deliberately does **not**
+judge those seven (it exempts them by class, because the prompt names paths this repository answers under
+different names), which is exactly why the mapping above is checked by a reader rather than assumed by a gate —
+a checker's exemption list is a blind spot unless somebody walks it. The figure is stated with the surface it
+came from because the prompt sits outside the tree and no CI step can re-take it.
+
 Prompt part 44 (the implementation summary) is `Documentation/FINAL-REPORT-ADS.md`, prompt part 42 (academic
 demonstration evidence) is this file, and prompt part 45 (the defence questions) is
 `Documentation/DEFENCE-EVIDENCE-ADS.md`.
