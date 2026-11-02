@@ -230,15 +230,23 @@ if ($jsonTo !== null) {
  */
 function wired_owed_claims(string $t): array
 {
-    $word = 'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|\d{2}';
+    // Single-digit words joined the list because §28.3's G-40 row carried "eight of the thirty-six tables …" and
+    // this extractor could not read a number below eleven: a spelled figure outside the vocabulary is not
+    // "unread", it is silently absent, and the row contradicted the same row's own "18 of the 36" two sentences away.
+    $word = 'one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|\d{2}';
     $out = [];
     $forms = [
         ['the ('.$word.') wired pages call', 'wired'],
         ['the ('.$word.') wired (?:screens|tables)', 'wired'],
         ['('.$word.') of the 36 (?:pages|screens)[^.|]{0,70}?use it', 'wired'],
-        ['('.$word.') of thirty-six tables use it', 'wired'],
+        ['('.$word.') of (?:the )?thirty-six tables use it', 'wired'],
+        // The prose shape §28.3 actually uses: denominator spelled with its article, verb varied, a clause between
+        // the two. The article is optional because the matrix drops it and the register keeps it — a checker that
+        // binds one spelling is a checker that reports the other row as having no claim at all.
+        ['('.$word.') of (?:the )?thirty-six tables[^.|]{0,60}?(?:sort|order)[^.|]{0,40}?on the server', 'wired'],
         ['('.$word.') screens use it', 'wired'],
         ['('.$word.') of the 36 pages[^.|]{0,60}still offer no order', 'owed'],
+        ['('.$word.') still do not', 'owed'],
         ['the other ('.$word.') (?:pages|still show)', 'owed'],
         ['That (\d{2}) counts', 'owed'],
         ['still owed: (\d{2}) of the 36', 'owed'],
@@ -267,6 +275,8 @@ function claim_value(string $token, array $map): ?int
 }
 
 $WORDNUM = [
+    'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
+    'six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10,
     'eleven' => 11, 'twelve' => 12, 'thirteen' => 13, 'fourteen' => 14, 'fifteen' => 15,
     'sixteen' => 16, 'seventeen' => 17, 'eighteen' => 18, 'nineteen' => 19, 'twenty' => 20,
     'thirty' => 30,

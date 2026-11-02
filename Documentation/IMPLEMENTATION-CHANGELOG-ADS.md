@@ -142,6 +142,10 @@ Two choices worth recording:
 | `storage/app/scratch/lane164-measure-scale-queries.php`, `lane167-probe-capacity-index.php` | timings with the `EXPLAIN` row beside each figure, on the busiest partition rather than the first one. |
 | `storage/app/scratch/lane169-read-ads-status.php` | reads the matrix's own Status column and prints the buckets, refusing when they do not add to 24. |
 | `tools/ems-backup-drill.php` | the executed restore behind `SECURITY-AND-RECOVERY-ADS.md`. |
+| `storage/app/scratch/lane201-inspect-guide-form.php`, `lane202-probe-cell.php`, `lane204-read-guide-window.php`, `lane205-probe-guide-anchors.php`, `lane206-dump-paragraph.php` | the read-only probes behind the answered form copy: the ballot census (108 literal `☐`, no form fields), a cell's own paragraph list, a paragraph window printed by BOTH ordinal and byte offset (two probes disagreed because one counted only non-empty paragraphs), the heading/row/answer-cell pairing for all 24 problems, and one paragraph's raw runs so a writer sees a split instead of guessing it. |
+| `storage/app/scratch/lane203-fill-guide-form.php` | builds `Documentation/ADS_Final_Project_Guide_EMS_ANSWERED.docx` from the answer file: ticks each box whose OWN label the answer marks ☑, refuses a verdict word the form has no box for and a concept whose name disagrees with the guide's, requires all six analysis fields, answers the 25 §V sub-items one-to-one, fills the four §VII lines inside their own runs, and applies ticks, fills and 430 inserted paragraphs in ONE descending pass because two offset spaces would each shift the other. |
+| `storage/app/scratch/lane207-verify-guide-copy.php` | reads the copy back window by window: each problem's answer must sit between its own `Problem N —` heading and the next, with its title, its seven fields and its enumerated question count; refuses the school's blank form with 24 defects, which is its positive control. |
+| `storage/app/scratch/mutate-lane203-guide-form.php` | the writer's falsifier, 24 legs against throwaway copies of the form and the answer file (`--guide=` / `--answers=`): label-vs-position ticking, a concept row whose name is not the guide's, two ☑ in one applicability row, a verdict word the paper cannot show, a short §V list, a §VII line with no underscores, a duplicated §VII label, a missing required field, the retired `s`-modifier regression read back as 48 rows, and a control that re-reads the input form's hash because a writer that edits the school's blank original destroys it. |
 
 ## 4. Documents changed
 
@@ -158,6 +162,15 @@ Two choices worth recording:
 - `DEPLOYMENT.md` §8 — the twentieth rule described where an operator reads rule counts.
 - `Documentation/Prompt-Requirement-Matrix-2026-10-26.md` — the audit's rule count beside the row that cites it.
 - The five ADS documents listed at the top, of which `TESTING-AND-VERIFICATION-ADS.md` and this file are new.
+- `Documentation/ADS_Final_Project_Guide_EMS_ANSWERED.docx` — new: the school's own form, answered. 43 boxes ticked
+  (one applicability verdict per problem, 19 across the 12 concept rows because ACID and Recovery each carry two),
+  24 problem answer blocks written into their own cells, all 25 §V sub-item answers, §IV's N/A explanation, §VI's
+  defense answer and the four §VII fill-ins. Its content is projected from `GUIDE-PROBLEM-ANSWERS-ADS.md`, never
+  retyped into it, so one document owns each verdict; Word opens it at 37 pages with 50 tables and
+  `docx-ooxml-check.php` reads CLEAN.
+- `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md` — a provenance paragraph naming the Word copy, the rebuild command
+  and the verifier, and stating that a new option wording changes this file first because the form has no box for a
+  word it does not offer.
 
 ## 5. Instruments repaired while doing the work
 
@@ -186,6 +199,25 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
   needle interpolated a php variable away in a double-quoted string.
 - `lane169-read-ads-status.php`'s first cut reported every row as malformed because `trim($line, '| ')` left the
   trailing newline attached — a refusal pointing at the reader, not the register.
+- `lane203`'s first cut appended each analysis field only when it parsed, and the answer file spells the workflow
+  field three ways (`… or why this is N/A`, `… and N/A justification`, `… adapted`), so Problems 19 and 24 reached
+  the paper without a field the guide asks for while every count still read 24 blocks. The six fields are required
+  now, and a missing one refuses the run.
+- `lane203`'s heading parse carried the `s` modifier, so a one-line "title" captured the whole markdown block and
+  each inserted line re-quoted the answer file's own `☐ Applies to our system` row: 67 ballot characters where 43
+  were planned. The per-row read-back caught it and deleted its own half-written copy; the retired modifier is now
+  a harness leg that must make the run refuse with `48 applicability rows`.
+- `lane194-ads-artefact-citations.php` exempted the delivered copy as "the school's guide docx, held outside the
+  tree" purely by NAME-SHAPE, so a living artefact the repository now holds stopped being judged; and three separate
+  loops matched the class list, one of which printed the reason as the literal word `Array` after the values gained a
+  second field. There is one `$classExempt` now, existence is weighed before the classes whose claim is "not in this
+  repository", and HEAD exports and pre-change dumps keep exempting despite local existence because those files are
+  on this box by design. `mutate-lane194-ads-citations.php` carries both directions.
+- `word-open-copy-test.ps1` hardcoded the authority docx, so a delivered copy could not be opened in real Word
+  without a second script that would re-implement the same test. It takes `-Source` and `-Report` now, defaulting to
+  the authority document; the first run against the new copy read a stale report file and had to be re-taken after
+  deleting it, which is the reading this project keeps paying for — decide from what the command printed, not from
+  what the file beside it used to say.
 
 ## 6. Deliberately not done
 

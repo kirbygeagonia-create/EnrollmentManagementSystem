@@ -2,11 +2,17 @@
 # The copy is deliberate: an earlier invisible Word instance had the original locked, and a
 # lock makes "Word refused it" and "Word could not open it" indistinguishable.
 
+param(
+    [string]$Source = 'C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\Documentation\EMS Complete Documentation.docx',
+    [string]$Report = ''
+)
 $ErrorActionPreference = 'Stop'
 function Get-RandomName { ([guid]::NewGuid().ToString('N').Substring(0,8)) }
-$src = 'C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\Documentation\EMS Complete Documentation.docx'
+# One script, two targets: the authority docx by default, and any delivered copy when -Source names it.
+# A second script that re-implements the Word open test is a second answer to "does Word open this".
+$src = $Source
 $tmp = Join-Path $env:TEMP ('ems-word-check-' + (Get-RandomName) + '.docx')
-$out = 'C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\storage\app\scratch\word-open-report.txt'
+$out = if ($Report) { $Report } else { 'C:\Users\ADMIN\OneDrive\Documents\3rd_Year\EnrollmentManagementSystem\storage\app\scratch\word-open-report.txt' }
 
 Copy-Item -LiteralPath $src -Destination $tmp -Force
 $bytes = (Get-FileHash -LiteralPath $src).Hash

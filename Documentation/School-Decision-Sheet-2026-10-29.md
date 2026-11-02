@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · nine items · 0 answered, 9 left for the school**
+**Issued 2026-10-29 · nine items · 4 answered, 5 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
 development prompt on this date (matrix §7 and §8, gaps G33 to G42). Nothing here is owed by the
@@ -36,8 +36,7 @@ stored moves, so the undo is one revert.
 
 ---
 
-**2. May a staff member who is already signed in keep acting after their account is deactivated?**
-`[prompt §9, §14, matrix G42 — partly answered]`
+**2. May a staff member who is already signed in keep acting after their account is deactivated?** `[prompt §9, §14, matrix G42 — ANSWERED 2026-11-02]`
 
 **As built.** A deactivated account cannot start a new session — `LoginRequest` refuses it with the cause
 named, and that is now pinned by two tests, one of which proves the refusal is the status and not the
@@ -51,6 +50,14 @@ the desk left half-written.
 **Cost and undo.** Small either way — a guard in the staff middleware, or a written statement that the
 current behaviour is intended and the register stops calling it a gap. The rule is reversible in one
 commit; the session cut is invisible to users until it fires.
+
+- Answer: **stop at the next request**, ruled 2026-11-02. A deactivated account may not keep acting: the staff
+  middleware re-reads the account's status on each request and refuses with the cause named, the same sentence the
+  login screen already prints, so the refusal says which rule answered rather than landing on a generic page. The
+  second question the item asked — what happens to a record the desk left half-written — is answered by design: the
+  refusal is a `withErrors` answer on the record's own page, not a dead end, so nothing the desk typed is discarded
+  and another account can finish the act. This is the ruling as decided; §28.3's G-42 row stays open until the guard
+  and its tests are in the tree, and the register is not ahead of the build.
 
 ---
 
@@ -78,7 +85,7 @@ flagged block in the page and one policy method. Reversible in a single commit; 
 
 ---
 
-**4. Should the audit trail name the act, not just the row change?** `[prompt §9, matrix G37 — Open]`
+**4. Should the audit trail name the act, not just the row change?** `[prompt §9, matrix G37 — ANSWERED 2026-11-02]`
 
 **As built.** `auditlogs.action` records `created`, `updated` or `deleted` for everything, because one
 observer watches every model. The seven families prompt §9 lists — requirement verification, the
@@ -94,6 +101,13 @@ A `reason` column would need one, and may be unnecessary where the domain row al
 **What the answer changes.** A vocabulary list (the school's), then a write at each act. Or the document
 states that per-act trails are the design and closes the gap as answered-otherwise. The alternative is a
 reconciliation report, not a rewrite.
+
+- Answer: **name the act, one word list**, ruled 2026-11-02. `auditlogs.action` stays a `varchar(100)` and each act
+  writes its own verb — `enrollment.issue`, `requirement.verify`, `credit.decide`, `enrollment.return`,
+  `payment.void`, `step.sign`, `role.change` — with `created`, `updated` and `deleted` still written for a plain edit
+  that belongs to no named act. The seven families prompt §9 lists then answer to a query, which is what the item
+  asked for; no migration is involved, and the domain rows keep carrying their own actor, date and reason beside it.
+  §28.3's G-37 row stays open until the list and the writes are in the tree.
 
 ---
 
@@ -122,7 +136,7 @@ so nothing existing is rewritten and the undo is a revert plus a reseed-free dro
 
 ---
 
-**6. Does a browser check belong in the pipeline?** `[prompt §14, matrix G41 — Open]`
+**6. Does a browser check belong in the pipeline?** `[prompt §14, matrix G41 — ANSWERED 2026-11-02]`
 
 **As built.** Prompt §14 asks that no console errors occur in key workflows and that empty, loading and
 failure states be checked. Nothing in CI can currently answer that: there is no JavaScript test runner,
@@ -135,6 +149,14 @@ explicit statement that the clause is out of scope for a walk-in build.
 
 **Cost and undo.** Additive and revertible: a workflow file and a leg, at the price of run time on every
 push. That cost is the actual decision.
+
+- Answer: **no browser job in the pipeline for this build**, ruled 2026-11-02. CI has no browser, so a job written
+  now would skip on every push, and a gate that always skips is worse than no gate: it teaches the reader to trust a
+  green step that measured nothing. §28.3's G-41 therefore stays `Open` on its fourth half **by name** — the console-
+  error clause is unverified by design, not passing — and the evidence that does exist is the source census
+  (`lane142-measure-console-states.php`, proved by its own harness) beside the dated browser reads recorded in the
+  guides, each naming the day it was read. If the school later wants the job, the cost is one workflow file and the
+  run time beside it; nothing in this ruling has to be undone first.
 
 **7. What is the school's privacy notice, whose lawful basis, and who is the DPO contact?** `[prompt §10, matrix G-48…G-50 — Open]`
 
@@ -176,7 +198,7 @@ deletion semantics the audit trail must survive.
 
 **Cost and undo.** This one may cost a migration and a scheduled command; the restrained default stays until then.
 
-**9. What should the Blocking card on the dashboard actually count?** `[prompt §8, matrix G-46 — Open]`
+**9. What should the Blocking card on the dashboard actually count?** `[prompt §8, matrix G-46 — ANSWERED 2026-11-02]`
 
 **Why this is on the sheet and not in the code.** The other eight cards now count what the page behind them lists
 (`App\Support\DeskQueues`, 2026-10-30). Blocking is the exception, and unifying it would have been a silent choice:
@@ -191,6 +213,14 @@ list beside its block table (additive, no schema). If it should count blocks, th
 
 **Cost and undo.** One card and one query, whichever way it goes. The default until then is unchanged: the badge
 counts enrollments waiting, and the page says plainly that it lists blocks.
+
+- Answer: **the card counts what its own page lists**, ruled 2026-11-02. The Blocking badge becomes the block count
+  `BlockingController::index()` already hands its tiles, so the number a coordinator reads before clicking is the
+  number of rows the desk will act on — the ninth card to obey the rule the other eight already do, and the last
+  exception in `App\Support\DeskQueues`. The enrollments-with-a-Blocking-box figure does not disappear: it is what
+  the notice addresses and what the workflow counts, so it stays where it is read rather than being painted on a
+  card whose page shows blocks. §28.3's G-46 row closes when the badge, the equality case in both directions, and the
+  harness leg that plants the old predicate are in the tree.
 
 ---
 

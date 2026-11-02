@@ -133,20 +133,26 @@ if (preg_match('/^ROW \d+: (20\d\d-\d\d-\d\d(?: – \d\d-\d\d)?) One sort mechan
     exit(1);
 }
 $dateCell = $m[1];
+// The dated count is MEASURED in this run rather than remembered. Pass 401 added a living claim and the extractor
+// learned the register's spelled shape, so a leg asserting "1 carried by a dated §1.1 row" would have reported the
+// document getting truer as the tool going bad — verifier expectations age in exactly this way (lane 72's rule).
+$cleanCopy = $makeCopy($dump, 'lane140-dp-clean.php.txt');
+[$cleanCode, $cleanOut] = $run('--check-docx --dump='.$cleanCopy);
+$cleanDated = preg_match('/(\d+) carried by a dated/', $cleanOut, $dm) === 1 ? (int) $dm[1] : -1;
+$report('dated-rule-holds-on-clean', $cleanCode === 0 && $cleanDated >= 1 && str_contains($cleanOut, 'AGREES'),
+    "exit {$cleanCode}, {$cleanDated} dated claim(s), clean verdict ".($cleanCode === 0 ? 'agrees' : 'refused'));
+
 $copy = $plant($dump, 'lane140-dp-dated.php.txt', $dateCell.' One sort mechanism',
     '(this issue) One sort mechanism', 1);
 [$code, $out] = $run('--check-docx --dump='.$copy);
+$nowDated = preg_match('/(\d+) carried by a dated/', $out, $dm2) === 1 ? (int) $dm2[1] : -1;
 $report('dated-rule-proved-by-falsification', $code === 1 && str_contains($out, 'OWED claims 34')
-    && str_contains($out, '0 carried by a dated'), "exit {$code} (cell was [{$dateCell}])");
+    && $nowDated === $cleanDated - 1,
+    "exit {$code}; dated went {$cleanDated} -> {$nowDated}, wanted exactly one fewer (cell was [{$dateCell}])");
 
-// 6 — and on the untouched dump the same claim stays exempt.
-$copy = $makeCopy($dump, 'lane140-dp-clean.php.txt');
-[$code, $out] = $run('--check-docx --dump='.$copy);
-$report('dated-rule-holds-on-clean', $code === 0 && str_contains($out, '1 carried by a dated'), "exit {$code}");
-
-// 7 — a dump with nothing left to judge must REFUSE, not certify. Both living claims are stripped; the dated row's
-// "34 of the 36" stays in the file and must not be counted as a judged claim, which is what makes this leg mean
-// "read nothing" rather than "read something stale".
+// 7 — a dump with nothing left to judge must REFUSE, not certify. Every living claim is stripped (three of them
+// since pass 401); the dated rows' figures stay in the file and must not be counted as judged claims, which is what
+// makes this leg mean "read nothing" rather than "read something stale".
 $copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the eighteen wired pages call', 'the wired pages call', 1);
 $text = (string) file_get_contents($root.'/'.$copyA);
 $needle = '18 of the 36 pages that use the shared table';
@@ -157,6 +163,16 @@ if (substr_count($text, $needle) !== 1) {
     exit(1);
 }
 $text = str_replace($needle, 'the pages that use the shared table', $text);
+// Pass 401 left the register a THIRD living claim in the spelled shape the extractor has now learned, so the leg
+// has to mute it too — otherwise the run judges something, agrees, and the "no JUDGED" refusal stays unreachable.
+$needle3 = 'eighteen of the thirty-six tables that render the shared component sort on the server';
+if (substr_count($text, $needle3) !== 1) {
+    fwrite(STDERR, 'BAD: the spelled wired needle occurs '.substr_count($text, $needle3).' time(s) in the dump copy, wanted 1'
+        ." — the leg would silently leave a claim standing.\n");
+
+    exit(1);
+}
+$text = str_replace($needle3, 'the tables that render the shared component sort on the server', $text);
 $w = @file_put_contents($root.'/'.$copyA, $text);
 if ($w !== strlen($text)) {
     fwrite(STDERR, 'BAD: the second plant returned '.var_export($w, true).".\n");

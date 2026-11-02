@@ -176,8 +176,50 @@ $report($r['code'] === 0 && str_contains($r['text'], 'every path the ADS deliver
     'real-deliverables-pass', str_contains($r['text'], 'distinct path citations')
         ? trim(strstr($r['text'], 'distinct path citations')) : trim(substr($r['text'], 0, 200)));
 
+// Leg 9 — an artefact this repository now HOLDS must not hide behind the guide-docx class. The answered form copy
+// matched `ADS_Final_Project_Guide…docx` purely by name-shape, so the gate stopped judging it; the fix weighs the
+// tree before that class. Planted untracked on purpose, because the finding the rule must produce is UNTRACKED.
+foreach ([$root.'/'.$fxDir.'/BYDESIGN.md', $root.'/'.$fxDir.'/UNTRACKED.md'] as $dust) {
+    @unlink($dust);
+}
+$probeGuide = 'Documentation/ADS_Final_Project_Guide_EMS_LEG9PROBE.docx';
+file_put_contents($root.'/'.$probeGuide, "planted so a name-shape exemption has something real to refuse to exempt\n");
+$fixture('LIVING.md', "the answered form is `Documentation/ADS_Final_Project_Guide_EMS_LEG9PROBE.docx`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$leg9 = $r['code'] === 1
+    && str_contains($r['text'], 'UNTRACKED     '.$probeGuide)
+    && ! str_contains($r['text'], 'ADS_Final_Project_Guide_EMS_LEG9PROBE.docx — the school');
+$report($leg9, 'living-artefact-not-exempted', $leg9
+    ? 'the class did not swallow a file the tree holds: named UNTRACKED'
+    : trim(substr($r['text'], 0, 240)));
+@unlink($root.'/'.$probeGuide);
+$report(! is_file($root.'/'.$probeGuide), 'leg9-plant-removed', ! is_file($root.'/'.$probeGuide) ? 'removed' : 'still on disk');
+
+// Leg 10 — the mirror: a HEAD export exists on this box BY DESIGN and must stay exempt, or this fix would
+// invent a tracking defect in a documented ignore. `.php` under scratch is re-included by extension, so an
+// untracked export is exactly the case a naive "existence disqualifies" would mis-report as UNTRACKED.
+$probeHead = 'storage/app/scratch/lane999-head-Leg10ProbeController.php';
+file_put_contents($root.'/'.$probeHead, "<?php\n// planted by mutate-lane194-ads-citations.php so a HEAD-export citation can resolve\n");
+@unlink($root.'/'.$fxDir.'/LIVING.md');
+// A fixture holding ONLY an exempt citation would make the tool refuse for its population guard, which is a
+// different (and correct) verdict — so a judged citation rides along, and the leg asserts the head export is
+// exempted while the ordinary path is still judged.
+$fixture('HEADX.md', "the export is `storage/app/scratch/lane999-head-Leg10ProbeController.php` and the guide is `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md`\n");
+$r = $run('--docs=storage/app/scratch/lane194-fixture/*.md --tracked='.escapeshellarg($trackedNow));
+$leg10 = $r['code'] === 0
+    && str_contains($r['text'], 'lane999-head-Leg10ProbeController.php')
+    && ! str_contains($r['text'], 'UNTRACKED     '.$probeHead);
+$report($leg10, 'head-export-stays-exempt', $leg10
+    ? 'printed as by-design, and not turned into a tracking problem'
+    : trim(substr($r['text'], 0, 240)));
+@unlink($root.'/'.$probeHead);
+$report(! is_file($root.'/'.$probeHead), 'leg10-plant-removed', ! is_file($root.'/'.$probeHead) ? 'removed' : 'still on disk');
+
 // Teardown: plants and fixture tree both gone, or a harness leaves a second definition of the evidence.
-foreach ([$root.'/'.$fxDir.'/DELIVERY.md', $root.'/'.$fxDir.'/BYDESIGN.md', $root.'/'.$untrackedProbe,
+foreach ([$root.'/'.$fxDir.'/DELIVERY.md', $root.'/'.$fxDir.'/BYDESIGN.md', $root.'/'.$fxDir.'/LIVING.md',
+    $root.'/'.$fxDir.'/HEADX.md', $root.'/'.$fxDir.'/UNTRACKED.md', $root.'/'.$fxDir.'/MISSING.md', $root.'/'.$fxDir.'/FRAG.md',
+    $root.'/'.$untrackedProbe, $root.'/storage/app/scratch/lane999-head-Leg10ProbeController.php',
+    $root.'/Documentation/ADS_Final_Project_Guide_EMS_LEG9PROBE.docx',
     $root.'/storage/app/scratch/lane194-empty-tracked.txt', $root.'/'.$trackedList, $root.'/'.$trackedNow] as $p) {
     @unlink($p);
 }

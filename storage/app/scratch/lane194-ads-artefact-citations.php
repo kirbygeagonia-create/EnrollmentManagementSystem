@@ -141,15 +141,45 @@ if ($index === []) {
 // Paths that live outside this repository by design, each named by its class rather than by a list a
 // later reader has to remember: the school's guide, the implementation prompt, the backup home, and the
 // HEAD exports the repository deliberately ignores.
+//
+// Each value is [why, existenceDisqualifies]. A file that exists in the tree disqualifies the exemption only
+// where the class's own claim is "not in this repository" — the guide docx, the prompt, the `docs/` deliverable
+// names — because an artefact this project now holds and cites (the answered form copy at
+// `Documentation/ADS_Final_Project_Guide_EMS_ANSWERED.docx`) matched the guide-docx class purely by NAME-SHAPE and
+// stopped being judged: an exemption that swallows a living artefact is the gate going blind, not the file being
+// exempt. It must NOT disqualify for a HEAD export or a pre-change dump, which exist on this box by design and
+// are ignored by rule; treating local existence as proof they should be tracked would call a documented design a
+// defect, which is exactly what the first cut of this rule did to `lane168-head-BlockingController.php`.
 $externalClasses = [
-    '#^docs/[A-Za-z0-9_]+\.md$#' => 'the guide\'s own deliverable path (docs/), which this repository answers from Documentation/',
-    '#lane\d+-head-[A-Za-z0-9]+\.php$#' => 'a HEAD export, ignored by storage/app/.gitignore on purpose',
-    '#Master_Implementation\.md$#' => 'the implementation prompt, held outside the tree',
-    '#ADS_Final_Project_Guide[A-Za-z0-9 ._()-]*\.docx$#' => 'the school\'s guide docx, held outside the tree',
-    '#ems-pre-[A-Za-z0-9 ._()-]*\.sql$#' => 'a pre-change dump, which lives in the backup folder and never in the repository',
-    '#^EMS Complete Documentation\.docx$#' => 'the authority docx, cited by its own name',
-    '#^[A-Z][A-Z0-9_]+\.md$#' => "the implementation prompt's own deliverable name, answered here by a file under Documentation/",
+    '#^docs/[A-Za-z0-9_]+\.md$#' => ['the guide\'s own deliverable path (docs/), which this repository answers from Documentation/', true],
+    '#lane\d+-head-[A-Za-z0-9]+\.php$#' => ['a HEAD export, ignored by storage/app/.gitignore on purpose', false],
+    '#Master_Implementation\.md$#' => ['the implementation prompt, held outside the tree', true],
+    '#ADS_Final_Project_Guide[A-Za-z0-9 ._()-]*\.docx$#' => ['the school\'s guide docx, held outside the tree', true],
+    '#ems-pre-[A-Za-z0-9 ._()-]*\.sql$#' => ['a pre-change dump, which lives in the backup folder and never in the repository', false],
+    '#^EMS Complete Documentation\.docx$#' => ['the authority docx, cited by its own name', false],
+    '#^[A-Z][A-Z0-9_]+\.md$#' => ["the implementation prompt's own deliverable name, answered here by a file under Documentation/", true],
 ];
+
+/**
+ * One definition of "this citation is exempt by class", used by the path loop and the spaced-path loop alike.
+ * A citation carrying a directory part is weighed against the tree FIRST for the classes whose claim is that the
+ * file is not in this repository, so a delivered artefact cannot hide behind a name-shape match; the classes that
+ * describe a file this box holds on purpose (HEAD exports, pre-change dumps) keep exempting it.
+ */
+$classExempt = static function (string $p) use ($externalClasses, $root): ?string {
+    foreach ($externalClasses as $rx => [$why, $existenceDisqualifies]) {
+        if (preg_match($rx, $p) !== 1) {
+            continue;
+        }
+        if ($existenceDisqualifies && str_contains($p, '/') && is_file($root.'/'.$p)) {
+            return null;
+        }
+
+        return $why;
+    }
+
+    return null;
+};
 
 $cited = [];
 $bare = [];
@@ -161,13 +191,7 @@ foreach ($docs as $doc) {
     // line gate already judges, and a bare path plus digits would double-count it here.
     preg_match_all('#'.$patternPath.'#i', $text, $m);
     foreach ($m[1] as $p) {
-        $exempt = null;
-        foreach ($externalClasses as $rx => $why) {
-            if (preg_match($rx, $p)) {
-                $exempt = $why;
-                break;
-            }
-        }
+        $exempt = $classExempt($p);
         if ($exempt !== null) {
             $byDesign[$p][] = basename($doc).' — '.$exempt;
 
@@ -193,14 +217,7 @@ foreach ($docs as $doc) {
         if (isset($cited[$p])) {
             continue;
         }
-        $exempt = null;
-        foreach ($externalClasses as $rx => $why) {
-            if (preg_match($rx, $p)) {
-                $exempt = $why;
-
-                break;
-            }
-        }
+        $exempt = $classExempt($p);
         if ($exempt !== null) {
             $byDesign[$p][] = basename($doc).' — '.$exempt;
 
@@ -255,14 +272,7 @@ foreach ($cited as $path => $where) {
 // before class, so a tracked `DEPLOYMENT.md` is never swallowed by the prompt-name exemption.
 foreach ($bare as $name => $where) {
     if (! isset($index[$name])) {
-        $exempt = null;
-        foreach ($externalClasses as $rx => $why) {
-            if (preg_match($rx, $name)) {
-                $exempt = $why;
-
-                break;
-            }
-        }
+        $exempt = $classExempt($name);
         if ($exempt !== null) {
             $byDesign[$name][] = implode(', ', array_values(array_unique($where))).' — '.$exempt;
 

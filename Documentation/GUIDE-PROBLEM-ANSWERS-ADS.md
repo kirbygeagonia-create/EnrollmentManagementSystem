@@ -12,6 +12,16 @@ defense question, §VII's four fill-ins, and §I's six task verbs. `lane155` pri
 until every item carries an answer, so the completeness claim is an instrument's reading, not a
 sentence.
 
+This file is also the only source for the answered Word copy,
+`Documentation/ADS_Final_Project_Guide_EMS_ANSWERED.docx`, which is the school's own form with its 43 boxes ticked
+and these answers written into its analysis cells: rebuild it with
+`php storage/app/scratch/lane203-fill-guide-form.php --apply` and prove the result with
+`php storage/app/scratch/lane207-verify-guide-copy.php`, which reads each answer back from under its own problem
+heading rather than from anywhere in the file. Do not type into the Word copy. The form's rows do not share one
+option vocabulary (its ACID row offers `Explained`, not `Implemented`; its Recovery row offers `Backup/restore or
+recovery evidence`), so an answer word that the paper has no box for stops the writer, and the verdict is then
+written here first.
+
 Applicability is taken from the P register in
 `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` rather than restated here, because two answers to
 "does this problem apply" is the defect this project has refused in every other vocabulary. Where

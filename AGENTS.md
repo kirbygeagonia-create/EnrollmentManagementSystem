@@ -4407,6 +4407,77 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   the code it describes. The order that works is: ask `information_schema` (or the migrations) for the table's real
   column list, *then* grep for those names, then say which rule exists — and fix the attribution, not the fact,
   when only the owner was wrong.
+- **A tick box is matched by its LABEL, and a count that agrees is not a pairing that agrees** (the answered Word
+  copy, 2026-11-02). `Documentation/ADS_Final_Project_Guide_EMS_ANSWERED.docx` is built by
+  `php storage/app/scratch/lane203-fill-guide-form.php --apply` from `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md`,
+  which stays the single source: the form's content is projected from the weighed answer file, never retyped into it
+  (lane 59's one-definition rule, met on paper). The form holds 108 literal `☐` characters and no form fields at all,
+  so "ticking" is one 3-byte character replaced by `☑` at an absolute offset — and the trap is that its rows do not
+  share one option vocabulary. The 24 Problem rows read `Applies to our system / Partially applies / N/A (explain
+  below)`; among the 12 concept rows, ACID Properties offers `Explained / Demonstrated in test / N/A` with **no
+  Implemented box at all**, Indexing and Query Optimization read `Query plan/performance test`, and Recovery reads
+  `Backup/restore or recovery evidence / Explained / N/A`. The answer file spells each row's *full* option set, so
+  ticking the k-th `☐` because the k-th answer is ☑ would paint `Demonstrated in test` where the school asked
+  whether the concept is `Explained`. Every count still reads correct afterwards — 12 rows, 3 boxes each, 36 rows
+  touched — which is why the writer now reads each row's own labels off its own text, refuses a verdict word the
+  form cannot show, refuses a row where nothing resolves to ☑ rather than picking the nearest box, and **checks the
+  concept NAME before the tick** (the answer file's Row 3 must be the guide's third option row, or an ACID tick
+  lands inside Locking's boxes). Proved by
+  `php storage/app/scratch/mutate-lane203-guide-form.php`, which plants each of those defects in a throwaway copy of
+  the form and of the answer file through `--guide=` / `--answers=` and answers `ALL KILLED` with a control that
+  re-reads the input form's hash — a writer that edits the school's blank original has destroyed it.
+  **The read-back that saved this batch from itself was a row census, not a ballot count.** The first delivered copy
+  carried 67 ☑ where 43 were planned, because a heading parse written `/ms` let the "title" capture cross newlines:
+  each inserted first line re-quoted the answer file's own `☐ Applies to our system` row, so the form gained 24
+  duplicate rows and every planner count stayed at 24. A document-wide `substr_count` of ☐ and ☑ cannot be the
+  invariant either — the §V answer prose legitimately quotes the form's options, which is information on the paper
+  rather than a defect — so the check re-locates the rows **inside the part's own headings** and prints how many
+  look-alike paragraphs it declined to judge, because a checker that counts its own output reads its planting as a
+  population (lane 46's wrong-construct class, arriving in a form filler). Three mechanical lessons travelled with
+  it: ticks, run fills and 430 inserted paragraphs share ONE offset space and must be applied in a single descending
+  pass, since a §VII fill shortens 52 underscores to a name and an insertion moves every offset after it; the
+  label and the underscore run of a fill-in line are **two `<w:t>` runs**, so a pattern demanding `Student 1: ____`
+  matched nothing and the writer refused rather than filling the wrong line; and `PREG_OFFSET_CAPTURE` wraps each
+  match as `[text, offset]`, so `strlen($um[0])` is a TypeError, not a byte count. The harness met the same family
+  twice on its own first runs: a `(?!</w:p>)` inside a `/`-delimited pattern closes the pattern on the `w`, and a
+  `$(...)` inside a **single-quoted** string keeps its closing brace, so the delimiter ends early and PHP reports
+  an unclosed `{` two hundred lines away from the cause.
+  **A field the writer cannot read must be a refusal, not a skip** (same batch, found by the copy's own reader). The
+  writer first appended each analysis field only when it parsed, and the answer file spells the workflow field three
+  ways (`… or why this is N/A`, `… and N/A justification`, `… adapted`), so Problems 19 and 24 reached the paper
+  without a field the guide asks for, while every count still read 24 blocks. The six fields are required now, and a
+  missing one stops the run. The read-back is `php storage/app/scratch/lane207-verify-guide-copy.php`, which
+  re-locates each `Problem N —` heading in the built document and asks whether that problem's own answer sits inside
+  its window; its positive control is the school's blank form, which it refuses with 24 defects, so a reader that
+  could clear an empty copy cannot exist.
+  **And a name-shape exemption can swallow a living artefact.** `lane194-ads-artefact-citations.php` matched the
+  delivered copy against its "the school's guide docx, held outside the tree" class and stopped judging a file the
+  repository now holds — the exemption was written against a NAME, not against the tree. Classes whose claim is *not
+  in this repository* now weigh existence first; a HEAD export or a pre-change dump keeps exempting despite local
+  existence, because those sit on this box by rule (the first cut of the fix reported `lane168-head-BlockingController.php`
+  as a tracking defect, which is a documented design called a bug). Three loops had been matching the class list, so
+  the rule has one implementation now, and one of them printed the literal word `Array` as its reason once the values
+  gained a second field. `mutate-lane194-ads-citations.php` carries both directions: a planted untracked guide-named
+  docx must read UNTRACKED, a planted `lane999-head-*.php` must stay BY-DESIGN.
+  **A claim the extractor cannot read is not a clean claim — twice in one hour.** Widening that gate exposed the
+  figure it had been clearing: §28.3's living G-40 row states the wired count as `eighteen` in one sentence and as
+  `eight … sort on the server today, seven of them queues and one a directory` two sentences later, and
+  `lane140-measure-wired-screens.php --check-docx` printed AGREES because its patterns spell the denominator as
+  `(N) of the 36 pages …` while the register writes `(N) of the thirty-six tables that render the shared component
+  sort on the server` — and its numeral vocabulary began at `eleven`, so a single-digit claim was **invisible**, not
+  wrong. The extractor learned the register's shape and the optional article (the matrix drops `the`, the register
+  keeps it) BEFORE the prose was touched: `refresh-docx-pass401.php` refuses to apply unless the widened tool first
+  calls the old sentence STALE, then re-reads the new one and requires the dated §1.1 row — which carries the same
+  words truthfully for 2026-10-30 — to stay DATED. So: **fix the instrument before fixing the sentence it could not
+  read**, because a repaired claim in a document the tool still cannot judge rots silently again. The harness for that
+  tool had hard-coded `1 carried by a dated §1.1 row`, so the document getting *truer* made its own control leg fail
+  — verifier expectations age; the leg now measures the clean count in the same run and asserts exactly one fewer, a
+  relation rather than a remembered number.
+  **A ruling marker must sit where the classifier reads it.** Marking four sheet items ANSWERED moved the tally for
+  three: item 2 carries its `[prompt …]` bracket on the line *below* the title, and `lane69-open-inventory.php`
+  reads the marker on the title line, so the header cross-check printed `DISAGREES` with that item still OPEN.
+  Joining the marker to its title made all three tallies AGREE. An answer recorded where no checker looks is an
+  answer the register does not know.
 
 ## Agent dispatch
 
