@@ -111,8 +111,14 @@ document's DI-2: that key is portable, so it holds on both drivers.
 
 ## 6. How student academic-load limits are enforced
 
-Partly, and the gap is named rather than papered. `EvaluationController` refuses a proposal outside the
-min–max elective band, and `EnrollmentReadiness` refuses a load whose mandatory blocks are not satisfied. There is
+Partly, and the gap is named rather than papered. Both rules that do exist live in the proposal act,
+`Evaluation\EvaluationController::proposeSubjects()`: a chosen elective group outside its curriculum row's
+`elective_min_choices`/`elective_max_choices` is refused, and a non-elective curriculum subject that was never
+proposed is refused too — minus the subjects an **approved** credit row exempts, because a credit the department
+declined does not drop its requirement. The band is pinned by `tests/Feature/Evaluation/ElectiveValidationTest.php`
+(11 cases, including the group sizes exactly at the minimum and exactly at the maximum, which pass).
+`App\Support\EnrollmentReadiness` is not one of those guards: it answers
+clearance, verified documents and prerequisites, and says nothing about a load. There is
 **no term unit ceiling**, because the number is the school's to state (matrix gap **P13**, still `Not built`, and one
 of the items on the open school-question register — `lane69-open-inventory.php` answers what waits on an office). The honest answer in a defence is "the rule is a figure we have not been
 given; inventing 21 units would be data the school never approved."

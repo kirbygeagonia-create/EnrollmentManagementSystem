@@ -4389,6 +4389,20 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   row whose cell count is not 2, an unknown flag, and a `--report=` that is not a file, and it proves
   `--report=` is read by mutating copies rather than the delivered document.
 
+- **An absent-name grep is not an absent rule — read the column list before writing a finding about one**
+  (2026-11-02, caught before it was written). A defence-document sentence said `EnrollmentReadiness` refuses an
+  unmet mandatory-block load; that attribution is wrong (the class answers clearance, verified documents and
+  prerequisites, and has no load predicate). My first response was to attack the *other* half of the sentence —
+  "no min–max elective band rule exists" — on the strength of grepping `minUnits`, `maxUnits`, `minSubjects`,
+  `maxSubjects` through `app/` and `database/migrations`. Every one of those names was **invented**: the real
+  columns are `curriculumsubjects.elective_min_choices` and `elective_max_choices`, and the rule that reads them
+  sits in `EvaluationController::proposeSubjects()` and is pinned by `tests/Feature/Evaluation/ElectiveValidationTest.php`
+  (11 cases, including exactly-at-min and exactly-at-max, which pass). Had I trusted that grep, I would have
+  deleted a true statement from the document a student reads aloud, and the record row would then have contradicted
+  the code it describes. The order that works is: ask `information_schema` (or the migrations) for the table's real
+  column list, *then* grep for those names, then say which rule exists — and fix the attribution, not the fact,
+  when only the owner was wrong.
+
 ## Agent dispatch
 
 Scope agents to non-overlapping paths, run independent lanes in background, reconcile before
