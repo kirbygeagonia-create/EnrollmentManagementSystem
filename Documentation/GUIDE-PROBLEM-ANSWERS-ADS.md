@@ -1445,6 +1445,13 @@ marked with the plan/performance vocabulary because the instrument ran; the rewr
   `lane190-out.txt`, `lane172-load-out.txt`, `lane164-out.txt`, `lane191-out.txt`,
   `lane189-suite.log`, `l170-suite-junit.xml`, `l171-suite-junit.xml`, and the cases of
   `Documentation/TESTING-AND-VERIFICATION-ADS.md`, each carrying the ten fields the ADS prompt names.
+  The guide's list is an alternative ("Screenshot, SQL output, logs, **or other evidence**"), and this
+  pair answers it with the reproducible members on purpose: a screen photograph states what one browser
+  painted once, while a captured stdout or a `Tests:` line can be re-run by the instructor and either
+  agrees or does not. Screenshots are not absent for lack of a running system — the desks do render —
+  but no claim above rests on one, so nothing had to be invented to fill a frame. §II.B's warning about
+  exposing real students is answered the same way: every record named here belongs to the synthetic
+  demo cast, which is also why the paper the drill reads carries `DEMO-` identifiers.
 The case-shape census is `php storage/app/scratch/lane189-count-ads-fields.php`, which reads every
 two-column table in that document and reports how many rows are short — its reading today is 12 tables and
 0 short. On its first run it found
