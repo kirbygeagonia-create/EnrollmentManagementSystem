@@ -11,6 +11,7 @@ use App\Models\Enrollmentreturns;
 use App\Models\Enrollments;
 use App\Models\Offices;
 use App\Services\WorkflowService;
+use App\Support\ListSort;
 use App\Support\WorkflowInbox;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -102,8 +103,7 @@ class WorkflowMonitorController extends Controller
             ->when($request->status, static fn (Builder $q, $status) => $q->where('enrollmentStatus', $status))
             ->when($request->studentType, static fn (Builder $q, $type) => $q->where('studentType', $type))
             ->when($request->term, static fn (Builder $q, $term) => $q->where('termId', (int) $term))
-            ->when($request->search, $search)
-            ->orderByDesc('enrollmentId');
+            ->when($request->search, $search);
 
         // Tiles describe the whole filtered set, never the 25 rows on the page, and each
         // is taken from a clone made before paginate() puts a LIMIT/OFFSET on the builder.
@@ -131,6 +131,34 @@ class WorkflowMonitorController extends Controller
         $withoutForm = (clone $query)->whereDoesntHave('enrollmentworkflow')->count();
 
         $total = (clone $query)->count();
+
+        // The order is asked of the query AFTER every tile was cloned, so a header click can never narrow what a
+        // tile describes. The two name-hops are INNER by measurement, not by copying the last screen:
+        // `enrollments.studentId` and `enrollments.courseId` are both NOT NULL and hold no null row on the live
+        // database, so no record that is on the list today can vanish because its order needs a join.
+        //
+        // Four of the painted columns carry a header. `progress`, `nextPhaseLabel`, `signedDate` and
+        // `returnCategoryLabel` stay out of the offered set on purpose — each is derived per row from the workflow
+        // form's own box list, the handoff office, the latest signed date and the newest `enrollmentreturns` row —
+        // so no column this query can name answers for them, and a header for a value the handler cannot order is
+        // the defect §28.3 owns for filters.
+        $sortable = [
+            'studentName' => ['column' => 'lastName', 'join' => 'students', 'foreign' => 'studentId', 'local' => 'enrollments.studentId'],
+            'courseCode' => ['column' => 'courseCode', 'join' => 'courses', 'foreign' => 'courseId', 'local' => 'enrollments.courseId'],
+            'studentType' => ['column' => 'enrollments.studentType'],
+            'enrollmentStatus' => ['column' => 'enrollments.enrollmentStatus'],
+            // The list's own key: listed because `apply()` reads the fallback out of here, never painted as a header.
+            'enrollmentId' => ['column' => 'enrollments.enrollmentId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', ''),
+            $sortable,
+            'enrollmentId',
+            'enrollments.enrollmentId'
+        );
+
         $page = $query->paginate(25)->withQueryString();
 
         $officeNames = Offices::query()->pluck('officeName', 'officeId')->all();
@@ -223,7 +251,9 @@ class WorkflowMonitorController extends Controller
                 'returned' => $returned,
                 'withoutForm' => $withoutForm,
             ],
-            'filters' => $request->only(['office', 'status', 'studentType', 'term', 'search']),
+            'filters' => $request->only(['office', 'status', 'studentType', 'term', 'search'])
+                + ['sort' => $sort['column'], 'direction' => $sort['direction']],
+            'sort' => ListSort::present($sort, $sortable),
             'officeChoices' => array_map(
                 static fn (int $officeId, string $label) => [
                     'officeId' => $officeId,

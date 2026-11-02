@@ -14,6 +14,8 @@ import {
     formatStatusLabel,
     enrollmentStatusTone,
     studentTypeTone,
+    nextSortDirection,
+    sortParams,
 } from '@/Components/ui';
 import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 import { useState } from 'react';
@@ -39,6 +41,7 @@ export default function Index({
     studentTypeChoices = [],
     termChoices = [],
     definition = {},
+    sort = null,
 }) {
     const { errors } = usePage().props;
     const [draft, setDraft] = useState({
@@ -48,6 +51,11 @@ export default function Index({
         term: filters.term || '',
         search: filters.search || '',
     });
+    // Seeded from what the server reported, so a filter submit keeps the order the reader is looking at rather than
+    // resetting it under them. This queue's own default is newest record first, which is why the direction starts at
+    // descending and `sortParams` sends nothing at all while the default key stands.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || 'desc');
 
     const set = (key) => (value) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -61,6 +69,27 @@ export default function Index({
                 studentType: draft.studentType || undefined,
                 term: draft.term || undefined,
                 search: draft.search || undefined,
+                ...sortParams('enrollmentId', sortBy, sortDir),
+            },
+            { preserveState: false, preserveScroll: true },
+        );
+    };
+
+    // The order is asked of the server, never applied to the twenty-five rows on screen: this list paginates, so a
+    // client sort would order one page and present that as the whole pipeline.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(
+            route('admin.workflow-monitor'),
+            {
+                office: draft.office || undefined,
+                status: draft.status || undefined,
+                studentType: draft.studentType || undefined,
+                term: draft.term || undefined,
+                search: draft.search || undefined,
+                ...sortParams('enrollmentId', key, direction),
             },
             { preserveState: false, preserveScroll: true },
         );
@@ -74,6 +103,7 @@ export default function Index({
         {
             key: 'studentName',
             label: 'Student',
+            sortKey: 'studentName',
             render: (row) => (
                 <div className="min-w-[10rem]">
                     <p className="text-sm font-semibold text-slate-900">
@@ -86,6 +116,7 @@ export default function Index({
         {
             key: 'courseCode',
             label: 'Program / Term',
+            sortKey: 'courseCode',
             render: (row) => (
                 <div className="text-sm">
                     <p className="font-semibold text-slate-800">{row.courseCode || '—'}</p>
@@ -96,6 +127,7 @@ export default function Index({
         {
             key: 'studentType',
             label: 'Type',
+            sortKey: 'studentType',
             render: (row) => (
                 <Badge tone={studentTypeTone[row.studentType] || 'neutral'}>
                     {formatStatusLabel(row.studentType)}
@@ -105,6 +137,7 @@ export default function Index({
         {
             key: 'enrollmentStatus',
             label: 'Record status',
+            sortKey: 'enrollmentStatus',
             render: (row) => (
                 <Badge tone={enrollmentStatusTone[row.enrollmentStatus] || 'neutral'}>
                     {formatStatusLabel(row.enrollmentStatus)}
@@ -288,7 +321,7 @@ export default function Index({
                         />
                     ) : (
                         <>
-                            <DataTable columns={columns} rows={rows} />
+                            <DataTable columns={columns} rows={rows} sort={sort} onSort={handleSort} />
                             <Pagination paginator={enrollments} />
                         </>
                     )}

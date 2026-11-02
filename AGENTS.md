@@ -1841,7 +1841,13 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   `enrollmentId desc` — the old hard-coded order the leg restores — returned exactly the surname-ascending list the
   case asserted, and the mutant passed. Re-pick the fixture so the target order differs from BOTH id orders; the
   same lesson lane 79 recorded as "a mutant that survived proved the fixture was wrong, not the guard". What is
-  still owed: 18 of the 36 pages that render `DataTable` offer no order. The thirteenth wired screen is the audit log, added
+  still owed: 17 of the 36 pages that render `DataTable` offer no order. The nineteenth is the workflow monitor, wired
+2026-11-02 — the first screen in this family whose two name-hops were chosen by asking the schema and the rows
+(`enrollments.studentId` and `enrollments.courseId` are NOT NULL and hold no null row), not by copying the audit log's
+LEFT hop or the courses catalogue's INNER one. **The re-take list came from the instrument, not from a hunt**:
+`lane140-measure-wired-screens.php --check-matrix --check-docx` named seven stale phrases across the two registers,
+refused the run, and re-running it after the writes is the proof the registers agree — a count bound by a checker
+needs no reader remembering which documents state it. The thirteenth wired screen is the audit log, added
 2026-10-31, and the fourteenth is the subjects catalogue the same day — the first wired screen that is not a queue, so its
 handler asks `ListSort` for an ascending default rather than widening the helper, because a catalogue is read top to bottom
 while a queue is read newest-first and the helper's absence-of-direction answer serves only the second. Its case file is
