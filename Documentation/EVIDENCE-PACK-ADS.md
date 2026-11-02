@@ -54,6 +54,7 @@ second answer to the same question.
 | `docs/SYSTEM_ARCHITECTURE.md` | `Documentation/SYSTEM-ARCHITECTURE-ADS.md` | its own naming note, and the nine desks with their routes |
 | `docs/DATABASE_DESIGN.md` | `Documentation/DATABASE-DESIGN-ADS.md` | the generated ERD and the load plan; the data dictionary stays in the authority docx §24 rather than being copied |
 | `docs/REQUIREMENTS_TRACEABILITY.md` | `Documentation/REQUIREMENTS-TRACEABILITY-ADS.md` | all 24 problems, the 12 concepts, the 8 presentation areas, the T01-T24 map |
+| not a prompt part 41 file — asked by the guide itself | `Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md` | every guide question answered in the guide's own frame: 106 questions, each problem's Applicability mark and different-workflow line, the concept statuses, the presentation sub-items, the defense answer, weighed by `storage/app/scratch/lane195-count-guide-answers.php` |
 | `docs/DATABASE_CONCEPT_COMPLIANCE.md` | `Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md` | one section per concept row, in the guide's own status vocabulary |
 | `docs/TESTING_AND_VERIFICATION.md` | `Documentation/TESTING-AND-VERIFICATION-ADS.md` | the executed cases and the ones marked not executed with the reason |
 | `docs/SECURITY_AND_RECOVERY.md` | `Documentation/SECURITY-AND-RECOVERY-ADS.md` | the restore drill's own verdict line |

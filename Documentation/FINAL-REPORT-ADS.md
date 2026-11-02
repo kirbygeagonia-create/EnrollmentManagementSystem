@@ -44,9 +44,9 @@ below is the claim, and the tool owns the number:
 
 | Bucket | Problems |
 |---|---|
-| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
+| Built and measured | P02 seat race, P03 duplicate seat and fee sheet at the server, P04 capacity guard + audit rule, P07 deadlock handling, P09 the queue's checklist loop batched (5.0 repeated statements per listed row to 0 — `lane191-out.txt`), P10 subject-line race (10 writers: 4 unretried `1213` before, 10 clean after — `lane190-out.txt`), P20 one-transaction daily report, P21 restore drill, P23 traffic at scale, P24 the enrollment-day challenge |
 | Measured, not repaired | P08 search plan |
-| Partly | P09 (the two school-wide reads are resolved once per page — 5.0 statements per row to 3.0, `lane191-out.txt`; three per-enrollment reads remain), P14 |
+| Partly | P14 |
 | Not built | P13 |
 | Implemented before this batch | P01, P06, P11, P12, P15, P16, P18, P19, P22 |
 
@@ -120,8 +120,9 @@ before it paints, so a refusal cannot render as a zero.
   harnesses are listed with their verdicts in `IMPLEMENTATION-CHANGELOG-ADS.md` section 3 and the delivery notes below.
 - Failures and limits, stated: the seat key does not exist on SQLite (no generated `ALTER`), so that half is judged
   on the MySQL job; no academic-load or faculty ceiling can be tested because no number is defined; the thousand-issue
-  creation bench is delivered and a thousand concurrent *assigns* is not; and the two measured performance gaps (P08,
-  P09) are unfixed by decision.
+  creation bench is delivered and a thousand concurrent *assigns* is not; and the measured performance gap at P08
+  (the directory's leading-wildcard search) is unfixed by decision, while P09's queue loop is now batched — what
+  remains there is that no CI step enforces a per-page query budget, so a later batch could put a read back.
 - Performance measurements: the seven-row table in `DEFENCE-EVIDENCE-ADS.md` part 11, each figure beside its `EXPLAIN`.
 
 ## 8. Migration and safety information
@@ -187,11 +188,14 @@ Documents: the five ADS files plus `TESTING-AND-VERIFICATION-ADS.md`, `IMPLEMENT
 2. Add `uq_enrollmentworkflow_enrollment`. P17's request key removed the reason it was unsafe — a re-sent act is now
    answered with the enrollment that exists rather than reaching the form at all — so the server can hold "one
    workflow form per enrollment", which today only `WorkflowService::createWorkflow()` does.
-3. Batch the Registrar queue's checklist reads, which P09's measurement prices at 40 queries against 2. Re-priced
-2026-11-02 by `lane191-attribute-registrar-queries.php` on live `ems`: **5.0 repeated statements per listed row**, from
-four `EnrollmentReadiness` reads and `Gradescale`'s passing ceiling — and two of those five re-read a **school-wide
-constant** for every record, so a per-request memoize inside the class both the queue and the record page call is the
-first half of the fix and needs no second definition of any gate.
+3. Batch the Registrar queue's checklist reads — **delivered 2026-11-02, in two halves.** P09's measurement priced
+   the loop at 40 queries against 2; `lane191-attribute-registrar-queries.php` then named **5.0 repeated statements
+   per listed row** from five sites, of which two were school-wide constants (the passing ceiling and the curriculum
+   catalogue) resolved once per page behind arguments that default to the fresh read, and three were the passed set,
+   the approved credits and the declared prerequisites, now behind `App\Support\ReadinessBatch` for the page. The
+   same instrument answers 0 repeating statements per row and then refuses its own verdict, because a five-row queue
+   page no longer holds a repeat to weigh. What that leaves is a ceiling, not a loop: no CI step asserts a per-page
+   query budget, so a later batch could put a read back without anything failing.
 4. Rule on the room's meaning, then make the room check either per-room or honest about being per-section.
 5. Take the load run further than the creation act: the thousand-issue bench is delivered (`lane172`,
    `storage/app/scratch/lane172-load-out.txt`), and what it does not yet reach is a thousand concurrent *assigns*
