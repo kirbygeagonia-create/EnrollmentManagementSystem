@@ -916,11 +916,28 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageOffices', Offices::class);
 
-        $offices = Offices::query()
-            ->when($request->search, fn ($q, $search) => $q->where('officeName', 'like', "%{$search}%"))
-            ->orderBy('officeId')
-            ->paginate(20)
-            ->withQueryString();
+        $query = Offices::query()
+            ->when($request->search, fn ($q, $search) => $q->where('officeName', 'like', "%{$search}%"));
+
+        // Two of the four columns this table paints cannot be ordered by a query at all: `workflowName` is answered
+        // from App\Enums\OfficeId — the enum, not the row — and the three "Used by" counts come from grouped
+        // aggregates over the tables that point at an office. A header for either would be the defect §28.3 owns for
+        // filters: the desk clicks, the server obeys nothing, and the arrow resets. So only the two stored columns
+        // are offered, and the catalogue opens on the name because an office list is read top to bottom.
+        $sortable = [
+            'officeName' => ['column' => 'officeName'],
+            'officeId' => ['column' => 'offices.officeId'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'officeName',
+            'offices.officeId'
+        );
+
+        $offices = $query->paginate(20)->withQueryString();
 
         // §28 X-3: this table is data, but App\Enums\OfficeId is the authority the
         // policies and workflow comparisons actually read, so a row and a desk can
@@ -937,7 +954,13 @@ class ReferenceDataController extends Controller
                 'requirementCount' => $usedBy['requirements'][$office->officeId] ?? 0,
                 'stepCount' => $usedBy['steps'][$office->officeId] ?? 0,
             ]),
-            'filters' => $request->only(['search']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

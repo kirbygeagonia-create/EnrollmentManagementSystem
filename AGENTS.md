@@ -1984,6 +1984,17 @@ inside a mutation harness. A deletion must leave nothing behind; an insertion mu
 above it stay as written — the school's clock rolled to its next civil day while the batch ran, which is why the pass
 reads `SchoolTime::today()` instead of typing a date, and why its anchor matches the template row by title rather than
 by date-plus-title (a date-joined anchor refuses a correct write the moment the day moves).
+- **An offered set is asserted EXACTLY, not merely present, and a pass that inserts into a cited file asks which
+pointers aged** (the twenty-second table, `Admin/ReferenceData/Offices`). The page paints four columns and the query
+holds two — the desk name comes from `App\Enums\OfficeId` after the rows return, the three usage figures are grouped
+counts over other tables — so `only_the_two_columns_the_query_holds_are_offered_as_orders` names the whole
+`sort.available` set, and `mutate-g40-office-directory-tests.php` plants the inversion on both sides of the pairing (a
+derived key handed to the controller, where the only honest answer is a different column, and a `sortKey: 'staffCount'`
+written into the page, where nothing answers it). A header over a derived label is not a wrong sequence, it is a control
+the server cannot obey — §28.3's filter defect reached from the sort side. The docx pass for that batch gained a guard
+its predecessors lacked: it collects every citation into the changed controller out of the flat dump, takes the highest,
+and refuses if it sits at or below the line the batch grew, because a bounds sweep prints the identical clean verdict
+for a file that never moved and for one whose every pointer below the insert moved with it.
 - **A desk search's own alternatives must be grouped, or they widen the filters set beside them** (this batch, the
 staff directory). `UserManagementController::index()` chained `->where('firstName','like',…)->orWhere('lastName','like',…)`
 inside the same `when()` closure that carries the office and status filters, and Laravel puts every one of those at the

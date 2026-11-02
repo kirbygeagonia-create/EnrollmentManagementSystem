@@ -2,10 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Offices({ offices, filters = {} }) {
+export default function Offices({ offices, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the board is looking at rather than
+    // resetting it under them. The catalogue's own default is the name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingOffice, setEditingOffice] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -15,9 +19,13 @@ export default function Offices({ offices, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'officeId', label: 'ID', className: 'font-mono text-sm hidden md:table-cell' },
-        { key: 'officeName', label: 'Name' },
+        { key: 'officeId', label: 'ID', sortKey: 'officeId', className: 'font-mono text-sm hidden md:table-cell' },
+        { key: 'officeName', label: 'Name', sortKey: 'officeName' },
         {
+            // No sortKey on either of these two, and that is the handler's decision rather than an oversight: the
+            // desk name is answered from App\Enums\OfficeId and the usage figures are grouped counts over other
+            // tables, so no column exists for a query to order. The shared control paints a header only for a key
+            // the server listed in `sort.available`, so these read as plain labels.
             key: 'workflowName',
             label: 'Desk in the workflow',
             render: (row) => (row.workflowName ? (
@@ -45,6 +53,22 @@ export default function Offices({ offices, filters = {} }) {
         e.preventDefault();
         router.get(route('admin.reference-data.offices'), {
             search: search || undefined,
+            ...sortParams('officeName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole directory.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.offices'), {
+            search: search || undefined,
+            ...sortParams('officeName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -163,6 +187,8 @@ export default function Offices({ offices, filters = {} }) {
                             rows={offices.data}
                             children={renderActions}
                             emptyMessage="No offices found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={offices} />
