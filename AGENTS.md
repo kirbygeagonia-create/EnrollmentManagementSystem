@@ -1355,6 +1355,28 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   was the fixture's state, not the gate's rule — the case now walks the record the approval issued. So when a new
   unique key or constraint turns a test red, ask first which row the test should have been reading, and whether its own
   transaction hid the duplicate from every census: a 0 on live data is not evidence that no path creates a pair.
+- **A diagram is a projection of the model, and the parser that makes it must refuse on the model's own defects**
+(the use-case figures, `Documentation/Diagrams/`). `Documentation/Use-Case-Diagram-Guide.md` already carries the
+system's use-case graphs as mermaid blocks — one global boundary diagram and one per desk — so
+`storage/app/scratch/lane208-use-case-figures.mjs` PARSES those blocks into actors, use cases, associations and
+«include»/«extend» dependencies and renders the figures from that one model: 12 desks, the overview, the complete
+diagram in two layouts, and **one per actor** showing that actor's associations, the include and extend chains
+hanging off each of them, and the secondary actors that share those use cases. A hand-drawn figure would be a second
+definition of the same model. Three real defects in the document came out of the guards rather than from reading it:
+43 mojibake codepoints in front of actor labels; 59 stereotype labels written `"<<include>>"`, which mermaid's HTML
+labels swallow into an empty box (UML spells them «include» / «extend», and that spelling renders); and
+`UC_Srch360` — "Inspect Unified Student 360° Profile" — declared in the boundary diagram with **no edge at all**, a
+box no actor can reach, which is not a use case. The desk-11 block already says who performs it (Institutional
+Staff, `students.view`), so the repair copied that association instead of inventing one.
+**A needle's count is not its owner list, met again:** the first repair replaced an association LINE that several
+desk blocks also contain, so the new edge landed in every one of them and the parser refused with "names a node that
+is never declared" — the guard earning its keep. `lane210-place-orphan-association.php` edits inside the §3 block's
+own span and asserts the association exists once, in that span. Two more rules the rendering taught: derived figures
+dedupe by label with the **desk** block canonical (the boundary diagram restates 13 of its 19 use cases, and folding
+it in would draw "Record New Applicant" twice), and the leftover overview panel is renamed "Cross-desk use cases" so
+the complete figure does not read as a thirteenth office. The PNGs are committed and the SVGs are ignored, because a
+committed intermediate is a second answer to "which file is the figure"; an earlier script that rendered the same
+model a second way was **deleted rather than kept** for the same reason.
 - **A generator that writes a partly hand-written document must splice on markers and refuse without them** (2026-11-01,
   `lane162-generate-erd.php`). `Documentation/DATABASE-DESIGN-ADS.md` says on its first line "This page is generated,
   not written", and the batch had since hand-written a load-test result into it; the first re-take of the diagram

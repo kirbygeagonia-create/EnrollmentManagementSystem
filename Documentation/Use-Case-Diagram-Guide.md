@@ -61,16 +61,16 @@ Under the **UML 2.5 specification**, a Use Case Diagram represents:
 - **The System Boundary:** The line separating the software platform from the outside world.
 - **Actors:** External entities (human users, external institutional systems, automated daemons) that interact with the system to achieve a measurable goal.
 - **Use Cases:** Distinct sequences of actions performed by the system that yield an observable result of measurable value to a specific actor.
-- **Relationships:** The behavioral associations (`---`), dependencies (`<<include>>`), optional branches (`<<extend>>`), and inheritance hierarchies (`Generalization`) that connect actors and use cases.
+- **Relationships:** The behavioral associations (`---`), dependencies (`«include»`), optional branches (`«extend»`), and inheritance hierarchies (`Generalization`) that connect actors and use cases.
 
 ```
 +-------------------------------------------------------------+
 |                      System Boundary                        |
 |                                                             |
 |   Actor                   ( Use Case )                      |
-|    옷 --------------------( Action-Verb )                   |
+|    --------------------( Action-Verb )                   |
 |  (User)                         |                           |
-|                           <<include>>                       |
+|                           «include»                       |
 |                                 v                           |
 |                           ( Use Case 2 )                    |
 +-------------------------------------------------------------+
@@ -87,8 +87,8 @@ Under the **UML 2.5 specification**, a Use Case Diagram represents:
 | **Secondary Actor** | Stick Figure (Right) | Supports the completion of a use case (e.g., recipient of notifications, external payment gateway). | `Applicant`, `SMS Notification Service` |
 | **Use Case** | Horizontal Oval / Stadium | Represents a discrete, measurable unit of business value. | `(Record New Applicant)` |
 | **Association** | Solid Line (`---`) | Denotes communication between an actor and a use case. | `AdmissionOfficer --- (Verify Requirement Documents)` |
-| **Include Dependency** | Dashed Arrow (`-.->`) with `<<include>>` | Mandatory inclusion. Base use case cannot be completed without executing the included use case. | `(Approve Admission) -.->|<<include>>| (Validate Entrance Exam Status)` |
-| **Extend Dependency** | Dashed Arrow (`-.->`) with `<<extend>>` | Optional/conditional behavior triggered only when specific extension point criteria are met. | `(Post Payment) <.-|<<extend>>|- (Issue Installment Promissory Note)` |
+| **Include Dependency** | Dashed Arrow (`-.->`) with `«include»` | Mandatory inclusion. Base use case cannot be completed without executing the included use case. | `(Approve Admission) -.->|«include»| (Validate Entrance Exam Status)` |
+| **Extend Dependency** | Dashed Arrow (`-.->`) with `«extend»` | Optional/conditional behavior triggered only when specific extension point criteria are met. | `(Post Payment) <.-|«extend»|- (Issue Installment Promissory Note)` |
 | **Generalization** | Solid Arrow with Hollow Triangle (`--\|>`) | Inheritance where a specialized child inherits behaviors and permissions of a parent. | `Dean --\|> DeptEvaluator` |
 
 ---
@@ -122,25 +122,25 @@ A common defect in student and junior engineering projects is naming use cases w
 Indicates bidirectional or actor-initiated communication.
 ```mermaid
 flowchart LR
-    Staff["옷 Admission Officer"] --- UC1(["Record New Applicant"])
+    Staff["Admission Officer"] --- UC1(["Record New Applicant"])
 ```
 
-#### 2. The `<<include>>` Relationship (Mandatory Reusability)
+#### 2. The `«include»` Relationship (Mandatory Reusability)
 - Base use case explicitly incorporates the behavior of the included use case at a specified location.
 - **Rule:** The base use case is incomplete without the included use case.
 - **Direction of Arrow:** Points **from the base use case TO the included use case**.
 ```mermaid
 flowchart LR
-    UC_Approve(["Approve Admission Application"]) -.->|"<<include>>"| UC_CheckExam(["Verify Entrance Exam Passing Score"])
+    UC_Approve(["Approve Admission Application"]) -.->|"«include»"| UC_CheckExam(["Verify Entrance Exam Passing Score"])
 ```
 
-#### 3. The `<<extend>>` Relationship (Conditional Variation)
+#### 3. The `«extend»` Relationship (Conditional Variation)
 - Extends the behavior of a base use case conditionally at an **Extension Point**.
 - **Rule:** The base use case can execute completely without the extending use case. The extension only runs under defined circumstances.
 - **Direction of Arrow:** Points **from the extending use case TO the base use case**.
 ```mermaid
 flowchart LR
-    UC_CreditTransfers(["Process Transfer Subject Credits"]):::extendStyle -.->|"<<extend>>\n[Applicant is Transferee]"| UC_Propose(["Propose Curriculum Subject Load"])
+    UC_CreditTransfers(["Process Transfer Subject Credits"]):::extendStyle -.->|"«extend»\n[Applicant is Transferee]"| UC_Propose(["Propose Curriculum Subject Load"])
     classDef extendStyle stroke-dasharray: 5 5;
 ```
 
@@ -148,7 +148,7 @@ flowchart LR
 - Represents "is-a" taxonomy. An actor inherits all associations of its parent.
 ```mermaid
 flowchart BT
-    Dean["옷 College Dean"] --|> Evaluator["옷 Department Evaluator"]
+    Dean["College Dean"] --|> Evaluator["Department Evaluator"]
     Evaluator --- UC_Propose(["Propose Curriculum Subject Load"])
     Dean --- UC_DeanSign(["Sign Dean Curriculum Override"])
 ```
@@ -185,7 +185,7 @@ To model any software system with absolute rigor, execute these six sequential p
            ↓
 [Phase 4: Map Direct Actor Associations] 
            ↓
-[Phase 5: Factor Out <<include>> & <<extend>>] 
+[Phase 5: Factor Out «include» & «extend»] 
            ↓
 [Phase 6: Validate Against Routes & RBAC Matrix]
 ```
@@ -195,8 +195,8 @@ To model any software system with absolute rigor, execute these six sequential p
 3. **Draft Goals in Action-Verb Format:** Ask: *"What measurable goal does this actor achieve when sitting at this screen?"* (e.g., `Verify Requirement Documents`).
 4. **Draw Association Lines:** Connect actors only to use cases they directly trigger or participate in.
 5. **Apply Behavioral Packaging:**
-   - If a step is **always mandatory** for multiple use cases, factor it out using `<<include>>`.
-   - If a step is **conditional** (e.g., only for Transferees, only when voiding, only on downpayment), connect it using `<<extend>>`.
+   - If a step is **always mandatory** for multiple use cases, factor it out using `«include»`.
+   - If a step is **conditional** (e.g., only for Transferees, only when voiding, only on downpayment), connect it using `«extend»`.
 6. **Cross-Check with State Machines & Authorization Gates:** Verify that every use case corresponds to a valid controller endpoint, policy gate, and data transaction.
 
 ---
@@ -209,23 +209,24 @@ The diagram below visualizes the **complete enterprise architecture** of the SEA
 flowchart LR
     %% Primary Human Actors
     subgraph ACTORS_LEFT ["Operational Staff & Desk Actors"]
-        A_Adm["옷 Admission Officer"]
-        A_Gui["옷 Guidance Counselor"]
-        A_Eva["옷 Academic Evaluator"]
-        A_Dea["옷 College Dean"]
-        A_Sch["옷 Scholarship Officer"]
-        A_Acc["옷 Cashier / Accounting"]
-        A_Clr["옷 Clearance Officer"]
-        A_Blo["옷 Blocking Coordinator"]
-        A_Reg["옷 University Registrar"]
-        A_Cli["옷 Medical Nurse / Clinic"]
-        A_IDO["옷 Student ID Officer"]
-        A_AdmStaff["옷 System Administrator"]
+        A_Adm["Admission Officer"]
+        A_Gui["Guidance Counselor"]
+        A_Eva["Academic Evaluator"]
+        A_Dea["College Dean"]
+        A_Sch["Scholarship Officer"]
+        A_Acc["Cashier / Accounting"]
+        A_Clr["Clearance Officer"]
+        A_Blo["Blocking Coordinator"]
+        A_Reg["University Registrar"]
+        A_Cli["Medical Nurse / Clinic"]
+        A_IDO["Student ID Officer"]
+        A_AdmStaff["System Administrator"]
+        A_Staff["Institutional Staff (Any Desk)"]
     end
 
     %% Secondary Actors
     subgraph ACTORS_RIGHT ["External & Secondary Actors"]
-        A_Stud["옷 Student / Applicant"]
+        A_Stud["Student / Applicant"]
         A_SMS["🖥️ Institutional SMS / Mail Service"]
     end
 
@@ -288,14 +289,15 @@ flowchart LR
     A_IDO --- UC_ValIDR
     A_AdmStaff --- UC_MngUsr
     A_AdmStaff --- UC_AudAct
+    A_Staff --- UC_Srch360
 
     %% Secondary Connections
     UC_AdmApp --- A_Stud
     UC_PrtCom --- A_Stud
     UC_ValIDR --- A_Stud
     UC_PosPay --- A_Stud
-    UC_AppReg -.->|"<<include>>"| UC_AudAct
-    UC_AppAdm -.->|"<<extend>>\n[Sends Notice]"| A_SMS
+    UC_AppReg -.->|"«include»"| UC_AudAct
+    UC_AppAdm -.->|"«extend»\n[Sends Notice]"| A_SMS
 ```
 
 ---
@@ -310,8 +312,8 @@ The Admissions Desk manages the onboarding of freshmen, transferees, and shifter
 
 ```mermaid
 flowchart LR
-    A_Adm["옷 Admission Officer"]
-    A_App["옷 Applicant"]
+    A_Adm["Admission Officer"]
+    A_App["Applicant"]
 
     subgraph SYSTEM ["Admissions Subsystem Boundary"]
         UC01(["Record New Applicant"])
@@ -331,10 +333,10 @@ flowchart LR
     A_Adm --- UC05
 
     UC02 --- A_App
-    UC04 -.->|"<<include>>"| UC06
-    UC04 -.->|"<<extend>>\n[Notice Configured]"| UC07
-    UC05 -.->|"<<include>>"| UC08
-    UC05 -.->|"<<extend>>\n[Notice Configured]"| UC07
+    UC04 -.->|"«include»"| UC06
+    UC04 -.->|"«extend»\n[Notice Configured]"| UC07
+    UC05 -.->|"«include»"| UC08
+    UC05 -.->|"«extend»\n[Notice Configured]"| UC07
     UC07 --- A_App
 ```
 
@@ -356,9 +358,9 @@ The Guidance Desk handles psychological, entrance, and retention diagnostic exam
 
 ```mermaid
 flowchart LR
-    A_Gui["옷 Guidance Counselor"]
-    A_Eval["옷 Academic Evaluator"]
-    A_App["옷 Examinee / Student"]
+    A_Gui["Guidance Counselor"]
+    A_Eval["Academic Evaluator"]
+    A_App["Examinee / Student"]
 
     subgraph SYSTEM ["Guidance & Examination Subsystem"]
         UC_EX01(["Schedule Entrance Examination"])
@@ -377,8 +379,8 @@ flowchart LR
     A_Eval --- UC_EX03
     A_App --- UC_EX01
 
-    UC_EX03 -.->|"<<include>>"| UC_EX05
-    UC_EX02 -.->|"<<extend>>\n[Exam Score < Passing Score]"| UC_EX06
+    UC_EX03 -.->|"«include»"| UC_EX05
+    UC_EX02 -.->|"«extend»\n[Exam Score < Passing Score]"| UC_EX06
 ```
 
 #### Action-Verb Specifications: Guidance Desk
@@ -399,8 +401,8 @@ The Department Evaluation Desk (Program Heads and Deans) structures student subj
 
 ```mermaid
 flowchart LR
-    A_Eva["옷 Department Evaluator"]
-    A_Dea["옷 College Dean"]
+    A_Eva["Department Evaluator"]
+    A_Dea["College Dean"]
 
     subgraph SYSTEM ["Academic Evaluation Subsystem"]
         UC_EV01(["Search Pending Evaluation Dossier"])
@@ -421,10 +423,10 @@ flowchart LR
     A_Dea --- UC_EV06
     A_Dea --- UC_EV07
 
-    UC_EV03 -.->|"<<include>>"| UC_EV05
-    UC_EV04 -.->|"<<extend>>\n[Student is Transferee/Shifter]"| UC_EV03
-    UC_EV06 -.->|"<<extend>>\n[Dean Authorization Granted]"| UC_EV03
-    UC_EV07 -.->|"<<include>>"| UC_EV05
+    UC_EV03 -.->|"«include»"| UC_EV05
+    UC_EV04 -.->|"«extend»\n[Student is Transferee/Shifter]"| UC_EV03
+    UC_EV06 -.->|"«extend»\n[Dean Authorization Granted]"| UC_EV03
+    UC_EV07 -.->|"«include»"| UC_EV05
 ```
 
 #### Action-Verb Specifications: Academic Evaluation Desk
@@ -447,8 +449,8 @@ The Financial Assessment Desk computes tuition fees, miscellaneous assessments, 
 
 ```mermaid
 flowchart LR
-    A_Sch["옷 Scholarship & Assessment Officer"]
-    A_Stud["옷 Student"]
+    A_Sch["Scholarship & Assessment Officer"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["Assessment & Scholarship Subsystem"]
         UC_AS01(["Compute Itemized Tuition Fees"])
@@ -466,9 +468,9 @@ flowchart LR
     A_Sch --- UC_AS05
     A_Sch --- UC_AS06
 
-    UC_AS02 -.->|"<<extend>>\n[Grantee Holds Valid Grant]"| UC_AS01
-    UC_AS03 -.->|"<<extend>>\n[UniFAST Qualified]"| UC_AS01
-    UC_AS06 -.->|"<<include>>"| UC_AS05
+    UC_AS02 -.->|"«extend»\n[Grantee Holds Valid Grant]"| UC_AS01
+    UC_AS03 -.->|"«extend»\n[UniFAST Qualified]"| UC_AS01
+    UC_AS06 -.->|"«include»"| UC_AS05
     UC_AS06 --- A_Stud
 ```
 
@@ -491,8 +493,8 @@ The Cashier and Accounting Desk processes tuition payments, issues Official Rece
 
 ```mermaid
 flowchart LR
-    A_Acc["옷 Cashier / Accounting Staff"]
-    A_Stud["옷 Student / Payer"]
+    A_Acc["Cashier / Accounting Staff"]
+    A_Stud["Student / Payer"]
 
     subgraph SYSTEM ["Accounting & Cashier Subsystem"]
         UC_AC01(["Review Outstanding Assessment Balance"])
@@ -512,9 +514,9 @@ flowchart LR
     A_Stud --- UC_AC02
     A_Stud --- UC_AC03
 
-    UC_AC02 -.->|"<<include>>"| UC_AC03
-    UC_AC02 -.->|"<<extend>>\n[Partial Payment >= ₱3,000]"| UC_AC04
-    UC_AC05 -.->|"<<include>>"| UC_AC06
+    UC_AC02 -.->|"«include»"| UC_AC03
+    UC_AC02 -.->|"«extend»\n[Partial Payment >= ₱3,000]"| UC_AC04
+    UC_AC05 -.->|"«include»"| UC_AC06
 ```
 
 #### Action-Verb Specifications: Accounting Desk
@@ -537,9 +539,9 @@ The Clearance Desk oversees institutional accountability (library, laboratory, s
 
 ```mermaid
 flowchart LR
-    A_Clr["옷 Clearance Staff"]
-    A_Head["옷 Office Head / Signatory"]
-    A_Stud["옷 Student"]
+    A_Clr["Clearance Staff"]
+    A_Head["Office Head / Signatory"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["Campus Clearance Subsystem"]
         UC_CL01(["Define Academic Clearance Period"])
@@ -559,8 +561,8 @@ flowchart LR
     A_Stud --- UC_CL02
     A_Stud --- UC_CL04
 
-    UC_CL04 -.->|"<<include>>"| UC_CL05
-    UC_CL06 -.->|"<<include>>"| UC_CL03
+    UC_CL04 -.->|"«include»"| UC_CL05
+    UC_CL06 -.->|"«include»"| UC_CL03
 ```
 
 #### Action-Verb Specifications: Clearance Desk
@@ -582,8 +584,8 @@ The Scheduling Desk creates block sections, assigns classroom spaces, builds wee
 
 ```mermaid
 flowchart LR
-    A_Blo["옷 Blocking Coordinator"]
-    A_Inst["옷 Faculty Instructor"]
+    A_Blo["Blocking Coordinator"]
+    A_Inst["Faculty Instructor"]
 
     subgraph SYSTEM ["Curriculum Scheduling & Blocking Subsystem"]
         UC_BL01(["Create Academic Block Section"])
@@ -601,8 +603,8 @@ flowchart LR
     A_Blo --- UC_BL06
 
     UC_BL02 --- A_Inst
-    UC_BL02 -.->|"<<include>>"| UC_BL03
-    UC_BL04 -.->|"<<include>>"| UC_BL03
+    UC_BL02 -.->|"«include»"| UC_BL03
+    UC_BL04 -.->|"«include»"| UC_BL03
 ```
 
 #### Action-Verb Specifications: Blocking Desk
@@ -624,8 +626,8 @@ The Registrar Desk enforces institutional academic compliance, signs final matri
 
 ```mermaid
 flowchart LR
-    A_Reg["옷 University Registrar"]
-    A_Stud["옷 Student"]
+    A_Reg["University Registrar"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["University Registrar Subsystem"]
         UC_RG01(["Validate Pre-Enrollment Compliance Checklist"])
@@ -644,8 +646,8 @@ flowchart LR
     A_Stud --- UC_RG03
     A_Stud --- UC_RG04
 
-    UC_RG02 -.->|"<<include>>"| UC_RG01
-    UC_RG02 -.->|"<<include>>"| UC_RG03
+    UC_RG02 -.->|"«include»"| UC_RG01
+    UC_RG02 -.->|"«include»"| UC_RG03
 ```
 
 #### Action-Verb Specifications: Registrar Desk
@@ -666,8 +668,8 @@ The Campus Clinic conducts physical fitness screenings, vital sign checks, and r
 
 ```mermaid
 flowchart LR
-    A_Cli["옷 School Clinic Nurse"]
-    A_Stud["옷 Student"]
+    A_Cli["School Clinic Nurse"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["Campus Health Clinic Subsystem"]
         UC_MD01(["Review Medical Intake Queue"])
@@ -684,9 +686,9 @@ flowchart LR
     A_Cli --- UC_MD05
 
     A_Stud --- UC_MD02
-    UC_MD04 -.->|"<<include>>"| UC_MD02
-    UC_MD04 -.->|"<<include>>"| UC_MD03
-    UC_MD05 -.->|"<<extend>>\n[Medical Correction Required]"| UC_MD04
+    UC_MD04 -.->|"«include»"| UC_MD02
+    UC_MD04 -.->|"«include»"| UC_MD03
+    UC_MD05 -.->|"«extend»\n[Medical Correction Required]"| UC_MD04
 ```
 
 #### Action-Verb Specifications: Clinic Desk
@@ -707,8 +709,8 @@ The Student ID Office validates ID requests with face-photo capture and signs th
 
 ```mermaid
 flowchart LR
-    A_IDO["옷 Student ID Officer"]
-    A_Stud["옷 Student"]
+    A_IDO["Student ID Officer"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["Student ID Management Subsystem"]
         UC_ID01(["Initiate Student ID Request"])
@@ -722,7 +724,7 @@ flowchart LR
 
     A_Stud --- UC_ID01
 
-    UC_ID03 -.->|"<<include>>"| UC_ID02
+    UC_ID03 -.->|"«include»"| UC_ID02
 ```
 
 #### Action-Verb Specifications: Student ID Desk
@@ -741,8 +743,8 @@ The Student 360° portal provides unified, cross-department visibility into the 
 
 ```mermaid
 flowchart LR
-    A_Staff["옷 Institutional Staff (Any Desk)"]
-    A_Head["옷 Office Head / Auditor"]
+    A_Staff["Institutional Staff (Any Desk)"]
+    A_Head["Office Head / Auditor"]
 
     subgraph SYSTEM ["Student 360° Records Subsystem"]
         UC_S360_01(["Perform Quick Student Search"])
@@ -759,8 +761,8 @@ flowchart LR
     A_Head --- UC_S360_04
     A_Head --- UC_S360_05
 
-    UC_S360_03 -.->|"<<include>>"| UC_S360_04
-    UC_S360_03 -.->|"<<include>>"| UC_S360_05
+    UC_S360_03 -.->|"«include»"| UC_S360_04
+    UC_S360_03 -.->|"«include»"| UC_S360_05
 ```
 
 #### Action-Verb Specifications: Student 360° Desk
@@ -781,8 +783,8 @@ The System Administration Desk manages staff security accounts, role-based acces
 
 ```mermaid
 flowchart LR
-    A_Sys["옷 System Administrator"]
-    A_Aud["옷 Compliance Officer / Auditor"]
+    A_Sys["System Administrator"]
+    A_Aud["Compliance Officer / Auditor"]
 
     subgraph SYSTEM ["System Administration & Security Subsystem"]
         UC_AD01(["Manage Staff User Accounts"])
@@ -800,8 +802,8 @@ flowchart LR
 
     A_Aud --- UC_AD04
 
-    UC_AD01 -.->|"<<extend>>\n[Staff has Historical Records]"| UC_AD05
-    UC_AD04 -.->|"<<include>>"| UC_AD06
+    UC_AD01 -.->|"«extend»\n[Staff has Historical Records]"| UC_AD05
+    UC_AD04 -.->|"«include»"| UC_AD06
 ```
 
 #### Action-Verb Specifications: Administration Desk
@@ -853,7 +855,7 @@ Main Success Scenario (MSS):
   6. System begins a database transaction:
      a. Updates admissions.admissionStatus = 'Approved'.
      b. Records evaluatedBy = Auth::user()->userId and evaluatedDate = now().
-     c. <<include>> Instantiates a new Enrollments record (SM-1) with studentId, courseId, 
+     c. «include» Instantiates a new Enrollments record (SM-1) with studentId, courseId, 
         termId, yearLevel = 1, and enrollmentStatus = 'Pending'.
      d. Writes an immutable entry to auditlogs with event 'admission.approved'.
   7. System commits database transaction.
@@ -915,7 +917,7 @@ Main Success Scenario (MSS):
         - Flags payment as installment compliant for Registrar gating.
      f. Generates immutable audit log entry with cashier ID, OR number, and amount.
   6. System commits database transaction.
-  7. <<include>> System generates printable Official Receipt (OR) modal.
+  7. «include» System generates printable Official Receipt (OR) modal.
   8. Cashier hands printed receipt and stamped assessment to student.
 
 Extensions / Alternate Flows:
@@ -952,7 +954,7 @@ Trigger:           Registrar reviews a student in the final enrollment queue and
 Preconditions:
   1. Registrar is authenticated with Spatie permission 'enrollment.approve'.
   2. Student enrollment record is in status 'Paid' or holds an approved installment downpayment.
-  3. <<include>> UC-REG-01 (Validate Pre-Enrollment Compliance Checklist) evaluates to 100% PASS:
+  3. «include» UC-REG-01 (Validate Pre-Enrollment Compliance Checklist) evaluates to 100% PASS:
      - Academic Evaluation is signed by Department Head.
      - Financial Assessment is finalized.
      - Tuition payment or downpayment is posted.
@@ -1000,11 +1002,11 @@ Before submitting or defending a Use Case Diagram, verify every item against thi
 - [x] **1. Action-Verb Naming:** Every use case begins with a transitive verb (e.g., `Record`, `Approve`, `Compute`, `Post`).
 - [x] **2. Actor Outside Boundary:** No human actor or external system icon is drawn inside the system boundary box.
 - [x] **3. Business Value Criterion:** Every use case delivers measurable value to an actor (e.g., `Approve Admission` delivers status, not trivial sub-actions like `Click Button`).
-- [x] **4. Proper Arrow Direction for `<<include>>`:** Arrows point from the **base** use case TO the **included** use case ($Base \rightarrow Included$).
-- [x] **5. Proper Arrow Direction for `<<extend>>`:** Arrows point from the **extending** use case TO the **base** use case ($Extending \rightarrow Base$).
-- [x] **6. Extension Point Defined:** Every `<<extend>>` relationship includes a clear condition note (e.g., `[Applicant is Transferee]`).
-- [x] **7. No Orphaned Use Cases:** Every use case connects either to an actor, to another use case via `<<include>>`/`<<extend>>`, or via generalization.
-- [x] **8. No Direct Use-Case-to-Use-Case Associations:** Use cases NEVER connect to each other with plain solid lines; only `<<include>>`, `<<extend>>`, or `Generalization` are valid.
+- [x] **4. Proper Arrow Direction for `«include»`:** Arrows point from the **base** use case TO the **included** use case ($Base \rightarrow Included$).
+- [x] **5. Proper Arrow Direction for `«extend»`:** Arrows point from the **extending** use case TO the **base** use case ($Extending \rightarrow Base$).
+- [x] **6. Extension Point Defined:** Every `«extend»` relationship includes a clear condition note (e.g., `[Applicant is Transferee]`).
+- [x] **7. No Orphaned Use Cases:** Every use case connects either to an actor, to another use case via `«include»`/`«extend»`, or via generalization.
+- [x] **8. No Direct Use-Case-to-Use-Case Associations:** Use cases NEVER connect to each other with plain solid lines; only `«include»`, `«extend»`, or `Generalization` are valid.
 - [x] **9. No Functional Decomposition Sprawl:** Avoid breaking a single screen into 10 micro use cases (e.g. `Enter First Name`, `Enter Last Name`, `Click Save`). Combine these into `Record New Applicant`.
 - [x] **10. Traceable to Real Code:** Every use case maps cleanly to concrete controller routes, policies, and database state transitions.
 
@@ -1025,11 +1027,11 @@ PROBLEM: Nouns describe entities, not behavior. Plain associations between use c
 
 ```
 ❌ ANTI-PATTERN 2: Reverse Include/Extend Arrows
-( Validate Login ) ----<<include>>----> ( Submit Form )
+( Validate Login ) ----«include»----> ( Submit Form )
 PROBLEM: Arrow is reversed. The form includes the validation, not the other way around.
 
 ✅ REMEDIATION:
-( Submit Form ) --------<<include>>----> ( Validate Credentials )
+( Submit Form ) --------«include»----> ( Validate Credentials )
 ```
 
 ```
