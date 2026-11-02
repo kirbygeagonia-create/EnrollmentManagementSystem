@@ -1068,7 +1068,8 @@ loads name the identity columns a page paints (`tests/Feature/DeskQueue/DeskStud
 `tests/Support/DeskStudentPayload.php`), `passwordHash` is hidden on the models and — the subtler
 defect — a sort that joins a relation must pin its select or it ships the joined table's columns
 (`uq`-class G-51). The served upload folder is no longer registered at all.
-**Test or demonstration:** the permission matrix (107 cases), `tests/Feature/Files/StoredFileAccessTest.php`
+**Test or demonstration:** the permission matrix (no case total is quoted, because a class total belongs to the
+run that printed it), `tests/Feature/Files/StoredFileAccessTest.php`
 (an applicant's paper and a student's photo, refused for a desk without the right),
 `tests/Feature/SecurityHeadersTest.php`, `tests/Feature/Rbac/`, the policy tests per desk.
 **Evidence:** those, plus `Documentation/SECURITY-AND-RECOVERY-ADS.md`.
@@ -1414,10 +1415,11 @@ instrument ran; the rewrite is the open half.
   after each key.
 - *Screenshot, SQL output, logs, or other evidence:* `storage/app/scratch/lane168-out.txt`,
   `lane190-out.txt`, `lane172-load-out.txt`, `lane164-out.txt`, `lane191-out.txt`,
-  `lane189-suite.log`, `l170-suite-junit.xml`, `l171-suite-junit.xml`, and the twenty-two cases of
+  `lane189-suite.log`, `l170-suite-junit.xml`, `l171-suite-junit.xml`, and the cases of
   `Documentation/TESTING-AND-VERIFICATION-ADS.md`, each carrying the ten fields the ADS prompt names.
 The case-shape census is `php storage/app/scratch/lane189-count-ads-fields.php`, which reads every
-two-column table in that document and reports how many rows are short; on its first run it found
+two-column table in that document and reports how many rows are short — its reading today is 12 tables and
+0 short. On its first run it found
 three cases a closed task had credited with fields they did not have, and the rows were then written
 from the artefacts each case already cites. Delivered suite readings are quoted beside the run that
 printed them, never as a property of the code, and every mechanism claim above has a falsifier that
