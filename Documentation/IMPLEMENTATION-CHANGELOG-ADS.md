@@ -214,7 +214,11 @@ Each of these produced a clean-looking verdict before it was fixed, which is the
   reported 0 on all seven `Ledger —` lines, and `tests/Feature/E2E` then answered 8 passed (210 assertions) with
   `--fail-on-skipped` and exit 0. CI's own MySQL job seeds `ems_test` immediately before its walkthrough step, so it
   cannot meet this failure; the reading is recorded here because a suite verdict that was cleared by re-seeding is a
-  different fact from a suite that was green.
+  different fact from a suite that was green. The same suite was then re-run on the re-dated dataset and answered
+  **1273 passed, 7896 assertions, `SUITE_EXIT=0`** with `--list-tests` discovering the same 1273; that run's own
+  junit gives `WorkflowMonitorSortTest` 13 tests and 60 assertions and `FeeTypeSortTest` 7 tests and 28 assertions,
+  each with `skipped=0`. Both readings stand — the red one is what the run in flight saw, the green one is what the
+  gate looks like after the dataset caught up.
 - A first draft of `refresh-docx-pass411.php` wrote its text edit as `[from, to, from, 1]`, meaning "the needle is its
   own anchor". The engine reads slot 3 as a *different* string that must own the needle, so anchor == needle resolves
   to nothing and the pass refused with `no needle owned by the anchor`. The two-element shape is the one for a needle
