@@ -1611,6 +1611,25 @@ nothing, which is the same ordering rule the index plan learned the hard way an 
   letting the new rule go unnoticed. The expectation moves with the register, and the number lives in the command's own
   footer (`Rules run: 20`) — `lane59-instrument-counts.php` binds it there.
 
+- **A register figure is the tree's number, and a membership list written in styled runs is the half an instrument
+  cannot re-take** (the permission and role lists, wired 2026-11-04 as the thirtieth and thirty-first tables). The
+  shape census had already said these two were the only wireable pages left, so the work was the wiring, the echo, the
+  offer set and the registers — and three lessons came out of the registers rather than the screens. **(a)** Passing the
+  needle as its own `docxApply` anchor resolves nothing: slot three is the ANCHOR, so the engine looks for a needle
+  *inside* an anchor region and refused all five edits while its stage-1 probe had already proved each occurs exactly
+  once in `word/document.xml`. Two-element edits are the correct shape when the needle is unique. **(b)** The gap row
+  enumerates the wired screens and its list ends at the academic term list; the two new names belong in that sentence,
+  but the names sit in styled runs, so the phrase that reads continuously in the flat dump occurs **zero** times in the
+  archive and a `text` edit cannot reach it — rewriting the cell would flatten those runs. It is recorded as a residual
+  in this file and in the batch's §1.1 row rather than silently dropped: a membership list that stops growing is the
+  same defect as a figure that stops growing. **(c)** The owed sentence was re-taken, not re-numbered: the plan line
+  said two of the eight were vendor-owned tables, and today the six that remain are bounded sets, which the planner now
+  prints per page — a header over one of those would order the rows already on screen and call that the list.
+  Two fixture lessons from the same pair of screens. The roles list holds the harness account's own `SysAdmin` row, so
+  a count-only expectation was wrong as written: the row is named out of the compared sequence with its reason in a
+  comment, never pretended away. And the guard-order case was typed from arithmetic done here (`api` before `admin`?)
+  and went red on a correct handler — the expectation is now derived from what the connection returned, ascending and
+  reversed descending, with the fixture's own value set asserted as a population.
 - **Stack:** Laravel + Inertia/React (`resources/js/Pages`), MySQL 8 via Laragon, PHP at
   `C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`. `localhost:8080` is Laragon Apache;
   `php artisan serve` silently shadows it on loopback, so check which server answered a probe.

@@ -2,9 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Permissions({ permissions }) {
+export default function Permissions({ permissions, sort = null }) {
+    // Seeded from what the handler reported it applied, so a page reload after a sort keeps the arrow the desk put
+    // there rather than painting the database's order under a header that looks untouched.
+    const [sortBy, setSortBy] = useState(sort?.column || '');
+    const [sortDir, setSortDir] = useState(sort?.direction || '');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingPermission, setEditingPermission] = useState(null);
     const [deletingPermission, setDeletingPermission] = useState(null);
@@ -19,14 +23,29 @@ export default function Permissions({ permissions }) {
         module: '',
     });
 
+    // The order is asked of the query, not of the twenty rows on screen: this list paginates on the server, so a
+    // client sort would order one page and present that as the whole catalogue.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.users.permissions'), {
+            ...sortParams('name', key, direction),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
     const columns = useMemo(() => [
-        { key: 'name', label: 'Permission Name', render: (row) => (
+        { key: 'name', label: 'Permission Name', sortKey: 'name', render: (row) => (
             <span className="font-mono text-sm text-brand-800 font-medium">{row.name}</span>
         )},
-        { key: 'module', label: 'Module', render: (row) => (
+        { key: 'module', label: 'Module', sortKey: 'module', render: (row) => (
             <Badge tone="neutral">{row.module}</Badge>
         )},
-        { key: 'guard_name', label: 'Guard', render: (row) => (
+        { key: 'guard_name', label: 'Guard', sortKey: 'guard_name', render: (row) => (
             <span className="text-xs text-brand-500 font-mono">{row.guard_name || 'web'}</span>
         )},
     ], []);
@@ -124,6 +143,8 @@ export default function Permissions({ permissions }) {
                         <DataTable
                             columns={columns}
                             rows={permissions.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No permissions found"
                         />

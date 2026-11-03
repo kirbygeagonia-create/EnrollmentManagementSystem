@@ -354,12 +354,30 @@ class UserManagementController extends Controller
     {
         $this->authorize('manageRoles', Roles::class);
 
-        $roles = Roles::with('permissions')->orderByDesc('id')->paginate(20);
+        // Every column the role desk paints is a column `roles` stores, so the offer set is the two headers the
+        // screen shows; the Permissions cell is counted from the eager-loaded relation in the browser, and an order
+        // the query cannot answer is a header that must not paint. The list opens A to Z, and the row's own key
+        // breaks ties so two equally-named roles cannot shuffle between pages.
+        $sortable = [
+            'name' => ['column' => 'name'],
+            'description' => ['column' => 'description'],
+        ];
+        $query = Roles::with('permissions');
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'name',
+            'roles.id'
+        );
+        $roles = $query->paginate(20)->withQueryString();
         $permissions = Permissions::all(['id', 'name', 'module']);
 
         return Inertia::render('Admin/UserManagement/Roles', [
             'roles' => $roles,
             'permissions' => $permissions,
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
@@ -441,10 +459,28 @@ class UserManagementController extends Controller
     {
         $this->authorize('managePermissions', Permissions::class);
 
-        $permissions = Permissions::orderByDesc('id')->paginate(20);
+        // The three columns this screen paints are the three columns `permissions` stores, so the whole header row
+        // is offered. The list is a catalogue of right names rather than a queue, so it opens ascending on the name
+        // and the row's own key is the tie-break.
+        $sortable = [
+            'name' => ['column' => 'name'],
+            'module' => ['column' => 'module'],
+            'guard_name' => ['column' => 'guard_name'],
+        ];
+        $query = Permissions::query();
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'name',
+            'permissions.id'
+        );
+        $permissions = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/UserManagement/Permissions', [
             'permissions' => $permissions,
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

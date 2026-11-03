@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, Modal, ConfirmDialog, EmptyState, FormSection, Badge, nextSortDirection, sortParams } from '@/Components/ui';
 
 function PermissionsMatrix({ permissions, selectedIds, onToggle }) {
     const grouped = useMemo(() => {
@@ -42,7 +42,11 @@ function PermissionsMatrix({ permissions, selectedIds, onToggle }) {
     );
 }
 
-export default function Roles({ roles, permissions }) {
+export default function Roles({ roles, permissions, sort = null }) {
+    // Seeded from what the handler reported it applied, so the arrow the desk clicked is still there when the page
+    // redraws rather than a list ordered one way under a header that looks untouched.
+    const [sortBy, setSortBy] = useState(sort?.column || '');
+    const [sortDir, setSortDir] = useState(sort?.direction || '');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
     const [deletingRole, setDeletingRole] = useState(null);
@@ -59,11 +63,28 @@ export default function Roles({ roles, permissions }) {
         permissionIds: [],
     });
 
+    // The order is asked of the query, not of the twenty rows on screen: this list paginates on the server, so a
+    // client sort would order one page and present that as the whole role directory.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.users.roles'), {
+            ...sortParams('name', key, direction),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The Permissions column counts the eager-loaded relation in the browser, so the handler lists no column for it
+    // and its header carries no sortKey — a control the server cannot obey is worse than no control at all.
     const columns = useMemo(() => [
-        { key: 'name', label: 'Role Name', render: (row) => (
+        { key: 'name', label: 'Role Name', sortKey: 'name', render: (row) => (
             <span className="font-semibold text-brand-900">{row.name}</span>
         )},
-        { key: 'description', label: 'Description', render: (row) => row.description || '—' },
+        { key: 'description', label: 'Description', sortKey: 'description', render: (row) => row.description || '—' },
         { key: 'permissionsCount', label: 'Permissions', render: (row) => (
             <Badge tone="info">{row.permissions?.length || 0}</Badge>
         ), className: 'text-center' },
@@ -173,6 +194,8 @@ export default function Roles({ roles, permissions }) {
                         <DataTable
                             columns={columns}
                             rows={roles.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No roles found"
                         />
