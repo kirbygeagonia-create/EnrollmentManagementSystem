@@ -342,6 +342,7 @@ flowchart LR
 
     UC02 --- A_App
     UC04 -.->|"«include»"| UC06
+    UC04 -.->|"«include»"| UC03
     UC04 -.->|"«extend»\n[Notice Configured]"| UC07
     UC05 -.->|"«include»"| UC08
     UC05 -.->|"«extend»\n[Notice Configured]"| UC07
@@ -435,6 +436,7 @@ flowchart LR
     UC_EV04 -.->|"«extend»\n[Student is Transferee/Shifter]"| UC_EV03
     UC_EV06 -.->|"«extend»\n[Dean Authorization Granted]"| UC_EV03
     UC_EV07 -.->|"«include»"| UC_EV05
+    UC_EV02 -.->|"«extend»\n[Profile Not Yet Captured]"| UC_EV07
 ```
 
 #### Action-Verb Specifications: Academic Evaluation Desk
@@ -479,6 +481,7 @@ flowchart LR
     UC_AS02 -.->|"«extend»\n[Grantee Holds Valid Grant]"| UC_AS01
     UC_AS03 -.->|"«extend»\n[UniFAST Qualified]"| UC_AS01
     UC_AS06 -.->|"«include»"| UC_AS05
+    UC_AS04 -.->|"«extend»\n[Charge Adjusted After Seating]"| UC_AS01
     UC_AS06 --- A_Stud
 ```
 
@@ -525,6 +528,7 @@ flowchart LR
     UC_AC02 -.->|"«include»"| UC_AC03
     UC_AC02 -.->|"«extend»\n[Partial Payment >= ₱3,000]"| UC_AC04
     UC_AC05 -.->|"«include»"| UC_AC06
+    UC_AC05 -.->|"«extend»\n[Receipt Voided]"| UC_AC02
 ```
 
 #### Action-Verb Specifications: Accounting Desk
@@ -570,6 +574,7 @@ flowchart LR
     A_Stud --- UC_CL04
 
     UC_CL04 -.->|"«include»"| UC_CL05
+    UC_CL04 -.->|"«include»"| UC_CL02
     UC_CL06 -.->|"«include»"| UC_CL03
 ```
 
@@ -1054,6 +1059,26 @@ PROBLEM: Clutters diagram with standard database operations.
 Combine into a cohesive, goal-driven Use Case:
 ( Manage Student Records )
 ```
+
+---
+
+## Reading the generated figures
+
+Every figure in `Documentation/Diagrams/` is drawn from the blocks above by
+`storage/app/scratch/lane208-use-case-figures.mjs`, so this document is the model and the images are projections of
+it. The complete sheet holds all 121 role-to-use-case associations and 43 use cases at once, which is why its lines
+cross. `Documentation/Use-Case-Diagrams.md` now leads with a second sheet, `use-case-roles-at-desks.png`, drawn at the
+altitude a person can hold: one band per desk, one plate per role, and one line per role that actually works at that
+desk. Roles that act at more desks are drawn on the right, roles that act at fewer on the left.
+
+The line count on that sheet is measured, not estimated: 26 lines where the complete sheet holds 121. Whether any of
+them cross is measured too, by `storage/app/scratch/lane234-count-edge-crossings.mjs`, which reads the drawn SVG paths
+and reports a crossing only where two lines overlap away from a node. The generator's own search reaches an order in
+which the left fan has no overlap at all. The right fan does not, and the shape of the model explains why without
+needing a claim about it: the Student works at eight of the twelve desks, so the busy roles share many desks between
+them, and any order of those roles puts one of the Student's lines across another role's line. The descent prints the
+count it reached. A drawing with no crossings at all exists for one role at a time, which is what the per-actor plates
+give; the single sheet that shows every role at every desk in one picture cannot.
 
 ---
 

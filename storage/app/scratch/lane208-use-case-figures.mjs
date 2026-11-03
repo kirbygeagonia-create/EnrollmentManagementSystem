@@ -237,31 +237,16 @@ function dedupeByLabel(list) {
   return { keep, remap };
 }
 
-function emitGraph(nodesIn, edgesIn, panelPrefix, dir = 'LR') {
+function emitGraph(nodesIn, edgesIn, panelPrefix, dir = 'LR', splitActors = false) {
   const { keep, remap } = dedupeByLabel(nodesIn);
   const keptKeys = new Set(keep.map((n) => `${n.desk}|${n.id}`));
-  const out = [`flowchart ${dir}`];
-  const byDesk = new Map();
-  for (const n of keep) {
-    const key = `${n.desk}`;
-    if (!byDesk.has(key)) byDesk.set(key, { actors: [], cases: [] });
-    const g = byDesk.get(key);
-    (n.kind === 'actor' ? g.actors : g.cases).push(n);
-  }
-  for (const [d, g] of byDesk) {
-    for (const a of g.actors) out.push(`    ${nodeText({ ...a, id: `${a.id}_${a.desk}` })}`);
-    if (g.cases.length === 0) continue;
-    // The overview panel is not a desk. Naming it as one would make the complete figure look like a thirteenth
-    // office, so it carries what it actually holds: use cases the guide draws only in the boundary diagram.
-    const heading = d === '00'
-      ? 'Cross-desk use cases (from the global boundary diagram)'
-      : (rawBlocks.find((b) => deskNumber(b.section) === d)?.section ?? `Desk ${d}`);
-    out.push(`    subgraph ${panelPrefix}${d}["${heading.replace(/"/g, "'")}"]`);
-    for (const c of g.cases) out.push(`        ${nodeText({ ...c, id: `${c.id}_${c.desk}` })}`);
-    out.push('    end');
-  }
+  const eid = (n) => `${n.id}_${n.desk}`;
+
+  // Every edge is resolved BEFORE anything is written, because the actor degrees and the connector order below are
+  // both read from this list — and the disappearance ledger the audits weigh is exactly this pass, unchanged.
   const seenEdge = new Set();
   const dropped = [];
+  const resolved = [];
   for (const e of edgesIn) {
     const a = remap.get(`${e.desk}|${e.from}`);
     const b = remap.get(`${e.desk}|${e.to}`);
@@ -283,9 +268,135 @@ function emitGraph(nodesIn, edgesIn, panelPrefix, dir = 'LR') {
       continue;
     }
     seenEdge.add(sig);
-    out.push(edgeText({ ...e, from: `${a.id}_${a.desk}`, to: `${b.id}_${b.desk}` }));
+    resolved.push({ a, b, e });
   }
-  return { code: out.join('\n'), nodes: keep.length, edges: seenEdge.size, dropped, shown: [...seenEdge] };
+
+  const byDesk = new Map();
+  for (const n of keep) {
+    const key = `${n.desk}`;
+    if (!byDesk.has(key)) byDesk.set(key, { actors: [], cases: [] });
+    const g = byDesk.get(key);
+    (n.kind === 'actor' ? g.actors : g.cases).push(n);
+  }
+  const panelOrder = new Map();
+  [...byDesk.keys()].forEach((d, i) => panelOrder.set(d, i));
+
+  const degree = new Map();
+for (const { a, b } of resolved) {
+    for (const n of [a, b]) {
+      if (n.kind !== 'actor') continue;
+      const k = `${n.desk}|${n.id}`;
+      degree.set(k, (degree.get(k) ?? 0) + 1);
+    }
+  }
+  const deg = (n) => degree.get(`${n.desk}|${n.id}`) ?? 0;
+  const actors = [...keep.filter((n) => n.kind === 'actor')]
+    .sort((x, y) => deg(y) - deg(x) || String(x.label).localeCompare(String(y.label)));
+
+  // SIDES. The owner's ruling of 2026-11-03: the major actors stand on the right of the figure and the minor on the
+  // left, instead of every actor piled in one column so each connector has to cross the whole drawing. "Major" is
+  // not a taste call here: it is the half of the actors that carry the most associations, counted from this same
+  // resolved list, so the split moves when the model moves rather than when a reader does.
+  const major = new Set();
+  let minor = actors;
+  if (splitActors && actors.length > 1) {
+    const half = Math.ceil(actors.length / 2);
+    actors.slice(0, half).forEach((a) => major.add(`${a.desk}|${a.id}`));
+    minor = actors.slice(half);
+  }
+  const isMajor = (n) => major.has(`${n.desk}|${n.id}`);
+
+  const out = [`flowchart ${dir}`];
+  const caseRank = new Map();
+  const actorIndex = new Map(minor.concat([...actors].filter(isMajor)).map((a, i) => [`${a.desk}|${a.id}`, i]));
+  const caseOf = (r) => (r.a.kind === 'actor' ? r.b : r.a);
+  const actorOf = (r) => (r.a.kind === 'actor' ? r.a : r.b);
+
+  // PANEL SEQUENCE. Dagre lays out ranks by the order nodes are DECLARED in, so a desk band that sits far from the
+  // actor column makes every one of that actor's connectors travel across the whole drawing and cut through other
+  // bands. Panels are therefore emitted in the order of the actors they answer to — the mean index of the actors
+  // adjacent to that panel's cases — which is what actually moved the crossing count when measured (140 before any
+  // of this, 94 after the sides alone).
+  const panelAdjacent = new Map();
+  for (const r of resolved) {
+    const act = actorOf(r);
+    const cse = caseOf(r);
+    if (act === undefined || cse === undefined) continue;
+    const k = cse.desk;
+    const list = panelAdjacent.get(k) ?? [];
+    list.push(actorIndex.get(`${act.desk}|${act.id}`) ?? 0);
+    panelAdjacent.set(k, list);
+  }
+  const meanAdj = (d) => {
+    const l = panelAdjacent.get(d);
+    if (!l || l.length === 0) return Number.MAX_SAFE_INTEGER;
+    return l.reduce((s, v) => s + v, 0) / l.length;
+  };
+  const panelSequence = [...byDesk.keys()].sort((x, y) => meanAdj(x) - meanAdj(y) || String(x).localeCompare(String(y)));
+  // The edge sort below ranks a target by its panel, so that ranking has to be the ORDER THE PANELS ARE DRAWN IN,
+  // not the order the model happened to declare them in. Two definitions of "which band is first" is the defect this
+  // file refuses everywhere else.
+  panelOrder.clear();
+  panelSequence.forEach((d, i) => panelOrder.set(d, i));
+
+  for (const a of minor) out.push(`    ${nodeText({ ...a, id: eid(a) })}`);
+  for (const d of panelSequence) {
+    const g = byDesk.get(d);
+    if (g.cases.length === 0) continue;
+    // The overview panel is not a desk. Naming it as one would make the complete figure look like a thirteenth
+    // office, so it carries what it actually holds: use cases the guide draws only in the boundary diagram.
+    const heading = d === '00'
+      ? 'Cross-desk use cases (from the global boundary diagram)'
+      : (rawBlocks.find((b) => deskNumber(b.section) === d)?.section ?? `Desk ${d}`);
+    out.push(`    subgraph ${panelPrefix}${d}["${heading.replace(/"/g, "'")}"]`);
+    // Cases are declared in the model's own order. Their labels were sorted alphabetically here on 2026-11-03 and
+    // the measured effect was the OPPOSITE of the reason for doing it: the complete figure went from 92 crossing
+    // pairs to 98, because dagre's rank assignment follows declaration order and the connectors were already being
+    // emitted by panel. The experiment is recorded rather than repeated.
+    for (const c of g.cases) out.push(`        ${nodeText({ ...c, id: eid(c) })}`);
+    out.push('    end');
+  }
+  for (const a of [...actors].filter(isMajor)) out.push(`    ${nodeText({ ...a, id: eid(a) })}`);
+
+  // ORDER OF CONNECTORS. A fan drawn in the order its spokes were declared crosses itself; a fan drawn in the order
+  // the targets actually sit in the drawing does not. So each actor's edges are emitted together, and inside that
+  // group the targets are sorted by the panel they live in. An association is an undirected link, so writing the
+  // right-hand actor LAST (`case --- actor`) is a layout choice and changes no relationship: includes and extends
+  // keep the direction the guide spells, and they are emitted after the associations, sorted by both endpoints.
+  const assoc = resolved.filter((r) => r.e.kind === 'association' && (actorOf(r) !== undefined));
+  const deps = resolved.filter((r) => !(r.e.kind === 'association' && actorOf(r) !== undefined));
+  assoc.sort((x, y) => {
+    const ax = actorOf(x);
+    const ay = actorOf(y);
+    const side = (isMajor(ax) === isMajor(ay)) ? 0 : (isMajor(ax) ? 1 : -1);
+    if (side !== 0) return side;
+    const byActor = (actorIndex.get(`${ax.desk}|${ax.id}`) ?? 0) - (actorIndex.get(`${ay.desk}|${ay.id}`) ?? 0);
+    if (byActor !== 0) return byActor;
+    const cx = caseOf(x);
+    const cy = caseOf(y);
+    return (panelOrder.get(cx.desk) ?? 0) - (panelOrder.get(cy.desk) ?? 0)
+      || String(cx.label).localeCompare(String(cy.label));
+  });
+  deps.sort((x, y) => (panelOrder.get(x.a.desk) ?? 0) - (panelOrder.get(y.a.desk) ?? 0)
+    || (panelOrder.get(x.b.desk) ?? 0) - (panelOrder.get(y.b.desk) ?? 0));
+
+  const write = (r) => {
+    const flip = splitActors && r.e.kind === 'association' && actorOf(r) !== undefined && isMajor(actorOf(r));
+    const from = flip ? r.b : r.a;
+    const to = flip ? r.a : r.b;
+    out.push(edgeText({ ...r.e, from: eid(from), to: eid(to) }));
+  };
+  for (const r of assoc.concat(deps)) write(r);
+
+  return {
+    code: out.join('\n'),
+    nodes: keep.length,
+    edges: seenEdge.size,
+    dropped,
+    shown: [...seenEdge],
+    actorsMajor: [...major].length,
+    actorsMinor: minor.length,
+  };
 }
 
 function figureFor(predicate, title) {
@@ -306,16 +417,177 @@ for (const b of rawBlocks) {
 // once, with ids namespaced per desk so `UC01` in two panels stays two nodes.
 let completeReport = null;
 {
-  const built = emitGraph([...nodes.values()], edges, 'SYS');
+  const built = emitGraph([...nodes.values()], edges, 'SYS', 'LR', true);
   if (built.nodes === 0 || built.edges === 0) fail('the complete figure would be empty');
-  console.log(`complete figure: ${built.nodes} nodes and ${built.edges} edges after the overview restatements were folded into the desk spelling`);
+  console.log(`complete figure: ${built.nodes} nodes and ${built.edges} edges after the overview restatements were folded into the desk spelling`
+    + `; ${built.actorsMajor} major actor(s) drawn on the right and ${built.actorsMinor} minor on the left`);
   completeReport = built;
   jobs.push({ name: 'use-case-complete-all-offices', heading: 'Complete use-case diagram over every desk and office', code: built.code });
   // The same model in the other layout direction: a figure nine thousand pixels tall is complete but unusable on a
   // slide or a printed page, so both are drawn and the reader keeps whichever fits.
-  const wide = emitGraph([...nodes.values()], edges, 'SYW', 'TB');
+  const wide = emitGraph([...nodes.values()], edges, 'SYW', 'TB', true);
   jobs.push({ name: 'use-case-complete-wide', heading: 'Complete use-case diagram over every desk and office (wide layout)', code: wide.code });
 }
+// (cc) The actor↔desk overview. The complete sheet carries all 121 associations, and the owner's reading of it was
+// "too many lines, and they cross". This is the SAME model at the altitude a person can hold: one node per desk band,
+// one node per folded actor, and ONE line per role that works at that desk. Nothing here is a second definition —
+// the pairs are read out of the same `edges` list the audits weigh, so a band gains a line only when a real
+// association exists in the guide, and an actor with no association to a desk cannot appear connected to it.
+{
+  const deskIds = [...new Set([...nodes.values()].filter((n) => n.kind !== 'actor').map((n) => n.desk))]
+    .filter((d) => d !== '00').sort();
+  const casesPerDesk = new Map();
+  for (const n of nodes.values()) {
+    if (n.kind === 'actor' || n.desk === '00') continue;
+    casesPerDesk.set(n.desk, (casesPerDesk.get(n.desk) ?? 0) + 1);
+  }
+  // actorKey|desk -> number of associations. Counting is per actor LABEL, because the model folds the roles to one
+  // plate per role and the figure must show that same folded actor once.
+  const links = new Map();
+  for (const e of edges) {
+    if (e.kind !== 'association') continue;
+    const a = nodes.get(`${e.desk}|${e.from}`);
+    const b = nodes.get(`${e.desk}|${e.to}`);
+    if (!a || !b || a.kind === b.kind) continue;
+    const actor = a.kind === 'actor' ? a : b;
+    const other = a.kind === 'actor' ? b : a;
+    if (other.desk === '00') continue;
+    // Folded by LABEL, not by the declaring block's key: a role the guide declares in several blocks is one plate
+    // here, and requiring this occurrence to be the first one dropped 15 of the 19 roles on the floor.
+    const k = `${actor.label}|${other.desk}`;
+    links.set(k, (links.get(k) ?? 0) + 1);
+  }
+  const degreeByLabel = new Map();
+  for (const [k, v] of links) {
+    const label = k.split('|')[0];
+    degreeByLabel.set(label, (degreeByLabel.get(label) ?? 0) + v);
+  }
+  const labelsByDegree = [...degreeByLabel.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
+  const half = Math.ceil(labelsByDegree.length / 2);
+  const majorLabels = new Set(labelsByDegree.slice(0, half).map(([l]) => l));
+  const minorLabels = labelsByDegree.slice(half).map(([l]) => l);
+  const bandId = (d) => `BAND${d}`;
+  // The band column stays in desk-number order because a person reads desks 1 to 12, so the only free variable is the
+  // order of the actors in each column — and the bipartite crossing count is a function of exactly that order. Two
+  // orders are weighed and the better one is declared: the barycentre sweep, and an adjacent-swap descent from it.
+  // The count is the exact straight-line one (edges (a,b),(a',b') cross iff their endpoints are ordered differently;
+  // edges sharing an endpoint cannot cross), which is what dagre's own sweep starts from, not what it guarantees.
+  const bandIndexOf = new Map(deskIds.map((d, i) => [d, i]));
+  const rowsFor = (side) => {
+    const rows = [];
+    for (const k of links.keys()) {
+      const [label, d] = k.split('|');
+      if (!side.has(label) || !bandIndexOf.has(d)) continue;
+      rows.push([label, bandIndexOf.get(d)]);
+    }
+    return rows;
+  };
+  /** Exact straight-line count for one column against the band column, given the actors' order. */
+  const crossingsAgainst = (order, rows) => {
+    const pos = new Map(order.map((l, i) => [l, i]));
+    const e = rows.map(([label, b]) => [pos.get(label), b]).filter(([v]) => v !== undefined);
+    let n = 0;
+    for (let i = 0; i < e.length; i++) {
+      for (let j = i + 1; j < e.length; j++) {
+        const [a1, b1] = e[i];
+        const [a2, b2] = e[j];
+        if (a1 === a2 || b1 === b2) continue;
+        if ((a1 - a2) * (b1 - b2) < 0) n++;
+      }
+    }
+    return n;
+  };
+  const barycentre = new Map();
+  for (const k of links.keys()) {
+    const [label, d] = k.split('|');
+    const w = links.get(k);
+    const prev = barycentre.get(label) ?? [0, 0];
+    barycentre.set(label, [prev[0] + (bandIndexOf.get(d) ?? 0) * w, prev[1] + w]);
+  }
+  const meanBand = (l) => {
+    const [sum, n] = barycentre.get(l) ?? [0, 0];
+    return n === 0 ? 0 : sum / n;
+  };
+  const byBand = (x, y) => meanBand(x) - meanBand(y) || x.localeCompare(y);
+  /** Adjacent-swap descent: keep any swap that lowers the count, repeat until none does. */
+  const descend = (start, rows) => {
+    const best = start.slice();
+    let cur = crossingsAgainst(best, rows);
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let i = 0; i + 1 < best.length; i++) {
+        const trial = best.slice();
+        [trial[i], trial[i + 1]] = [trial[i + 1], trial[i]];
+        const s = crossingsAgainst(trial, rows);
+        if (s < cur) {
+          [best[i], best[i + 1]] = [best[i + 1], best[i]];
+          cur = s;
+          moved = true;
+        }
+      }
+    }
+    return { order: best, count: cur };
+  };
+  const minorRows = rowsFor(new Set(minorLabels));
+  const majorRows = rowsFor(majorLabels);
+  const sideOrders = {
+    minor: descend([...minorLabels].sort(byBand), minorRows),
+    major: descend([...majorLabels].sort(byBand), majorRows),
+  };
+  const actorId = new Map();
+  [...sideOrders.minor.order, ...sideOrders.major.order].forEach((l, i) => actorId.set(l, `ROLE${i}`));
+  const quote = (s) => String(s).replace(/"/g, "'");
+
+  // The bands are FREE nodes, not one wrapped subgraph: an `OVERVIEW` wrapper made dagre stack all twelve inside a
+  // single tall panel and the figure came out 490x4371 — unreadable in the other direction. Free bands rank across
+  // the page between the two actor columns.
+  const bands = deskIds.map((d) => {
+    const head = rawBlocks.find((b) => deskNumber(b.section) === d)?.section ?? `Desk ${d}`;
+    return `${bandId(d)}["${quote(head)} — ${casesPerDesk.get(d) ?? 0} use cases"]`;
+  });
+  const lines = ['flowchart LR'];
+  for (const l of sideOrders.minor.order) lines.push(`  ${actorId.get(l)}["${quote(ACTOR_IMG + l)}"]`);
+  for (const b of bands) lines.push(`  ${b}`);
+  for (const l of sideOrders.major.order) lines.push(`  ${actorId.get(l)}["${quote(ACTOR_IMG + l)}"]`);
+  // `for (const k of …)`, NOT `for (const [k] of …)`: a string is iterable, so the destructuring form bound `k` to the
+  // key's FIRST CHARACTER. Every lookup then missed and the figure was built from `undefined --- BANDundefined` lines,
+  // which is why the boxes came out stacked in one column — the graph had no edges at all.
+  const bad = [];
+  for (const k of [...links.keys()].sort()) {
+    const [label, d] = k.split('|');
+    if (!actorId.has(label) || !deskIds.includes(d)) {
+      bad.push(`"${k}" resolves to actor id ${actorId.get(label)} and band ${bandId(d)}`);
+      continue;
+    }
+    // Minor roles are written first in the sentence so the ranker puts them left; majors last, right. The
+    // association itself is undirected, so this is a layout choice and not a second meaning.
+    lines.push(majorLabels.has(label)
+      ? `  ${bandId(d)} --- ${actorId.get(label)}`
+      : `  ${actorId.get(label)} --- ${bandId(d)}`);
+  }
+  if (bad.length > 0) {
+    throw new Error(`actor-desk overview: ${bad.length} role-desk pair(s) name no actor plate or no desk band:\n  `
+      + bad.join('\n  '));
+  }
+  // The sheet holds one plate per role that works at a numbered desk. A role whose associations all sit in the
+  // boundary block has no line here, and that is printed rather than left as an unexplained absence — otherwise the
+  // figure reads as the complete actor list while it omits one.
+  const unlinked = [...actorLabels.keys()].filter((l) => !degreeByLabel.has(l));
+  console.log(`actor-desk overview: ${actorId.size} roles, ${deskIds.length} bands, ${links.size} line(s) — `
+    + `${sideOrders.major.order.length} major drawn right, ${sideOrders.minor.order.length} minor left; `
+    + `straight-line crossings predicted after the descent: left ${sideOrders.minor.count}, right ${sideOrders.major.count}`
+    + (unlinked.length > 0
+      ? `; ${unlinked.length} plate(s) draw NO desk line here because the guide gives them no association to a numbered desk: ${unlinked.join(', ')}`
+      : ''));
+  jobs.push({
+    name: 'use-case-roles-at-desks',
+    heading: `Actor-to-desk overview: ${actorId.size} roles, ${deskIds.length} desks, ${links.size} lines — `
+      + 'major actors right, minor left',
+    code: lines.join('\n'),
+  });
+}
+
 // (d) one figure PER ACTOR.
 const actorFigures = [];
 for (const [label, firstKey] of actorLabels) {
@@ -441,6 +713,23 @@ if (misStereotyped.length > 0) {
   fail(`${misStereotyped.length} «include»/«extend» edge(s) end on an ACTOR; a message to an external system is a plain dependency, not an inclusion or an extension.`);
 }
 
+// ---------------------------------------------------------------- 3b3. every use-case to use-case line is named
+// The guide's own checklist promises no plain use-case-to-use-case association exists, and the owner asked that
+// every connection between two use cases carry its «include» or «extend» label. A line drawn with no stereotype is
+// a claim the reader cannot check, so the model refuses it before anything is rendered: kind is `association` and
+// no label means nobody said what the arrow asserts.
+const unlabelled = edges.filter((e) => e.kind === "association"
+  && nodes.get(`${e.desk}|${e.from}`)?.kind === "usecase"
+  && nodes.get(`${e.desk}|${e.to}`)?.kind === "usecase"
+  && !String(e.label ?? "").trim());
+if (unlabelled.length > 0) {
+  for (const e of unlabelled) {
+    console.error(`        desk ${e.desk}: [${nodes.get(`${e.desk}|${e.from}`)?.label}] --- [${nodes.get(`${e.desk}|${e.to}`)?.label}]`);
+  }
+  fail(`${unlabelled.length} use-case-to-use-case edge(s) carry no stereotype; name each one «include» or «extend» (or say what the plain line asserts) before the figures are drawn.`);
+}
+
+
 // ---------------------------------------------------------------- 3c. the model as data
 // Everything downstream — the audits, the index, and any later probe that wants to ask a question about the actors —
 // reads THIS file rather than re-parsing the guide. A second parser is a second definition of "what is an actor",
@@ -481,6 +770,7 @@ if (process.argv.includes('--audit-actor-edges') || process.argv.includes('--aud
 
 const buckets = [
   { title: 'Complete diagram over every office and desk', pick: (n) => n === 'use-case-complete-all-offices' || n === 'use-case-complete-wide' },
+  { title: 'Actor-to-desk overview (the readable view)', pick: (n) => n === 'use-case-roles-at-desks' },
   { title: 'Global system boundary', pick: (n) => n === 'use-case-global-boundary' },
   { title: 'One figure per desk', pick: (n) => n.startsWith('use-case-desk-') },
   { title: 'One figure per actor — its associations, and the include and extend chains hanging off them', pick: (n) => n.startsWith('use-case-actor-') },

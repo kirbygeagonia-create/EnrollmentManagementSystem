@@ -117,21 +117,38 @@ if (($f = $plant('actor-closure-removed', '  for (let grew = true; grew;) {', ' 
     $expect('actor-closure-removed', $f, '--audit-actor-edges', 1, 'the model owes an actor figure were not drawn');
 }
 // (2) one use case taken out of the complete figure's population: a distinct shape no longer drawn.
-$nodeFrom = "const built = emitGraph([...nodes.values()], edges, 'SYS');";
-$nodeTo = "const built = emitGraph([...nodes.values()].filter((n) => !(n.kind !== 'actor' && n.label === [...nodes.values()].find((x) => x.kind !== 'actor').label)), edges, 'SYS');";
-if (($f = $plant('complete-figure-loses-a-node', $nodeFrom, $nodeTo)) !== null) {
-    $expect('complete-figure-loses-a-node', $f, '--audit-complete-figure', 1, 'a use case or an actor is absent');
+// The anchor is taken from the emitter's OWN bytes by shape, not from a literal remembered from last week: the call
+// line gained its layout arguments on 2026-11-03 and the three legs below reported their own age as a defect.
+$legs++;
+if (! preg_match('/(const built = emitGraph\(\[\.\.\.nodes\.values\(\)\], edges, \'SYS\'[^\n]*;)/', $original, $am)) {
+    echo str_pad('complete-figure-anchor', 42)."BAD   the complete figure's emitGraph call was not found by shape\n";
+    $bad++;
+    $nodeFrom = null;
+} else {
+    $nodeFrom = $am[1];
+    echo str_pad('complete-figure-anchor', 42)."ok    anchored by shape: ".substr($nodeFrom, 0, 58)."…\n";
 }
-// (3) one edge never handed to the emitter: the ledger must stop adding up.
-if (($f = $plant('complete-figure-loses-an-edge', $nodeFrom, "const built = emitGraph([...nodes.values()], edges.slice(1), 'SYS');")) !== null) {
-    $expect('complete-figure-loses-an-edge', $f, '--audit-complete-figure', 1, 'never reached the emitter');
+if ($nodeFrom !== null) {
+    $nodeTo = str_replace('[...nodes.values()]',
+        "[...nodes.values()].filter((n) => !(n.kind !== 'actor' && n.label === [...nodes.values()].find((x) => x.kind !== 'actor').label))",
+        $nodeFrom);
+    $edgeTo = str_replace(', edges,', ', edges.slice(1),', $nodeFrom);
+    if (str_contains($nodeTo, '.filter(') && str_contains($edgeTo, 'edges.slice(1)')) {
+        if (($f = $plant('complete-figure-loses-a-node', $nodeFrom, $nodeTo)) !== null) {
+            $expect('complete-figure-loses-a-node', $f, '--audit-complete-figure', 1, 'a use case or an actor is absent');
+        }
+        // (3) one edge never handed to the emitter: the ledger must stop adding up.
+        if (($f = $plant('complete-figure-loses-an-edge', $nodeFrom, $edgeTo)) !== null) {
+            $expect('complete-figure-loses-an-edge', $f, '--audit-complete-figure', 1, 'never reached the emitter');
+        }
+    }
 }
 // (4) the same lost edge WITH the ledger check blinded: the run must go quiet, which is what proves the guard is the
 // only thing that sees this defect. A leg asserting the refusal alone would pass on an audit that refuses everything.
 $guardFrom = "if (completeReport.edges + completeReport.dropped.length !== edges.length) {";
 $legs++;
-if (substr_count($original, $nodeFrom) === 1 && substr_count($original, $guardFrom) === 1) {
-    $mutant = str_replace($nodeFrom, "const built = emitGraph([...nodes.values()], edges.slice(1), 'SYS');", $original);
+if ($nodeFrom !== null && substr_count($original, $nodeFrom) === 1 && substr_count($original, $guardFrom) === 1) {
+    $mutant = str_replace($nodeFrom, $edgeTo, $original);
     $mutant = str_replace($guardFrom, 'if (false) {', $mutant);
     $f4 = 'storage/app/scratch/lane208-mutant-blinded-ledger.mjs';
     file_put_contents($f4, $mutant);

@@ -4,12 +4,12 @@ Written by `node storage/app/scratch/lane208-use-case-figures.mjs` from the use-
 `Use-Case-Diagram-Guide.md`. Edit that guide, then re-run the generator; retyping a figure here would make this
 page a second definition of a model the guide already owns.
 
-Model as read by the last run: 131 nodes (41 actor declarations, 90 use cases), 97 associations, 21 «include», 10 «extend».
+Model as read by the last run: 131 nodes (41 actor declarations, 90 use cases), 97 associations, 23 «include», 13 «extend».
 
 Both claims below are weighed by the generator before it writes this page — `--audit-actor-edges` and
 `--audit-complete-figure` — so the figures are known to hold what they promise rather than assumed to:
 - 19 actor figure(s); 17 carry at least one include/extend chain; 0 owed dependency edge(s) dropped.
-- model 131 nodes (41 actor declarations, 90 use cases) fold to 96 distinct shapes, drawn 96; model 129 edges, drawn 116, folded as restatement 13 and as merged endpoints 0.
+- model 131 nodes (41 actor declarations, 90 use cases) fold to 96 distinct shapes, drawn 96; model 134 edges, drawn 121, folded as restatement 13 and as merged endpoints 0.
 
 
 ## Complete diagram over every office and desk (2)
@@ -21,6 +21,13 @@ Both claims below are weighed by the generator before it writes this page — `-
 ### Complete use-case diagram over every desk and office (wide layout)
 
 ![Complete use-case diagram over every desk and office (wide layout)](Diagrams/use-case-complete-wide.png)
+
+
+## Actor-to-desk overview (the readable view) (1)
+
+### Actor-to-desk overview: 18 roles, 12 desks, 26 lines — major actors right, minor left
+
+![Actor-to-desk overview: 18 roles, 12 desks, 26 lines — major actors right, minor left](Diagrams/use-case-roles-at-desks.png)
 
 
 ## Global system boundary (1)

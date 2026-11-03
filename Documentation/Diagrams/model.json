@@ -6,8 +6,8 @@
   "actors": 41,
   "useCases": 90,
   "association": 97,
-  "include": 21,
-  "extend": 10
+  "include": 23,
+  "extend": 13
  },
  "nodes": [
   {
@@ -1163,6 +1163,13 @@
   {
    "desk": "01",
    "from": "UC04",
+   "to": "UC03",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "01",
+   "from": "UC04",
    "to": "UC07",
    "kind": "extend",
    "label": "«extend»\\n[Notice Configured]"
@@ -1322,6 +1329,13 @@
    "label": "«include»"
   },
   {
+   "desk": "03",
+   "from": "UC_EV02",
+   "to": "UC_EV07",
+   "kind": "extend",
+   "label": "«extend»\\n[Profile Not Yet Captured]"
+  },
+  {
    "desk": "04",
    "from": "A_Sch",
    "to": "UC_AS01",
@@ -1383,6 +1397,13 @@
    "to": "UC_AS05",
    "kind": "include",
    "label": "«include»"
+  },
+  {
+   "desk": "04",
+   "from": "UC_AS04",
+   "to": "UC_AS01",
+   "kind": "extend",
+   "label": "«extend»\\n[Charge Adjusted After Seating]"
   },
   {
    "desk": "04",
@@ -1455,6 +1476,13 @@
    "label": "«include»"
   },
   {
+   "desk": "05",
+   "from": "UC_AC05",
+   "to": "UC_AC02",
+   "kind": "extend",
+   "label": "«extend»\\n[Receipt Voided]"
+  },
+  {
    "desk": "06",
    "from": "A_Clr",
    "to": "UC_CL01",
@@ -1507,6 +1535,13 @@
    "desk": "06",
    "from": "UC_CL04",
    "to": "UC_CL05",
+   "kind": "include",
+   "label": "«include»"
+  },
+  {
+   "desk": "06",
+   "from": "UC_CL04",
+   "to": "UC_CL02",
    "kind": "include",
    "label": "«include»"
   },
