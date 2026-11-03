@@ -621,9 +621,15 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                     {/* Slot rows */}
                                     {Array.from({ length: SLOTS }, (_, s) => {
                                         const isHourMark = s % 2 === 0;
+                                        const hour = START_HOUR + Math.floor(s / 2);
+                                        const meridiem = hour >= 12 ? 'PM' : 'AM';
                                         return (
                                             <div key={`label-${s}`} className="text-3xs text-brand-400 pr-2 text-right" style={{ gridRow: `${s + 2} / span ${isHourMark ? 2 : 1}`, gridColumn: 1 }}>
-                                                {isHourMark ? `${(START_HOUR + s / 2) % 12 || 12}:00 ${(START_HOUR + s / 2) >= 12 ? 'PM' : 'AM'}` : ''}
+                                                {/* Every row is a 30-minute slot, so every row says what time it is.
+                                    The hour caption used to be the only text, and the half-hour row printed an empty
+                                    string — the grid drew 7:30 and 8:30 but never named them, which is what made the
+                                    sheet read as though the half hours were missing. */}
+                                                {`${hour % 12 || 12}:${isHourMark ? '00' : '30'} ${meridiem}`}
                                             </div>
                                         );
                                     })}
@@ -642,7 +648,11 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                                                         style={{ gridRow: `${s + 2} / span ${cell.span}`, gridColumn: d + 2 }}
                                                     >
                                                         <p className="text-2xs font-medium text-brand-900 leading-tight truncate">{schedule.subject?.subjectCode}</p>
+                                                        {/* The instructor is stored on the schedule (`schedules.instructorId`,
+                                    NOT NULL with a foreign key) and was printed only in the tooltip and in the table
+                                    below, so the sheet the desk reads named the room but not the teacher. */}
                                                         <p className="text-3xs text-brand-600 leading-tight truncate">{schedule.room?.roomName || '—'}</p>
+                                                        <p className="text-3xs text-brand-500 leading-tight truncate">{schedule.instructor ? `${schedule.instructor.firstName} ${schedule.instructor.lastName}` : 'No instructor'}</p>
                                                         {extra > 0 && (
                                                             <p className="text-3xs font-bold text-amber-700 leading-tight">+{extra} more</p>
                                                         )}
