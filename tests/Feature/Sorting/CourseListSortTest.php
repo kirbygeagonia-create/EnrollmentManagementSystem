@@ -254,4 +254,23 @@ class CourseListSortTest extends TestCase
 
         $this->assertSame(array_reverse($this->codes($asc)), $this->codes($desc));
     }
+
+    #[Test]
+    public function the_unit_filter_and_the_unit_header_are_one_request_because_both_name_the_same_key(): void
+    {
+        $this->course('U-100', 'Urban Studies', $this->ctic);
+        $this->course('U-200', 'Unrelated Science', $this->cte);
+
+        // `academicunits` is joined by the Unit header and its primary key is the very column the unit filter
+        // asks, so a bare `where('unitId', …)` was ambiguous on that request: MySQL 500, SQLite
+        // "ambiguous column name: unitId". The class already sent a unit filter and a sort together — beside the
+        // TITLE header, which joins nothing — so the screen's own suite never made the two meet.
+        $response = $this->actingAs($this->desk)->get(route('admin.reference-data.courses', [
+            'unit' => $this->ctic->unitId, 'sort' => 'unit', 'direction' => 'asc',
+        ]));
+        $response->assertOk();
+
+        $this->assertSame(['U-100'], $this->codes($response), 'the unit filter did not survive the hop it pairs with');
+        $this->assertSame('unit', $this->props($response)['filters']['sort']);
+    }
 }

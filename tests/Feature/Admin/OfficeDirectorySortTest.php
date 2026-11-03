@@ -40,8 +40,12 @@ class OfficeDirectorySortTest extends TestCase
 
     private function admin(): Staffusers
     {
+        // `officeId` is null on purpose: this is the account bounded by nothing, and any other value makes the
+        // factory reach into `offices` to satisfy the key — which would add a row to the very table the cases below
+        // count. SQLite hid that (a rolled-back test rewinds the counter, so the id was always already taken);
+        // MySQL, whose counter stays spent, showed the extra office.
         $staff = Staffusers::factory()->create([
-            'officeId' => 1,
+            'officeId' => null,
             'employeeNo' => 'EMP-OFS-'.uniqid(), 'username' => 'ofs_'.uniqid(), 'email' => 'ofs_'.uniqid().'@example.com',
         ]);
         $staff->assignRole('SysAdmin');

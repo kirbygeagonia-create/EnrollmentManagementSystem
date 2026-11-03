@@ -83,7 +83,7 @@ class ReferenceDataController extends Controller
                 $sq->where('courseName', 'like', "%{$search}%")
                     ->orWhere('courseCode', 'like', "%{$search}%");
             }))
-            ->when($request->unit, fn ($q, $unit) => $q->where('unitId', $unit));
+            ->when($request->unit, fn ($q, $unit) => $q->where('courses.unitId', $unit));
 
         $sortable = [
             'courseCode' => ['column' => 'courseCode'],
@@ -212,7 +212,7 @@ class ReferenceDataController extends Controller
         // alphabetically, and the fallback names the desk's key so the echo matches a header.
         $query = Majors::with('course')
             ->when($request->search, fn ($q, $search) => $q->where('majorName', 'like', "%{$search}%"))
-            ->when($request->courseId, fn ($q, $courseId) => $q->where('courseId', $courseId));
+            ->when($request->courseId, fn ($q, $courseId) => $q->where('majors.courseId', $courseId));
 
         $sortable = [
             'majorName' => ['column' => 'majorName'],
@@ -595,21 +595,56 @@ class ReferenceDataController extends Controller
         // Academicterms::covering() answers for every desk's chrome.
         $today = SchoolTime::today();
 
+        // The day columns are qualified on purpose. `academicyears` holds `startDate` and `endDate` too, and the
+        // School Year header joins that very table, so an unqualified name here names two columns at once: live `ems`
+        // answered 500 (MySQL "Column 'startDate' in where clause is ambiguous") for the Active tab beside any order
+        // that joins, and the suite's SQLite refuses with "ambiguous column name: startDate" — which is why the term
+        // list's own case puts the tab and the header on one request.
         $terms = Academicterms::with('academicYear')
-            ->when($request->semester, fn ($q, $semester) => $q->where('semester', $semester))
-            ->when($request->status === 'active', fn ($q) => $q->where('startDate', '<=', $today)->where('endDate', '>=', $today))
-            ->when($request->status === 'inactive', fn ($q) => $q->where(fn ($sq) => $sq->where('startDate', '>', $today)->orWhere('endDate', '<', $today)))
-            ->when($request->search, fn ($q, $search) => $q->whereHas('academicYear', fn ($yq) => $yq->where('yearLabel', 'like', "%{$search}%")))
-            ->orderByDesc('termId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->semester, fn ($q, $semester) => $q->where('academicterms.semester', $semester))
+            ->when($request->status === 'active', fn ($q) => $q
+                ->where('academicterms.startDate', '<=', $today)
+                ->where('academicterms.endDate', '>=', $today))
+            ->when($request->status === 'inactive', fn ($q) => $q->where(fn ($sq) => $sq
+                ->where('academicterms.startDate', '>', $today)
+                ->orWhere('academicterms.endDate', '<', $today)))
+            ->when($request->search, fn ($q, $search) => $q->whereHas('academicYear', fn ($yq) => $yq->where('yearLabel', 'like', "%{$search}%")));
+
+        // The School Year header is a hop: `academicterms` stores `academicYearId` and the desk reads `yearLabel`
+        // from `academicyears`. INNER is earned by both readings — the migration declares the key NOT NULL with a
+        // foreign key, and live `ems` answers 9 terms, 0 nulls and 0 orphans — so no term can vanish from an order.
+        // `semester` is an ENUM and its sequence is asked of the connection, never typed: MySQL orders it
+        // `1st, 2nd, Summer` by declaration while the suite's varchar CHECK sorts the word.
+        $sortable = [
+            'academicYear' => [
+                'column' => 'yearLabel',
+                'join' => 'academicyears',
+                'foreign' => 'academicYearId',
+                'local' => 'academicterms.academicYearId',
+            ],
+            'semester' => ['column' => 'semester'],
+            'startDate' => ['column' => 'startDate'],
+            'endDate' => ['column' => 'endDate'],
+        ];
+        $sort = ListSort::apply(
+            $terms,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'academicYear',
+            'academicterms.termId',
+        );
+
+        $page = $terms->paginate(20)->withQueryString();
         $years = Academicyears::all(['academicYearId', 'yearLabel']);
 
         return Inertia::render('Admin/ReferenceData/Terms', [
-            'terms' => $terms,
+            'terms' => $page,
             'years' => $years,
             'semesters' => collect(Semester::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'filters' => $request->only(['search', 'semester', 'status']),
+            'filters' => $request->only(['search', 'semester', 'status'])
+                + ['sort' => $sort['column'], 'direction' => $sort['direction']],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

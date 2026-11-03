@@ -21,6 +21,15 @@ class StaffusersFactory extends Factory
     public function configure(): static
     {
         return $this->afterMaking(function (Staffusers $staffuser) {
+            // A null `officeId` is a decision, not an oversight — it is the account bounded by nothing, which is what
+            // a SysAdmin is. Inventing an office for it fabricated a desk row named `Office ` plus a null, i.e. a
+            // screen would print a name nobody wrote; and on a schema whose counter had been spent it added a row
+            // to a table a fixture was counting, which is how CI's MySQL job answered four offices where the
+            // fixture wrote three while SQLite, whose rollback rewinds the counter, found the id already taken.
+            if ($staffuser->officeId === null) {
+                return;
+            }
+
             // Ensure the FK target exists before the staffuser insert.
             Offices::firstOrCreate(
                 ['officeId' => $staffuser->officeId],

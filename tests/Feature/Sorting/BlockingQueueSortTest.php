@@ -411,4 +411,23 @@ class BlockingQueueSortTest extends TestCase
         $this->assertSame('desc', $this->sort($response)['direction']);
         $this->assertSame(['BLK-C', 'BLK-B', 'BLK-A'], $this->names($response));
     }
+
+    #[Test]
+    public function the_course_filter_and_the_course_header_are_one_request_because_both_name_the_same_key(): void
+    {
+        $this->block($this->accountancy, $this->termA, 'BLK-A', 1, 30);
+        $this->block($this->nursing, $this->termA, 'BLK-N', 1, 30);
+
+        // The Course header joins `courses`, whose primary key is the very column the program filter asks with, so a
+        // bare `where('courseId', …)` was ambiguous on that one request: MySQL answers 500 and SQLite refuses with
+        // "ambiguous column name: courseId". This class sent filters and orders together plenty of times — always
+        // beside the NAME header, which joins nothing — which is how a desk-visible refusal survived its own screen.
+        $response = $this->actingAs($this->desk)->get(route('blocking.index', [
+            'courseId' => $this->accountancy->courseId, 'sort' => 'course', 'direction' => 'asc',
+        ]));
+        $response->assertOk();
+
+        $this->assertSame(['BLK-A'], $this->names($response), 'the program filter did not survive the hop it pairs with');
+        $this->assertSame('course', $this->sort($response)['column']);
+    }
 }

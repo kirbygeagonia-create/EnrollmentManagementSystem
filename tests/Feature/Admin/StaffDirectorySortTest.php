@@ -266,4 +266,26 @@ class StaffDirectorySortTest extends TestCase
         $this->assertArrayNotHasKey('officeName', $row);
         $this->assertSame('Registrar Office', $row['office']['officeName'] ?? null);
     }
+
+    #[Test]
+    public function the_office_filter_and_the_office_header_are_one_request_because_both_name_the_same_key(): void
+    {
+        $this->makeStaff('Ana', 'Mercado', 1);
+        $this->makeStaff('Ben', 'Zamora', 2);
+
+        // `offices` holds `officeId` as its primary key and `staffusers` holds it as its filter, so the bare name
+        // this filter asked with was ambiguous the moment the Office header joined that table — MySQL answers
+        // "Column 'officeId' in where clause is ambiguous" and SQLite refuses with "ambiguous column name: officeId".
+        // No case in this class ever put the filter and that header on one request, which is the whole reason the
+        // defect survived the screen's own suite: a header-only request and a filter-only request are each legal.
+        $response = $this->actingAs($this->desk)->get(route('admin.users.index', [
+            'officeId' => 1, 'sort' => 'office', 'direction' => 'asc',
+        ]));
+        $response->assertOk();
+
+        $surnames = $this->surnames($response);
+        $this->assertContains('Mercado', $surnames, 'the office the desk filtered for lost its own account');
+        $this->assertNotContains('Zamora', $surnames, 'the hop widened the filter it was supposed to sit under');
+        $this->assertSame('office', $this->props($response)['filters']['sort']);
+    }
 }

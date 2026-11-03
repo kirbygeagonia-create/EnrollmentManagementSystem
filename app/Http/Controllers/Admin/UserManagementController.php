@@ -37,7 +37,7 @@ class UserManagementController extends Controller
         $this->authorize('viewAny', Staffusers::class);
 
         $query = Staffusers::with(['office', 'unit', 'roles'])
-            ->when($request->officeId, fn ($q, $id) => $q->where('officeId', $id))
+            ->when($request->officeId, fn ($q, $id) => $q->where('staffusers.officeId', $id))
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             // The search's own alternatives belong inside a group of their own. Chained onto the builder they are
             // ORed with the filters above, so filtering one office for a name answers every office that has someone

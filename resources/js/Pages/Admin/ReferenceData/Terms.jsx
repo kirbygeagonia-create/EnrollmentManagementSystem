@@ -2,15 +2,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, RadioCards, nextSortDirection, sortParams } from '@/Components/ui';
 import { formatCalendarDay } from '@/Components/ui/calendarDay';
 
-const semesterOptions = [
-    { value: '', label: 'All Semesters' },
-    { value: '1st', label: '1st Semester' },
-    { value: '2nd', label: '2nd Semester' },
-    { value: 'Summer', label: 'Summer' },
-];
+// The semester choices used to be typed out here as well as answered by the handler, which is one vocabulary held
+// twice: the day academicterms.semester gains a value, the filter does not offer it. The picker is built from the
+// `semesters` prop the action already sends.
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -18,10 +15,19 @@ const statusOptions = [
     { value: 'inactive', label: 'Inactive' },
 ];
 
-export default function Terms({ terms, years, semesters, filters = {} }) {
+export default function Terms({ terms, years, semesters, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [semester, setSemester] = useState(filters.semester || '');
     const [status, setStatus] = useState(filters.status || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The list's own default is the school year ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
+
+    const semesterChoices = useMemo(() => [
+        { value: '', label: 'All Semesters' },
+        ...semesters.map((s) => ({ value: s.value, label: `${s.value} Semester` })),
+    ], [semesters]);
     const [showModal, setShowModal] = useState(false);
     const [editingTerm, setEditingTerm] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -34,12 +40,12 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'academicYear', label: 'School Year', render: (row) => row.academicYear?.yearLabel || '—' },
-        { key: 'semester', label: 'Semester', render: (row) => (
+        { key: 'academicYear', label: 'School Year', sortKey: 'academicYear', render: (row) => row.academicYear?.yearLabel || '—' },
+        { key: 'semester', label: 'Semester', sortKey: 'semester', render: (row) => (
             <Badge tone="info">{row.semester}</Badge>
         ), className: 'text-center' },
-        { key: 'startDate', label: 'Start Date', render: (row) => formatCalendarDay(row.startDate), className: 'text-center' },
-        { key: 'endDate', label: 'End Date', render: (row) => formatCalendarDay(row.endDate), className: 'text-center' },
+        { key: 'startDate', label: 'Start Date', sortKey: 'startDate', render: (row) => formatCalendarDay(row.startDate), className: 'text-center' },
+        { key: 'endDate', label: 'End Date', sortKey: 'endDate', render: (row) => formatCalendarDay(row.endDate), className: 'text-center' },
         { key: 'status', label: 'Status', render: (row) => {
             const now = new Date();
             const start = row.startDate ? new Date(row.startDate) : null;
@@ -49,12 +55,32 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
         }, className: 'text-center' },
     ], []);
 
+    const filterQuery = () => ({
+        search: search || undefined,
+        semester: semester || undefined,
+        status: status || undefined,
+    });
+
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.terms'), {
-            search: search || undefined,
-            semester: semester || undefined,
-            status: status || undefined,
+            ...filterQuery(),
+            ...sortParams('academicYear', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole term list.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.terms'), {
+            ...filterQuery(),
+            ...sortParams('academicYear', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -173,7 +199,7 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
                     <Select
                         value={semester}
                         onChange={setSemester}
-                        options={semesterOptions}
+                        options={semesterChoices}
                         placeholder="All Semesters"
                         className="form-input"
                     />
@@ -195,6 +221,8 @@ export default function Terms({ terms, years, semesters, filters = {} }) {
                         <DataTable
                             columns={columns}
                             rows={terms.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No terms found"
                         />

@@ -92,7 +92,7 @@ class AdmissionRequirementToneVocabularyTest extends TestCase
     }
 
     #[Test]
-    public function no_second_surface_declares_an_appliesTo_tone_map(): void
+    public function no_second_surface_declares_an_applies_to_tone_map(): void
     {
         $found = [];
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(base_path('resources/js'), \FilesystemIterator::SKIP_DOTS));

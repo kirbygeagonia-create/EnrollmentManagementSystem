@@ -61,7 +61,7 @@ class BlockingController extends Controller
         $query = DeskQueues::blocking()->with(['course', 'term.academicYear', 'schedules.subject', 'schedules.room', 'schedules.instructor'])
             ->withCount(['enrolledSubjects as students_in_block_count' => $seats])
             ->when($request->search, fn ($q, $s) => $q->where('blockName', 'like', "%{$s}%"))
-            ->when($request->courseId, fn ($q, $id) => $q->where('courseId', $id))
+            ->when($request->courseId, fn ($q, $id) => $q->where('blocks.courseId', $id))
             ->when($request->termId, fn ($q, $id) => $q->where('termId', $id))
             ->when($request->yearLevel, fn ($q, $level) => $q->where('yearLevel', $level));
 

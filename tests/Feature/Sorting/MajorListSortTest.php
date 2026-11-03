@@ -218,4 +218,22 @@ class MajorListSortTest extends TestCase
         // Only Bravo sits in the Zed course and carries an r; Alpha and Delta stay out of the list.
         $this->assertSame(['Bravo'], $this->names($response));
     }
+
+    #[Test]
+    public function the_course_filter_and_the_course_header_are_one_request_because_both_name_the_same_key(): void
+    {
+        $this->major('Bravo', $this->zed);
+        $this->major('Alpha', $this->ace);
+
+        // The Course header joins `courses`, whose primary key is the column the course filter asks — the pair this
+        // screen sent apart until now. Qualified, the filter narrows and the hop orders; bare, both drivers refuse
+        // the request, which is why the case puts them on one URL rather than trusting the two it already had.
+        $response = $this->actingAs($this->desk)->get(route('admin.reference-data.majors', [
+            'courseId' => $this->zed->courseId, 'sort' => 'course', 'direction' => 'asc',
+        ]));
+        $response->assertOk();
+
+        $this->assertSame(['Bravo'], $this->names($response), 'the course filter did not survive the hop it pairs with');
+        $this->assertSame('course', $this->props($response)['filters']['sort']);
+    }
 }
