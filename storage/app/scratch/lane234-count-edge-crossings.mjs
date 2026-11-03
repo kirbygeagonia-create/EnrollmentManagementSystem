@@ -12,7 +12,7 @@
  * Refusals (exit 1): a file that is not there, a file with no edge paths at all, an SVG whose paths could not be
  * parsed — a reader that saw nothing must never be able to report zero crossings.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -31,6 +31,20 @@ for (const a of args) {
 if (files.length === 0) {
   console.error('REFUSED: at least one .svg is required.');
   process.exit(1);
+}
+// A directory and a missing file are different refusals, and both were an unhandled EISDIR stack before: the census
+// reads each path with readFileSync, so handing it `Documentation/Diagrams` crashed inside Node's loader and printed a
+// stack instead of naming what it was given. A refusal that names its own cause is the rule this repository applies
+// to every instrument, including this one.
+for (const f of files) {
+  if (!existsSync(f)) {
+    console.error(`REFUSED: ${f} is not on disk — nothing can be measured from a path that does not exist.`);
+    process.exit(1);
+  }
+  if (statSync(f).isDirectory()) {
+    console.error(`REFUSED: ${f} is a directory — pass the .svg files, e.g. ${f}/*.svg`);
+    process.exit(1);
+  }
 }
 if (!Number.isFinite(near) || near < 0 || !Number.isInteger(samples) || samples < 4) {
   console.error(`REFUSED: --near must be a non-negative number and --samples an integer of 4 or more (got ${near}, ${samples}).`);
