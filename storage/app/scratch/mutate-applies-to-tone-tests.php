@@ -21,7 +21,10 @@ $page = 'resources/js/Pages/Admin/ReferenceData/AdmissionRequirements.jsx';
 $other = 'resources/js/Pages/Admin/ReferenceData/FeeTypes.jsx';
 $testFile = 'tests/Feature/Admission/AdmissionRequirementToneVocabularyTest.php';
 
-$targets = [$module, $barrel, $page];
+// Every file any leg writes MUST be in the restore set. The first cut left FeeTypes.jsx — the second-page plant's
+// own target — out of it, so that mutant survived the run while $restored() reported the tree clean, because it only
+// hashed the three files it knew about. A harness that restores what it remembers is a harness that leaves defects.
+$targets = [$module, $barrel, $page, $other];
 $originals = [];
 foreach ($targets as $f) {
     if (! is_file($f)) {
