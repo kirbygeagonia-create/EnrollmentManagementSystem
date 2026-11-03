@@ -180,6 +180,14 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   That is the no-concurrent-mutating-runs rule biting an *instrument* instead of a suite: the bad verdict was fake, and
   a fake red is as costly as a fake green. Never launch a harness beside a suite run, and re-run any harness that
   reports badly while something else is writing.
+  **The rule covers a harness that writes nothing at all.** `mutate-lane208-figure-audits.php` runs `node` against
+  throwaway copies of the figure generator and touches no `app/`, no `tests/` and no database, yet twice while a
+  34-minute suite was in flight it reported one bad leg — and **a different leg each time** (`identical-copy-agrees`,
+  then `lost-edge-invisible-with-guard-blinded` with its ledger parsed as null). Re-run three times with the
+  instrument idle it answers 17 legs, 0 bad, three for three. The mechanism is still unidentified, so it is NOT
+  written as a finding; what is written is the signature and the rule — **when a harness's failure moves between legs
+  across runs on identical bytes, read the run conditions before reading the tool**, because a leg that fails once and
+  passes twice is measuring the machine rather than a defect.
 - **A development-prompt requirement the build never covered is a finding, not a defect** (lane 75). The master prompt
   (`EnrollmentManagementSystem_Optimized_AI_Development_Prompt.md`, found in `Downloads/` and never in the tree) was
   audited requirement by requirement against this checkout and the result is
