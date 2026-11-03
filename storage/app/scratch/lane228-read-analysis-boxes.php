@@ -1,4 +1,5 @@
 <?php
+
 /**
  * What is actually inside each problem's analysis box in the answered guide copy?
  *
@@ -47,10 +48,21 @@ if ($xml === '') {
 // Flatten exactly the way the edit engine does: match each text run, concatenate the runs, then decode entities.
 // (The run pattern is spelled in code below; it must not be quoted in a comment here, because a closing PHP tag
 // inside a single-line comment ends the block — which is how this file first printed its own source.)
+// Runs inside ONE paragraph concatenate directly — that is how Word stores a styled sentence — but PARAGRAPHS are
+// separate lines on the paper, so flattening a multi-paragraph cell as one run stream welds them: this reader printed
+// `under simultaneous load.Applicability:` for a box that holds two paragraphs and a line break between them. The weld
+// then feeds the word count, so a missing space was quietly making an answer read SHORTER than the paper shows it.
 $flatten = static function (string $chunk): string {
-    preg_match_all('#<w:t(?: [^>]*)?>(.*?)</w:t>#s', $chunk, $m);
+    $lines = [];
+    foreach (preg_split('#</w:p>#', $chunk) ?: [] as $para) {
+        preg_match_all('#<w:t(?: [^>]*)?>(.*?)</w:t>#s', $para, $m);
+        $text = trim(html_entity_decode(implode('', $m[1]), ENT_QUOTES | ENT_XML1));
+        if ($text !== '') {
+            $lines[] = $text;
+        }
+    }
 
-    return trim(html_entity_decode(implode('', $m[1]), ENT_QUOTES | ENT_XML1));
+    return implode(' ', $lines);
 };
 
 $onPaper = substr_count($xml, '☑');
@@ -126,7 +138,7 @@ foreach (array_slice($GLOBALS['argv'], 1) as $arg) {
         }
         if ($long !== []) {
             fwrite(STDERR, 'REFUSED: '.count($long)." answer(s) exceed the {$cap}-word cap; the paper is meant to read "
-                ."clear and direct, so trim them at the source (`Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md`) rather "
+                .'clear and direct, so trim them at the source (`Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md`) rather '
                 ."than rewording the copy.\n");
             exit(1);
         }
@@ -206,6 +218,7 @@ if ($only !== null) {
         if ($b['kind'] === 'P') {
             $text = preg_replace('/\s+/', ' ', $flatten($b['raw'])) ?? '';
             echo '  '.str_pad('#'.$i, 4).' P    '.($text === '' ? '(empty paragraph)' : mb_strimwidth($text, 0, 120, '…'))."\n";
+
             continue;
         }
         $rows = substr_count($b['raw'], '<w:tr');
