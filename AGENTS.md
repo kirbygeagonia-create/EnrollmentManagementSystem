@@ -397,6 +397,23 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   first cell is a bare date (`2026-10-11–15 |`) is that day's record, while the row reading "(this issue)" is a living claim — lane 58's
   finding applied to this class. One trap bit twice: the row's en dash is three bytes, so the date-cell regex needs `/u`, and without it
   §1.1's historic "twelve rules" read as undated and the checker refused a figure the document never asserted about today.
+  **Its document scope was a hand-kept list, and widening it by glob found the next prose family.** The eleven
+  `Documentation/*-ADS.md` deliverables joined the walk through `glob()` with an empty-match refusal, on lane 86's rule
+  that a literal list is a blind spot that prints a clean verdict. The first run reported stale figures, most of them the
+  binder's own over-reach: "weighs both as two of its rules", "carries the same two rules" and "carries the same two
+  boundaries as rules" state WHICH members the audit holds, not how many, and the noun "rules" bound them to the
+  command's rules total. A false STALE is not a harmless warning — it sends a reader to re-type a sentence that is
+  already true, which is lane 60's re-aged register row arriving from the phrase side. So a claim is classified before it
+  is judged: history, then membership, then total; and a decline is printed per row and named in the footer, because an
+  exemption no line reports is an off switch. Two placement traps came out of writing the skip: declining BEFORE the
+  label lookup counted figures that carry no instrument noun and were never going to bind, which read as a far larger
+  exemption than the one claimed, and declining BEFORE the history test re-labelled a dated record as a decline, so the
+  two exemptions answered for one another. The figure that remained is this sentence, which keeps the phrase and the tool
+  on one physical line for lane 49's reason: `Ten keys in eight tables` as what `lane44-unique-keys.php` could not read.
+  An inability is a record, so `could not` joins the history markers. Both classes are proved by the two legs
+  `mutate-lane59-instrument-counts.php` prints its own total for, each
+  asserting its verdict on the copy that must print it, with the same figure stripped of its exempting words required to
+  go STALE — a leg that reads the two outputs concatenated passes when the sibling run produced the evidence.
 - **After any batch that edits a figure about the SCHEMA or a ratio over rows**, run
   `php storage/app/scratch/lane60-ratio-claims.php --run` and prove it with
   `php storage/app/scratch/mutate-lane60-ratio-claims.php`. This is the third prose family: not the suite totals (lane 58) and
@@ -860,7 +877,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
   `%` — and
-  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose dash sits on a line it cannot join, 370 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose tested operand this file cannot bind, plus the dashes written on a line of their own, and 384 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
   that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
   three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
   only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
@@ -1443,9 +1460,10 @@ manifest describes.
 - **"Complete" is a boundary claim, so the headline figure is weighed by arithmetic too.** `--audit-complete-figure`
 requires the number of DISTINCT `(kind, label)` shapes in the model to equal the nodes the complete figure drew, and
 the emitter's own ledger (`drawn + dropped`) to equal the edges the model holds; the only disappearances it allows are
-a restatement folded into what it restates and an edge whose two ends merged into one label. Today: 131 nodes (41
-actor declarations, 90 use cases) fold to **105 distinct shapes, all drawn**; 129 edges yield **122 drawn, 7 folded,
-0 lost**. `mutate-lane208-figure-audits.php` answers 13 legs, and its fourth leg is the one that taught me the lesson
+a restatement folded into what it restates and an edge whose two ends merged into one label. Re-taken 2026-11-03, after
+five more use-case-to-use-case dependencies were added: 131 nodes (41 actor declarations, 90 use cases) fold to
+**96 distinct shapes, all drawn**; **134 edges** yield **121 drawn, 13 folded as restatement, 0 lost**.
+`mutate-lane208-figure-audits.php` prints its own leg total, and its fourth leg is the one that taught me the lesson
 it tests: I asserted the blinded variant would print `drawn 121`, but the edge I sliced off turned out to be one of
 the seven folds, so the figure read `122 drawn, 6 folded` — still an open ledger, just not the number I remembered.
 The leg now asserts the **relation** (quiet run ∧ ledger does not close) rather than a figure, which is the verifier
@@ -1472,6 +1490,27 @@ category error survives every rendering check, so `lane208` now refuses before d
 before the guide was re-spelled as a plain `sends notice` dependency — which is the guard's falsification on live
 bytes, so no plant was needed to prove it bites. Census after the repair: 131 nodes, 97 associations, 21 «include»,
 **10** «extend»; both generated pages re-took those figures from the run rather than carrying the old pair.
+- **A connection between two use cases that carries no stereotype is an unlabelled claim, and the generator now refuses
+it before drawing anything.** Asked for a full single figure with every actor, association and «include»/«extend» chain
+labelled, the census answered 0 plain use-case-to-use-case lines — so the promise was true by accident, not by guard,
+and the next edge added to the guide could break it silently. Five dependencies the code actually performs were added
+with their own labels (`Approve Admission Application` «include» `Verify Requirement Documents`, from the approval
+blockers that refuse an unverified document; `Adjust Individual Fee Charges` «extend» `[Charge Adjusted After Seating]`
+`Compute Itemized Tuition Fees`; `Void Erroneous Payment` «extend» `[Receipt Voided]` `Post Student Payment
+Transaction`; `Replace Lost Clearance Slip` «include» `Generate Multi-Office Clearance Slip`; `Capture Complete Student
+Profile` «extend» `[Profile Not Yet Captured]` `Sign Evaluation & Advance Workflow` — extending-to-base for the two
+«extend» pairs, base-to-included for the inclusions, which is the direction the guide's own checklist demands). Then the
+guard: `lane208-use-case-figures.mjs` refuses any edge whose two ends are both use cases and which carries neither a
+stereotype nor a label, naming each desk and each pair, and it sits beside the mirror guard that refuses a stereotype
+ending on an ACTOR. The one full image the ask was for already existed and is the first figure on
+`Documentation/Use-Case-Diagrams.md`: `Documentation/Diagrams/use-case-complete-all-offices.png`, 3665 by 5352 pixels,
+with the wide layout beside it — a deliverable nobody can find is the same failure as one nobody drew, so the index
+leads with it and the per-actor plates follow as projections of the same model.
+- **A harness that runs immediately after a large write can fail on file contention, and a moving verdict is the run's,
+not the tool's.** `mutate-lane208-figure-audits.php` answered 2 bad legs on the run right after the renderer had written
+34 PNGs and `model.json` — Node's `open` returned `errno -4094 UNKNOWN` on a file OneDrive was still settling — and the
+same bytes answered `ALL PROVABLE` after a wait. Re-run before reading a moved failure as a defect, and say which
+artefacts were being written when it moved.
 **The probe that found it was itself the lesson.** It re-parsed the markdown and counted 43 actor declarations where
 the model holds 41: the two readers disagreed about one label's spelling (an emoji the renderer strips). So the
 generator now emits `Documentation/Diagrams/model.json` — one definition of the model, consumed by the audits, the
@@ -1482,6 +1521,54 @@ beside `Clearance Staff`, and the student named five ways. Folding them would ch
 about who performs each use case, so it is registered for the owner (task #62) instead of renamed on my reading of
 what the words mean. And `| tail` on the mutant run printed exit 0 for a refusal that exits 1: the pipe's status
 belongs to `tail`, which this file has said five times before.
+- **A queue counted by page NAME is not a queue of WORK** (`lane215-plan-remaining-screens.php`, same batch). The
+planner cross-checks its owed list against `lane140` and the two agree at eight page names, page for page — and only
+two of those eight can carry a header at all. Asking each page's action whether it paginates splits the set: the
+Registrar-facing queues do, while `Accounting/DailyReport`, `Accounting/Show`, `Admin/ReferenceData/CurriculumSubjects`,
+`Admin/UserManagement/Settings`, `Assessment/Show` and `Blocking/Show` hand the whole collection over, so "sort on the
+server" has no server order there to sort. The reader now prints that split as its own footer, with the arithmetic
+against the population it opened (`8 classified of 8 opened`), because an unclassified page must read as UNREAD rather
+than as clean. Both surviving candidates then hit a named limit of the reader, not of the work: `roles` and
+`permissions` are Spatie vendor tables, so their columns come from `information_schema` and not from
+`database/migrations`, and the permissions action's builder model was not read (`UNRESOLVED`). So the next batch
+widens `lane140` to answer both units before any register sentence is re-taken — a repaired claim in a document the
+tool still cannot judge rots silently again — and only then wires the two, each with its own case and falsifier.
+- **"Clear and direct" is a measurable cap, and a cap counted in two units binds nothing** (the guide copy, same batch).
+  The owner's third concern was answer length. `lane228-read-analysis-boxes.php --over=N` refuses a copy whose printed
+  answer paragraphs exceed N words, and `lane203-fill-guide-form.php` splits long answers into paragraphs to satisfy it.
+  Both counted "words" their own way: the writer used `str_word_count`, which splits `lane154-probe-duplicate-keys.php`
+  and `uq_enrollment_subject_attempt` into several, while the paper's longest answers ARE those strings. The reader
+  agreed. The delivered copy therefore carried **20 paragraphs over sixty words** while the writer believed it had
+  capped every line at fifty-five — a rule that cannot fire reads exactly like a rule that passed. The unit is now one
+  function in one file (`printed_words()` in `storage/app/scratch/printed-words.php`, required by both), counted as
+  whitespace tokens, and the delivered copy answers `0 of 326` over the cap with the longest printed paragraph at 60
+  or fewer. `mutate-lane203-guide-form.php` grew two legs that prove it from opposite directions: an unreachable cap,
+  and a one-token plant that puts `str_word_count` back into the writer, each of which must make the READER refuse the
+  build — the cap is proved by the instrument that enforces it, never by the writer that claims it. Two mechanical
+  lessons from the same ten minutes: a plant whose path is built as `$dir.'lane203-…'` with no separator lands
+  OUTSIDE the directory the shutdown sweep globs, where it sits in the tree forever (three such strays were found by
+  `ls`, not by the sweeper — `ls` is the check, not the exit code); and piping a still-running harness through `head`
+  truncates its output but not its writes, so the interrupted run left five fixtures behind and the sweep never got to
+  print its own `LEFTOVER` line.
+- **"Boxes ticked" is a count; the owner asked WHICH box** (the guide copy, same batch). `lane207-verify-guide-copy.php`
+  checked each Part IV concept row for three boxes and at least one ☑ — which is exactly the reading that cannot see the
+  defect the owner reported, because a row can hold one ☑ on `Explained` while the school asked whether the concept is
+  `Demonstrated in test`. The verifier now pairs every concept row **BY NAME** with the answer file's own `**Row N — Name.**`
+  line and compares the ticked labels in both directions: a label the paper ticks and the answer file leaves ☐ is
+  `TICKED on the paper only`; a label the answer file ticks and the paper leaves ☐ is `MISSING on the paper`; a name that
+  matches nothing in the twelve is a defect, and fewer than twelve paired names is a refusal, so an unread row can never
+  look like an agreed one. Labels are normalised (the paper writes `N/A (explain)`, the answer file writes `N/A`) and a
+  label the form does not offer on that row is not demanded of it — ACID has no `Implemented` box and Recovery's second
+  box is `Backup/restore or recovery evidence`. Reading: **12 rows paired by NAME, ticked labels agree on 12**, so every
+  concept that has a demonstration box has it ticked on the delivered paper.
+  Two needles had to be re-cut from the artefacts before the falsifier could bite, and both are this file's own class:
+  the stored option line carries **double spaces** (`☑ Implemented  ☑ Demonstrated in test  ☐ N/A (explain)`) where the
+  flat reader prints one, so a plant written from the reader's text matches nothing; and the guide numbers Indexing
+  **Row 8** and Query Optimization **Row 9**, which is not the order the paper's table prints them in. The harness is
+  `mutate-lane207-copy-verifier.php` (11 legs, ALL KILLED), and its `sentinel-removed` leg exists because my own new
+  loop reused `$text` — the document-wide string the defense-answer sentinels read at the bottom of the file — which
+  made the verifier report its OWN sentinels ABSENT and then refuse a clean copy. That variable is `$copyText` now, and
+  a check that reads a leaked loop variable is not a check.
 - **A queue is compared by SET, not by count** (`lane215-plan-remaining-screens.php`). The new planner derives the
 owed sort queue from the pages themselves — every `.jsx` under `resources/js/Pages` that renders `<DataTable>` and
 does not import the sort helpers — resolves each page to the action that renders it, to the model that action
@@ -1708,6 +1795,68 @@ an absence: `requirementName` is nullable and the page paints a warning in its p
 requirement and asserts it survives the order that reads it. That class's own first run found the assertion wrong, not
 the code: it demanded `officeId` be ABSENT from the row, but the key is the requirement's own column, which the edit
 form seeds itself from — G-51's pin means the hop adds nothing, not that the row loses what it already had.
+- **A LEFT hop is chosen by counting the nulls, and a batch that moves every count without writing its own row leaves
+the record behind** (the twenty-seventh table, `Admin/ReferenceData/Curriculums`). `curriculums.majorId` is nullable in
+the migration AND null on every one of the 16 programs live `ems` holds, so an INNER hop would not have mis-ordered the
+catalogue, it would have emptied it — the audit log's shape met again from a different table. That batch re-took the
+wired and owed figures in both registers and wrote no §1.1 row and no bullet here, so the record arrives a day late,
+carried by the next screen's row rather than never: **a register that grows while its own history stays silent is the
+same defect as a count that stops growing**, and the tell was the wired-count checker agreeing with the tree while
+§1.1 held no row for the table the tree counts.
+- **A fixture that only holds while the calendar agrees with it is not a test, and a derived cell is not a header**
+(the twenty-eighth table, `Admin/ReferenceData/Terms`). Its School Year header hops to `academicyears` through a key the
+migration declares NOT NULL with a foreign key and live `ems` answers with 9 terms, 0 nulls and 0 orphans, so INNER is
+proven here and not copied from the curriculum screen one action away. `semester` is an ENUM, so the case asks the
+connection for the order; the falsifier's first plant pointed that header at a date column, which **reproduced the
+enum's own sequence over the fixture and would have survived**, so the leg now points at a key every row shares — the
+only thing that can satisfy it is the enum order itself. `status` is refused a header because `academicterms` holds no
+status column at all: the cell computes Active or Inactive from the row's own dates against `SchoolTime::today()`, and
+that is also what undid one of the class's cases on its first run. The case set the search, the semester and the status
+together and narrowed to nothing, because the term it wrote had closed by the day the suite ran — the assertion was
+true only while the box's calendar cooperated. The day is now frozen inside the case and released afterwards, the shape
+the terms CRUD test beside it already uses. The screen carried the same two-vocabulary defect the intake catalogue
+produced: the page typed the three semester values out beside the picker that filters that very field while the handler
+already answered them from `App\Enums\Semester`, so a fourth value would reach the create form and be silently refused
+by the filter; one case asserts the constant is gone and both controls read the server's prop.
+- **A hop that joins a table for the ORDER makes that table's columns fair game for the FILTER, and a bare name both
+sides hold is a refusal at the window** (found on live `ems` while reading the term list's payload). The School Year
+header joins `academicyears`, which carries `startDate` and `endDate` just like `academicterms`, and the Active /
+Inactive tabs asked for those by bare name — so `status=active&sort=academicYear` answered **500** on MySQL
+(`Column 'startDate' in where clause is ambiguous`) and SQLite refused with `ambiguous column name: startDate`. No
+case had ever sent the tab and the header together: the class had filter-only requests, order-only requests, and
+order requests beside a header that joins nothing. Four screens held the shape and the census says so —
+`storage/app/scratch/lane224-census-join-ambiguity.php` reads each hop's own `local` for the base table and intersects
+`information_schema` on both sides, because a name the joined table holds ALONE is this tree's ordinary
+search-across-a-hop, not a defect. It found 4 AMBIGUOUS (the term list's day filter, the courses catalogue's unit
+filter, the majors list's course filter, the Blocking roster's program filter) and 18 resolving uniquely over 20
+hopped actions, exits 1 while any remains, and refuses when its own walk read nothing. Each is qualified and each is
+pinned by one case that puts the filter and the header on one URL, proved by
+`storage/app/scratch/mutate-g54-join-ambiguity-tests.php`, which runs the case green BEFORE planting the bare name and
+requires the mutant to fail naming the ambiguity. Two readings travel with it. **A case that asserts only `assertOk()`
+on a filter+order request proves nothing about the filter** — the first draft of the roster case was aimed at the
+Reference Data block screen, which never reads `courseId`, and it failed with two rows returned rather than a refusal:
+pin a filter by asserting it NARROWS. **And when a fix's own test is written against the wrong screen, the failing
+assertion is the instrument telling you so** — the Blocking roster the desk works is `blocking.index`, not the
+reference-data screen that lists the same rows for editing.
+- **A checker scoped to one row certifies the rows it never opened, and a numeral reader that cannot read `8` judges
+less as the prose gets truer** (`lane140-measure-wired-screens.php`, widened with the twenty-eighth table). Its matrix
+half read only the gap row, so the §8 and §14 coverage rows had been restating eighteen wired and eighteen owed for
+weeks with nothing disagreeing; and its figure reader harvested `\d{2}` and spelled words but not a single digit, so
+the moment the owed count reached 8 the run reported FEWER claims than before — the document getting truer while the
+instrument went quiet, which reads as a cleaner file. Both were widened (whole-file scope, `\d{1,2}`), the owed-plan
+sentence joined its vocabulary and on its own first run named a ninth stale claim the fixed counts had left standing,
+and `mutate-lane140-wired-counts.php` carries a leg per direction: a single digit judged, a two-digit figure *still*
+judged because a widening is not an off switch, a stale figure in a non-gap row named, and the dated §1.1 exemption
+proved by re-spelling that row's date and watching the same figure fire as a living claim — the figure read off the
+clean run rather than remembered, because pass 401 taught this harness what a frozen expectation costs. The harness
+prints its own leg total, so none is written here.
+- **Pint's `php_unit_method_casing` renames a test method, and every harness that `--filter`s it ages with it.** The
+intake-catalogue tone guard's method carried `appliesTo` inside its snake_case name, Pint camel-to-snake'd it on this
+batch's `pint --test`, and the falsifier's filter would then select no test. That is the same shape as a numeral in a
+method name (this file's rule for `four_desk_lists…`): a method name is an interface a tool types, so after any
+formatting pass that touches a test file, grep the scratch harnesses for the method names they filter on. The
+harness at least fails loudly — a leg that reads `No tests found` reports BAD, never a kill — which is the reason that
+message was made a refusal in the first place.
 - **A hop is honest only when the key behind it is proven, and a compound label is not a column** (the twenty-fourth
 table, `Admin/ReferenceData/Blocks`). The Course header orders by `courses.courseName` reached through
 `blocks.courseId`; INNER was chosen because the migration declares the key NOT NULL with a foreign key **and** live
@@ -4844,6 +4993,118 @@ target cell's run count for this reason, and pass 176's stage 1 refuses when the
   reads the marker on the title line, so the header cross-check printed `DISAGREES` with that item still OPEN.
   Joining the marker to its title made all three tallies AGREE. An answer recorded where no checker looks is an
   answer the register does not know.
+
+- **A Word form's answer belongs INSIDE the cell, and Word repairs an illegal insert instead of refusing it**
+  (2026-11-03, `lane203-fill-guide-form.php`, found by the owner opening the delivered copy). The guide's writing
+  space is a table of empty rows, and the writer returned "the byte after `</w:tc>`" as its insert point — so each
+  paragraph was written as a direct child of `<w:tr>`. The file opened, the ballot counts agreed, the read-back saw
+  the text in the right window, and **every analysis box on paper came out empty** because Word moved the text into
+  the next box down. The guard is `$assertInCell`, run over every insert point BEFORE anything is written, which
+  refuses a point that lies inside a row and is not immediately before that row's cell close. Two readings travel
+  with it. A *static* checker cannot see this class at all — the archive is well-formed XML either way, so what
+  caught it was reading the artefact's structure (`lane230-probe-form-order.php` prints the form's blocks in document
+  order, which is how "box at 31792 empty, answers in the 2-row N/A box" became visible). And **a verifier that
+  checks paragraph ORDER cannot see paragraph CONTAINMENT**: `lane207` passed the broken copy because the fields
+  still fell between the form's own heading and its N/A line.
+- **"It is demonstrated by a probe" is not "it is demonstrated in test" — and the guide's own claims now get weighed**
+  (same batch). Part IV's twelve concept rows are ticked from `GUIDE-PROBLEM-ANSWERS-ADS.md`, and five rows read
+  ☑ Implemented ☐ Demonstrated in test because they were written when the only evidence was `lane168` / `lane190`
+  — true then, stale now that `BlockCapacityAtomicityTest`, `DatabaseLevelEnrollmentRulesTest`,
+  `DeleteGuardNamedByShiftDocketTest` + `AuditRecordStatesTest`, `PermissionMatrixTest` + `StoredFileAccessTest` +
+  `ServedUploadPathTest` and `PrerequisiteGateTest` are delivered. Each row now names the case that earns the word,
+  and `lane235-check-guide-claims.php` weighs every file, test-class and `Class::method()` claim in that file against
+  the tree (76 + 22 + 19 claims; the two it first reported were **its own** shape-blindness — a Laravel scope is
+  `scopeApproved()`, not `function approved()` — and an honest outside-tree artefact, the school's blank guide form,
+  which is now exempted **by the sentence that declares it** and printed as exempt, never folded into the resolved
+  count). Two numbers the same pass re-measured rather than re-used: locking is at **four** sites, not three
+  (`BlockingController` ×2, `EvaluationController`, `PrintService`), and the copy's figures all still agree with the
+  server — 38 `DB::transaction` sites, 20 audit rules, 105 foreign keys, 96 permissions, 17 roles, 13 unique keys in
+  10 tables. For the paper's readability the writer now splits an over-long answer at its own sentence boundaries
+  (longest printed answer 283 → 121 words, average 43 → 33), and `lane228 --longest` is the census behind it.
+- **A diagram's crossings are a number, so "do not cross the lines" is measurable** (same batch, `lane234-count-edge-crossings.mjs`).
+  It parses the rendered SVG's edge paths, flattens each curve to sampled points, and counts intersections that are
+  not within `--near=<px>` of a shared endpoint — a meeting at a node is not a crossing. The complete use-case
+  figure measured **140** crossing pairs; drawing the major actors (the half by association count) on the **right**,
+  the minor on the **left**, and emitting each actor's connectors as one contiguous fan, brought it to **92**, with
+  21 of the 34 figures now at 0. Two negative results are recorded rather than repeated: declaring each panel's
+  cases in alphabetical order made the headline figure *worse* (92 → 98, reverted with the reason in the code), and
+  `@mermaid-js/layout-elk` — reachable only by writing the page as a real `file://` document plus
+  `--allow-file-access-from-files`, since `setContent()` leaves the document at `about:blank` and Chrome then refuses
+  the module fetch — rendered the probe sample with the SAME two crossings at the SAME coordinates as dagre, i.e. it
+  fell back rather than routing. Zero crossings on one 96-node / 121-edge sheet is the graph's crossing number, not
+  a routing bug; the legible surface is the per-desk plates, and a crossing-free single image means a coarser
+  actor↔desk overview built from the same model.
+- **Three traps this batch met for the Nth time, in my own instruments.** A `?>` sequence inside a `//` comment
+  ENDS the PHP block (a comment is not string context), which made a reader print its own source; a closure held in
+  `$rel` was clobbered by `foreach (… as $rel)`, so PHP reported `Call to undefined function
+  mutate-lane187-provenance.php()`; and a `php … | tail` chain returned the status of `tail`, so a refusing
+  harness read as success and the run continued past a red gate. `phpunit.xml`'s DB pins beat the shell on this box
+  because `variables_order` is `GPCS` — see the memory note; a MySQL rehearsal needs a generated config without
+  those pins, and the rehearsal must print the schema's table count, or a SQLite run is reported as a MySQL one.
+- **A factory hook that satisfies a foreign key changes the population a test is counting — and only MySQL shows it**
+  (2026-11-03, the CI red on `OfficeDirectorySortTest`). `StaffusersFactory::configure()` runs an `afterMaking`
+  `Offices::firstOrCreate(['officeId' => $staffuser->officeId], ['officeName' => 'Office '.$staffuser->officeId])` so
+  a staff insert never dies on the key. The office directory's own `admin()` asked for `officeId => 1`, so the test
+  that asserts "the fixture is the whole population" was answered four offices where it wrote three. SQLite hid it
+  because a rolled-back test rewinds its counter, the fixture's rows occupied ids 1-3, and `firstOrCreate` found the
+  id taken; MySQL's counter stays spent (the fixture's ids were 42,43,44), so id 1 was free and the factory really
+  inserted a row named `Office 1`. Three rules follow. **When a count-only assertion goes red on the runner, read
+  where the extra row is WRITTEN before bisecting classes** — the bisect was my own wasted rounds here, and the
+  writer was the test's own helper, invoked through `props()`. **A null `officeId` is a legitimate account** (the
+  SysAdmin bounded by nothing), so the hook now skips the create when it is null, and the desk test creates its
+  admin that way: the population it counts is the population it wrote. **And a guard is only real when a plant
+  trips it** — the first `$assertInCell` scanned for the enclosing `<w:tr>` and compared "closes after the point",
+  so the exact boundary (`$tc + 7`, sitting on `</w:tr>`) walked straight through, and its replacement was refused
+  for a different off-by-one: `</w:p>` is SIX bytes and I asked for seven. Both were found by
+  `mutate-lane203-guide-form.php`, which now carries a leg that plants the retired `+7` insert point and requires the
+  writer to refuse it naming the offset (`ALL KILLED: 31 leg(s), 0 bad`).
+- **"Zero crossings" is a verdict only after the edges are proven real** (same batch, and it cost the previous
+  paragraph in this file a false claim). `use-case-roles-at-desks` was delivered here as *0 crossing pairs over 26
+  lines*; the sheet really held **no role-desk line at all**. The cause is three characters: the edge loop was written
+  `for (const [k] of [...links.keys()])`, and a string is iterable, so `k` bound each key's **first character**. Every
+  lookup missed, every line became `undefined --- BANDundefined`, and mermaid quietly invented those two nodes and
+  drew 26 overlapping junk edges between them — which is why the figure measured 360x4189 and why the earlier
+  "wrapped-subgraph makes it tall" explanation was also wrong. `lane237-probe-node-columns.php` found it by asking a
+  question no aspect ratio answers: how many **x-columns** do the drawn nodes occupy? A bipartite sheet is 3 columns;
+  this was 31 boxes in one and 1 in another, i.e. a graph with no edges. The generator now refuses before drawing:
+  a pair that names no actor plate or no desk band stops the run and prints the pair. **That refusal fired again on
+  the fix itself** — the first rewrite of the actor-id map assigned ids only to the minor half, so 17 of the 26 pairs
+  named no plate and the run died naming them. Two rules: *an empty or unexpected artefact is read by asking what the
+  drawing tool believes it was handed*, and *a count of crossings beside a count of edges, never alone*. Two older
+  lessons from this figure survive the rewrite: folding actors by "is this the block that declared me first" dropped
+  15 of the 19 roles (a role is one plate, declared wherever it sits), and naming the sheet `use-case-actor-*`
+  collided with the per-actor index bucket, which is the population guard refusing the run before a pixel was drawn —
+  when a name is used to classify, the classifier's prefixes are part of the design.
+- **The crossing floor of the readable sheet is a property of the model, and it is now measured** (same batch).
+  Rendered truth: 26 edges, **10 crossing pairs**. The generator's own adjacent-swap descent reaches an order whose
+  left (minor) fan has 0 straight-line crossings and prints the right (major) fan's count, 17, with the band column
+  held in desk-number order because a person reads desks 1 to 12. `lane238-measure-bipartite-floor.mjs` searched band
+  orders too and got the whole figure down to 11, still not 0 — and the reason is readable in the data rather than
+  argued: `Student` works at eight of the twelve desks, so the busy roles' line-sets interleave and no single column
+  order separates them. So "no crossings" is achievable for one role at a time (the per-actor plates) and for the
+  minor half, and is not achievable in the one picture that shows every role at every desk. The guide now says that in
+  its own words (`Documentation/Use-Case-Diagram-Guide.md`, "Reading the generated figures").
+  Whole-census, read from the delivered SVGs: **35 figures, 21 draw every line without an overlap, 14 carry some**
+  (the two complete sheets 92 each, the readable overview 10, most plates 1 or 2). Two defects in the census came out
+  of its own falsifier `mutate-lane234-crossings.php` (8 legs): `path.split('/')` left a Windows path whole, so the
+  per-figure line printed an absolute path and a grep for the figure name matched nothing; and the print cap of six
+  rows hid crossings silently, so the tally and the printed rows disagreed — the withheld count is now named. The
+  harness's first run also produced a BAD leg whose **fixture** was wrong, not the tool: eight lines fanned to one
+  point share an endpoint, which is exactly what the tolerance excludes, so the census correctly read 0.
+
+**A rescue that fires on the SUCCESS path is worse than no rescue** (pass 428, same batch). The pass added its own
+`register_shutdown_function` restore "because the engine exits the process and a `finally` does not run", guarded by
+re-reading the file at shutdown and restoring unless the new phrase was found. The engine applied the edit, the pass's
+own read-back found the replacement exactly once and printed `WROTE both halves…`, and then the hook ran, read the
+OneDrive-backed bytes as not containing the phrase, and copied the pre-edit backup back over the document. The file on
+disk then held the OLD figures while the run's output claimed success — the half-applied register, produced by my own
+guard rather than by the engine. `docxApply()` already owns backup-and-restore for a failed pass; a second guard needs
+a predicate that cannot be true after a correct write, and "my text is missing" is not one. The fix was to DELETE the
+hook and keep the post-write read-back. Two readings came out of it: check a claim about the document against
+`word/document.xml` with a fresh `ZipArchive` read rather than against the run's own stdout (that is how the revert was
+seen at all — `384` occurred zero times in the archive while the pass had printed it), and when one sentence lives in
+two registers, count its occurrences in the archive before assuming an edit reached both (the flat dump joins runs, so
+a second copy can be a rendering of ONE stored sentence, not a second claim to repair).
 
 ## Agent dispatch
 

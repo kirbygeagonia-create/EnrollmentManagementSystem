@@ -58,7 +58,7 @@ foreach ($pm[0] as $o) {
     preg_match_all('#<w:t(?: [^>]*)?>(.*?)</w:t>#s', $o[0], $tm);
     $paras[] = ['start' => $o[1], 'text' => trim(html_entity_decode(implode('', $tm[1]), ENT_QUOTES | ENT_XML1))];
 }
-$text = (string) preg_replace('/\s+/u', ' ', implode(' ', array_column($paras, 'text')));
+$copyText = (string) preg_replace('/\s+/u', ' ', implode(' ', array_column($paras, 'text')));
 
 $md = (string) file_get_contents($answers);
 if (! preg_match_all('/^### Problem (\d+) — (.*)$/m', $md, $hb, PREG_SET_ORDER)) {
@@ -91,8 +91,21 @@ if (count($heads) !== 24) {
 }
 $bounds = [];
 $keys = array_keys($heads);
+// The last problem's window must stop at the next PART, not at the end of the document, or every §IV to §VII
+// paragraph is charged to Problem 24 and a defect in the defense answer reads as a defect in a problem.
+$partFour = null;
+foreach ($paras as $p) {
+    if (preg_match('/^IV\.\s+Required Database Concepts/u', $p['text']) === 1) {
+        $partFour = $p['start'];
+        break;
+    }
+}
+if ($partFour === null) {
+    fwrite(STDERR, "REFUSED: the copy holds no `IV. Required Database Concepts` heading, so the last problem's window cannot be bounded.\n");
+    exit(1);
+}
 foreach ($keys as $i => $n) {
-    $bounds[$n] = [$heads[$n], $i + 1 < count($keys) ? $heads[$keys[$i + 1]] : strlen($xml)];
+    $bounds[$n] = [$heads[$n], $i + 1 < count($keys) ? $heads[$keys[$i + 1]] : $partFour];
 }
 
 $problems = [];
@@ -107,9 +120,77 @@ foreach ($bounds as $n => [$from, $to]) {
     if (! str_contains($bodyText, $wantByNumber[$n]['title'])) {
         $missing[] = 'its own title';
     }
-    if (! str_contains($bodyText, 'Problem '.$n.' — '.$wantByNumber[$n]['title'].' — answered')) {
-        $missing[] = 'its answer header';
+
+    // PLACEMENT, not mere presence. Each problem has two writing boxes: the ruled table that follows its
+    // `Applicability` row (the space under `Your Analysis / Solution`) and the ruled table under `If N/A or
+    // different from our workflow`. The first delivered copy put everything in the second box and left the analysis
+    // lines blank on paper, so this reader asks WHERE each field sits. A copy carrying every label in the wrong box
+    // used to pass here. ($lineText, never $copyText: the document-wide text is what the §IV and §VI sentinels read
+    // below, and a loop variable that shadows it makes a present paragraph read as absent.)
+    $inWindow = [];
+    foreach ($paras as $p) {
+        if ($p['start'] >= $from && $p['start'] < $to) {
+            $inWindow[] = $p['text'];
+        }
     }
+    $indexOf = static function (string $prefix) use ($inWindow): int {
+        foreach ($inWindow as $i => $lineText) {
+            if (str_starts_with($lineText, $prefix)) {
+                return $i;
+            }
+        }
+
+        return -1;
+    };
+    $formIdx = -1;
+    foreach ($inWindow as $i => $lineText) {
+        // `Applicability: ☐ …` on the blank form, `Applicability: ☑ …` once ticked: a locator that demands ☐ reads
+        // every answered window as having no applicability row at all.
+        if (preg_match('/^Applicability:\s+[☐☑]/u', $lineText) === 1) {
+            $formIdx = $i;
+            break;
+        }
+    }
+    $naIdx = $indexOf('If N/A or different from our workflow');
+    if ($formIdx < 0 || $naIdx < 0 || $naIdx <= $formIdx) {
+        $problems[] = 'P'.$n.': its two boxes cannot be located (applicability row at '.$formIdx.', If-N/A line at '.$naIdx.')';
+    } else {
+        foreach (['Concept involved:', 'Design:', 'Implementation:', 'Test or demonstration:', 'Evidence:', 'Answered '] as $field) {
+            $at = $indexOf($field);
+            if ($at < 0) {
+                $missing[] = $field;
+            } elseif ($at < $formIdx || $at > $naIdx) {
+                $missing[] = $field.' sits outside the analysis box (paragraph '.$at.', the box is '.$formIdx.' to '.$naIdx.')';
+            }
+        }
+        for ($q = 1; $q <= $wantByNumber[$n]['q']; $q++) {
+            $at = $indexOf('Q'.$n.'.'.$q.' ');
+            if ($at < 0) {
+                $missing[] = 'Q'.$n.'.'.$q;
+            } elseif ($at < $formIdx || $at > $naIdx) {
+                $missing[] = 'Q'.$n.'.'.$q.' sits outside the analysis box';
+            }
+        }
+        $wfIdx = $indexOf('Workflow difference');
+        if ($wfIdx < 0) {
+            $missing[] = 'Workflow difference';
+        } elseif ($wfIdx <= $naIdx) {
+            $missing[] = 'the N/A sentence sits in the analysis box instead of under its own label (paragraph '.$wfIdx.', label at '.$naIdx.')';
+        }
+    }
+
+    // The submission carries the owner's plain typography: no em dash, no en dash, no arrow and no markdown marker
+    // in any inserted paragraph. Paragraphs at or before the form's own applicability row are the school's text.
+    foreach ($inWindow as $i => $lineText) {
+        if ($i <= $formIdx) {
+            continue;
+        }
+        if (preg_match('/[—–→]|\\*\\*|`/u', $lineText) === 1) {
+            $missing[] = 'paragraph '.($i + 1).' of this window carries a dash, an arrow or a markdown marker on paper';
+            break;
+        }
+    }
+
     foreach (['Concept involved:', 'Applicability:', 'Design:', 'Implementation:', 'Test or demonstration:', 'Evidence:', 'Workflow difference'] as $field) {
         if (! str_contains($bodyText, $field)) {
             $missing[] = $field;
@@ -133,16 +214,124 @@ foreach ($bounds as $n => [$from, $to]) {
     }
 }
 
-// §IV concept rows: each row's three boxes must still be three, with at least one ☑.
+// §IV concept rows. The shape check alone is not a verdict: a row can hold exactly three boxes and one ☑ while the
+// ☑ sits on `Explained` and the school asked whether the concept is `Demonstrated in test`. The owner's complaint was
+// about WHICH box, so each row is now paired BY CONCEPT NAME with the answer file's own row and the ticked labels are
+// compared in both directions. A label the form does not offer on that row is not demanded of it — ACID has no
+// `Implemented` box, and Recovery's evidence box is spelled `Backup/restore or recovery evidence`.
+$normalizeLabel = static function (string $s): string {
+    $s = trim(preg_replace('/\s+/', ' ', $s));
+    // The paper writes `N/A (explain)` where the answer file writes `N/A`; the gloss is the form's own prompt.
+    $s = (string) preg_replace('/\s*\([^)]*\)\s*$/', '', $s);
+
+    return mb_strtolower($s);
+};
+$tickedIn = static function (string $line) use ($normalizeLabel): array {
+    $out = [];
+    if (preg_match_all('/☑\s*([^☐☑]+)/u', $line, $bm) >= 1) {
+        foreach ($bm[1] as $lab) {
+            $n = $normalizeLabel($lab);
+            if ($n !== '') {
+                $out[] = $n;
+            }
+        }
+    }
+
+    return $out;
+};
+$offeredIn = static function (string $line) use ($normalizeLabel): array {
+    $out = [];
+    if (preg_match_all('/[☐☑]\s*([^☐☑]+)/u', $line, $bm) >= 1) {
+        foreach ($bm[1] as $lab) {
+            $n = $normalizeLabel($lab);
+            if ($n !== '') {
+                $out[] = $n;
+            }
+        }
+    }
+
+    return $out;
+};
+
+$ivFrom = null;
+$ivTo = null;
+foreach ($paras as $i => $p) {
+    if ($ivFrom === null && str_contains($p['text'], 'IV. Required Database Concepts')) {
+        $ivFrom = $i;
+    } elseif ($ivFrom !== null && $ivTo === null && str_contains($p['text'], 'V. Final Presentation')) {
+        $ivTo = $i;
+        break;
+    }
+}
+if ($ivFrom === null || $ivTo === null) {
+    fwrite(STDERR, "REFUSED: the copy's §IV window cannot be bounded, so no concept row can be paired by name.\n");
+    exit(1);
+}
+
+// The answer file's rows: `**Row 3 — ACID Properties.** ☐ Implemented ☑ Explained …`
+preg_match('/^\#\#\s*IV\..*?(?=\n\#\#\s*V\.)/ms', $md, $ivBlock);
+$wantRows = [];
+if (preg_match_all('/^\*\*Row\s+(\d+)\s+—\s+(.+?)\.?\*\*\s*(.*)$/m', $ivBlock[0] ?? '', $rm, PREG_SET_ORDER) >= 1) {
+    foreach ($rm as $r) {
+        $wantRows[$normalizeLabel($r[2])] = ['ticked' => $tickedIn($r[3]), 'line' => $r[3], 'n' => (int) $r[1]];
+    }
+}
+if (count($wantRows) !== 12) {
+    fwrite(STDERR, 'REFUSED: the answer file holds '.count($wantRows).' §IV rows, expected 12 — the population is not measured.\n');
+    exit(1);
+}
+
 $conceptFail = [];
-foreach ($paras as $p) {
-    if (preg_match('#^\s*[☐☑]\s*(Implemented|Explained|Backup/restore)#u', $p['text']) === 1 && (str_contains($p['text'], '☐') || str_contains($p['text'], '☑'))) {
-        $boxes = substr_count($p['text'], '☐') + substr_count($p['text'], '☑');
-        if ($boxes !== 3 || substr_count($p['text'], '☑') < 1) {
-            $conceptFail[] = mb_substr($p['text'], 0, 60);
+$paired = 0;
+$agree = 0;
+// `$optLine` and `$rowName`, never `$copyText`: line 61's `$copyText` is the DOCUMENT-WIDE string that the §IV and §VI
+// sentinel checks read at the bottom of this file. Reusing that name for one row's option line silently redefined
+// the sentinel subject to the last concept row, and the tool reported its own sentinels ABSENT while exiting on a
+// refusal it had invented — the leak-a-loop-variable class this file has met in `$rel` and `$rows`.
+for ($i = $ivFrom; $i < $ivTo; $i++) {
+    $optLine = $paras[$i]['text'];
+    if (substr_count($optLine, '☐') + substr_count($optLine, '☑') === 0) {
+        continue;
+    }
+    // The row's own name is the paragraph before its option line: the table states `Transactions`, then the boxes.
+    $rowName = $i > $ivFrom ? $normalizeLabel($paras[$i - 1]['text']) : '';
+    $boxes = substr_count($optLine, '☐') + substr_count($optLine, '☑');
+    $ticked = $tickedIn($optLine);
+    if ($boxes !== 3 || $ticked === []) {
+        $conceptFail[] = mb_substr($optLine, 0, 60)." (boxes {$boxes}, ticked ".count($ticked).')';
+
+        continue;
+    }
+    if (! isset($wantRows[$rowName])) {
+        $conceptFail[] = 'an option row whose name ['.mb_substr($rowName, 0, 40)."] is not one of the answer file's twelve";
+
+        continue;
+    }
+    $paired++;
+    $offered = $offeredIn($optLine);
+    $missing = array_values(array_filter($wantRows[$rowName]['ticked'],
+        static fn (string $t): bool => in_array($t, $offered, true) && ! in_array($t, $ticked, true)));
+    $extra = array_values(array_diff($ticked, $wantRows[$rowName]['ticked']));
+    $unofferable = array_values(array_filter($wantRows[$rowName]['ticked'],
+        static fn (string $t): bool => ! in_array($t, $offered, true)));
+    if ($missing !== [] || $extra !== []) {
+        $conceptFail[] = $rowName.': the paper ticks ['.implode(', ', $ticked).'] while the answer file says ['.
+            implode(', ', $wantRows[$rowName]['ticked']).']'.
+            ($missing === [] ? '' : ' — MISSING on the paper: '.implode(', ', $missing)).
+            ($extra === [] ? '' : ' — TICKED on the paper only: '.implode(', ', $extra));
+    } else {
+        $agree++;
+        if ($unofferable !== []) {
+            // Not a defect: the school's row holds no such box. Say which, so the agreement is read as bounded.
+            echo '  note  '.$rowName.' — the answer file marks ['.implode(', ', $unofferable).
+                '] but this row offers ['.implode(', ', $offered).']; nothing to tick there.'."\n";
         }
     }
 }
+if ($paired !== 12) {
+    $conceptFail[] = 'only '.$paired.' of 12 concept rows were paired by name in the §IV window';
+}
+printf("§IV: %d rows paired by NAME against the answer file, ticked labels agree on %d\n", $paired, $agree);
 
 // §V sub-items and §VII fill-ins. The §V answer count is taken INSIDE the part's own window: `Answer: ` also
 // opens every guide-question answer in §III, and a document-wide count would compare 131 against 25 and call a
@@ -196,7 +385,7 @@ foreach ($conceptFail as $c) {
 }
 printf("§VII fill-ins not carrying a value: %d%s\n", count($fillFail), $fillFail === [] ? '' : ' ('.implode(', ', $fillFail).')');
 foreach (['Defense answer:', 'No row is N/A'] as $sentinel) {
-    printf("sentinel %-16s: %s\n", $sentinel, str_contains($text, $sentinel) ? 'present' : 'ABSENT');
+    printf("sentinel %-16s: %s\n", $sentinel, str_contains($copyText, $sentinel) ? 'present' : 'ABSENT');
 }
 if ($problems !== []) {
     echo "\nwindow defects:\n";
@@ -220,6 +409,6 @@ foreach (array_slice($markdown, 0, 5) as $m) {
 
 $fail = $problems !== [] || $conceptFail !== [] || $fillFail !== [] || $markdown !== []
     || $vAnswerLines !== $vLabels
-    || ! str_contains($text, 'Defense answer:') || ! str_contains($text, 'No row is N/A');
+    || ! str_contains($copyText, 'Defense answer:') || ! str_contains($copyText, 'No row is N/A');
 printf("\n%s: %d window defect(s) over 24 problems\n", $fail ? 'REFUSED' : 'VERIFIED', count($problems));
 exit($fail ? 1 : 0);

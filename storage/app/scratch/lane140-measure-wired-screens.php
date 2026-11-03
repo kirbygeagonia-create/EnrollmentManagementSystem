@@ -47,10 +47,15 @@ foreach ($argv as $i => $a) {
 
         continue;
     }
+    if (str_starts_with($a, '--shapes=')) {
+        // Read in the shapes block below, which imports lane215's export. Accepted here because this parser refuses
+        // anything it does not know — and a flag refused at the door never reaches the feature behind it.
+        continue;
+    }
     if (in_array($a, ['--check-matrix', '--check-docx'], true)) {
         continue;
     }
-    fwrite(STDERR, 'REFUSED: this tool takes --json=<path>, --dump=<path>, --matrix=<path>, --check-matrix or '
+    fwrite(STDERR, 'REFUSED: this tool takes --json=<path>, --dump=<path>, --matrix=<path>, --check-matrix, --shapes=<path> or '
         ."--check-docx and received '{$a}'.\n");
 
     exit(1);
@@ -181,7 +186,66 @@ printf("\nowed pages (%d):\n", count($owedPages));
 foreach ($owedPages as $p) {
     echo '  '.$p."\n";
 }
-printf("\nhandlers (%d):\n", $handlerCount);
+
+// ---------------------------------------------------------------- the shape of the owed queue
+// "Eight pages offer no order" is true for the unit this tool counts. It is not a queue of eight work items: a page
+// whose action hands its rows over whole has no server order to ask for. That predicate belongs to lane215, which
+// resolves each page to its action, so the split is read from its export rather than re-implemented here.
+$shapesArg = null;
+foreach (array_slice($GLOBALS['argv'], 1) as $a) {
+    if (str_starts_with($a, '--shapes=')) {
+        $shapesArg = substr($a, 9);
+    }
+}
+if ($shapesArg === null) {
+    echo "\nSHAPES of the owed queue: NOT JUDGED — pass --shapes=<lane215 --json= output> to weigh which owed pages "
+        ."could carry a header at all.\n";
+} else {
+    $shapesPath = preg_match('#^[A-Za-z]:|^/#', $shapesArg) === 1 ? $shapesArg : $root.'/'.$shapesArg;
+    if (! is_file($shapesPath)) {
+        fwrite(STDERR, "REFUSED: --shapes= target {$shapesPath} is not a file (run lane215 with --json= first).\n");
+        exit(1);
+    }
+    $shapeRows = json_decode((string) file_get_contents($shapesPath), true);
+    if (! is_array($shapeRows) || $shapeRows === []) {
+        fwrite(STDERR, "REFUSED: --shapes= read no records, so the split would be a story about nothing.\n");
+        exit(1);
+    }
+    $byShort = [];
+    foreach ($shapeRows as $r) {
+        $byShort[(string) $r['short']] = $r;
+    }
+    $wireable = [];
+    $bounded = [];
+    $unknown = [];
+    foreach ($owedPages as $p) {
+        $short = (string) preg_replace('#^resources/js/Pages/#', '', $p);
+        if (! isset($byShort[$short])) {
+            $unknown[] = $short;
+        } elseif (($byShort[$short]['paginates'] ?? null) === true) {
+            $wireable[] = $short;
+        } else {
+            $bounded[] = $short;
+        }
+    }
+    // The arithmetic has to close in front of the reader: an owed page the export does not name is not evidence that
+    // it cannot carry a header, and a summary that silently drops it would report a smaller queue than the tree holds.
+    printf("\nSHAPES of the owed queue: %d wireable + %d bounded + %d unread = %d owed\n",
+        count($wireable), count($bounded), count($unknown), count($owedPages));
+    foreach ($wireable as $w) {
+        echo '  WIREABLE  '.$w.'  action '.($byShort[$w]['action'] ?? '?').'  offer '.($byShort[$w]['offer'] ?? '?')."\n";
+    }
+    foreach ($bounded as $b) {
+        echo '  bounded   '.$b.'  action '.($byShort[$b]['action'] ?? '?')."\n";
+    }
+    foreach ($unknown as $u) {
+        echo '  UNREAD    '.$u."  (lane215 named no record for it — re-take both, do not assume the export is current)\n";
+    }
+    if ($unknown !== []) {
+        fwrite(STDERR, "REFUSED: ".$unknown[0]." is owed here and unread in the shape export; the split cannot be quoted.\n");
+        exit(1);
+    }
+}printf("\nhandlers (%d):\n", $handlerCount);
 foreach ($handlerSites as $h) {
     echo '  '.$h."\n";
 }
@@ -245,9 +309,12 @@ function wired_owed_claims(string $t): array
     // "twenty-one of the 36 pages", and the reader took `twenty` then `one` as its own number and reported a claim
     // of ONE. A figure the prose can write and the tool cannot read is the fake-clean verdict wearing the opposite
     // costume — here it was a fake STALE, which sends a reader to re-type a sentence that was already true.
-    // Longest alternatives first, so `sixteen` is never harvested as `six`.
+    // Longest alternatives first, so `sixteen` is never harvested as `six`. And a DIGIT is one or two characters, not
+    // exactly two: when the owed figure moved from 18 to 8 this run went from eight claims to SIX, because `18` was
+    // readable and `8` was not. The prose getting truer made the instrument judge less — the same silent-absence
+    // defect, arriving from the numeral's width rather than its spelling.
     $ones = 'one|two|three|four|five|six|seven|eight|nine';
-    $word = '(?:\d{2}|(?:twenty|thirty)[- ](?:'.$ones.')|(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(?:twenty|thirty)|ten|'.$ones.')';
+    $word = '(?:\d{1,2}|(?:twenty|thirty)[- ](?:'.$ones.')|(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(?:twenty|thirty)|ten|'.$ones.')';
     $out = [];
     $forms = [
         ['the ('.$word.') wired pages call', 'wired'],
@@ -262,8 +329,12 @@ function wired_owed_claims(string $t): array
         ['('.$word.') of the 36 pages[^.|]{0,60}still offer no order', 'owed'],
         ['('.$word.') still do not', 'owed'],
         ['the other ('.$word.') (?:pages|still show)', 'owed'],
-        ['That (\d{2}) counts', 'owed'],
-        ['still owed: (\d{2}) of the 36', 'owed'],
+        ['That (\d{1,2}) counts', 'owed'],
+        ['still owed: (\d{1,2}) of the 36', 'owed'],
+        // The owed PLAN, which both registers state as a membership sentence rather than a ratio. The matrix wrote
+        // "the plan for the nine screens still owed" on the day eight were, and no pattern read it, so a number the
+        // prose can write and the tool cannot harvest is a silent claim — the shape this extractor exists to refuse.
+        ['the plan for the ('.$word.') (?:screens|pages|tables) still owed', 'owed'],
     ];
     foreach ($forms as [$body, $kind]) {
         $pattern = '/'.str_replace('(', '(', $body).'/iu';
@@ -373,7 +444,11 @@ if (in_array('--check-matrix', $argv, true)) {
 
         exit(1);
     }
-    judge_claims('the matrix G40 row', $row, $screenCount, $tableCount - $screenCount, $WORDNUM);
+    // The whole file, not the G40 row. §8 and §14's coverage rows state the SAME population in their own words
+    // ("eighteen screens use it and the other eighteen still show headings with no order"), and a checker scoped to
+    // one row certifies the other two while they rot — lane 64's membership defect, met from the tool's own scope.
+    // The G40 row is still required to exist, because losing the register is a different refusal from losing a phrase.
+    judge_claims('the matrix', $text, $screenCount, $tableCount - $screenCount, $WORDNUM);
 }
 
 if (in_array('--check-docx', $argv, true)) {

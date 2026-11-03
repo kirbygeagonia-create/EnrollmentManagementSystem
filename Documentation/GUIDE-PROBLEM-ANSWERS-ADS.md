@@ -1,7 +1,8 @@
 # ADS Final Project Guide — Every Problem, Concept and Checklist Item Answered
 ### SEAIT Enrollment Management System
 
-Guide source: `ADS_Final_Project_Guide_EMS_updated.docx`, read out of the archive by
+Guide source: `ADS_Final_Project_Guide_EMS_updated.docx` — the school's own blank form, held outside this
+repository in the owner's `Downloads` folder, read out of the archive by
 `php storage/app/scratch/lane155-read-ads-guide.php` and flattened to
 `storage/app/scratch/ads-guide-flat.txt`. This file answers that guide's own answerable population,
 in the guide's own order and words: **24 problems carrying 106 guide questions**, each problem's
@@ -1326,18 +1327,19 @@ Locks on the block, the room and the enrollment; a version on the person; dedupe
 seat, attempt, sheet and request keys. Two probes met the races on the school's engine. Remainder
 named: the address and guardian rows a screen writes are unversioned.
 
-**Row 5 — Locking.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-`lockForUpdate()` at three sites — the print issuance reserve, the block row as the assign
-transaction's first act, the room row second — always in that order, with sorted ids.
-The locks cover the assign and proposal paths; no other enrollment write takes a row lock.
+**Row 5 — Locking.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
+`lockForUpdate()` at four sites — the print issuance reserve, the block row as the assign
+transaction's first act, the room row second, and the subject-proposal path's own enrollment row —
+always in that order, with sorted ids.
+Demonstrated by `BlockCapacityAtomicityTest`: `the_capacity_count_is_taken_inside_the_transaction_after_the_block_is_locked` and `a_second_seat_request_is_refused_and_leaves_the_record_exactly_as_it_was`. The locks cover the assign and proposal paths; no other enrollment write takes a row lock.
 
 **Row 6 — Deadlock Handling.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
 `App\Support\RetryOnDeadlock`, 1213 and 1205 only, every other exception propagated, a refusal in
 words when the bound is spent. A genuine `SQLSTATE[40001]` was observed pre-fix and absent after.
 SQLite never deadlocks, so four boundary cases hand the helper the driver codes instead.
 
-**Row 7 — Database Constraints.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-Primary and foreign keys with per-table delete behaviour catalogued and weighed, NOT NULL, enums, and the thirteen
+**Row 7 — Database Constraints.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
+Demonstrated by `DatabaseLevelEnrollmentRulesTest` (the server refuses a second fee sheet and a second active seat, and a drop releases the seat) and `EnrollmentRequestKeyTest` (the index refuses a second row carrying one key). Primary and foreign keys with per-table delete behaviour catalogued and weighed, NOT NULL, enums, and the thirteen
 unique constraints §23.6.1 lists, which `php storage/app/scratch/lane44-unique-keys.php` weighs against the server.
 Gap named in the guide's own words: no `CHECK` expresses a
 range rule (capacity non-negative, units non-negative), which MySQL 8 supports.
@@ -1347,20 +1349,20 @@ Named composites and the name index, each verified with `EXPLAIN` on a 100,000-s
 defect this row owns is stated rather than hidden: the directory's contains search cannot use the
 index that exists, ~98,800 rows touched where a prefix touches ~1,111.
 
-**Row 9 — Query Optimization.** ☐ Implemented ☑ Query plan/performance test ☐ N/A
-Four paths weighed with their plans; the readiness loop measured at 5.0 repeated statements per row,
+**Row 9 — Query Optimization.** ☑ Implemented ☑ Query plan/performance test ☐ N/A
+Four paths weighed with their plans (`lane191-attribute-registrar-queries.php`); the readiness loop measured at 5.0 repeated statements per row,
 now 0 repeating per row, the three remaining reads answered once per page by `App\Support\ReadinessBatch`. The two
 rewrites that remain are school
-decisions, not defaults to invent.
+decisions, not defaults to invent. The delivered case is `tests/Feature/Registrar/PrerequisiteGateTest.php`: it asserts the batched answer equals the fresh read in BOTH directions, which is what makes the batching an optimisation rather than a second definition of the gate.
 
-**Row 10 — Data Integrity.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-Referential and domain integrity in the schema, derived counts, one status writer, and the record-state
+**Row 10 — Data Integrity.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
+Demonstrated by `DeleteGuardNamedByShiftDocketTest` (a referenced row is not deleted and the screen names the docket that holds it) and `AuditRecordStatesTest` (the twenty record-state rules, each with its own count). Referential and domain integrity in the schema, derived counts, one status writer, and the record-state
 audit whose twentieth rule weighs holders against declared ceilings. The fixture habit the seat key
 caught — eight test files holding two active seats for one student and term — was censused, repaired
 and the key returned the same day.
 
-**Row 11 — Database Security.** ☑ Implemented ☐ Demonstrated in test ☐ N/A
-Rights, policies, the college boundary, column minimisation, a private disk with no served route,
+**Row 11 — Database Security.** ☑ Implemented ☑ Demonstrated in test ☐ N/A
+Demonstrated by `PermissionMatrixTest` (every desk route against its right, both directions), `StoredFileAccessTest` (`nobody_who_cannot_view_the_admission_may_open_its_document`), `ServedUploadPathTest` (the upload door is not registered at all), `SecurityHeadersTest` and `DeactivatedAccountStopsMidSessionTest`. Rights, policies, the college boundary, column minimisation, a private disk with no served route,
 redacted audit rows, headers gated on a named proxy. Limitation stated: one service account at the
 database, so the role rules are enforced by the application, not by MySQL grants.
 
@@ -1465,17 +1467,11 @@ marked with the plan/performance vocabulary because the instrument ran; the rewr
   assigns into a one-seat section; 10 of 10 clean proposals against 4 unretried 1213 deaths; one
   winner and nine refusals on the contended seat of the 1,000-act run; 0 duplicate groups before and
   after each key.
-- *Screenshot, SQL output, logs, or other evidence:* `storage/app/scratch/lane168-out.txt`,
-  `lane190-out.txt`, `lane172-load-out.txt`, `lane164-out.txt`, `lane191-out.txt`,
-  `lane189-suite.log`, `l170-suite-junit.xml`, `l171-suite-junit.xml`, and the cases of
-  `Documentation/TESTING-AND-VERIFICATION-ADS.md`, each carrying the ten fields the ADS prompt names.
-  The guide's list is an alternative ("Screenshot, SQL output, logs, **or other evidence**"), and this
-  pair answers it with the reproducible members on purpose: a screen photograph states what one browser
-  painted once, while a captured stdout or a `Tests:` line can be re-run by the instructor and either
-  agrees or does not. Screenshots are not absent for lack of a running system — the desks do render —
-  but no claim above rests on one, so nothing had to be invented to fill a frame. §II.B's warning about
-  exposing real students is answered the same way: every record named here belongs to the synthetic
-  demo cast, which is also why the paper the drill reads carries `DEMO-` identifiers.
+- *Screenshot, SQL output, logs, or other evidence:* captured stdout and JUnit, not screenshots. A photograph
+  states what one browser painted once; a capture can be re-run and either agrees or does not. The files are
+  `lane168-out.txt`, `lane190-out.txt`, `lane172-load-out.txt`, `lane164-out.txt`, `lane191-out.txt`,
+  `lane189-suite.log`, `l170-suite-junit.xml` and `l171-suite-junit.xml`. Every record named belongs to the
+  synthetic demo cast, which is why the drill's paper carries `DEMO-` identifiers.
 The case-shape census is `php storage/app/scratch/lane189-count-ads-fields.php`, which reads every
 two-column table in that document and reports how many rows are short — its reading today is 12 tables and
 0 short. On its first run it found

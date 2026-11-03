@@ -103,14 +103,17 @@ $report('control', $code === 0 && substr_count($out, 'AGREES') === 2 && str_cont
     "exit {$code}, ".substr_count($out, 'AGREES').' agree(s), dated row '.(str_contains($out, 'DATED') ? 'named' : 'MISSING').", {$controlClaims} matrix claim(s)");
 
 // 2 — a stale WIRED figure in the Status cell (the defect the instrument actually found).
-$copy = $plant($matrix, 'lane140-mx-wired.php.txt', 'twenty-one of thirty-six tables use it',
+// Every needle in this harness is re-cut onto the bytes the registers hold NOW, because the planted numbers are
+// prose the batch just re-took: a leg anchored on the previous day's figure reports "plant matched nothing", which
+// is the harness's age and never a defect in the checker (lane 44's rule for an anchor that has to be re-cut).
+$copy = $plant($matrix, 'lane140-mx-wired.php.txt', 'twenty-eight of thirty-six tables use it',
     'fourteen of thirty-six tables use it', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $report('stale-wired-cell', $code === 1 && str_contains($out, 'STALE') && str_contains($out, 'fourteen of thirty-six'),
     "exit {$code}");
 
 // 3 — a stale OWED figure in the row's prose.
-$copy = $plant($matrix, 'lane140-mx-owed.php.txt', '15 of the 36 pages using the shared table still offer no order',
+$copy = $plant($matrix, 'lane140-mx-owed.php.txt', '8 of the 36 pages using the shared table still offer no order',
     '19 of the 36 pages using the shared table still offer no order', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $report('stale-owed-prose', $code === 1 && str_contains($out, 'STALE') && str_contains($out, 'OWED claims 19'),
@@ -121,7 +124,7 @@ $report('stale-owed-prose', $code === 1 && str_contains($out, 'STALE') && str_co
 // and reported a true sentence as a claim of ONE. This plant is wrong in its SECOND half only, so it fires STALE
 // exactly when 22 was added — and the extraction count must stay what the control read, because before the widening
 // the whole form matched nothing and a claim went silently unjudged.
-$copy = $plant($matrix, 'lane140-mx-compound.php.txt', 'twenty-one of thirty-six tables use it',
+$copy = $plant($matrix, 'lane140-mx-compound.php.txt', 'twenty-eight of thirty-six tables use it',
     'twenty-two of thirty-six tables use it', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $plantedClaims = preg_match('/(\d+) wired\/owed claim\(s\) extracted/', $out, $cm) === 1 ? (int) $cm[1] : -1;
@@ -131,13 +134,43 @@ $report('compound-figure-read-as-a-sum', $code === 1 && str_contains($out, 'WIRE
 
 // 3c — a widening is not an off switch: `ten` joined the vocabulary before this batch and must still be readable
 // after it, or the compound rewrite silently retired a number the prose has used.
-$copy = $plant($matrix, 'lane140-mx-ten.php.txt', '15 of the 36 pages using the shared table still offer no order',
+$copy = $plant($matrix, 'lane140-mx-ten.php.txt', '8 of the 36 pages using the shared table still offer no order',
     'ten of the 36 pages using the shared table still offer no order', 1);
 [$code, $out] = $run('--check-matrix --matrix='.$copy);
 $report('single-word-ten-still-read', $code === 1 && str_contains($out, 'OWED claims 10'), "exit {$code}");
 
+// 3d — a SINGLE-DIGIT arabic figure is a claim, not a letter. The reader used `/\d{2}/`, so the day the owed count
+// reached 8 the run went from eight claims to SIX: the prose getting truer made the instrument judge less.
+$copy = $plant($matrix, 'lane140-mx-digit1.php.txt', '8 of the 36 pages using the shared table still offer no order',
+    '9 of the 36 pages using the shared table still offer no order', 1);
+[$code, $out] = $run('--check-matrix --matrix='.$copy);
+$report('single-digit-owed-is-judged', $code === 1 && str_contains($out, 'OWED claims 9'), "exit {$code}");
+
+// 3e — a widening is not an off switch: the two-digit form the row wore all week must still be harvested.
+$copy = $plant($matrix, 'lane140-mx-digit2.php.txt', '8 of the 36 pages using the shared table still offer no order',
+    '18 of the 36 pages using the shared table still offer no order', 1);
+[$code, $out] = $run('--check-matrix --matrix='.$copy);
+$report('double-digit-owed-still-judged', $code === 1 && str_contains($out, 'OWED claims 18'), "exit {$code}");
+
+// 3f — a claim OUTSIDE the gap row is judged. The §8 / §14 coverage rows state this same population in their own
+// words, and while the checker was scoped to the `| G40 |` line it never opened them, so eighteen wired and eighteen
+// owed sat in the matrix for weeks with nothing disagreeing.
+$copy = $plant($matrix, 'lane140-mx-otherrow.php.txt', 'twenty-eight screens use it',
+    'thirty screens use it', 1);
+[$code, $out] = $run('--check-matrix --matrix='.$copy);
+$report('claim-outside-the-gap-row-is-judged', $code === 1 && str_contains($out, 'WIRED claims 30')
+    && str_contains($out, 'the matrix:'),
+    "exit {$code}, WIRED claims 30 ".(str_contains($out, 'WIRED claims 30') ? 'named' : 'MISSING'));
+
+// 3g — the owed PLAN sentence is a membership claim about the same count, and it joined the vocabulary when the
+// matrix said nine on a day eight were owed.
+$copy = $plant($matrix, 'lane140-mx-plan.php.txt', 'The plan for the eight screens still owed',
+    'The plan for the twelve screens still owed', 1);
+[$code, $out] = $run('--check-matrix --matrix='.$copy);
+$report('owed-plan-sentence-is-judged', $code === 1 && str_contains($out, 'OWED claims 12'), "exit {$code}");
+
 // 4 — a stale figure in a LIVING document row must fire through --dump=.
-$copy = $plant($dump, 'lane140-dp-living.php.txt', 'the twenty-one wired pages call',
+$copy = $plant($dump, 'lane140-dp-living.php.txt', 'the twenty-eight wired pages call',
     'the sixteen wired pages call', 1);
 [$code, $out] = $run('--check-docx --dump='.$copy);
 $report('docx-living-row-stale', $code === 1 && str_contains($out, 'WIRED claims 16'), "exit {$code}");
@@ -160,23 +193,34 @@ $dateCell = $m[1];
 $cleanCopy = $makeCopy($dump, 'lane140-dp-clean.php.txt');
 [$cleanCode, $cleanOut] = $run('--check-docx --dump='.$cleanCopy);
 $cleanDated = preg_match('/(\d+) carried by a dated/', $cleanOut, $dm) === 1 ? (int) $dm[1] : -1;
+// The dated row's OWN figure is read off the clean run rather than remembered: pass 401 proved that a leg asserting
+// a frozen number reports the document getting truer as the tool going bad.
+if (preg_match('/DATED\s+dump line \d+: \[(\d+) of the 36 pages that render the shared table/', $cleanOut, $fm) !== 1) {
+    fwrite(STDERR, "BAD: the clean run names no dated `N of the 36 pages that render the shared table` claim, so this "
+        ."leg has nothing to falsify — its population moved.\n");
+
+    exit(1);
+}
+$datedFigure = (int) $fm[1];
 $report('dated-rule-holds-on-clean', $cleanCode === 0 && $cleanDated >= 1 && str_contains($cleanOut, 'AGREES'),
-    "exit {$cleanCode}, {$cleanDated} dated claim(s), clean verdict ".($cleanCode === 0 ? 'agrees' : 'refused'));
+    "exit {$cleanCode}, {$cleanDated} dated claim(s) (row figure {$datedFigure}), clean verdict "
+    .($cleanCode === 0 ? 'agrees' : 'refused'));
 
 $copy = $plant($dump, 'lane140-dp-dated.php.txt', $dateCell.' One sort mechanism',
     '(this issue) One sort mechanism', 1);
 [$code, $out] = $run('--check-docx --dump='.$copy);
 $nowDated = preg_match('/(\d+) carried by a dated/', $out, $dm2) === 1 ? (int) $dm2[1] : -1;
-$report('dated-rule-proved-by-falsification', $code === 1 && str_contains($out, 'OWED claims 34')
+$report('dated-rule-proved-by-falsification', $code === 1 && str_contains($out, 'claims '.$datedFigure)
     && $nowDated === $cleanDated - 1,
-    "exit {$code}; dated went {$cleanDated} -> {$nowDated}, wanted exactly one fewer (cell was [{$dateCell}])");
+    "exit {$code}; dated went {$cleanDated} -> {$nowDated}, wanted exactly one fewer; the same figure ({$datedFigure}) "
+    .(str_contains($out, 'claims '.$datedFigure) ? 'fired as a living claim' : 'did not fire'));
 
 // 7 — a dump with nothing left to judge must REFUSE, not certify. Every living claim is stripped (three of them
 // since pass 401); the dated rows' figures stay in the file and must not be counted as judged claims, which is what
 // makes this leg mean "read nothing" rather than "read something stale".
-$copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the twenty-one wired pages call', 'the wired pages call', 1);
+$copyA = $plant($dump, 'lane140-dp-empty-a.php.txt', 'the twenty-eight wired pages call', 'the wired pages call', 1);
 $text = (string) file_get_contents($root.'/'.$copyA);
-$needle = '15 of the 36 pages that use the shared table';
+$needle = '8 of the 36 pages that use the shared table';
 if (substr_count($text, $needle) !== 1) {
     fwrite(STDERR, 'BAD: the owed needle occurs '.substr_count($text, $needle).' time(s) in the dump copy, wanted 1'
         ." — the leg would silently leave a claim standing.\n");
@@ -186,7 +230,7 @@ if (substr_count($text, $needle) !== 1) {
 $text = str_replace($needle, 'the pages that use the shared table', $text);
 // Pass 401 left the register a THIRD living claim in the spelled shape the extractor has now learned, so the leg
 // has to mute it too — otherwise the run judges something, agrees, and the "no JUDGED" refusal stays unreachable.
-$needle3 = 'twenty-one of the thirty-six tables that render the shared component sort on the server';
+$needle3 = 'twenty-eight of the thirty-six tables that render the shared component sort on the server';
 if (substr_count($text, $needle3) !== 1) {
     fwrite(STDERR, 'BAD: the spelled wired needle occurs '.substr_count($text, $needle3).' time(s) in the dump copy, wanted 1'
         ." — the leg would silently leave a claim standing.\n");

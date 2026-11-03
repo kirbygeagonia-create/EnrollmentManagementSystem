@@ -313,6 +313,22 @@ $docs = [
     ['System_Storyboard_Walkthrough.md', 'Documentation/System_Storyboard_Walkthrough.md'],
     ['SEAIT-EMS-Round3-Current-State.md', 'SEAIT-EMS-Round3-Current-State.md'],
 ];
+// The eleven `Documentation/*-ADS.md` deliverables quote instrument figures too — "38 DB::transaction sites",
+// "105 foreign keys", "twenty audit rules", "thirteen keys in ten tables" — and none of them was in this list, so the
+// run printed a clean verdict over documents it never opened. That is the hand-kept-list blind spot this repository has
+// recorded twice, arrived at in the checker that exists to catch stale figures. Bound by GLOB, and an empty match is a
+// refusal rather than a scope that quietly stopped judging.
+$adsDocs = glob('Documentation/*-ADS.md') ?: [];
+if ($adsDocs === []) {
+    echo "REFUSED: no Documentation/*-ADS.md file was matched, so the deliverable family is unweighed — the glob has aged, not the documents.\n";
+    exit(2);
+}
+sort($adsDocs);
+foreach ($adsDocs as $p) {
+    $docs[] = [basename($p), $p];
+}
+printf("SCOPE %d document(s): %d named plus %d matched by Documentation/*-ADS.md\n",
+    count($docs), count($docs) - count($adsDocs), count($adsDocs));
 if (($flat = $opt('--flat')) !== null) {
     $docs[3] = ['docx', $flat];
 }
@@ -348,7 +364,7 @@ if (($onlyDocs = $opt('--docs')) !== null) {
 }
 
 $NUMNC = '(?:\d[\d,]*|'.implode('|', array_keys($WORDS)).')';
-$HISTORY_RE = '/(first version|its first|previously|had been|was |were |found|corrected|caught|reported|printed|at the time|back in|used to|it once|which had|slept because|stopped applying|\bthen\b|on that date|on that day)/i';
+$HISTORY_RE = '/(first version|its first|previously|had been|could not|could never|was |were |found|corrected|caught|reported|printed|at the time|back in|used to|it once|which had|slept because|stopped applying|\bthen\b|on that date|on that day)/i';
 $DATE_RE = '/(\d{4}-\d{2}-\d{2}|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s*\d{4})/';
 // A §1.1 revision row whose first cell is a bare date or date range IS the dated record — "2026-10-11–15 |" describes
 // what the build did then, so "ran fourteen rules" inside it is history. The cell that reads "2026-10-16–20 (this
@@ -357,8 +373,13 @@ $DATE_RE = '/(\d{4}-\d{2}-\d{2}|(?:January|February|March|April|May|June|July|Au
 // The en dash in "2026-10-11–15" is three bytes, so the class needs /u: without it the dash is matched byte-by-byte,
 // the row reads as undated, and a historic figure in §1.1 is refused as a stale claim about today.
 $DATED_ROW_RE = '/^ROW \d+: \d{4}-\d{2}-\d{2}(?:[\x{2013}\x{2014}-]\d{1,2})?\s*\|/u';
-// The figure plus up to three following words: the phrase, not the last noun, decides which reading answers it.
+// A figure plus up to three following words: the phrase, not the last noun, decides which reading answers it.
 $claimRe = '/('.$NUMNC.')((?:\s+[A-Za-z§\/&-]+){1,3})/';
+// Membership, not total: "two OF ITS rules", "the SAME two rules", "both AS rules" all name which members
+// exist inside a register; none states how many the register holds. The words sit BEFORE and AFTER the figure,
+// so the sentence is searched rather than the phrase, and a claim of this shape is declined and counted rather
+// than judged — the same discipline lane 58 applies to a class total and lane 72 to a comparison.
+$MEMBERSHIP_RE = '/\b(of its|the same|as rules|as rule|rules listed|rules named|rules among)\b/i';
 
 $trace = $flag('--trace');
 $stale = 0;
@@ -367,6 +388,7 @@ $history = 0;
 $judged = 0;
 $bound = 0;
 $matched = 0;
+$membership = 0;
 $ciUnmeasured = [];
 
 foreach ($docs as [$label, $path]) {
@@ -421,6 +443,19 @@ foreach ($docs as [$label, $path]) {
                     $isHistory = preg_match($HISTORY_RE, $sentence) === 1
                         || preg_match($DATE_RE, $sentence) === 1
                         || $rowDated;
+                    // Declined AFTER the label and AFTER the history test, so the count is a queue of figures this binder
+                    // would otherwise have judged. Skipped before the label lookup, it also swallowed claims that carry
+                    // no instrument noun at all and would have been dropped anyway; skipped before the history test, it
+                    // re-labelled a dated record as a decline and made the two exemptions answer for one another.
+                    if (! $isHistory && preg_match($MEMBERSHIP_RE, $sentence) === 1) {
+                        $membership++;
+                        $saw = true;
+                        printf("%-10s %-40s :%-5d %-22s claimed %5d %-12s %s\n", 'MEMBERSHIP',
+                            $label.' › '.$key, $idx + 1, trim($cm[0]), $claimed, '(not judged)',
+                            substr(trim($sentence), 0, 80));
+
+                        continue;
+                    }
                     $saw = true;
                     $bound++;
                     printf("%-8s %-40s :%-5d %-22s claimed %5d %-12s %s\n", $isHistory ? 'HISTORY' : 'PRESENT',
@@ -457,6 +492,11 @@ foreach ($docs as [$label, $path]) {
 
 printf("\n%d figure(s) cited a named instrument: %d judged (%d match, %d stale, %d unbound), %d history.\n",
     $bound, $judged, $matched, $stale, $unbound, $history);
+if ($membership > 0) {
+    printf("  DECLINED %d figure(s) name WHICH members a register holds, not how many the register holds.
+"
+        ."           This binder answers totals, so these were neither judged nor cleared: read them.\n", $membership);
+}
 if ($ciUnmeasured !== []) {
     $named = [];
     foreach ($ciUnmeasured as $k => $n) {

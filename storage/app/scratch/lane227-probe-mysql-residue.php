@@ -1,0 +1,281 @@
+<?php
+
+/**
+ * Which test class leaves a row behind on MySQL?
+ *
+ * `OfficeDirectorySortTest` asserts that the offices its own fixture wrote are the whole population, and CI's MySQL
+ * job answered four rows where the fixture wrote three — one named `Office 1` at `officeId` 1, a spelling no seeder
+ * writes and exactly what the Accounting set-up loops put in:
+ * `Offices::firstOrCreate(['officeId' => 1], ['officeName' => 'Office 1'])`. On SQLite that row cannot exist, because
+ * `:memory:` hands every connection its own schema, which is why this box has never seen the defect.
+ *
+ * So this probe drives a named set of test classes against a scratch MySQL schema in CI's own order and then reads
+ * the surviving rows out of the server. `--classes=` narrows it, so the population can be bisected class by class.
+ *
+ * Refusals, each by name: a schema this tool was not told it may own, the live `ems`, a missing `.env` credential
+ * line, a suite run that wrote no JUnit, a table the schema does not hold.
+ *
+ * Usage:
+ *   php storage/app/scratch/lane227-probe-mysql-residue.php --schema=ems_l227_a --classes=tests/Feature/Accounting
+ *   php storage/app/scratch/lane227-probe-mysql-residue.php --schema=ems_l227_a --table=offices --classes=<a,b>
+ */
+$root = dirname(__DIR__, 3);
+chdir($root);
+
+// Imports sit above the bootstrap: PHP resolves an unqualified name at compile time, and Pint's
+// `fully_qualified_strict_types` rule will file a `use` below the call if this block moves (AGENTS.md, lane 65).
+use Illuminate\Contracts\Console\Kernel;
+
+$schema = null;
+$table = 'offices';
+$classes = [];
+$recreate = false;
+
+foreach (array_slice($GLOBALS['argv'], 1) as $arg) {
+    if (preg_match('#^--schema=(.+)$#', $arg, $m)) {
+        $schema = $m[1];
+    } elseif (preg_match('#^--table=(.+)$#', $arg, $m)) {
+        $table = $m[1];
+    } elseif (preg_match('#^--classes=(.+)$#', $arg, $m)) {
+        $classes = array_values(array_filter(array_map('trim', explode(',', $m[1])), static fn (string $s): bool => $s !== ''));
+    } elseif ($arg === '--recreate') {
+        $recreate = true;
+    } else {
+        fwrite(STDERR, "REFUSED: this tool does not read the flag {$arg}\n");
+        exit(1);
+    }
+}
+
+if ($schema === null) {
+    fwrite(STDERR, "REFUSED: --schema= is required, because a run that writes must name the schema it writes.\n");
+    exit(1);
+}
+if (in_array(strtolower($schema), ['ems', 'mysql', 'information_schema', 'performance_schema'], true)) {
+    fwrite(STDERR, "REFUSED: {$schema} is not a schema this tool may write to. It drives a test suite, which migrates fresh.\n");
+    exit(1);
+}
+if (! preg_match('/^ems_l227_[a-z]$/', $schema)) {
+    fwrite(STDERR, "REFUSED: --schema={$schema} does not match ems_l227_[a-z], the pattern this probe owns.\n");
+    exit(1);
+}
+if ($classes === []) {
+    fwrite(STDERR, "REFUSED: --classes= is required (comma-separated paths under tests/); with no population there is nothing to bisect.\n");
+    exit(1);
+}
+if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+    fwrite(STDERR, "REFUSED: --table={$table} is not a plain table name.\n");
+    exit(1);
+}
+foreach ($classes as $path) {
+    if (! is_dir($root.'/'.$path) && ! is_file($root.'/'.$path)) {
+        fwrite(STDERR, "REFUSED: {$path} is neither a directory nor a file under the repository.\n");
+        exit(1);
+    }
+}
+
+// ---------- credentials, read from .env line by line (parse_ini_file warns and returns nothing on this file) ----------
+$env = [];
+foreach (file($root.'/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    if (str_starts_with(trim($line), '#')) {
+        continue;
+    }
+    if (preg_match('/^([A-Z0-9_]+)=(.*)$/', $line, $m)) {
+        $env[$m[1]] = trim($m[2], " \t\"'");
+    }
+}
+foreach (['DB_HOST', 'DB_USERNAME'] as $need) {
+    if (! isset($env[$need]) || $env[$need] === '') {
+        fwrite(STDERR, "REFUSED: .env names no {$need}, so this probe cannot reach a server.\n");
+        exit(1);
+    }
+}
+$port = isset($env['DB_PORT']) && $env['DB_PORT'] !== '' ? (int) $env['DB_PORT'] : 3306;
+$php = 'C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe';
+
+/**
+ * The PHPUnit config the suite leg runs under, with the database pins DELIBERATELY ABSENT.
+ *
+ * `phpunit.xml` carries `<env name="DB_CONNECTION" value="sqlite"/>`, and on a box whose `variables_order` lacks `E`
+ * that entry lands in `$_ENV` even when the real environment already answers `mysql` — PHPUnit's guard is
+ * `if ($force || !isset($_ENV[$name])) { $_ENV[$name] = $value; }`. Laravel's `env()` reads that repository first, so
+ * the file silently wins over the shell and a "MySQL rehearsal" measures SQLite. Dropping the two keys is what makes
+ * the pinned environment reach the test; everything else is copied from `phpunit.xml` so the run stays the same run.
+ */
+function lane227_write_config(string $config, string $root): string
+{
+    $r = str_replace('\\', '/', $root);
+
+    $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated by lane227-probe-mysql-residue.php. No DB_CONNECTION, no DB_DATABASE, no DB_URL: that is the whole point. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="{$r}/vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="{$r}/vendor/autoload.php"
+         colors="true"
+         cacheDirectory="{$r}/storage/app/scratch/lane227-phpunit-cache"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>{$r}/tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>{$r}/tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>{$r}/app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>
+
+XML;
+
+    if (@file_put_contents($config, $xml) === false) {
+        return 'file_put_contents returned false';
+    }
+    clearstatcache(true, $config);
+    if (! is_file($config)) {
+        return 'the file is not on disk after the write';
+    }
+
+    return '';
+}
+
+$connect = static function (?string $database) use ($env, $port): \mysqli {
+    // PHP 8's mysqli driver THROWS on a failed connection, so the guard has to be a catch around the call.
+    return new \mysqli($env['DB_HOST'], $env['DB_USERNAME'], $env['DB_PASSWORD'] ?? '', (string) ($database ?? ''), $port);
+};
+
+try {
+    $server = $connect(null);
+} catch (\mysqli_sql_exception $e) {
+    fwrite(STDERR, 'REFUSED: the server at '.$env['DB_HOST'].':'.$port.' refused the connection ('.$e->getMessage().").\n");
+    exit(1);
+}
+
+$exists = $server->query("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '".$server->real_escape_string($schema)."'");
+$holds = $exists && $exists->num_rows > 0;
+
+if ($holds && ! $recreate) {
+    $probe = $server->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '".$server->real_escape_string($schema)."'");
+    $howMany = $probe ? (int) $probe->fetch_row()[0] : 0;
+    fwrite(STDERR, "REFUSED: {$schema} already exists and carries {$howMany} table(s). Pass --recreate to drop and rebuild it, or name another.\n");
+    exit(1);
+}
+if ($holds) {
+    $server->query('DROP DATABASE `'.$schema.'`');
+}
+$server->query('CREATE DATABASE `'.$schema.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+$server->close();
+
+// ---------- the suite leg, against the schema just built, with the connection PINNED ----------
+// `phpunit.xml` pins sqlite/:memory:, and on this box it WINS over the environment: PHP's `variables_order` is
+// `GPCS` (no `E`), so `$_ENV` starts empty, and PHPUnit's `PhpHandler::handleEnvVariables()` writes
+// `$_ENV['DB_CONNECTION'] = 'sqlite'` whenever `$_ENV` lacks the key — its guard is `if ($force || !isset($_ENV[$name]))`,
+// so `getenv()` already answering `mysql` does not save it. Laravel's `env()` reads that repository first, which is
+// how a "MySQL rehearsal" silently runs on SQLite. The fix is a config with the DB pins removed, not a louder env.
+// CI's runner has `E` in `variables_order`, so its real step env is already in `$_ENV` and `phpunit.xml` never lands.
+putenv('DB_CONNECTION=mysql');
+putenv('DB_DATABASE='.$schema);
+putenv('DB_HOST='.$env['DB_HOST']);
+putenv('DB_PORT='.(string) $port);
+putenv('DB_USERNAME='.$env['DB_USERNAME']);
+putenv('DB_PASSWORD='.(($env['DB_PASSWORD'] ?? '') !== '' ? $env['DB_PASSWORD'] : ''));
+
+$config = $root.'/storage/app/scratch/lane227-phpunit-mysql.xml';
+// Written, not kept: a relative `bootstrap` in a config that lives in `storage/app/scratch` resolves against that
+// directory and PHP cannot open it, so the paths have to be this checkout's absolute ones. `.xml` under `scratch` is
+// ignored by `storage/app/.gitignore`, which is fine for a file the probe rebuilds on every run — the recipe travels
+// inside this `.php`, not inside the generated config.
+$problem = lane227_write_config($config, $root);
+if ($problem !== '') {
+    fwrite(STDERR, "REFUSED: {$config} could not be prepared ({$problem}).\n");
+    exit(1);
+}
+
+$junit = $root.'/storage/app/scratch/lane227-mysql-junit.xml';
+$command = escapeshellarg($php).' '.escapeshellarg($root.'/vendor/bin/pest')
+    .' -c '.escapeshellarg($config).' '.escapeshellarg('--log-junit='.$junit).' '
+    .implode(' ', array_map('escapeshellarg', $classes)).' 2>&1';
+
+$status = 0;
+echo '>> vendor/bin/pest -c storage/app/scratch/lane227-phpunit-mysql.xml '.implode(' ', $classes)
+    ." (DB_CONNECTION=mysql DB_DATABASE={$schema})\n";
+exec($command, $out, $status);
+$last = '';
+foreach ($out as $line) {
+    if (trim($line) !== '') {
+        $last = $line;
+    }
+}
+echo '   suite exit '.$status.': '.substr(trim(preg_replace('/\s+/', ' ', $last) ?? ''), 0, 220)."\n";
+
+if (! is_file($junit) || filesize($junit) === 0) {
+    fwrite(STDERR, "REFUSED: the run wrote no JUnit at {$junit}, so its verdict cannot be read — the residue count below would describe an older schema.\n");
+    exit(1);
+}
+
+// A run that exits 1 only says SOMETHING failed. The residue hunt needs the failing class, because when the office
+// directory is the detector its pass/fail IS the measurement — and the table read at the end of a run can be 0 for
+// a row that existed mid-run and was deleted by a later class (exactly what happened in the first two rounds).
+$jx = @simplexml_load_file($junit);
+$failing = [];
+if ($jx !== false) {
+    foreach ($jx->xpath('//testcase[failure | error]') ?: [] as $tc) {
+        $failing[] = ((string) $tc['class']).' > '.mb_substr((string) $tc['name'], 0, 60);
+    }
+}
+echo '   failing cases: '.($failing === [] ? 'none' : count($failing))."\n";
+foreach (array_slice($failing, 0, 8) as $f) {
+    echo '     '.$f."\n";
+}
+
+// ---------- what survived ----------
+try {
+    $db = $connect($schema);
+} catch (\mysqli_sql_exception $e) {
+    fwrite(STDERR, "REFUSED: {$schema} could not be opened after the run (".$e->getMessage().").\n");
+    exit(1);
+}
+
+$inSchema = $db->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '".$db->real_escape_string($schema)."' AND TABLE_NAME = '".$db->real_escape_string($table)."'");
+if (! $inSchema || $inSchema->num_rows === 0) {
+    fwrite(STDERR, "REFUSED: {$schema} holds no table `{$table}`, so the suite never built the schema this probe reads.\n");
+    $db->close();
+    exit(1);
+}
+
+$rows = $db->query('SELECT * FROM `'.$table.'` ORDER BY 1');
+$found = [];
+while ($row = $rows->fetch_assoc()) {
+    $found[] = $row;
+}
+$rows->free();
+
+// The count of tables is printed beside the residue so a `CLEAN` can be read as "the schema was built and nothing
+// outlived the run" rather than "the run never came here" — the ambiguity that made the first version's refusal useful.
+$built = $db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '".$db->real_escape_string($schema)."'");
+echo '   schema built: '.($built ? (int) $built->fetch_row()[0] : 0)." table(s) in {$schema}\n";
+echo '   residue in `'.$table.'` after the run: '.count($found)." row(s)\n";
+foreach (array_slice($found, 0, 20) as $row) {
+    echo '     '.json_encode(array_map(static fn ($v) => (string) $v, $row), JSON_UNESCAPED_UNICODE)."\n";
+}
+if (count($found) > 20) {
+    echo '     … '.(count($found) - 20)." more row(s) not printed\n";
+}
+$db->close();
+exit(0);

@@ -32,11 +32,19 @@ $fail = static function (string $m): never {
 };
 
 $overrides = null;
+// Declared above the parser: an initialiser written below the loop that reads a flag erases what the flag set, which is how
+// `--json=` arrived inert on its first run here — accepted, refused nothing, wrote nothing.
+$jsonOut = null;
 foreach (array_slice($GLOBALS['argv'], 1) as $arg) {
     if (str_starts_with($arg, '--pages=')) {
         $overrides = array_values(array_filter(array_map('trim', explode(',', substr($arg, 8)))));
+    } elseif (str_starts_with($arg, '--json=')) {
+        // The queue as data, for the instrument that counts it. `lane140-measure-wired-screens.php` needs to know
+        // which owed pages could CARRY a header, and re-deriving "does this action paginate" there would be a second
+        // definition of the predicate this file already decides — the defect refused for year levels and sort keys.
+        $jsonOut = substr($arg, 7);
     } else {
-        $fail("this tool reads --pages= only; it was given [{$arg}].");
+        $fail("this tool reads --pages= and --json= only; it was given [{$arg}].");
     }
 }
 
@@ -165,6 +173,7 @@ if ($overrides !== null) {
     printf("cross-check: lane140 names the same %d owed pages, page for page — the two readers agree by set, not by luck.\n\n", $theirs);
 }
 
+$records = [];
 foreach ($pages as $p) {
     // The page's own component name, the way Inertia spells it.
     $rel = preg_replace('#^resources/js/Pages/#', '', $p['path']);
@@ -232,11 +241,20 @@ foreach ($pages as $p) {
     // Is it a queue at all? A list the action hands over whole needs no server order — that is lane 90's
     // classification, and a plan that ignores it will spend a batch wiring a header onto a six-row table.
     $paginates = str_contains($hit['body'], '->paginate(') || str_contains($hit['body'], '->simplePaginate(');
+    // The queue and the plan are different units, and the footer must say which one it counted: the page set agrees
+    // with lane140 at eight NAMES, but only the paginated subset is a list a server order can serve.
+    $records[] = [
+        'page' => $p['path'], 'short' => $rel,
+        'action' => basename($hit['file'], '.php').'::'.$hit['action'],
+        'model' => $model, 'table' => $table, 'paginates' => $paginates,
+        'offer' => 'not reached', 'direct' => [], 'derived' => [], 'painted' => $painted,
+    ];
     echo '  shape       '.($paginates ? 'SERVER-PAGINATED queue — a server order is what prompt §14 asks for'
         : 'BOUNDED SET (the action answers all() or a plain collection) — no server order is owed here; say so in the register rather than wiring it')."\n";
     if ($table === null) {
         // Two different failures, and one message would name the wrong cause: the model may be unread, or read but
         // owned by a vendor migration this census does not walk (Spatie's `roles` and `permissions` are that shape).
+        $records[count($records) - 1]['offer'] = $model === null ? 'UNRESOLVED' : 'NOT-IN-MIGRATIONS';
         echo $model === null
             ? "  offer       UNRESOLVED — the builder's model was not read; decide by hand, do not guess a column set\n\n"
             : "  offer       NOT-IN-MIGRATIONS — `{$model}` was read but its table is not created under database/migrations (a vendor-owned table); ask information_schema by hand before offering columns\n\n";
@@ -255,13 +273,17 @@ foreach ($pages as $p) {
                 $candidates[] = $t;
             }
         }
+        $records[count($records) - 1]['offer'] = 'SUSPECT-BINDING';
         echo '  offer       SUSPECT-BINDING — none of '.implode(', ', $top)." is a column of `{$table}`; do not wire from this line\n";
         echo '              tables holding every painted key: '.($candidates === [] ? '(none in the migrations)' : implode(', ', $candidates))."\n\n";
 
         continue;
     }
+    $records[count($records) - 1]['offer'] = 'ORDERABLE';
     $direct = array_values(array_intersect($painted, $stored));
+    $records[count($records) - 1]['direct'] = $direct;
     $derived = array_values(array_diff($painted, $stored));
+    $records[count($records) - 1]['derived'] = $derived;
     echo '  orderable   '.($direct === [] ? '(none of the painted columns is stored)' : implode(', ', $direct))."\n";
     if ($derived !== []) {
         // A painted column that is not a column of this table is either a relation (a hop can order it) or derived
@@ -275,4 +297,35 @@ foreach ($pages as $p) {
         }
     }
     echo '  tie-break   '.($stored[0] ?? '?')." (first column of the table; confirm it is the primary key)\n\n";
+}
+
+// The unit of the queue. The page NAMES agree with lane140 by set, and that agreement is about a list of files, not
+// about work: a page whose action hands the rows over whole owes a sentence in the register, not a header. Printing
+// one number for both readings is how a plan spends a batch wiring an order onto a six-row table.
+$paginated = array_values(array_filter($records, static fn (array $s): bool => $s['paginates']));
+$bounded = count($records) - count($paginated);
+printf("queue read by shape: %d page(s) classified of %d opened, %d SERVER-PAGINATED (a header is owed) and %d BOUNDED SET (no server order exists to owe)\n",
+    count($records), count($pages), count($paginated), $bounded);
+if (count($paginated) > 0) {
+    echo '  owed a header: '.implode(', ', array_map(static fn (array $s): string => $s['page'], $paginated))."\n";
+}
+if ($bounded > 0) {
+    echo '  bounded sets, say so in the register: '
+        .implode(', ', array_map(static fn (array $s): string => $s['page'],
+            array_values(array_filter($records, static fn (array $s): bool => ! $s['paginates']))))."\n";
+}
+$unclassified = count($pages) - count($records);
+if ($unclassified > 0) {
+    echo '  '.count($pages).' opened, '.count($records).' classified: '.$unclassified
+        ." page(s) left the loop before its shape line (no column list read, or no action bound). Those are UNREAD, not clean.\n";
+}
+
+if ($jsonOut !== null) {
+    $jsonPath = str_starts_with($jsonOut, '/') || preg_match('#^[A-Za-z]:#', $jsonOut) === 1
+        ? $jsonOut
+        : $root.'/'.$jsonOut;
+    if (file_put_contents($jsonPath, json_encode($records, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) === false) {
+        $fail("the --json= target {$jsonPath} could not be written.");
+    }
+    printf("wrote %d record(s) to %s\n", count($records), $jsonPath);
 }

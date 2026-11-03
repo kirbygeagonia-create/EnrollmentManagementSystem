@@ -180,7 +180,7 @@ $leg(
     $other,
     'const unitBasisToneMap = {',
     "const appliesToBadgeTone = { all: 'neutral' };\nconst unitBasisToneMap = {",
-    'no_second_surface_declares_an_appliesTo_tone_map',
+    'no_second_surface_declares_an_applies_to_tone_map',
     'declared outside the shared module'
 );
 

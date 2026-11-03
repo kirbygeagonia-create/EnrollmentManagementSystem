@@ -189,9 +189,85 @@ $plain = static function (string $s): string {
     // left alone rather than eaten.
     $s = (string) preg_replace('/(?<!\*)\*([^*\n]{1,80}?)\*(?!\*)/u', '$1', $s);
     $s = (string) preg_replace('/(?<![\w_])_([^_\n]{1,80}?)_(?![\w_])/u', '$1', $s);
+    // A whole paragraph wrapped in one pair of asterisks is the answer file's italics for a prompt the guide
+    // itself prints; the short-span rule above cannot reach it because the pair is hundreds of characters apart.
+    if (preg_match('/^\*(.+)\*$/us', $s, $im) === 1) {
+        $s = trim($im[1]);
+    }
+    // A heading marker or a horizontal rule that survived a block split would print as punctuation on paper.
+    $s = (string) preg_replace('/^#{1,6}\s+/u', '', $s);
+    $s = (string) preg_replace('/^\s*[-*_]{3,}\s*$/mu', '', $s);
+    // The submission carries the owner's plain typography: no em dash, no en dash, no arrow. The markdown source
+    // keeps its own style because it is read on screen; the paper is what a panelist marks, and a dash that reads
+    // as a typographical mark in a submitted document is the thing that was ruled against, not against the source.
+    $s = strtr($s, [' — ' => ', ', ' —' => ',', '— ' => ',', '—' => '-', '–' => '-', '→' => ' to ', '←' => ' from ', '…' => '...']);
     $s = preg_replace('/\s+/', ' ', $s);
 
     return trim((string) $s);
+};
+
+$flatten = static function (string $fragment): string {
+    preg_match_all('/<w:t(?: [^>]*)?>(.*?)<\/w:t>/s', $fragment, $tm);
+
+    return trim(preg_replace('/\s+/', ' ', html_entity_decode(implode('', $tm[1]), ENT_QUOTES | ENT_XML1)));
+};
+
+/**
+ * The end offset of the FIRST empty cell inside a table, in absolute document coordinates.
+ *
+ * The guide's writing space is a small table of empty rows, so "where the answer goes" is a property of the table,
+ * not of the label above it. A row is empty when its flattened text is empty; the function returns the offset of
+ * that row's first `</w:tc>` — the byte the new paragraphs go BEFORE, so they are written INSIDE the cell.
+ *
+ * This used to return `$tc + 7`, the byte after the cell's closing tag, which puts a `<w:pc>`… a `<w:p>` as a direct
+ * child of `<w:tr>`. That is not legal OOXML: Word does not complain, it repairs the file by relocating the
+ * paragraphs, and the delivered copy's analysis boxes came out EMPTY with the answers parked in the next table down.
+ * Every count the old read-back took (paragraph order, ballot totals, field-label totals) survived the repair, which
+ * is why the defect reached the owner's screen instead of a refusal here.
+ */
+$firstEmptyCellEnd = static function (string $xml, int $tblStart, int $tblEnd) use ($flatten): ?int {
+    $at = $tblStart;
+    while ($at < $tblEnd && ($tr = strpos($xml, '<w:tr', $at)) !== false && $tr < $tblEnd) {
+        $trEnd = strpos($xml, '</w:tr>', $tr);
+        if ($trEnd === false || $trEnd > $tblEnd) {
+            return null;
+        }
+        $rowXml = substr($xml, $tr, $trEnd - $tr + 7);
+        if ($flatten($rowXml) === '') {
+            $tc = strpos($xml, '</w:tc>', $tr);
+            if ($tc === false || $tc > $trEnd) {
+                return null;
+            }
+
+            return $tc;
+        }
+        $at = $trEnd + 7;
+    }
+
+    return null;
+};
+
+/**
+ * The guard the first delivery needed: a paragraph written between a cell's `</w:tc>` and its row's `</w:tr>` is
+ * legal-looking XML that Word silently RELOCATES, so the box a person reads stays empty while every count still
+ * agrees. Two insert shapes are legal, and they are decided on the BYTES at the point, not on a scan for the row
+ * that encloses it — the first cut asked whether the enclosing row closed *after* the point, and a point sitting
+ * exactly on that row's `</w:tr>` answered "no row", so the falsifier's own plant walked straight through it.
+ *
+ *   • in-cell:  the point is immediately before the `</w:tc>` that closes the cell being filled;
+ *   • in-body:  the point is immediately after a `</w:p>`, which is where a new paragraph belongs outside a table.
+ */
+$assertInCell = static function (string $xml, int $at, string $where): string {
+    if (substr($xml, $at, 7) === '</w:tc>') {
+        return '';
+    }
+    if ($at >= 6 && substr($xml, $at - 6, 6) === '</w:p>') {
+        return '';
+    }
+
+    return "{$where}: the insert point {$at} is neither immediately before a `</w:tc>` nor immediately after a "
+        .'`</w:p>` (the 14 bytes here are `'.substr($xml, max(0, $at - 7), 21).'`), so a paragraph written here '
+        ."would sit between a cell and its row, where Word moves it out of the box.";
 };
 
 // 2a. problems. The title is captured on its OWN line: a pattern carrying the `s` modifier lets `(.*?)` cross
@@ -313,20 +389,56 @@ if (preg_match('/\n## V\..*?(?=\n## VI\.)/s', $md, $vm)) {
 printf("§V sub-item answers parsed: %d\n", count($vAnswers));
 count($vAnswers) === 25 || $fail('the answer file holds '.count($vAnswers).' §V sub-item answers; the guide lists 25, so a label this parser cannot read is a question that would go unanswered on the paper.');
 
-// 2d. §VI defense answer and §VII fill-ins
-$defense = '';
-if (preg_match('/\n## VI\..*?\n\*\*The answer:\*\*\s*(.*?)(?=\n\*\*Be prepared|$)/s', $md, $dm)) {
-    $defense = $plain($dm[1]);
-}
-if ($defense === '') {
-    if (preg_match('/\n## VI\..*?(?=\n## VII\.)/s', $md, $dm2)) {
-        $defense = $plain((string) preg_replace('/^\*\*.*?\*\*\s*/', '', $dm2[0]));
+// 2d. §VI defense answer and §VII fill-ins.
+//
+// The answer file's §VI block is a heading, the school's question in italics, the answer (whose four labelled
+// claims are one paragraph), the `Be prepared` prompt in italics, and the evidence paragraph. The paper already
+// carries the two prompts, so what belongs in the copy is the answer, one labelled claim per paragraph, and the
+// supporting-evidence sentence with its own label. A whole-paragraph italic and a `**Accuracy:**` marker reach
+// Word as punctuation, so each line goes through `$plain`.
+$defenseParas = [];
+$prepared = '';
+if (preg_match('/\n## VI\.(.*?)(?=\n## VII\.|\z)/s', $md, $dm6) === 1) {
+    foreach (preg_split('/\n\s*\n/', trim($dm6[1])) ?: [] as $block) {
+        $raw = trim($block);
+        if ($raw === '' || preg_match('/^(VI\.\s*)?Final Defense Question$/iu', $raw) === 1) {
+            continue;
+        }
+        // The school's question is already on the paper; the `Be prepared` prompt is too, and what follows it on the
+        // same markdown block is the answer the guide asks for. Reading only the block's head loses that answer, so
+        // the prompt is peeled off and its remainder kept.
+        if (preg_match('/^\*If 1,000.*\*\s*$/us', $raw) === 1) {
+            continue;
+        }
+        if (preg_match('/^\*Be prepared.*?\*\s*(.+)$/us', $raw, $bp) === 1) {
+            $prepared = $plain($bp[1]);
+
+            continue;
+        }
+        $flat = $plain($raw);
+        if ($flat === '') {
+            continue;
+        }
+        // One labelled claim per paragraph on paper: the answer file packs Accuracy, Consistency, Security and
+        // Reliability into one block because markdown reads it as prose, and a 1,300-character Word paragraph does not.
+        if (preg_match('/Consistency:.*Security:/us', $flat) === 1) {
+            foreach (preg_split('/(?=\s(?:Consistency|Security|Reliability):)/', $flat) ?: [] as $piece) {
+                $piece = trim($piece);
+                if ($piece !== '') {
+                    $defenseParas[] = $piece;
+                }
+            }
+
+            continue;
+        }
+        $defenseParas[] = $flat;
     }
 }
-$prepared = '';
-if (preg_match('/\*\*Be prepared[^\*]*\*\*\s*(.*?)(?=\n\*\*|\n## |\z)/s', $md, $pm2)) {
-    $prepared = $plain($pm2[1]);
-}
+$defenseParas !== [] || $fail('the answer file holds no §VI defense paragraph the parser can read, so the copy would print the question with no answer.');
+$prepared !== '' || $fail('the answer file holds no answer after its own `Be prepared` prompt, so `Supporting evidence for that answer:` would print as a label with nothing after it.');
+printf("§VI: %d defense paragraph(s) and a %d-character supporting-evidence answer\n", count($defenseParas), strlen($prepared));
+$defense = $defenseParas[0];
+
 $fill = [];
 foreach (['Student 1', 'Student 2', 'Instructor', 'Date of Presentation'] as $label) {
     if (preg_match('/\*\*'.preg_quote($label, '/').':\*\*\s*([^\n]+)/', $md, $fm)) {
@@ -402,29 +514,54 @@ foreach ($problemHeads as $i => $head) {
     $planApplic[] = [$n, 1];
     $chosenLabel = $chosen[0][1];   // the guide's own spelling, not the answer file's
 
-    // the answer cell: the enclosing <w:tc> of the `If N/A…` paragraph
-    $tcOpen = strrpos($xml, '<w:tc>', $naLine['start'] - strlen($xml));
-    $tcClose = strpos($xml, '</w:tc>', $naLine['end']);
-    if ($tcOpen === false || $tcClose === false || $tcClose < $naLine['end']) {
-        $fail("problem {$n}: its answer area is not inside a table cell (tcOpen=".var_export($tcOpen, true).', tcClose='.var_export($tcClose, true).').');
+    // WHERE the answer goes. Each problem's writing space is a small table of empty rows that sits DIRECTLY AFTER
+    // its Applicability row (that is the ruled area under `Your Analysis / Solution`), and the `If N/A…` prompt owns
+    // a second empty-row table below it. The first delivered copy appended everything into one cell after the
+    // `If N/A…` label, which left the guide's own analysis lines blank on paper; the owner's ruling is that the
+    // overall answer belongs in the analysis box and only the N/A sentence in the box under its own label.
+    $tblStart = strpos($xml, '<w:tbl>', $row['end']);
+    $tblEnd = $tblStart === false ? false : strpos($xml, '</w:tbl>', $tblStart);
+    if ($tblStart === false || $tblEnd === false || $tblEnd >= $windowEnd) {
+        $fail("problem {$n}: no table follows its applicability row inside this problem's window "
+            ."(tblStart=".var_export($tblStart, true).', tblEnd='.var_export($tblEnd, true)
+            .', windowEnd='.$windowEnd.'), so the analysis box cannot be located.');
+    }
+    $analysisAt = $firstEmptyCellEnd($xml, (int) $tblStart, $tblEnd + 8);
+    if ($analysisAt === null) {
+        $fail("problem {$n}: its analysis table holds no empty row to write into, so the overall answer would land nowhere.");
+    }
+
+    $naTbl = strpos($xml, '<w:tbl>', $naLine['end']);
+    $naTblEnd = $naTbl === false ? false : strpos($xml, '</w:tbl>', $naTbl);
+    if ($naTbl === false || $naTblEnd === false || $naTblEnd >= $windowEnd) {
+        $fail("problem {$n}: no table follows its `If N/A…` line inside this problem's window, so the N/A sentence has no box.");
+    }
+    $naAt = $firstEmptyCellEnd($xml, (int) $naTbl, $naTblEnd + 8);
+    if ($naAt === null) {
+        $fail("problem {$n}: its N/A box holds no empty row to write into.");
+    }
+    if ($analysisAt >= $naAt) {
+        $fail("problem {$n}: its analysis box ({$analysisAt}) does not precede its N/A box ({$naAt}), so the two were located wrongly.");
     }
 
     $lines = [];
-    $lines[] = 'Problem '.$n.' — '.$block['title'].' — answered '.$plain((string) date('Y-m-d')).', registrar-assisted build.';
-    $lines[] = 'Concept involved: '.$block['concept'];
-    $lines[] = 'Applicability: '.$chosenLabel.'.';
-    $lines[] = 'Design: '.$block['design'];
-    $lines[] = 'Implementation: '.$block['implementation'];
-    $lines[] = 'Test or demonstration: '.$block['test'];
-    $lines[] = 'Evidence: '.$block['evidence'];
+    $lines[] = 'Concept involved: '.$plain($block['concept']);
+    $lines[] = 'Applicability: '.$plain($chosenLabel).'.';
+    $lines[] = 'Design: '.$plain($block['design']);
+    $lines[] = 'Implementation: '.$plain($block['implementation']);
+    $lines[] = 'Test or demonstration: '.$plain($block['test']);
+    $lines[] = 'Evidence: '.$plain($block['evidence']);
+    foreach ($block['qa'] as [$qid, $q, $a]) {
+        $lines[] = $plain($qid).' '.preg_replace('/\s*$/', '', $plain($q));
+        $lines[] = 'Answer: '.$plain($a);
+    }
+    $lines[] = 'Answered '.date('Y-m-d').' against the registrar-assisted workflow; every claim above names a file, a case or a captured reading in this repository.';
+
     // The paper carries one spelling of this field even though the answer file uses three; the guide's own
     // wording is the one a panelist reads, and the answer file's variant stays where it was written.
-    $lines[] = 'Workflow difference, or why this is N/A: '.$block['workflow'];
-    foreach ($block['qa'] as [$qid, $q, $a]) {
-        $lines[] = $qid.' '.$q;
-        $lines[] = 'Answer: '.$a;
-    }
-    $inserts[] = [$tcClose, $lines];
+    $naLines = ['Workflow difference, or why this is N/A: '.$plain($block['workflow'])];
+    $inserts[] = [$analysisAt, $lines];
+    $inserts[] = [$naAt, $naLines];
 }
 
 $nameKey = static function (string $s): string {
@@ -522,7 +659,12 @@ if ($answered !== count($vAnswers) || $unmatched !== []) {
 }
 
 // §VI and §VII
-$inserts[] = [$find('Be prepared to support your answer')[0]['end'], ['Defense answer: '.$defense, 'Supporting evidence for that answer: '.$prepared]];
+$viLines = ['Defense answer: '.$defenseParas[0]];
+foreach (array_slice($defenseParas, 1) as $extra) {
+    $viLines[] = $extra;
+}
+$viLines[] = 'Supporting evidence for that answer: '.$prepared;
+$inserts[] = [$find('Be prepared to support your answer')[0]['end'], $viLines];
 foreach (['Student 1', 'Student 2', 'Instructor', 'Date of Presentation'] as $label) {
     $hits = $find($label.':');
     count($hits) === 1 || $fail('the §VII label '.$label.' appears in '.count($hits).' paragraphs; a fill-in must be addressed by a line only it owns.');
@@ -554,10 +696,77 @@ $ops = [];
 foreach ($edits as [$at, $len, $to]) {
     $ops[] = [$at, $len, $to];
 }
+// Every insert point is checked BEFORE anything is written, because the one delivery that skipped this produced a
+// file that opened, passed its own read-back and still showed empty boxes on paper.
+foreach ($inserts as $k => [$at, $lines]) {
+    $why = $assertInCell($xml, (int) $at, 'insert #'.($k + 1).' ('.count($lines).' paragraph(s), first: '
+        .mb_strimwidth((string) $lines[0], 0, 60, '…').')');
+    if ($why !== '') {
+        $fail($why);
+    }
+}
+
+// The owner's ruling on the paper is that an answer must read clear and direct. A 160-word field is not clearer
+// because its verdict stands first, so a long line is broken at its own sentence boundaries into separate printed
+// paragraphs. Nothing is reworded and nothing is dropped: the sentences are the ones the answer file carries, and
+// the count below proves the pieces add up to the whole.
+// One unit of "words", shared with the reader that judges the paper. `str_word_count` counts only alphabetic runs, so
+// a line of identifiers — `uq_enrollment_subject_attempt`, `EnrollmentIssuer::seatHolder()`, a file path — reads as
+// far fewer words here than the whitespace tokens `lane228 --over=N` counts on the copy, and the cap then never fires.
+// Two definitions of one word is the defect this repository has refused for year levels and sort keys; here it made a
+// length rule unenforceable on exactly the answers that are longest.
+require_once $root.'/storage/app/scratch/printed-words.php';
+$wordsOf = 'printed_words';
+$sentenceChunks = static function (string $line, int $maxWords = 55) use ($wordsOf): array {
+    if ($wordsOf($line) <= $maxWords) {
+        return [$line];
+    }
+    // A semicolon is a boundary too: the enumerated answers on this paper ("P13 partial (…); P14 partial (…)") are
+    // ONE grammatical sentence, so a splitter that knows only `.!?` returns the whole 121-word line and the cap is
+    // silently unenforced — which is what `lane228 --over=60` then refuses on the delivered copy.
+    $parts = preg_split('/(?<=[.!?;])\s+(?=["“A-Z(]|\Z)/u', $line, -1, PREG_SPLIT_NO_EMPTY) ?: [$line];
+    $out = [];
+    $buf = '';
+    foreach ($parts as $p) {
+        $candidate = $buf === '' ? $p : $buf.' '.$p;
+        if ($wordsOf($candidate) > $maxWords && $buf !== '') {
+            $out[] = $buf;
+            $buf = $p;
+            continue;
+        }
+        $buf = $candidate;
+    }
+    if ($buf !== '') {
+        $out[] = $buf;
+    }
+    // Last resort, and it costs no words: an enumeration with no boundary at all is broken at the space nearest the
+    // cap. A paragraph is a line break, not an edit — nothing is reworded — and a cap that can be exceeded by a
+    // sentence with no punctuation is a cap that is not enforced.
+    $hard = [];
+    foreach ($out as $chunk) {
+        while ($wordsOf($chunk) > $maxWords) {
+            $ws = preg_split('/\s+/u', trim($chunk), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $hard[] = implode(' ', array_slice($ws, 0, $maxWords));
+            $chunk = trim(implode(' ', array_slice($ws, $maxWords)));
+        }
+        if (trim($chunk) !== '') {
+            $hard[] = $chunk;
+        }
+    }
+    $out = $hard;
+    if ($wordsOf(implode(' ', $out)) < $wordsOf($line) * 0.9) {
+        return [$line];
+    }
+
+    return $out;
+};
+
 foreach ($inserts as [$at, $lines]) {
     $xmlNew = '';
     foreach ($lines as $line) {
-        $xmlNew .= '<w:p><w:r><w:t xml:space="preserve">'.htmlspecialchars($line, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</w:t></w:r></w:p>';
+        foreach ($sentenceChunks((string) $line) as $chunk) {
+            $xmlNew .= '<w:p><w:r><w:t xml:space="preserve">'.htmlspecialchars($chunk, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</w:t></w:r></w:p>';
+        }
     }
     $ops[] = [$at, 0, $xmlNew];
 }

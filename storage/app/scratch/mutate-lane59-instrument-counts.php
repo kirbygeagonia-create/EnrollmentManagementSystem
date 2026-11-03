@@ -173,6 +173,64 @@ $case('dated-sentence-left-alone',
     0, 0, ['HISTORY'], ['STALE'],
     'a figure inside a sentence that names its own day is history whatever the tools now print');
 
+// ------------------------------------------------------------------ the two exemptions are READ, not accepted
+//
+// Widening the document scope to `Documentation/*-ADS.md` produced four STALE rows, three of them the binder's own
+// over-reach: "weighs both as two of its rules" says WHICH members the audit holds, not how many the audit holds. Fixing
+// that by classifying membership claims creates an exemption, and every exemption in this repository has had to prove
+// it fires both ways — a checker that declines a claim is one edit away from declining everything. So each leg below
+// reads the clean copy and the mutant copy and asserts on BOTH outputs, which the `$case` helper does not do.
+
+$pair = static function (string $name, string $clean, array $wantCleanIn, array $wantNotInClean,
+    string $mutant, array $wantInMutant, string $why) use ($root, $dir, $php, $checker, $run, $say): void {
+    $control = "Control: `php storage/app/scratch/lane46-filter-contract.php` judges 55 bindings and 0 problems.\n";
+    $cf = $dir.'/'.$name.'.clean.md';
+    $mf = $dir.'/'.$name.'.md';
+    file_put_contents($root.'/'.$cf, $control.$clean."\n");
+    file_put_contents($root.'/'.$mf, $control.$mutant."\n");
+    $a = $run($php.' '.$checker.' --readings='.$dir.'/readings.json --doc=AGENTS.md='.$cf.' --docs=AGENTS.md');
+    $b = $run($php.' '.$checker.' --readings='.$dir.'/readings.json --doc=AGENTS.md='.$mf.' --docs=AGENTS.md');
+    $missing = [];
+    foreach ([[$wantCleanIn, $a['out'], 'clean'], [$wantInMutant, $b['out'], 'mutant']] as [$want, $out, $side]) {
+        foreach ($want as $needle) {
+            if (! str_contains($out, $needle)) {
+                $missing[] = $side.':'.$needle;
+            }
+        }
+    }
+    $leaked = array_values(array_filter($wantNotInClean, static fn (string $n): bool => str_contains($a['out'], $n)));
+    $say($a['code'] === 0 && $b['code'] === 1 && $missing === [] && $leaked === [], $name.' — '.$why);
+    if ($a['code'] !== 0 || $b['code'] !== 1 || $missing !== [] || $leaked !== []) {
+        printf("     clean exit %d (wanted 0), mutant exit %d (wanted 1)%s%s\n", $a['code'], $b['code'],
+            $missing === [] ? '' : '; missing: '.implode(' / ', $missing),
+            $leaked === [] ? '' : '; leaked into the clean run: '.implode(' / ', $leaked));
+        foreach (preg_split('/\n/', $a['out']) ?: [] as $l) {
+            if (preg_match('/PRESENT|HISTORY|MEMBERSHIP|STALE|DECLINED|VERDICT/', $l) === 1) {
+                echo '       C| '.substr($l, 0, 150)."\n";
+            }
+        }
+        foreach (preg_split('/\n/', $b['out']) ?: [] as $l) {
+            if (preg_match('/PRESENT|HISTORY|MEMBERSHIP|STALE|DECLINED|VERDICT/', $l) === 1) {
+                echo '       M| '.substr($l, 0, 150)."\n";
+            }
+        }
+    }
+};
+
+$pair('membership-declined-and-printed',
+    'The audit `php artisan ems:audit:record-states` weighs both as two of its rules.',
+    ['MEMBERSHIP', 'DECLINED 1 figure(s)'], ['STALE'],
+    'The audit `php artisan ems:audit:record-states` weighs two rules.',
+    ['STALE', 'prints 19 today'],
+    'a membership claim is declined AND printed, and the same figure without the membership words is judged as the total it now reads');
+
+$pair('could-not-is-a-record',
+    '`lane44-unique-keys.php` could not read past eight tables.',
+    ['HISTORY'], ['STALE', 'DECLINED'],
+    '`lane44-unique-keys.php` reads eight tables.',
+    ['STALE', 'prints 7 today'],
+    'the changelog line that records an inability is a record, and the same figure stated as what the tool does now is a living claim');
+
 // ------------------------------------------------------------------ the refusals
 
 $r = $run($php.' '.$checker.' --doc=AGENTS.md='.$dir.'/drifted-citations.md');
