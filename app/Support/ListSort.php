@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Database\Eloquent\Builder;
+use InvalidArgumentException;
 
 /**
  * The one definition of "sort this list" for a desk table.
@@ -51,6 +52,25 @@ final class ListSort
     {
         $column = array_key_exists((string) $asked, $allowed) ? (string) $asked : $fallback;
         $direction = strtolower((string) $askedDirection) === 'asc' ? 'asc' : 'desc';
+
+        // The asked key is tested against the list above; the HANDLER's own fallback string never was, so a
+        // fallback naming no key in that same list used to answer `Undefined array key` — a 500 at the desk, from a
+        // line no request can reach. It is refused because the mistake is the wiring's, and the next screen to be
+        // added is the one that will make it: the message names the value and the keys that do exist, because a
+        // refusal that prints only a verdict sends the reader to guess which of the two is wrong.
+        if ($allowed === []) {
+            throw new InvalidArgumentException(
+                'ListSort was handed an empty allow-list, so no column can be obeyed and no fallback can exist. '
+                ."The screen asked for [{$asked}]."
+            );
+        }
+        if (! array_key_exists($column, $allowed)) {
+            throw new InvalidArgumentException(
+                "ListSort settled on the column [{$column}], which its allow-list does not hold; the keys are "
+                .implode(', ', array_keys($allowed))
+                .". The asked key was [{$asked}] and the handler's fallback was [{$fallback}] — one of those two is wrong."
+            );
+        }
 
         $spec = $allowed[$column];
         $joins = self::joins($spec);
