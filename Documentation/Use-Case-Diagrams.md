@@ -8,8 +8,8 @@ Model as read by the last run: 131 nodes (41 actor declarations, 90 use cases), 
 
 Both claims below are weighed by the generator before it writes this page — `--audit-actor-edges` and
 `--audit-complete-figure` — so the figures are known to hold what they promise rather than assumed to:
-- 28 actor figure(s); 19 carry at least one include/extend chain; 0 owed dependency edge(s) dropped.
-- model 131 nodes (41 actor declarations, 90 use cases) fold to 105 distinct shapes, drawn 105; model 129 edges, drawn 122, folded as restatement 7 and as merged endpoints 0.
+- 19 actor figure(s); 17 carry at least one include/extend chain; 0 owed dependency edge(s) dropped.
+- model 131 nodes (41 actor declarations, 90 use cases) fold to 96 distinct shapes, drawn 96; model 129 edges, drawn 116, folded as restatement 13 and as merged endpoints 0.
 
 
 ## Complete diagram over every office and desk (2)
@@ -81,7 +81,7 @@ Both claims below are weighed by the generator before it writes this page — `-
 ![Desk 12: System Administration, Security & Audit Desk](Diagrams/use-case-desk-12-system-administration-security-audit-desk.png)
 
 
-## One figure per actor — its associations, and the include and extend chains hanging off them (28)
+## One figure per actor — its associations, and the include and extend chains hanging off them (19)
 
 ### Actor: Admission Officer
 
@@ -135,45 +135,13 @@ Both claims below are weighed by the generator before it writes this page — `-
 
 ![Actor: Institutional Staff (Any Desk)](Diagrams/use-case-actor-institutional-staff-any-desk.png)
 
-### Actor: Student / Applicant
-
-![Actor: Student / Applicant](Diagrams/use-case-actor-student-applicant.png)
-
-### Actor: Institutional SMS / Mail Service
-
-![Actor: Institutional SMS / Mail Service](Diagrams/use-case-actor-institutional-sms-mail-service.png)
-
-### Actor: Applicant
-
-![Actor: Applicant](Diagrams/use-case-actor-applicant.png)
-
-### Actor: Examinee / Student
-
-![Actor: Examinee / Student](Diagrams/use-case-actor-examinee-student.png)
-
-### Actor: Department Evaluator
-
-![Actor: Department Evaluator](Diagrams/use-case-actor-department-evaluator.png)
-
-### Actor: Scholarship & Assessment Officer
-
-![Actor: Scholarship & Assessment Officer](Diagrams/use-case-actor-scholarship-assessment-officer.png)
-
 ### Actor: Student
 
 ![Actor: Student](Diagrams/use-case-actor-student.png)
 
-### Actor: Cashier / Accounting Staff
+### Actor: Institutional SMS / Mail Service
 
-![Actor: Cashier / Accounting Staff](Diagrams/use-case-actor-cashier-accounting-staff.png)
-
-### Actor: Student / Payer
-
-![Actor: Student / Payer](Diagrams/use-case-actor-student-payer.png)
-
-### Actor: Clearance Staff
-
-![Actor: Clearance Staff](Diagrams/use-case-actor-clearance-staff.png)
+![Actor: Institutional SMS / Mail Service](Diagrams/use-case-actor-institutional-sms-mail-service.png)
 
 ### Actor: Office Head / Signatory
 
@@ -182,10 +150,6 @@ Both claims below are weighed by the generator before it writes this page — `-
 ### Actor: Faculty Instructor
 
 ![Actor: Faculty Instructor](Diagrams/use-case-actor-faculty-instructor.png)
-
-### Actor: School Clinic Nurse
-
-![Actor: School Clinic Nurse](Diagrams/use-case-actor-school-clinic-nurse.png)
 
 ### Actor: Office Head / Auditor
 

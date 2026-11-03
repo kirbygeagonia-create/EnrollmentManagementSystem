@@ -199,7 +199,7 @@ To model any software system with absolute rigor, execute these six sequential p
 ```
 
 1. **Define the System Boundary:** Draw a clear boundary box. External web portals, third-party payment gateways, and human staff remain strictly outside.
-2. **Enumerate Genuine Actors:** Identify actors by their operational role (e.g., `AdmissionOfficer`, `Cashier`), not by personal names (`John Doe`). Include secondary actors (e.g., `Applicant`, `External Bank API`).
+2. **Enumerate Genuine Actors:** Identify actors by their operational role (e.g., `AdmissionOfficer`, `Cashier`), not by personal names (`John Doe`). Include secondary actors (e.g., `Applicant`, `External Bank API`). **One role, one label, declared here:** the mermaid blocks below are the actor vocabulary the rendered figures are built from, and a person is named by ROLE (`Student`, `Academic Evaluator`, `Clearance Officer`, `Cashier / Accounting`, `Scholarship Officer`, `Medical Nurse / Clinic`), never by the stage they are standing in. The per-use-case tables in §5 keep the stage words (`Applicant`, `Examinee`, `Payer`) where they describe what the row of the table is about — an intake submission is made by a person who is not yet a student — and those words are NOT actor declarations, so they must never appear inside `A_[id]["label"]`. `lane217-verify-actor-figures.mjs` refuses an actor label that spells a stage word.
 3. **Draft Goals in Action-Verb Format:** Ask: *"What measurable goal does this actor achieve when sitting at this screen?"* (e.g., `Verify Requirement Documents`).
 4. **Draw Association Lines:** Connect actors only to use cases they directly trigger or participate in.
 5. **Apply Behavioral Packaging:**
@@ -234,7 +234,7 @@ flowchart LR
 
     %% Secondary Actors
     subgraph ACTORS_RIGHT ["External & Secondary Actors"]
-        A_Stud["Student / Applicant"]
+        A_Stud["Student"]
         A_SMS["🖥️ Institutional SMS / Mail Service"]
     end
 
@@ -321,7 +321,7 @@ The Admissions Desk manages the onboarding of freshmen, transferees, and shifter
 ```mermaid
 flowchart LR
     A_Adm["Admission Officer"]
-    A_App["Applicant"]
+    A_App["Student"]
 
     subgraph SYSTEM ["Admissions Subsystem Boundary"]
         UC01(["Record New Applicant"])
@@ -368,7 +368,7 @@ The Guidance Desk handles psychological, entrance, and retention diagnostic exam
 flowchart LR
     A_Gui["Guidance Counselor"]
     A_Eval["Academic Evaluator"]
-    A_App["Examinee / Student"]
+    A_App["Student"]
 
     subgraph SYSTEM ["Guidance & Examination Subsystem"]
         UC_EX01(["Schedule Entrance Examination"])
@@ -409,7 +409,7 @@ The Department Evaluation Desk (Program Heads and Deans) structures student subj
 
 ```mermaid
 flowchart LR
-    A_Eva["Department Evaluator"]
+    A_Eva["Academic Evaluator"]
     A_Dea["College Dean"]
 
     subgraph SYSTEM ["Academic Evaluation Subsystem"]
@@ -457,7 +457,7 @@ The Financial Assessment Desk computes tuition fees, miscellaneous assessments, 
 
 ```mermaid
 flowchart LR
-    A_Sch["Scholarship & Assessment Officer"]
+    A_Sch["Scholarship Officer"]
     A_Stud["Student"]
 
     subgraph SYSTEM ["Assessment & Scholarship Subsystem"]
@@ -501,8 +501,8 @@ The Cashier and Accounting Desk processes tuition payments, issues Official Rece
 
 ```mermaid
 flowchart LR
-    A_Acc["Cashier / Accounting Staff"]
-    A_Stud["Student / Payer"]
+    A_Acc["Cashier / Accounting"]
+    A_Stud["Student"]
 
     subgraph SYSTEM ["Accounting & Cashier Subsystem"]
         UC_AC01(["Review Outstanding Assessment Balance"])
@@ -547,7 +547,7 @@ The Clearance Desk oversees institutional accountability (library, laboratory, s
 
 ```mermaid
 flowchart LR
-    A_Clr["Clearance Staff"]
+    A_Clr["Clearance Officer"]
     A_Head["Office Head / Signatory"]
     A_Stud["Student"]
 
@@ -676,7 +676,7 @@ The Campus Clinic conducts physical fitness screenings, vital sign checks, and r
 
 ```mermaid
 flowchart LR
-    A_Cli["School Clinic Nurse"]
+    A_Cli["Medical Nurse / Clinic"]
     A_Stud["Student"]
 
     subgraph SYSTEM ["Campus Health Clinic Subsystem"]

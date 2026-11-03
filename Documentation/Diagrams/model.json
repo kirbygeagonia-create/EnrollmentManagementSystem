@@ -104,7 +104,7 @@
   {
    "desk": "00",
    "id": "A_Stud",
-   "label": "Student / Applicant",
+   "label": "Student",
    "kind": "actor",
    "isDesk": false
   },
@@ -258,7 +258,7 @@
   {
    "desk": "01",
    "id": "A_App",
-   "label": "Applicant",
+   "label": "Student",
    "kind": "actor",
    "isDesk": true
   },
@@ -335,7 +335,7 @@
   {
    "desk": "02",
    "id": "A_App",
-   "label": "Examinee / Student",
+   "label": "Student",
    "kind": "actor",
    "isDesk": true
   },
@@ -391,7 +391,7 @@
   {
    "desk": "03",
    "id": "A_Eva",
-   "label": "Department Evaluator",
+   "label": "Academic Evaluator",
    "kind": "actor",
    "isDesk": true
   },
@@ -454,7 +454,7 @@
   {
    "desk": "04",
    "id": "A_Sch",
-   "label": "Scholarship & Assessment Officer",
+   "label": "Scholarship Officer",
    "kind": "actor",
    "isDesk": true
   },
@@ -510,14 +510,14 @@
   {
    "desk": "05",
    "id": "A_Acc",
-   "label": "Cashier / Accounting Staff",
+   "label": "Cashier / Accounting",
    "kind": "actor",
    "isDesk": true
   },
   {
    "desk": "05",
    "id": "A_Stud",
-   "label": "Student / Payer",
+   "label": "Student",
    "kind": "actor",
    "isDesk": true
   },
@@ -573,7 +573,7 @@
   {
    "desk": "06",
    "id": "A_Clr",
-   "label": "Clearance Staff",
+   "label": "Clearance Officer",
    "kind": "actor",
    "isDesk": true
   },
@@ -741,7 +741,7 @@
   {
    "desk": "09",
    "id": "A_Cli",
-   "label": "School Clinic Nurse",
+   "label": "Medical Nurse / Clinic",
    "kind": "actor",
    "isDesk": true
   },

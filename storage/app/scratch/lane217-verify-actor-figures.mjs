@@ -167,7 +167,21 @@ const edgeless = model.nodes.filter((n) => !model.edges.some((e) => e.from === n
 if (edgeless.length > 0) note(`${edgeless.length} node(s) hold no edge at all: ${edgeless.map((n) => n.label).join(', ')}`);
 else console.log(`no node in the model sits edgeless (the UC_Srch360 class, re-weighed)`);
 
-// ---- 5. stereotype wording must reach the artefact
+// ---- 5. the actor vocabulary: a role, not a stage
+// `Documentation/Use-Case-Diagram-Guide.md` states that a person is named by ROLE and that the stage words
+// (Applicant, Examinee, Payer) belong to the prose tables, never to an actor declaration. A rule written into a
+// guide and enforced by nothing is the defect this repository removes on sight, so the promise is weighed here:
+// after the 2026-11-03 fold the model declares 41 actors across 19 roles and none of them spells a stage.
+const STAGE_WORDS = ['Applicant', 'Examinee', 'Payer'];
+const staged = [...declsByLabel.keys()].filter((l) => STAGE_WORDS.some((w) => l.includes(w)));
+if (staged.length > 0) {
+  note(`${staged.length} actor label(s) name a stage rather than a role: ${staged.join(', ')}`
+    + ' — the guide says a person is labelled by role; the tables keep the stage words');
+} else {
+  console.log(`every actor label names a role, none a stage (${STAGE_WORDS.join(', ')} do not appear)`);
+}
+
+// ---- 6. stereotype wording must reach the artefact
 const unlabeled = model.edges.filter((e) => (e.kind === 'include' || e.kind === 'extend') && !String(e.label).includes('«'));
 if (unlabeled.length > 0) {
   note(`${unlabeled.length} stereotype edge(s) carry no «include»/«extend» word — mermaid draws an empty box:`

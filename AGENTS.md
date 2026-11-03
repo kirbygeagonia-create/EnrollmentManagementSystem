@@ -1396,19 +1396,38 @@ of "does this actor carry a chain" is a permanent disagreement between two corre
 addressable (`--model=`, `--manifest=`, `--index=`, `--figures=`) and every leg plants in a throwaway copy, so the
 deliverables were never edited to prove the reader can fail; the `--figures=` leg is the one that proves a fourth
 surface is honoured rather than accepted, and it caught a real design trap — pointing `--manifest=` at a copy
-without saying where the PNGs live would have refused all 43 files as missing.
+without saying where the PNGs live would have refused every file the manifest lists.
+- **A role is one actor, and the fold is a label change, not a model change** (the owner's ruling of 2026-11-03 on
+task #62). The guide declared 41 actors across 13 blocks and folded to 28 distinct LABELS, so the deliverable drew 28
+actor figures for what is 19 roles: `Applicant`, `Examinee / Student` and `Student / Payer` were the Student;
+`Department Evaluator` was the Academic Evaluator; `Clearance Staff` the Clearance Officer; `Cashier / Accounting
+Staff` the Cashier; `Scholarship & Assessment Officer` the Scholarship Officer; `School Clinic Nurse` the Medical Nurse
+/ Clinic. Folding is therefore ONE normalisation of the `A_[id]["label"]` declarations — associations, includes and
+extends do not move, because edges are written by id, not by label — and the figures went 43 to 34 with 19 actor
+plates where 28 had been. Two consequences were measured rather than assumed. **(a)** `lane208`'s dedupe already
+folds a node by `(kind, label)`, so a label fold is the only change the emitter needs: the completeness ledger moved
+from `122 drawn + 7 restatement` to `116 drawn + 13 restatement` and still closes over the same 129 edges, which is
+the proof that folding merged labels and deleted nothing. **(b)** The guide's per-use-case tables still say
+`Applicant` and `Examinee` in their initiator and secondary-actor cells, and those are stage words describing a
+moment in a record, not actor declarations. Rather than leave two vocabularies standing, the guide now states the rule
+where it tells you to enumerate actors, and `lane217-verify-actor-figures.mjs` ENFORCES it — an actor label spelling a
+stage is refused — with a leg in `mutate-lane217-figure-verifier.php` (13 legs, ALL PROVABLE) that stamps the word
+`Applicant` into a copy of the model and requires the refusal. **One ambiguity was left open on purpose, not folded by
+guess:** `Office Head / Signatory` at the clearance desk and `Office Head / Auditor` in the dossier may be one role
+worn two ways or two roles, and that difference is institutional, so the pair stays as two plates and the question
+stays in task #62 with the derived map.
 - **"Per actor" is a claim, so the closure is now measured rather than commented.** `lane208-use-case-figures.mjs
 --audit-actor-edges` walks each actor figure and compares the include/extend edges the model owes — every dependency
 whose start sits inside that actor's selection — with the edges the emitter actually drew, and refuses on any drop.
 It reads that from `emitGraph`, which now returns the edges it dropped and why, because a projection that silently
-loses a chain looks exactly like a projection that had none. The run answers 28 figures, 19 carrying at least one
-chain, 0 owed edges dropped — so the nine actors that print no stereotype owe none in the model, which is a reading
+loses a chain looks exactly like a projection that had none. The run answers 19 figures, 17 carrying at least one
+chain, 0 owed edges dropped — so the two actors that print no stereotype owe none in the model, which is a reading
 rather than an unchecked absence. Falsified both ways in throwaway copies, deleted afterwards because `.mjs` under
-`scratch` is re-included by extension and a mutant copy would otherwise travel: removing the closure sweep loses 28
-owed edges and exits 1, while the single-pass sweep the delivered figures were built with answers the same 0 as the
+`scratch` is re-included by extension and a mutant copy would otherwise travel: removing the closure sweep exits 1 naming
+every owed edge it protected, while the single-pass sweep the delivered figures were built with answers the same 0 as the
 fixpoint — so that loop is insurance against a depth-2 chain the guide does not yet hold, and is stated as that
 rather than as a repair. `lane213-compare-figure-manifests.mjs` is the reader for the next question, and its answer
-was not the one expected: re-rendering the unchanged model moved the **PNG bytes of all 43 figures while every one
+was not the one expected: re-rendering the unchanged model moved the **PNG bytes of all 43 figures then delivered while every one
 kept identical pixel dimensions**, twice in a row. A figure's byte size is therefore a reading of the render that
 wrote it, not a property of the model — lane 58's rule for an assertion total, arrived at in an image pipeline. Ask
 the dimensions and the model counts whether a change moved; ask the bytes only whether a file is the one the

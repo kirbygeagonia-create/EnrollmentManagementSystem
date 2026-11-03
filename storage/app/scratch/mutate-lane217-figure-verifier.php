@@ -210,9 +210,39 @@ if ($stereo === null) {
     $cleanup();
 }
 
+// ---------------------------------------------------------------- 6b. an actor label spelled as a stage
+$mj = json_decode($model, true);
+$stageLabel = null;
+foreach ($mj['nodes'] as $i => $n) {
+    if ($n['kind'] === 'actor' && ! str_contains($n['label'], 'Applicant')) {
+        $mj['nodes'][$i]['label'] = 'Applicant';
+        $stageLabel = $n['label'];
+        $stageIndex = $i;
+        break;
+    }
+}
+if ($stageLabel === null) {
+    echo str_pad('stage-word-stamped-in', 40)."BAD   no actor declaration to re-spell as a stage\n";
+    $bad++;
+    $legs++;
+} else {
+    $p = $write('model-stage.json', json_encode($mj));
+    $res = $run(["--model={$p}"]);
+    $expect('stage-word-stamped-in', $res, 'name a stage rather than a role', true);
+    $cleanup();
+}
+
 // ---------------------------------------------------------------- 7. the ledger stops closing
-if (preg_match('/model 129 edges, drawn 122, folded as restatement 7/', $manifest) === 1) {
-    $p = $write('manifest-ledger.md', str_replace('model 129 edges, drawn 122,', 'model 129 edges, drawn 121,', $manifest));
+// Located by SHAPE. This leg first spelled the delivered numbers ("model 129 edges, drawn 122, folded 7") and went
+// BAD the day the actor fold moved them to drawn 116 + restatement 13 — a leg anchored on yesterday's bytes reports
+// its own age as a defect in the thing it measures.
+if (preg_match('/model (\d+) edges, drawn (\d+), folded as restatement (\d+) and as merged endpoints (\d+)/', $manifest, $lm) === 1) {
+    $drifted = str_replace(
+        $lm[0],
+        "model {$lm[1]} edges, drawn ".((int) $lm[2] - 1).", folded as restatement {$lm[3]} and as merged endpoints {$lm[4]}",
+        $manifest
+    );
+    $p = $write('manifest-ledger.md', $drifted);
     $res = $run(["--manifest={$p}"]);
     $expect('edge-ledger-unclosed', $res, 'the edge ledger does not close', true);
     $cleanup();
