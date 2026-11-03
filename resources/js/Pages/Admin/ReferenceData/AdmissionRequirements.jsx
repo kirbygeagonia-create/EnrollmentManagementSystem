@@ -2,19 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel, nextSortDirection, sortParams } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel, appliesToTone, nextSortDirection, sortParams } from '@/Components/ui';
 
-// The filter's choices used to be written out here as well as sent by the handler, which is one vocabulary held
-// twice: the day App\Enums\AppliesTo gains a value, the form offers it and the filter does not. Both dropdowns now
-// read the `appliesTo` prop, so the enum is the only place the list is written.
-
-const appliesToToneMap = {
-    firstYear: 'info',
-    transferee: 'warning',
-    shifter: 'accent',
-    continuing: 'success',
-    all: 'neutral',
-};
+// The filter's choices and the badge's tone used to be written out here as well as answered by the handler, which is
+// one vocabulary held twice: the day App\Enums\AppliesTo gains a value, the form offers it and the filter does not,
+// and the new type arrives at the desk with no colour because a page-local map cannot know about it. Both dropdowns
+// read the `appliesTo` prop and the badge reads `appliesToTone`, so the enum is the only place the list is written and
+// the shared module the only place the tone is.
 
 const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -43,7 +37,7 @@ export default function AdmissionRequirements({ requirements, appliesTo = [], fi
     const columns = useMemo(() => [
         { key: 'requirementName', label: 'Name', sortKey: 'requirementName' },
         { key: 'appliesTo', label: 'Applies To', sortKey: 'appliesTo', render: (row) => (
-            <Badge tone={appliesToToneMap[row.appliesTo] || 'neutral'}>
+            <Badge tone={appliesToTone[row.appliesTo] || 'neutral'}>
                 {formatStatusLabel(row.appliesTo)}
             </Badge>
         ), className: 'text-center' },

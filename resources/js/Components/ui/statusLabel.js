@@ -35,6 +35,17 @@ export const studentTypeTone = {
     shifter: 'accent',
 };
 
+// Keys match App\Enums\AppliesTo values. The intake requirement catalogue painted this from a map written inside
+// the page file, which is how one vocabulary gets two answers: the page could keep a tone for a type the enum no
+// longer holds, or lose a tone the day a sixth type is added, and every screen would still render.
+export const appliesToTone = {
+    firstYear: 'info',
+    transferee: 'warning',
+    shifter: 'accent',
+    continuing: 'success',
+    all: 'neutral',
+};
+
 // Keys match App\Enums\AcademicStanding values.
 const academicStandingTone = {
     regular: 'success',
