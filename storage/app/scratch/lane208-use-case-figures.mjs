@@ -503,6 +503,24 @@ if (assigned.size !== jobs.length) {
 
 
 // ---------------------------------------------------------------- 4. render
+// Pre-flight, BEFORE anything is deleted: the artefact check below can only run on a rendered SVG, and a label this
+// script cannot spell (a stray quote, an unbalanced guillemet) would otherwise be discovered after the old figures
+// were already unlinked — a half-written deliverable that reads like a successful run. The syntax is weighed here,
+// where a refusal costs nothing.
+for (const job of jobs) {
+  for (const m of job.code.matchAll(/-\.->\|([^|]*)\|/g)) {
+    const label = m[1];
+    if ((label.match(/«/g) ?? []).length !== (label.match(/»/g) ?? []).length) {
+      fail(`[${job.heading}] writes an unbalanced «…» stereotype: [${label}]`);
+    }
+    if (label.includes('"') && !/^"[^"]*"$/.test(label.trim())) {
+      fail(`[${job.heading}] writes a label with a stray double quote: [${label}]`);
+    }
+    if (label.replace(/["'«»\[\]\\n\s]/g, '') === '') {
+      fail(`[${job.heading}] draws a dashed edge with no label at all: [${label}]`);
+    }
+  }
+}
 mkdirSync(outDir, { recursive: true });
 {
   const stale = readdirSync(outDir).filter((f) => /^use-case-.*\.(png|svg)$/.test(f) || /^_probe-/.test(f));
@@ -540,7 +558,25 @@ for (const job of jobs) {
   if (!(png && png.length > 2000)) fail(`[${job.heading}] produced a ${png ? png.length : 0}-byte PNG`);
   writeFileSync(join(outDir, `${job.name}.png`), png);
   writeFileSync(join(outDir, `${job.name}.svg`), r.svg);
-  manifest.push({ ...job, width: r.width, height: r.height, bytes: png.length });
+  // The name of a relationship must reach the artefact. This is the defect that started the lane: mermaid's HTML
+  // labels swallowed "<<include>>" into an empty box, so the arrow drew, the figure sized correctly, and the
+  // dependency had no name on the page — a picture that reads as complete while stating nothing. Count what the
+  // code asserts and require the drawn SVG to show it at least as often.
+  const svgWords = r.svg.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+  const wanted = new Map();
+  for (const m of job.code.matchAll(/-\.->\|([^|]*)\|/g)) {
+    const label = m[1];
+    for (const st of label.match(/«[^»]+»/g) ?? []) wanted.set(st, (wanted.get(st) ?? 0) + 1);
+    const rest = label.replace(/["']/g, ' ').replace(/«[^»]+»/g, ' ').replace(/\\n/g, ' ').replace(/\[([^\]]*)\]/g, ' $1 ').trim();
+    for (const word of rest.split(/\s+/).filter((w) => w.length > 3)) wanted.set(word, (wanted.get(word) ?? 0) + 1);
+  }
+  for (const [token, count] of wanted) {
+    const shown = svgWords.split(token).length - 1;
+    if (shown < count) {
+      fail(`[${job.heading}] asserts ${count} label(s) reading [${token}] and the drawn SVG shows ${shown} — a relationship whose name did not reach the page.`);
+    }
+  }
+  manifest.push({ ...job, width: r.width, height: r.height, bytes: png.length, labels: wanted.size });
   console.log(`  ok ${job.name.padEnd(52)} ${r.width}x${r.height} ${(png.length / 1024).toFixed(0)} KB`);
 }
 await browser.close();

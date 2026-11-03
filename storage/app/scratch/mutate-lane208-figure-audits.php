@@ -205,6 +205,55 @@ if (substr_count($original, $bucketFrom) === 1) {
     $bad++;
 }
 
+echo "\n=== the label reaches the page ===\n";
+// WITHDRAWN first cut, recorded rather than hidden: this leg re-spelled the delivered |"«include»"| back into the
+// historical |"<<include>>"| — the spelling that produced an EMPTY BOX when the lane started — and expected the
+// artefact check to refuse. The run drew all 43 figures and passed, because on this mermaid that label now renders.
+// A leg that cannot fail is decoration, so it is stated here and replaced by a leg that can: the comparison loop is
+// handed a label requirement the drawing cannot possibly satisfy, and must refuse naming it. That proves the loop
+// runs and its refusal path is reachable, which is all an instrument leg can honestly claim.
+$legs++;
+$unsat = '  for (const [token, count] of wanted) {';
+if (substr_count($original, $unsat) === 1) {
+    $mg = 'storage/app/scratch/lane208-mg-unsatisfiable.mjs';
+    $plant = "wanted.set('zz-unreachable-token', 1);"."\n".'  for (const [token, count] of wanted) {';
+    file_put_contents($mg, str_replace($unsat, $plant, $original));
+    $ocopy = 'storage/app/scratch/lane208-mg-out';
+    @mkdir($ocopy, 0777, true);
+    $mgout = [];
+    $mgcode = 0;
+    exec('cd '.escapeshellarg($root).' && node '.escapeshellarg($mg).' --out='.escapeshellarg($ocopy).' 2>&1', $mgout, $mgcode);
+    $mgtext = preg_replace('/\e\[[0-9;]*m/', '', implode("\n", $mgout));
+    if ($mgcode === 0 || ! str_contains($mgtext, 'did not reach the page') || ! str_contains($mgtext, 'zz-unreachable-token')) {
+        echo str_pad('label-loop-refuses-on-an-unmet-token', 42)."BAD   exit {$mgcode}: the artefact comparison never refused, or refused without naming the token\n";
+        echo '        '.str_replace("\n", ' / ', mb_substr($mgtext, -240))."\n";
+        $bad++;
+    } else {
+        echo str_pad('label-loop-refuses-on-an-unmet-token', 42)."ok    exit {$mgcode}, the drawn SVG is weighed against every asserted label\n";
+    }
+    foreach (glob($ocopy.'/*') ?: [] as $x) {
+        unlink($x);
+    }
+    @rmdir($ocopy);
+    if (is_file($mg)) {
+        unlink($mg);
+    }
+    // The index is written beside the output directory, so a throwaway out dir leaves a throwaway page behind.
+    if (is_file('storage/app/scratch/Use-Case-Diagrams.md')) {
+        unlink('storage/app/scratch/Use-Case-Diagrams.md');
+    }
+    $mleft = array_values(array_filter(glob('storage/app/scratch/lane208-mg-*') ?: []));
+    $legs++;
+    if ($mleft !== [] || is_file('storage/app/scratch/Use-Case-Diagrams.md')) {
+        echo str_pad('mutant-copies-swept', 42).'BAD   still present: '.implode(', ', array_map('basename', $mleft))."\n";
+        $bad++;
+    } else {
+        echo str_pad('mutant-copies-swept', 42)."ok    no mutant generator, no mutant output, no stray index\n";
+    }
+} else {
+    echo str_pad('label-loop-refuses-on-an-unmet-token', 42)."BAD   anchor not unique — the leg's age, not a defect\n";
+    $bad++;
+}
 echo "\n=== copies left behind ===\n";
 $legs++;
 $left = glob('storage/app/scratch/lane208-mutant-*.mjs') ?: [];

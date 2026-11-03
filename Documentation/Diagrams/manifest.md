@@ -23,46 +23,46 @@ whether a file is the one this page describes.
 
 | figure | what it shows | pixels | PNG bytes |
 | :--- | :--- | ---: | ---: |
-| `use-case-global-boundary.png` | 3. SEAIT EMS Global System Boundary Diagram | 1563×2344 | 192646 |
-| `use-case-desk-01-admissions-desk.png` | Desk 01: Admissions Desk | 1122×711 | 62889 |
-| `use-case-desk-02-guidance-entrance-examination-desk.png` | Desk 02: Guidance & Entrance Examination Desk | 908×730 | 55328 |
-| `use-case-desk-03-academic-evaluation-department-desk.png` | Desk 03: Academic Evaluation & Department Desk | 1313×500 | 58862 |
-| `use-case-desk-04-financial-assessment-scholarship-desk.png` | Desk 04: Financial Assessment & Scholarship Desk | 1173×615 | 52947 |
-| `use-case-desk-05-accounting-billing-cashier-desk.png` | Desk 05: Accounting, Billing & Cashier Desk | 989×658 | 56637 |
-| `use-case-desk-06-student-affairs-campus-clearance-desk.png` | Desk 06: Student Affairs & Campus Clearance Desk | 886×579 | 45949 |
-| `use-case-desk-07-curriculum-scheduling-block-assignment-desk.png` | Desk 07: Curriculum Scheduling & Block Assignment Desk | 1021×618 | 43789 |
-| `use-case-desk-08-office-of-the-university-registrar-desk.png` | Desk 08: Office of the University Registrar Desk | 895×477 | 41411 |
-| `use-case-desk-09-campus-health-medical-clinic-desk.png` | Desk 09: Campus Health & Medical Clinic Desk | 1338×336 | 44696 |
-| `use-case-desk-10-student-id-validation-desk.png` | Desk 10: Student ID Validation Desk | 783×245 | 21689 |
-| `use-case-desk-11-student-360-digital-dossier-directory-desk.png` | Desk 11: Student 360° Digital Dossier & Directory Desk | 852×556 | 41048 |
-| `use-case-desk-12-system-administration-security-audit-desk.png` | Desk 12: System Administration, Security & Audit Desk | 898×513 | 43820 |
-| `use-case-complete-all-offices.png` | Complete use-case diagram over every desk and office | 3645×6028 | 768062 |
-| `use-case-complete-wide.png` | Complete use-case diagram over every desk and office (wide layout) | 10349×2350 | 697646 |
-| `use-case-actor-admission-officer.png` | Actor: Admission Officer | 1241×714 | 65356 |
-| `use-case-actor-guidance-counselor.png` | Actor: Guidance Counselor | 908×743 | 49596 |
-| `use-case-actor-academic-evaluator.png` | Actor: Academic Evaluator | 758×490 | 34465 |
-| `use-case-actor-college-dean.png` | Actor: College Dean | 1280×376 | 43619 |
-| `use-case-actor-scholarship-officer.png` | Actor: Scholarship Officer | 587×270 | 15931 |
-| `use-case-actor-cashier-accounting.png` | Actor: Cashier / Accounting | 587×175 | 11176 |
-| `use-case-actor-clearance-officer.png` | Actor: Clearance Officer | 587×312 | 18263 |
-| `use-case-actor-blocking-coordinator.png` | Actor: Blocking Coordinator | 783×618 | 40127 |
-| `use-case-actor-university-registrar.png` | Actor: University Registrar | 1507×531 | 64585 |
-| `use-case-actor-medical-nurse-clinic.png` | Actor: Medical Nurse / Clinic | 587×154 | 9553 |
-| `use-case-actor-student-id-officer.png` | Actor: Student ID Officer | 803×473 | 32144 |
-| `use-case-actor-system-administrator.png` | Actor: System Administrator | 898×513 | 43973 |
-| `use-case-actor-institutional-staff-any-desk.png` | Actor: Institutional Staff (Any Desk) | 872×755 | 52919 |
-| `use-case-actor-student-applicant.png` | Actor: Student / Applicant | 811×523 | 36397 |
-| `use-case-actor-institutional-sms-mail-service.png` | Actor: Institutional SMS / Mail Service | 909×175 | 14906 |
-| `use-case-actor-applicant.png` | Actor: Applicant | 645×270 | 15880 |
-| `use-case-actor-examinee-student.png` | Actor: Examinee / Student | 535×242 | 13358 |
-| `use-case-actor-department-evaluator.png` | Actor: Department Evaluator | 1290×465 | 48893 |
-| `use-case-actor-scholarship-assessment-officer.png` | Actor: Scholarship & Assessment Officer | 935×544 | 49623 |
-| `use-case-actor-student.png` | Actor: Student | 1704×983 | 92831 |
-| `use-case-actor-cashier-accounting-staff.png` | Actor: Cashier / Accounting Staff | 989×658 | 56821 |
-| `use-case-actor-student-payer.png` | Actor: Student / Payer | 936×291 | 29764 |
-| `use-case-actor-clearance-staff.png` | Actor: Clearance Staff | 886×579 | 46679 |
-| `use-case-actor-office-head-signatory.png` | Actor: Office Head / Signatory | 549×154 | 9955 |
-| `use-case-actor-faculty-instructor.png` | Actor: Faculty Instructor | 965×178 | 19247 |
-| `use-case-actor-school-clinic-nurse.png` | Actor: School Clinic Nurse | 1338×336 | 45029 |
-| `use-case-actor-office-head-auditor.png` | Actor: Office Head / Auditor | 569×291 | 17523 |
-| `use-case-actor-compliance-officer-auditor.png` | Actor: Compliance Officer / Auditor | 727×242 | 19401 |
+| `use-case-global-boundary.png` | 3. SEAIT EMS Global System Boundary Diagram | 1563×2344 | 192703 |
+| `use-case-desk-01-admissions-desk.png` | Desk 01: Admissions Desk | 1122×711 | 62899 |
+| `use-case-desk-02-guidance-entrance-examination-desk.png` | Desk 02: Guidance & Entrance Examination Desk | 908×730 | 55329 |
+| `use-case-desk-03-academic-evaluation-department-desk.png` | Desk 03: Academic Evaluation & Department Desk | 1313×500 | 58837 |
+| `use-case-desk-04-financial-assessment-scholarship-desk.png` | Desk 04: Financial Assessment & Scholarship Desk | 1173×615 | 52963 |
+| `use-case-desk-05-accounting-billing-cashier-desk.png` | Desk 05: Accounting, Billing & Cashier Desk | 989×658 | 56592 |
+| `use-case-desk-06-student-affairs-campus-clearance-desk.png` | Desk 06: Student Affairs & Campus Clearance Desk | 886×579 | 45930 |
+| `use-case-desk-07-curriculum-scheduling-block-assignment-desk.png` | Desk 07: Curriculum Scheduling & Block Assignment Desk | 1021×618 | 43754 |
+| `use-case-desk-08-office-of-the-university-registrar-desk.png` | Desk 08: Office of the University Registrar Desk | 895×477 | 41402 |
+| `use-case-desk-09-campus-health-medical-clinic-desk.png` | Desk 09: Campus Health & Medical Clinic Desk | 1338×336 | 44703 |
+| `use-case-desk-10-student-id-validation-desk.png` | Desk 10: Student ID Validation Desk | 783×245 | 21731 |
+| `use-case-desk-11-student-360-digital-dossier-directory-desk.png` | Desk 11: Student 360° Digital Dossier & Directory Desk | 852×556 | 41073 |
+| `use-case-desk-12-system-administration-security-audit-desk.png` | Desk 12: System Administration, Security & Audit Desk | 898×513 | 43832 |
+| `use-case-complete-all-offices.png` | Complete use-case diagram over every desk and office | 3645×6028 | 767996 |
+| `use-case-complete-wide.png` | Complete use-case diagram over every desk and office (wide layout) | 10349×2350 | 697556 |
+| `use-case-actor-admission-officer.png` | Actor: Admission Officer | 1241×714 | 65358 |
+| `use-case-actor-guidance-counselor.png` | Actor: Guidance Counselor | 908×743 | 49549 |
+| `use-case-actor-academic-evaluator.png` | Actor: Academic Evaluator | 758×490 | 34466 |
+| `use-case-actor-college-dean.png` | Actor: College Dean | 1280×376 | 43582 |
+| `use-case-actor-scholarship-officer.png` | Actor: Scholarship Officer | 587×270 | 15923 |
+| `use-case-actor-cashier-accounting.png` | Actor: Cashier / Accounting | 587×175 | 11155 |
+| `use-case-actor-clearance-officer.png` | Actor: Clearance Officer | 587×312 | 18277 |
+| `use-case-actor-blocking-coordinator.png` | Actor: Blocking Coordinator | 783×618 | 40163 |
+| `use-case-actor-university-registrar.png` | Actor: University Registrar | 1507×531 | 64566 |
+| `use-case-actor-medical-nurse-clinic.png` | Actor: Medical Nurse / Clinic | 587×154 | 9558 |
+| `use-case-actor-student-id-officer.png` | Actor: Student ID Officer | 803×473 | 32135 |
+| `use-case-actor-system-administrator.png` | Actor: System Administrator | 898×513 | 43998 |
+| `use-case-actor-institutional-staff-any-desk.png` | Actor: Institutional Staff (Any Desk) | 872×755 | 52932 |
+| `use-case-actor-student-applicant.png` | Actor: Student / Applicant | 811×523 | 36394 |
+| `use-case-actor-institutional-sms-mail-service.png` | Actor: Institutional SMS / Mail Service | 909×175 | 14908 |
+| `use-case-actor-applicant.png` | Actor: Applicant | 645×270 | 15862 |
+| `use-case-actor-examinee-student.png` | Actor: Examinee / Student | 535×242 | 13370 |
+| `use-case-actor-department-evaluator.png` | Actor: Department Evaluator | 1290×465 | 48956 |
+| `use-case-actor-scholarship-assessment-officer.png` | Actor: Scholarship & Assessment Officer | 935×544 | 49666 |
+| `use-case-actor-student.png` | Actor: Student | 1704×983 | 92879 |
+| `use-case-actor-cashier-accounting-staff.png` | Actor: Cashier / Accounting Staff | 989×658 | 56869 |
+| `use-case-actor-student-payer.png` | Actor: Student / Payer | 936×291 | 29801 |
+| `use-case-actor-clearance-staff.png` | Actor: Clearance Staff | 886×579 | 46686 |
+| `use-case-actor-office-head-signatory.png` | Actor: Office Head / Signatory | 549×154 | 9938 |
+| `use-case-actor-faculty-instructor.png` | Actor: Faculty Instructor | 965×178 | 19277 |
+| `use-case-actor-school-clinic-nurse.png` | Actor: School Clinic Nurse | 1338×336 | 45053 |
+| `use-case-actor-office-head-auditor.png` | Actor: Office Head / Auditor | 569×291 | 17528 |
+| `use-case-actor-compliance-officer-auditor.png` | Actor: Compliance Officer / Auditor | 727×242 | 19367 |
