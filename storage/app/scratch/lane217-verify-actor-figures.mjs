@@ -114,10 +114,15 @@ for (const [label, decls] of declsByLabel) {
   }
   others.delete(label);
   if (cases.length === 0) noAssocLabels.push([label, decls, others]);
-  console.log('  ', String(cases.length).padStart(3), String(others.size).padStart(3),
+  // Two units, both printed, because they differ and a reader who expects one will call the other a loss:
+  // `cases` counts the model's USE-CASE NODES (a desk block declares its own node, so the same relationship can
+  // exist twice), while the figure draws one line per distinct (actor, use case) LABEL pair — the Admission
+  // Officer's 8 nodes are the 5 lines on its plate. Verified against the delivered PNG on 2026-11-03.
+  const caseLabels = new Set(cases.map((id) => labelOf.get(id) ?? id));
+  console.log('  ', String(cases.length).padStart(3), String(caseLabels.size).padStart(6), String(others.size).padStart(3),
     decls.length > 1 ? `x${decls.length}`.padStart(4) : '   ', label);
 }
-console.log(`  cols: use cases named | other actors sharing them | declarations folded`);
+console.log('  cols: case nodes | distinct relationships drawn | other actors sharing them | declarations folded');
 
 // An actor with no association is a category, not automatically a defect: an external system reached only
 // by a message edge participates without initiating. Name it, and let the owner rule whether it should join
