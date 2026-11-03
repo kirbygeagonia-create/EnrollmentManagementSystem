@@ -137,6 +137,17 @@ $expect('withheld-rows-named', [
 $expect('missing-file-refuses', ['REFUSED' => 'REFUSED', 'exit' => 'nonzero'], $node.' '.$q($tool).' '.$q($scratch.'/lane234-no-such-file.svg'));
 $expect('unknown-flag-refused', ['REFUSED' => 'REFUSED', '--no-such-flag-at-all' => '--no-such-flag-at-all', 'exit' => 'nonzero'], $node.' '.$q($tool).' --no-such-flag-at-all');
 
+// 7. a DIRECTORY where a file was expected. This leg is the reason the guard exists: the census read each path with
+//    readFileSync, so handing it Documentation/Diagrams threw EISDIR out of Node's loader and printed a stack trace.
+//    The missing-file case above exits non-zero for either reason, so it could never have caught that — a leg that
+//    cannot tell a refusal from a crash is how a broken instrument looks like a careful one.
+$expect('directory-refused-by-name', [
+    'REFUSED' => 'REFUSED',
+    'is a directory' => 'is a directory',
+    'EISDIR' => 'absent',
+    'exit' => 'nonzero',
+], $node.' '.$q($tool).' '.$q($root.'/Documentation/Diagrams'));
+
 // 7. two files at once. The footer is the census the reader quotes, so it must count both and separate the clean one.
 $expect('footer-counts-both-files', [
     'figures read: 2' => 'figures read: 2',
