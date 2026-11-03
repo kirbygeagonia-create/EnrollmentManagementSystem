@@ -2,16 +2,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatStatusLabel, nextSortDirection, sortParams } from '@/Components/ui';
 
-const appliesToOptions = [
-    { value: '', label: 'All Types' },
-    { value: 'firstYear', label: 'First Year' },
-    { value: 'transferee', label: 'Transferee' },
-    { value: 'shifter', label: 'Shifter' },
-    { value: 'continuing', label: 'Continuing' },
-    { value: 'all', label: 'All' },
-];
+// The filter's choices used to be written out here as well as sent by the handler, which is one vocabulary held
+// twice: the day App\Enums\AppliesTo gains a value, the form offers it and the filter does not. Both dropdowns now
+// read the `appliesTo` prop, so the enum is the only place the list is written.
 
 const appliesToToneMap = {
     firstYear: 'info',
@@ -27,10 +22,14 @@ const statusOptions = [
     { value: 'optional', label: 'Optional' },
 ];
 
-export default function AdmissionRequirements({ requirements, appliesTo, filters = {} }) {
+export default function AdmissionRequirements({ requirements, appliesTo = [], filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
     const [appliesToFilter, setAppliesToFilter] = useState(filters.appliesTo || '');
     const [status, setStatus] = useState(filters.status || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The catalogue's own default is the requirement name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingRequirement, setEditingRequirement] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -42,18 +41,25 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
     });
 
     const columns = useMemo(() => [
-        { key: 'requirementName', label: 'Name' },
-        { key: 'appliesTo', label: 'Applies To', render: (row) => (
+        { key: 'requirementName', label: 'Name', sortKey: 'requirementName' },
+        { key: 'appliesTo', label: 'Applies To', sortKey: 'appliesTo', render: (row) => (
             <Badge tone={appliesToToneMap[row.appliesTo] || 'neutral'}>
                 {formatStatusLabel(row.appliesTo)}
             </Badge>
         ), className: 'text-center' },
-        { key: 'isRequired', label: 'Status', render: (row) => (
+        { key: 'isRequired', label: 'Status', sortKey: 'isRequired', render: (row) => (
             <Badge tone={row.isRequired ? 'success' : 'neutral'}>
                 {row.isRequired ? 'Required' : 'Optional'}
             </Badge>
         ), className: 'text-center' },
     ], []);
+
+    // Built from the handler's own enum read, with the blank choice that means "no filter" added here — the five
+    // values are not this file's to know.
+    const typeOptions = useMemo(() => [
+        { value: '', label: 'All Types' },
+        ...appliesTo.map((a) => ({ value: a.value, label: formatStatusLabel(a.value) })),
+    ], [appliesTo]);
 
     const handleFilter = (e) => {
         e.preventDefault();
@@ -61,6 +67,24 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
             search: search || undefined,
             appliesTo: appliesToFilter || undefined,
             status: status || undefined,
+            ...sortParams('requirementName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole catalogue.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.admission-requirements'), {
+            search: search || undefined,
+            appliesTo: appliesToFilter || undefined,
+            status: status || undefined,
+            ...sortParams('requirementName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -173,7 +197,7 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
                     <Select
                         value={appliesToFilter}
                         onChange={setAppliesToFilter}
-                        options={appliesToOptions}
+                        options={typeOptions}
                         placeholder="All Types"
                         className="form-input"
                     />
@@ -197,6 +221,8 @@ export default function AdmissionRequirements({ requirements, appliesTo, filters
                             rows={requirements.data}
                             children={renderActions}
                             emptyMessage="No requirements found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={requirements} />

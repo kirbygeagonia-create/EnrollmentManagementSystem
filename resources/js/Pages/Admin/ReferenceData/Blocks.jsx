@@ -2,10 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatYearLevel, yearLevelChoices } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, formatYearLevel, yearLevelChoices, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function Blocks({ blocks, courses, terms, filters = {} }) {
+export default function Blocks({ blocks, courses, terms, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The catalogue's own default is the block name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingBlock, setEditingBlock] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -19,17 +23,40 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
     });
 
     const columns = useMemo(() => [
-        { key: 'blockName', label: 'Name' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'term', label: 'Term', render: (row) => row.term?.academicYear?.yearLabel + ' ' + row.term?.semester || '—' },
-        { key: 'yearLevel', label: 'Year Level', className: 'text-center', render: (row) => formatYearLevel(row.yearLevel) },
-        { key: 'maxStudents', label: 'Max Students', className: 'text-center' },
+        { key: 'blockName', label: 'Name', sortKey: 'blockName' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        {
+            // No sortKey, and that is the handler's decision rather than an oversight: this cell prints the
+            // academic-year label and the semester joined into one string, so there is no single column an order
+            // could answer — a header would promise a sequence the desk cannot read back off the label.
+            key: 'term',
+            label: 'Term',
+            render: (row) => row.term?.academicYear?.yearLabel + ' ' + row.term?.semester || '—',
+        },
+        { key: 'yearLevel', label: 'Year Level', sortKey: 'yearLevel', className: 'text-center', render: (row) => formatYearLevel(row.yearLevel) },
+        { key: 'maxStudents', label: 'Max Students', sortKey: 'maxStudents', className: 'text-center' },
     ], []);
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.blocks'), {
             search: search || undefined,
+            ...sortParams('blockName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole roster.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.blocks'), {
+            search: search || undefined,
+            ...sortParams('blockName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -150,6 +177,8 @@ export default function Blocks({ blocks, courses, terms, filters = {} }) {
                             rows={blocks.data}
                             children={renderActions}
                             emptyMessage="No blocks found"
+                            sort={sort}
+                            onSort={handleSort}
                         />
                         <div className="mt-4">
                             <Pagination paginator={blocks} />

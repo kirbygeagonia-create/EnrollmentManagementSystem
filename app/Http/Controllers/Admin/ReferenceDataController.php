@@ -1133,14 +1133,39 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageBlocks', Blocks::class);
 
-        $blocks = Blocks::with(['course', 'term.academicYear'])
+        $query = Blocks::with(['course', 'term.academicYear'])
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('blockName', 'like', "%{$search}%")
                     ->orWhereHas('course', fn ($cq) => $cq->where('courseName', 'like', "%{$search}%"));
-            }))
-            ->orderByDesc('blockId')
-            ->paginate(20)
-            ->withQueryString();
+            }));
+
+        // Three of the five painted columns are stored on `blocks`; the course name sits one hop away and is reached
+        // through `blocks.courseId`, which the migration declares NOT NULL with a foreign key and which live `ems`
+        // answers with zero nulls and zero orphans — so an INNER hop cannot drop a row here. The Term column is
+        // deliberately not offered: it prints the academic-year label and the semester joined into one string, so no
+        // single column is what the desk reads, and an order on either half would mislabel itself. `scheduleStatus`
+        // is a real enum but this screen paints nothing of it, and `blockId` is the tie-break rather than a header.
+        $sortable = [
+            'blockName' => ['column' => 'blockName'],
+            'course' => [
+                'column' => 'courseName',
+                'join' => 'courses',
+                'foreign' => 'courseId',
+                'local' => 'blocks.courseId',
+            ],
+            'yearLevel' => ['column' => 'yearLevel'],
+            'maxStudents' => ['column' => 'maxStudents'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'blockName',
+            'blocks.blockId'
+        );
+
+        $blocks = $query->paginate(20)->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
         $terms = Academicterms::with('academicYear')->get(['termId', 'semester', 'academicYearId']);
 
@@ -1148,7 +1173,13 @@ class ReferenceDataController extends Controller
             'blocks' => $blocks,
             'courses' => $courses,
             'terms' => $terms,
-            'filters' => $request->only(['search']),
+            // Both order keys come back with the filters: a control the desk set that the handler obeyed but never
+            // echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
@@ -1198,19 +1229,43 @@ class ReferenceDataController extends Controller
     {
         $this->authorize('manageAdmissionRequirements', Admissionrequirements::class);
 
-        $requirements = Admissionrequirements::query()
+        $query = Admissionrequirements::query()
             ->when($request->search, fn ($q, $search) => $q->where('requirementName', 'like', "%{$search}%"))
             ->when($request->appliesTo, fn ($q, $appliesTo) => $q->where('appliesTo', $appliesTo))
             ->when($request->status === 'required', fn ($q) => $q->where('isRequired', true))
-            ->when($request->status === 'optional', fn ($q) => $q->where('isRequired', false))
-            ->orderByDesc('requirementId')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($request->status === 'optional', fn ($q) => $q->where('isRequired', false));
+
+        // All three painted columns are stored, so all three are offered. `appliesTo` is an ENUM, and the owner's
+        // ruling of 2026-10-31 is that a desk may sort one: on the school's server it orders by the declaration the
+        // school itself wrote into the migration, which is the order a window wants, not an accident of the driver.
+        // `isRequired` is a flag, and a flag is a column the query holds — the screen paints it as a badge, but the
+        // order is taken from the column, not from the badge. `requirementId` is the tie-break only: no column shows it.
+        $sortable = [
+            'requirementName' => ['column' => 'requirementName'],
+            'appliesTo' => ['column' => 'appliesTo'],
+            'isRequired' => ['column' => 'isRequired'],
+        ];
+        $sort = ListSort::apply(
+            $query,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'requirementName',
+            'admissionrequirements.requirementId'
+        );
+
+        $requirements = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/ReferenceData/AdmissionRequirements', [
             'requirements' => $requirements,
             'appliesTo' => collect(AppliesTo::cases())->map(fn ($c) => ['value' => $c->value, 'label' => $c->value])->values(),
-            'filters' => $request->only(['search', 'appliesTo', 'status']),
+            // Every control the desk set comes back, the two order keys with the three filters: a control obeyed but
+            // never echoed resets on the next render while the list stays narrowed — the defect lane 46 owns.
+            'filters' => $request->only(['search', 'appliesTo', 'status']) + [
+                'sort' => $sort['column'],
+                'direction' => $sort['direction'],
+            ],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
@@ -1271,17 +1326,39 @@ class ReferenceDataController extends Controller
                     $sub->where('requirementName', 'like', "%{$search}%")
                         ->orWhereHas('office', fn ($oq) => $oq->where('officeName', 'like', "%{$search}%"));
                 });
-            })
-            ->orderBy('officeId')
-            ->orderBy('clearanceRequirementId')
-            ->paginate(20)
-            ->withQueryString();
+            });
+
+        // The desk reads an office NAME, so the order that opens the list is alphabetical by that name. The
+        // sequence the screen had before this wiring was officeId ascending (Registrar, Accounting, Scholarship…),
+        // which is the seeder's numbering rather than a reading order, and the two genuinely differ on live ems:
+        // by name the first row is Academic Department and the last is Scholarship.
+        $sortable = [
+            'office' => [
+                'column' => 'officeName',
+                'join' => 'offices',
+                'foreign' => 'officeId',
+                'local' => 'clearancerequirements.officeId',
+            ],
+            'requirementName' => ['column' => 'requirementName'],
+        ];
+        $sort = ListSort::apply(
+            $requirements,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'office',
+            'clearancerequirements.clearanceRequirementId',
+        );
+
+        $page = $requirements->paginate(20)->withQueryString();
         $offices = Offices::all(['officeId', 'officeName']);
 
         return Inertia::render('Admin/ReferenceData/ClearanceRequirements', [
-            'requirements' => $requirements,
+            'requirements' => $page,
             'offices' => $offices,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search'])
+                + ['sort' => $sort['column'], 'direction' => $sort['direction']],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 

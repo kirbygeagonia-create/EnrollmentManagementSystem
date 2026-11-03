@@ -1377,6 +1377,26 @@ it in would draw "Record New Applicant" twice), and the leftover overview panel 
 the complete figure does not read as a thirteenth office. The PNGs are committed and the SVGs are ignored, because a
 committed intermediate is a second answer to "which file is the figure"; an earlier script that rendered the same
 model a second way was **deleted rather than kept** for the same reason.
+- **A second reader must re-derive the artefact's keys, or it reports defects in files that are fine**
+(`lane217-verify-actor-figures.mjs`, proved by `mutate-lane217-figure-verifier.php` at 12 legs). The generator's
+audits weigh what each figure DRAWS; neither of them can weigh whether the model as a whole is *reachable*, because
+an actor-less box is still drawn as a box and still passes the disappearance ledger. So this verifier adds exactly
+that: a breadth-first closure from every actor over the edges, refusing any use case no actor can arrive at and any
+node with no edge at all — the `UC_Srch360` class, re-weighed rather than remembered. Its first run printed
+43 BADs, and every one was the reader's own guess: it looked for `e.rel` where the model writes `e.kind`, matched
+associations only in the actor-first direction (8 of the 97 are written use-case-first), and counted chains per
+actor LABEL at model scope while the generator counts them per FIGURE over the drawn edges — 19 versus 24 for one
+question, which is this file's oldest defect arriving in a checker written to check a checker. Two rules came out
+of fixing it. **Read a field's real name before judging a record by it**: `nodes`/`edges`/`kind`/`label` were
+printed from `model.json` in one command, and the 11 "unreachable" use cases it first accused turned out to be the
+legitimate ones that arrive through an «include»/«extend» chain, so the honest verdict is a named category, not a
+failure — the file prints those 11 with the chain each arrives by. **And a verifier must not re-derive what its
+generator already weighs**: the chain-count assertion is gone (withdrawn, not softened), because two definitions
+of "does this actor carry a chain" is a permanent disagreement between two correct instruments. Surfaces are
+addressable (`--model=`, `--manifest=`, `--index=`, `--figures=`) and every leg plants in a throwaway copy, so the
+deliverables were never edited to prove the reader can fail; the `--figures=` leg is the one that proves a fourth
+surface is honoured rather than accepted, and it caught a real design trap — pointing `--manifest=` at a copy
+without saying where the PNGs live would have refused all 43 files as missing.
 - **"Per actor" is a claim, so the closure is now measured rather than commented.** `lane208-use-case-figures.mjs
 --audit-actor-edges` walks each actor figure and compares the include/extend edges the model owes — every dependency
 whose start sits inside that actor's selection — with the edges the emitter actually drew, and refuses on any drop.
@@ -1448,6 +1468,19 @@ label is a year-plus-semester concatenation with no single column behind it), an
 UNRESOLVED instead of guessing an offer set, and `--pages=` narrows the scan while saying the lane140 comparison is
 NOT JUDGED for that run, because a deliberate subset is not a disagreement. On its first run it agreed with
 lane140 at 13 owed pages, page for page.
+- **A relationship's name must reach the artefact, and a leg that cannot fail is withdrawn, not kept** (the figure
+generator's label check). Every diagram now counts the labels its own code asserts — each `«include»` / `«extend»`
+stereotype and every word of the plain labels — and requires the drawn SVG to show them at least as often, because
+the defect that started this lane was a stereotype that rendered as an empty box: the arrow drew, the figure sized
+correctly, and the dependency had no name on the page. Two things came out of falsifying it. *The obvious plant does
+not reproduce the historical defect any more*: re-spelling `|"«include»"|` as the old `|"<<include>>"|` drew all 43
+figures and passed, because this mermaid renders that label — so the leg is **WITHDRAWN with its reason in the
+file**, and what proves the guard instead is an unsatisfiable label requirement planted into a copy, which must
+refuse naming its own token (it does: `ALL PROVABLE: 17 leg(s), 0 bad`). *And the check must sit after the artefact
+exists but the syntax pre-flight must sit before anything is deleted*: the first cut of the label tokeniser kept a
+stray double quote (`"sends`), refused at the first figure, and by then the stale-figure sweep had already unlinked
+all 86 files — a half-written deliverable. A label-shape pre-flight now runs above the deletion, so a refusal costs
+nothing, which is the same ordering rule the index plan learned the hard way an hour earlier.
 - **A generator that writes a partly hand-written document must splice on markers and refuse without them** (2026-11-01,
   `lane162-generate-erd.php`). `Documentation/DATABASE-DESIGN-ADS.md` says on its first line "This page is generated,
   not written", and the batch had since hand-written a load-test result into it; the first re-take of the diagram
@@ -1623,6 +1656,47 @@ lane140 at 13 owed pages, page for page.
   asserts the UTC reading is *different*, so a case cannot pass by both clocks agreeing. Prove them with
   `php storage/app/scratch/mutate-lane85-school-day-tests.php` (one defect per promise, each requiring its named
   case to print `1 failed`, byte-exact restores, and a refusal when a needle does not match exactly once).
+- **A page's own copy of a value the server already answers is a second vocabulary, and a fixture whose two orders
+coincide hides the mutant** (the twenty-fifth table, `Admin/ReferenceData/AdmissionRequirements`). The page held a
+module-level `appliesToOptions` of five hand-typed applicant types beside the `Select` that filters that same
+column, while `admissionRequirements()` already answered the enum — so a sixth type added to the column would appear
+in the create form and be silently refused by the filter, and no gate in this repository reads a JSX list against a
+PHP enum. Both controls now read the handler's prop and one case asserts the constant is gone, so the picker and the
+filter cannot drift apart. The order half is ordinary (three stored columns, the ENUM sequence asked of
+`tests/Support/EnumColumnOrder.php`), and both lessons came out of the falsifier instead of the screen: its first run
+reported a SURVIVED leg on the Status header because the three fixtures were named so that `requirementName` order
+equalled flag order — lane 91's "re-pick the fixture so the target order disagrees with both id orders", met from the
+column-pair side rather than the id side — and its multi-plant helper used `$originals` without importing it, so the
+landing check compared against null and warned on every leg while still printing *killed*. A guard that never fires is
+the same defect as a checker that reads the wrong construct, and this time it was five lines from the code it guards.
+- **A screen's opening order is a claim about what the desk sees first, and an order over a nullable column may not
+become a filter** (the twenty-sixth table, `Admin/ReferenceData/ClearanceRequirements`). Its Office header is a hop
+through a key the migration declares NOT NULL with a foreign key and live `ems` answers with 9 requirements, 0 nulls,
+9 distinct offices and no orphan, so INNER is proven rather than copied from the last screen — and making that hop the
+fallback replaced the seeder's numbering (Registrar, Accounting, Scholarship…) with the office name (Academic
+Department first). Both sequences were read off the live table before the sentence was written, because a default is a
+behaviour change and the register should say which one a desk now sees; the case pins the payload's applied column,
+the direction and the sequence, and a harness leg flips the default to descending. The screen's other claim is about
+an absence: `requirementName` is nullable and the page paints a warning in its place, so a case writes one unworded
+requirement and asserts it survives the order that reads it. That class's own first run found the assertion wrong, not
+the code: it demanded `officeId` be ABSENT from the row, but the key is the requirement's own column, which the edit
+form seeds itself from — G-51's pin means the hop adds nothing, not that the row loses what it already had.
+- **A hop is honest only when the key behind it is proven, and a compound label is not a column** (the twenty-fourth
+table, `Admin/ReferenceData/Blocks`). The Course header orders by `courses.courseName` reached through
+`blocks.courseId`; INNER was chosen because the migration declares the key NOT NULL with a foreign key **and** live
+`ems` answers 5 blocks, 0 nulls and 0 orphans — the pair of readings is what makes the choice a measurement, since
+the audit log's hop needed LEFT precisely because its key is null on 93% of rows. The other half is a refusal: the
+Term cell prints `yearLabel + ' ' + semester`, so no column is what the desk reads and a header would promise a
+sequence the label cannot answer; `scheduleStatus` is a real enum the screen paints nothing of. Both are asserted
+absent from `sort.available` — **and the named absents come before the set arithmetic**, because the harness's first
+run failed that leg on the exact-set assertion and never reached the message naming which offer was wrong: a
+checker that reports "an offer appeared" where a checker could report *which* offer has lost half its value. Two
+more readings from the same harness: a JSX anchor assembled from memory matched zero bytes (the Term column's keys
+sit on separate lines beneath a comment — take an anchor from the file, not from the edit that wrote it), and a leg
+wired to point the Course header at the term relation was needed because a header with no join at all answers a
+server error, which `1 failed` would have credited to the guard. As for the payload: G-51's select pin is verified
+*on this screen* by comparing the row's key set under the plain order against its set under the hop, so an
+`assertArrayNotHasKey('courseName', …)` is backed by the equality that also catches a column nobody thought to name.
   **That harness died on this file's own documented trap on its first run: `str_replace()` has no limit
   parameter — its 4th argument is the by-reference `$count`** — and it fataled before planting anything, so the
   tree was never at risk; the count check moved to `substr_count()` first, then one exact replace.

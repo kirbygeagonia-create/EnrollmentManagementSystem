@@ -128,41 +128,41 @@ printf("queue read: %d unwired DataTable page(s); %d tables read from the migrat
 if ($overrides !== null) {
     printf("scope narrowed to %d page(s) by --pages=: the lane140 set comparison is NOT JUDGED for this run.\n\n", count($pages));
 } else {
-$l140 = [];
-exec('"'.PHP_BINARY.'" '.escapeshellarg($root.'/storage/app/scratch/lane140-measure-wired-screens.php').' 2>&1', $l140, $l140Code);
-$l140Text = preg_replace('/\e\[[0-9;]*m/', '', implode("\n", $l140));
-if (preg_match('/owed pages \((\d+)\):/', $l140Text, $ow) !== 1) {
-    $fail('lane140 printed no owed-pages figure, so the queue could not be cross-checked (exit '.$l140Code.').');
-}
-$theirs = (int) $ow[1];
-// The owed list sits between its own heading and the handlers heading. Slicing from the first 'handlers' instead
-// takes the list of ACTIONS that comes AFTER it, and a regex run over that names no page — which is how a set
-// comparison silently degrades into "I could not read anything".
-$owedFrom = strpos($l140Text, 'owed pages (');
-$owedTo = strpos($l140Text, 'handlers (', $owedFrom === false ? 0 : $owedFrom);
-if ($owedFrom === false || $owedTo === false || $owedTo <= $owedFrom) {
-    $fail('the owed-pages window could not be located in lane140 output — refuse rather than compare a partial list.');
-}
-$owedBlock = substr($l140Text, $owedFrom, $owedTo - $owedFrom);
-$theirsSet = [];
-if (preg_match_all('#(resources/js/Pages/\S+\.jsx)#', $owedBlock, $om) >= 1) {
-    $theirsSet = $om[1];
-}
-if ($theirsSet === []) {
-    $fail('lane140 named no owed page inside its own owed-pages block, so the sets cannot be compared.');
-}
-if (count($theirsSet) !== $theirs) {
-    $fail('lane140 heading says '.$theirs.' owed pages while its block names '.count($theirsSet).' — its own print does not add up.');
-}
-$mineSet = array_map(static fn (array $p): string => $p['path'], $pages);
-sort($theirsSet);
-sort($mineSet);
-if ($theirsSet !== $mineSet) {
-    $fail("the two readers name different queues — this one ".count($mineSet)." pages, lane140 ".count($theirsSet)
-        ."; only-in-mine [".implode(', ', array_diff($mineSet, $theirsSet)).']'
-        ." only-in-lane140 [".implode(', ', array_diff($theirsSet, $mineSet)).']');
-}
-printf("cross-check: lane140 names the same %d owed pages, page for page — the two readers agree by set, not by luck.\n\n", $theirs);
+    $l140 = [];
+    exec('"'.PHP_BINARY.'" '.escapeshellarg($root.'/storage/app/scratch/lane140-measure-wired-screens.php').' 2>&1', $l140, $l140Code);
+    $l140Text = preg_replace('/\e\[[0-9;]*m/', '', implode("\n", $l140));
+    if (preg_match('/owed pages \((\d+)\):/', $l140Text, $ow) !== 1) {
+        $fail('lane140 printed no owed-pages figure, so the queue could not be cross-checked (exit '.$l140Code.').');
+    }
+    $theirs = (int) $ow[1];
+    // The owed list sits between its own heading and the handlers heading. Slicing from the first 'handlers' instead
+    // takes the list of ACTIONS that comes AFTER it, and a regex run over that names no page — which is how a set
+    // comparison silently degrades into "I could not read anything".
+    $owedFrom = strpos($l140Text, 'owed pages (');
+    $owedTo = strpos($l140Text, 'handlers (', $owedFrom === false ? 0 : $owedFrom);
+    if ($owedFrom === false || $owedTo === false || $owedTo <= $owedFrom) {
+        $fail('the owed-pages window could not be located in lane140 output — refuse rather than compare a partial list.');
+    }
+    $owedBlock = substr($l140Text, $owedFrom, $owedTo - $owedFrom);
+    $theirsSet = [];
+    if (preg_match_all('#(resources/js/Pages/\S+\.jsx)#', $owedBlock, $om) >= 1) {
+        $theirsSet = $om[1];
+    }
+    if ($theirsSet === []) {
+        $fail('lane140 named no owed page inside its own owed-pages block, so the sets cannot be compared.');
+    }
+    if (count($theirsSet) !== $theirs) {
+        $fail('lane140 heading says '.$theirs.' owed pages while its block names '.count($theirsSet).' — its own print does not add up.');
+    }
+    $mineSet = array_map(static fn (array $p): string => $p['path'], $pages);
+    sort($theirsSet);
+    sort($mineSet);
+    if ($theirsSet !== $mineSet) {
+        $fail('the two readers name different queues — this one '.count($mineSet).' pages, lane140 '.count($theirsSet)
+            .'; only-in-mine ['.implode(', ', array_diff($mineSet, $theirsSet)).']'
+            .' only-in-lane140 ['.implode(', ', array_diff($theirsSet, $mineSet)).']');
+    }
+    printf("cross-check: lane140 names the same %d owed pages, page for page — the two readers agree by set, not by luck.\n\n", $theirs);
 }
 
 foreach ($pages as $p) {
@@ -175,6 +175,7 @@ foreach ($pages as $p) {
     $painted = $pm[1] ?? [];
     if ($painted === []) {
         printf("%-52s NO-COLUMNS-READ (it renders the shared table but its column list was not parsed — read it by hand)\n\n", $rel);
+
         continue;
     }
 
@@ -197,12 +198,21 @@ foreach ($pages as $p) {
     }
     if ($hit === null) {
         printf("%-52s NO-ACTION (no controller renders this component — the page is unreachable or the name differs)\n\n", $rel);
+
         continue;
     }
 
     $model = null;
-    if (preg_match('/(\w+)::(query|with|where)\(/', $hit['body'], $mm) === 1) {
-        $model = $mm[1];
+    // Bind to the builder that actually pages the list, not to the first `Model::` in the action: this action's
+    // `Auditlogs::…` audit write is a live line of the right file that belongs to something else, which is the
+    // wrong-target shape this repository documents for pointers, met in a plan reader on its first run.
+    $anchor = strrpos($hit['body'], '->paginate(');
+    if ($anchor === false) {
+        $anchor = strrpos($hit['body'], '->simplePaginate(');
+    }
+    $haystack = $anchor === false ? $hit['body'] : substr($hit['body'], 0, $anchor);
+    if (preg_match_all('/(\w+)::(query|with|where|whereIn)\(/', $haystack, $mm) >= 1) {
+        $model = $anchor === false ? ($mm[1][0] ?? null) : end($mm[1]);
     }
     $table = null;
     if ($model !== null) {
@@ -219,11 +229,37 @@ foreach ($pages as $p) {
     printf("%s\n  action      %s::%s()\n  model       %s   table %s\n  painted     %s\n",
         $rel, basename($hit['file'], '.php'), $hit['action'], $model ?? 'UNKNOWN', $table ?? 'NOT RESOLVED',
         implode(', ', $painted));
+    // Is it a queue at all? A list the action hands over whole needs no server order — that is lane 90's
+    // classification, and a plan that ignores it will spend a batch wiring a header onto a six-row table.
+    $paginates = str_contains($hit['body'], '->paginate(') || str_contains($hit['body'], '->simplePaginate(');
+    echo '  shape       '.($paginates ? 'SERVER-PAGINATED queue — a server order is what prompt §14 asks for'
+        : 'BOUNDED SET (the action answers all() or a plain collection) — no server order is owed here; say so in the register rather than wiring it')."\n";
     if ($table === null) {
-        echo "  offer       UNRESOLVED — the builder's model was not read; decide by hand, do not guess a column set\n\n";
+        // Two different failures, and one message would name the wrong cause: the model may be unread, or read but
+        // owned by a vendor migration this census does not walk (Spatie's `roles` and `permissions` are that shape).
+        echo $model === null
+            ? "  offer       UNRESOLVED — the builder's model was not read; decide by hand, do not guess a column set\n\n"
+            : "  offer       NOT-IN-MIGRATIONS — `{$model}` was read but its table is not created under database/migrations (a vendor-owned table); ask information_schema by hand before offering columns\n\n";
+
         continue;
     }
     $stored = array_keys($columns[$table]);
+    // The binding is then weighed against the page: a table that holds none of the painted columns is a wrong
+    // target, not a plan. Say so, and offer the table that does hold them if one exists, rather than printing an
+    // "orderable: (none)" line that a reader would trust as a finding about the screen.
+    $top = array_values(array_unique(array_map(static fn (string $k): string => explode('.', $k)[0], $painted)));
+    if (array_intersect($top, $stored) === []) {
+        $candidates = [];
+        foreach ($columns as $t => $cols) {
+            if (count(array_intersect($top, array_keys($cols))) === count($top)) {
+                $candidates[] = $t;
+            }
+        }
+        echo '  offer       SUSPECT-BINDING — none of '.implode(', ', $top)." is a column of `{$table}`; do not wire from this line\n";
+        echo '              tables holding every painted key: '.($candidates === [] ? '(none in the migrations)' : implode(', ', $candidates))."\n\n";
+
+        continue;
+    }
     $direct = array_values(array_intersect($painted, $stored));
     $derived = array_values(array_diff($painted, $stored));
     echo '  orderable   '.($direct === [] ? '(none of the painted columns is stored)' : implode(', ', $direct))."\n";
@@ -238,5 +274,5 @@ foreach ($pages as $p) {
             }
         }
     }
-    echo "  tie-break   ".($stored[0] ?? '?')." (first column of the table; confirm it is the primary key)\n\n";
+    echo '  tie-break   '.($stored[0] ?? '?')." (first column of the table; confirm it is the primary key)\n\n";
 }

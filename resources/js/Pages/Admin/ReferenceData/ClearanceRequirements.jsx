@@ -2,10 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 
-export default function ClearanceRequirements({ requirements, offices, filters = {} }) {
+export default function ClearanceRequirements({ requirements, offices, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The list's own default is the office name ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingRequirement, setEditingRequirement] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -16,8 +20,8 @@ export default function ClearanceRequirements({ requirements, offices, filters =
     });
 
     const columns = useMemo(() => [
-        { key: 'office.officeName', label: 'Office', render: (row) => row.office?.officeName || '—' },
-        { key: 'requirementName', label: 'Requirement', render: (row) => row.requirementName || (
+        { key: 'office.officeName', label: 'Office', sortKey: 'office', render: (row) => row.office?.officeName || '—' },
+        { key: 'requirementName', label: 'Requirement', sortKey: 'requirementName', render: (row) => row.requirementName || (
             <span className="text-warning-700">Not yet worded — the slip prints an office name in place of a requirement</span>
         ) },
     ], []);
@@ -26,6 +30,22 @@ export default function ClearanceRequirements({ requirements, offices, filters =
         e.preventDefault();
         router.get(route('admin.reference-data.clearance-requirements'), {
             search: search || undefined,
+            ...sortParams('office', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole checklist.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.clearance-requirements'), {
+            search: search || undefined,
+            ...sortParams('office', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -141,6 +161,8 @@ export default function ClearanceRequirements({ requirements, offices, filters =
                         <DataTable
                             columns={columns}
                             rows={requirements.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No requirements found"
                         />
