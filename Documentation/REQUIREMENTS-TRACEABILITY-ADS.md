@@ -44,8 +44,8 @@ verdict word and reports `DISAGREES-REGISTER`.
 | P10 | Concurrent Subject Registration (¶131) | Applies | **Built** (2026-11-01) — measured first, then repaired on the same instrument. `lane190-probe-subject-line-race.php` releases two children at ONE enrollment with ONE identical payload on a scratch clone of live `ems`, each calling the real `proposeSubjects()`. Before: 10 writers gave 6 proposals and **4 unretried `1213` deaths**, every pair still settling on exactly the payload's 6 rows with 0 duplicate `(enrollmentId, subjectId, attempt_number)` — the data was protected by `uq_enrollment_subject_attempt` and the transaction; the desk was not. The act now takes `Enrollments::…->lockForUpdate()` as its first statement inside the transaction, re-reads the model the lock made authoritative, runs inside `RetryOnDeadlock`, and moves the record only when it has not already been moved. After: **10 proposed, 0 deadlock, 0 driver error, 0 duplicates** (exit 0). The middle reading is why the last branch exists: lock and retry alone answered 5 proposals and 5 `Cannot transition enrollment from 'evaluated' to 'evaluated'` throws |
 | P11 | Invalid Enrollment Data (¶141) | Applies | Implemented — foreign keys, NOT NULL, enums, `exists:` validation; CHECK constraints owed |
 | P12 | Prerequisite Checking (¶151) | Applies | Implemented and pinned |
-| P13 | Maximum Academic Load (¶161) | Partially — two load-shaped rules ARE enforced in `app/` (an elective group's min/max choices, and mandatory curriculum subjects at proposal) and units are summed for standing; what is absent is a **unit ceiling** | **Not built** (the ceiling value is an open school question; the elective band this row once called absent is in fact enforced in `EvaluationController::proposeSubjects()` and pinned by `tests/Feature/Evaluation/ElectiveValidationTest.php`) |
-| P14 | Faculty Teaching Load (¶171) | Partially — assignments are stored, no load limit is | Justified Partial with a controlled demonstration owed |
+| P13 | Maximum Academic Load (¶161) | Partially - three load-shaped rules are enforced in `app/`: an elective group's min/max choices, mandatory curriculum subjects at proposal, and a unit ceiling read from the `settings` row `maxStudyLoadUnits` through `App\Support\LoadLimits`, which refuses nothing while that row is blank | **Partly built** (the mechanism is delivered and the ceiling value is an open school figure; pinned by `tests/Feature/Load/LoadLimitsReadFromSettingsTest.php`; the elective band this row once called absent is in fact enforced in `EvaluationController::proposeSubjects()` and pinned by `tests/Feature/Evaluation/ElectiveValidationTest.php`) |
+| P14 | Faculty Teaching Load (¶171) | Partially - assignments are stored, a per-term instructor unit total is computed by `App\Support\LoadLimits::instructorUnits()`, and `BlockingController` refuses an assignment above the ceiling the `settings` row `maxTeachingLoadUnits` carries, binding nothing while that row is blank | Justified Partial with a controlled demonstration owed |
 | P15 | Conflicting Class Schedules (¶181) | Applies | Implemented for rooms, officers and blocks; the student-side overlap across two blocks is owed |
 | P16 | Transaction Failure During Enrollment (¶191) | Applies | **Built and demonstrated** — one act, one transaction; the failure half is observed on the engine by `lane198-probe-forced-rollback.php`, which writes the enrollment, throws at the next statement and re-reads the three tables to `+0/+0/+0` |
 | P17 | Power Interruption During Enrollment (¶201) | Applies | **Built** — `enrollments.requestKey` names the act, `EnrollmentIssuer::issue()` answers the record that already exists, and a UNIQUE index refuses a second row for one key on both drivers |
@@ -93,12 +93,12 @@ verdict word and reports `DISAGREES-REGISTER`.
 
 - **Objective.** Two requests, one seat; the database must not let both have it.
 - **Applicability.** Applies. A section is `blocks` and its room capacity is `rooms.capacity`.
-- **Existing implementation.** Built 2026-11-01. `app/Http/Controllers/Blocking/BlockingController.php:472-474`
-  de-duplicates the requested ids and sorts them into one canonical order; `:483` wraps the act in
-  `App\Support\RetryOnDeadlock::run()`; `:484` opens the transaction; `:485` locks the block row with
-  `lockForUpdate()` as the transaction's first act; `:488-491` re-counts distinct non-dropped `enrollmentId` values
-  *under* that lock; `:492-496` refuses above `maxStudents`; `:500` then locks the room row — a fixed order, block
-  before room — and `:502-510` counts and refuses the room the same way. Before this batch the count ran outside the
+- **Existing implementation.** Built 2026-11-01. `app/Http/Controllers/Blocking/BlockingController.php:504-506`
+  de-duplicates the requested ids and sorts them into one canonical order; `:516` wraps the act in
+  `App\Support\RetryOnDeadlock::run()`; `:517` opens the transaction; `:518` locks the block row with
+  `lockForUpdate()` as the transaction's first act; `:520-523` re-counts distinct non-dropped `enrollmentId` values
+  *under* that lock; `:524-528` refuses above `maxStudents`; `:533` then locks the room row — a fixed order, block
+  before room — and `:534-542` counts and refuses the room the same way. Before this batch the count ran outside the
   transaction and no row was locked, and the only `lockForUpdate` in `app/` was
   `app/Services/PrintService.php:140` on the document-number sequence.
 - **Gap.** The application half is closed. The database still holds no rule that refuses a 41st seat if a future
@@ -169,9 +169,9 @@ verdict word and reports `DISAGREES-REGISTER`.
 - **Objective.** Counts and capacity must not disagree.
 - **Existing implementation.** There is no stored counter to drift: the headcount is derived at read time — the
   roster tiles at `app/Http/Controllers/Blocking/BlockingController.php:104-107` and the write guard's own count at
-  `:488-491`, both excluding dropped lines (`:58` and `:489`), both counting *distinct* enrollments because one
+  `:520-523`, both excluding dropped lines (`:58` and `:522`), both counting *distinct* enrollments because one
   student carries several subject rows. A dropped line is therefore not a held seat on either surface.
-- **Gap.** A room is not weighed as a room. `:502-505` counts the rows stamped with **one** `scheduleId`, so when ten
+- **Gap.** A room is not weighed as a room. `:534-537` counts the rows stamped with **one** `scheduleId`, so when ten
   sections share a hall the check never sees the other nine — it enforces "this section fits this room", not "this
   room's total load fits". That is registered here rather than silently "fixed", because making it a room-level sum
   would refuse data the app itself produces today; it is a school question about what `rooms.capacity` means.
@@ -255,7 +255,7 @@ verdict word and reports `DISAGREES-REGISTER`.
   `codeOf()` at `:69-74` reads `errorInfo[1]` before falling back to `getCode()` because the two drivers word a
   refusal differently, and exhaustion raises a `ValidationException` at `:54-59` whose sentence says
   *Nothing was saved* — a desk told to retry without being told the record is unchanged will assume it was.
-  The lock order lives at `app/Http/Controllers/Blocking/BlockingController.php:486` (block) then `:500` (room),
+  The lock order lives at `app/Http/Controllers/Blocking/BlockingController.php:518` (block) then `:533` (room),
   with the requested ids sorted at `:472` so two overlapping assigns take the enrollment rows in one order.
   Before this batch, grepping `app/`, `tools/`, `tests/` for `1213`, `1205`, `deadlock` or a retry around writes
   answered nothing; the only deliberate driver-code catch was `app/Support/NoticeDelivery.php:32-37` on 1062.
@@ -406,31 +406,41 @@ verdict word and reports `DISAGREES-REGISTER`.
 - **Existing implementation.** Units are stored per subject (`subjects.lectureUnits`, `subjects.labUnits`,
   `decimal(3,1)`) and summed for standing at `app/Services/AcademicStandingService.php:177`. The evaluation screen
   enforces a per-band subject count (`Documentation/` §7's elective band min–max, refused in
-  `app/Http/Controllers/Evaluation/EvaluationController.php`).
-- **Gap.** There is no term unit ceiling anywhere, and the guide forbids inventing the school's number.
-- **Required solution.** A configurable limit (a `settings` row per year level, read through the existing
-  `config('settings.*')` path) that the enrollment transaction re-validates against the summed units of the
-  non-dropped load, refusing when the setting is absent rather than assuming a value. The unresolved value goes on
-  the school decision sheet.
-- **Testing method.** T14 with the limit set in a fixture, plus a case proving an unset limit refuses instead of
-  passing.
-- **Status.** Not started; blocked on one school figure, not on code.
+  `app/Http/Controllers/Evaluation/EvaluationController.php`). A term ceiling is now a rule the build holds:
+  `App\Support\LoadLimits` reads `settings.maxStudyLoadUnits` through `config('settings.*')`, counts the units a
+  student would carry (confirmed lines plus what the proposal adds), and
+  `EvaluationController::proposeSubjects()` refuses above it by name.
+- **Gap.** One number. The `settings` row is seeded blank by the owner's ruling of 2026-11-03 (enforce when the
+  school states a figure, bind nothing until it does), so no student can be shown to breach a ceiling that has
+  never been set.
+- **Required solution.** Delivered as ruled: two `settings` rows, one helper that answers null for a blank, zero
+  or non-numeric value, and the proposal path asking that helper before it writes. A null answer is not a default,
+  which is what the guide forbids here.
+- **Testing method.** T14 needs the figure before a refusal can be demonstrated. What is pinned today is the
+  chain in `tests/Feature/Load/LoadLimitsReadFromSettingsTest.php`: a blank row, a zero row and a text row each
+  bind nothing, a row with a number reaches the rule through `SettingsServiceProvider`, and units count once.
+- **Status.** Partly built; the mechanism is delivered and the figure is the school's to type.
 
 ### P14 — Faculty Teaching Load (¶171-180)
 
 - **Existing implementation.** Assignments are real: `schedules.instructorId`
   (`database/migrations/2026_08_02_1000000034_create_schedules_table.php:15`, indexed `:18`, foreign key to
   `staffusers.userId` `:23`), and `app/Support/TimetableConflicts.php:71` already refuses a meeting that
-  double-books an instructor in one term.
-- **Gap.** No instructor entity, no per-instructor unit or hour cap, and no screen that would show an overload.
+  double-books an instructor in one term. The load is now counted: `App\Support\LoadLimits::instructorUnits()`
+  totals the distinct subjects' units an instructor carries inside one term, and `BlockingController` refuses a
+  schedule that would take an instructor past the ceiling in `settings.maxTeachingLoadUnits`, excluding the row
+  being edited so an over-full assignment can still be corrected downward.
+- **Gap.** One number. That row is seeded blank by the owner's ruling of 2026-11-03, so the guard is live and
+  silent until the school fills it.
 - **Applicability.** Partially applies, as the guide itself anticipates ("If your system does not manage faculty
-  assignments…"). The system records who teaches what; it does not manage a load limit, so a module must not be
-  invented to satisfy a checkbox.
-- **Required solution.** State the boundary honestly in the presentation, and give the equivalent demonstration: a
-  SQL query over `schedules` joined to `subjects` that totals units per instructor per term, run against the demo
-  data, with the cap rule left as what the school would have to set.
-- **Testing method.** T15 marked **not executed**, with the reason: no load limit is defined, so there is no rule
-  to violate yet.
+  assignments…"). The system records who teaches what and can weigh what that adds up to; the cap is the school's
+  academic figure, so a faculty module was not invented to satisfy a checkbox.
+- **Required solution.** Delivered as ruled: the settings row, the per-term total, and the refusal at the desk
+  that assigns. The equivalent demonstration the guide asks for (units per instructor per term) is what
+  `instructorUnits()` answers, so the figure has somewhere to land the day it is stated.
+- **Testing method.** T15 stays not executed for a refusal, for a different reason than it did: not because no
+  limit is defined, but because no limit is numbered. `tests/Feature/Load/LoadLimitsReadFromSettingsTest.php`
+  pins the counting and the blank-answer direction on both ceilings.
 - **Status.** Justified Partial.
 
 ### P15 — Conflicting Class Schedules (¶181-190)
@@ -631,7 +641,7 @@ verdict word and reports `DISAGREES-REGISTER`.
 | Transactions (¶295) | Implemented and demonstrated | 38 `DB::transaction` sites; `EnrollmentIssuer.php:59` | T01's two cases, and `lane198-out.txt` for the commit and the forced failure of one act |
 | COMMIT / ROLLBACK (¶297) | Implemented and demonstrated | same; the assign act's refusal is pinned by `BlockCapacityAtomicityTest`, the rollback by `lane198-probe-forced-rollback.php` | none for the general case; the subject-line injection is the one half still open (named under P01) |
 | ACID Properties (¶299) | Partial | Atomicity and Consistency by the above; Isolation now by the P02 row lock (P20's report boundary is still open); Durability by the P21 drill | four separate demonstrations, of which isolation and durability now have one each |
-| Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:486` and `:500`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
+| Concurrency Control (¶301) | Implemented on the seat, the room, the block, the sheet and the subject line | `BlockingController.php:518` and `:533`, `RetryOnDeadlock`, measured by `lane168`; `EvaluationController::proposeSubjects()` locked and retried, measured by `lane190` | The person record's simultaneous-process demo (T07) and the unversioned address and guardian rows |
 | Locking (¶303) | Three sites | `PrintService.php:140` (document number), the block row and the room row in the assign act | any further path that counts a shared resource |
 | Deadlock Handling (¶305) | Implemented and observed | `app/Support/RetryOnDeadlock.php`, `1213`/`1205` only | extending it to a second write path; P17's request key now makes a blind retry answerable, which is what the guide asks before a retry is widened |
 | Database Constraints (¶307) | Implemented | the unique keys §23.6.1 lists, weighed by `lane44-unique-keys.php` — thirteen keys in ten tables on the 2026-11-01 schema, of which this batch contributes `uq_enrollments_request_key` on `enrollments` and `uq_studentassessments_enrollment` on `studentassessments`, and returns `uq_enrollments_active_seat` over the VIRTUAL `seatKey` the same batch added, withdrew and repaired the fixtures for | nothing owed for the keys; the range `CHECK`s are named in P11 |
@@ -714,7 +724,7 @@ server's own message quoted in the artefact that holds it; nothing in that file 
 | T12 | invalid references | yes, by `exists:` validation cases |
 | T13 | missing prerequisite | yes, `EnrollmentReadinessTest` |
 | T14 | load exceeded | no |
-| T15 | faculty load | not executed — no limit is defined (P14) |
+| T15 | faculty load | not executed for a refusal - the guard exists and the school has not numbered it (P14) |
 | T16 | schedule conflict | partially, resource side |
 | T17 | DB exception mid-flow | yes, `the_helper_retries_a_deadlock_and_a_lock_wait_and_nothing_else` (the exception side; no injected fault) |
 | T18 | interruption and retry | built and pinned by `tests/Feature/Enrollment/EnrollmentRequestKeyTest.php` — replay answers the first record, the UNIQUE index refuses a second row for one key on the driver the suite runs on, a cross-act replay is refused, and the desk page is read to prove it sends a key. What no case does is kill a real process between the write and the commit, which is a harness of processes rather than a phpunit case (T23's `lane172` is that harness, and it does not interrupt mid-transaction) |

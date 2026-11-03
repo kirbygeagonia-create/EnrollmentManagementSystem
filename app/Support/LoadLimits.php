@@ -82,7 +82,7 @@ final class LoadLimits
      * Units already on the books for one instructor in one term.
      *
      * `schedules` carries no term: the term lives on the **block**, exactly as the collision rule discovered
-     * (prompt §7.5, §28.3 G-55), so the scope reaches the term through `blocks.termId` rather than the schedule row.
+     * (prompt §7.5, and the timetable ruling of 2026-10-19), so the scope reaches the term through `blocks.termId` rather than the schedule row.
      * A schedule being edited is excluded by id, or re-saving an existing row would count itself twice and the
      * ceiling would creep upward every time the desk touched it.
      */

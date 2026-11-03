@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · eleven items · 4 answered, 7 left for the school**
+**Issued 2026-10-29 · eleven items · 6 answered, 5 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
 development prompt on this date (matrix §7 and §8, gaps G33 to G42). Items 10 and 11 joined on
@@ -238,43 +238,53 @@ counts enrollments waiting, and the page says plainly that it lists blocks.
 
 ---
 
-**10. What is the maximum study load one student may carry in a term?** `[ADS problem 13, §28.5 — open]`
+**10. What is the maximum study load one student may carry in a term?** `[ADS problem 13, §28.5 — ANSWERED 2026-11-03]`
 
-**Why this is on the sheet and not in the code.** The application already sums units, refuses a proposal outside an
-elective group's own min–max band, and refuses a mandatory subject that is missing — but no figure exists anywhere
-in `app/` for a term ceiling (grepping `minUnits`, `maxUnits`, `maxLoad` and `unitLimit` answers nothing), so a
-student can be proposed any number of units in a term and nothing warns the desk. The number is the school's: a
-ceiling is a rule about students, not a technical limit, and inventing one would have the application certify a rule
-the school never stated.
+**Answer.** Ruled 2026-11-03: settings rows plus enforcement, off until the school sets a figure.
+`App\Support\LoadLimits` reads `settings.maxStudyLoadUnits` and the proposal save refuses above it, naming
+the units, the ceiling and what the record already carries. The row is seeded blank, and a blank, zero or
+non-numeric value binds nothing, so no student is refused on a number nobody typed.
 
-**What each answer costs.** A unit figure, or a subject count, or both, plus what happens on a breach — refuse the
-proposal, or propose with a warning the Registrar sees. Refusing is a guard in `EnrollmentReadiness` and one message;
-warning is the same plus a flag on the payload. Neither is a migration.
+**Why this was on the sheet rather than in the code.** The application already summed units, refused a
+proposal outside an elective group's own min–max band, and refused a missing mandatory subject; what it held
+was no ceiling, and a ceiling is a rule about students rather than a technical limit, so inventing one would
+have the application certify a figure the school never stated. That is why the mechanism waited for a ruling.
 
-**Cost and undo.** One rule and one message, revertible in a commit. Until then §28.3's register states the absence
-rather than a default, and the answer is asked in the same words in §28.5.
+**What the answer built.** One `settings` row, one helper that answers null for a blank value, and one
+comparison in `EvaluationController::proposeSubjects()` that refuses above the figure and names it. Units are
+counted the way the standing service counts them, and the units already confirmed on the record are carried
+into the sum rather than re-added.
+
+**Cost and undo.** Delivered in one commit, revertible in one commit; the undo is deleting the guard, not the
+data, because the row is blank and nothing was ever refused by it. The figure itself is typed on the Settings
+desk the day the school states it, and until then §28.5 records the rule as waiting rather than absent.
 
 ---
 
-**11. What is a faculty member's teaching load limit?** `[ADS problem 14, §28.5 — open]`
+**11. What is a faculty member's teaching load limit?** `[ADS problem 14, §28.5 — ANSWERED 2026-11-03]`
 
-**Why this is on the sheet and not in the code.** Assignments are stored, and a timetable collision is judged inside
-one term, so the record can already answer how many units one instructor carries at a moment — the scale measurement
-counts the heaviest instructor today. What nothing decides is when that is too many. A limit is a school's academic
-policy, and the only thing withheld here is the number, not the mechanism.
+**Answer.** Ruled 2026-11-03 with item 10: settings rows plus enforcement, off until the school sets a figure.
+`App\Support\LoadLimits::instructorUnits()` totals one instructor's units inside one term, and `BlockingController`
+refuses a schedule that would carry an instructor past `settings.maxTeachingLoadUnits`. The row being edited is
+excluded from that total, so an assignment already over an unnumbered ceiling can still be corrected downward.
 
-**What each answer costs.** A units-per-term figure per instructor, and the same breach question as item 10: refuse
-the assignment that exceeds it, or file it and report it. The first touches `BlockingController`'s assign guard, the
-second is a report line; both stay inside the term the collision rule already scopes.
+**Why this was on the sheet rather than in the code.** Assignments are stored, and a timetable collision is judged inside
+one term, so the record could already answer how many units one instructor carries at a moment — the scale measurement
+counts the heaviest instructor today. What nothing decided was when that is too many. A limit is a school's academic
+policy, and the only thing withheld here was the number, not the mechanism.
 
-**Cost and undo.** One guard or one report line, revertible in a commit. A blank answer costs nothing today and is
-recorded as blank, so the gap cannot be mistaken for a rule that exists.
+**What the answer built.** One `settings` row, one per-term total asked of the schema rather than recalled, and the
+refusal at the desk that assigns. The report line this sheet offered as the alternative was not taken: the ruling chose
+the guard, so an overload cannot be filed quietly.
+
+**Cost and undo.** One guard, revertible in one commit. A blank row costs nothing today and binds nothing, which the
+register states as a rule that waits rather than a rule that exists.
 
 ---
 
 **None of these eleven is blocked on the software.** Items 4 and 5 are already proceeding on the parts that
 need no ruling; item 8's safety-by-default holds while it waits; items 1, 2, 3, 6, 7 and 9 change only once the
-school says which behaviour is intended; items 10 and 11 wait only on a number, and nothing in the build is invented
-to fill their place. Each
+school says which behaviour is intended; items 10 and 11 are answered as to the mechanism and still wait on a
+number, because the build now holds the rule and invents no figure to fill its place. Each
 answer comes back off the same way it went in: one commit, plus a reseed for anything that touches
 reference data.

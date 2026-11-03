@@ -72,7 +72,7 @@ subject-line act keeps its own limitation, named under section 1.
   rather than rotting), and `php artisan ems:audit:record-states` (20 rules) weighs the record states a desk
   must not be able to reach. A read of the audit on live `ems` answers 0 findings.
 - **Isolation** — implemented for the one act the guide's `SELECT … FOR UPDATE` example describes, and nowhere else.
-  `app/Http/Controllers/Blocking/BlockingController.php:486` locks the block row as the transaction's first act,
+  `app/Http/Controllers/Blocking/BlockingController.php:518` locks the block row as the transaction's first act,
   `:488-491` re-counts the held seats under that lock, and `:500` locks the room row afterwards in that fixed order.
   Before 2026-11-01 the capacity check ran *outside* the transaction, and `lane168-probe-last-seat-race.php`
   measured what that meant on the school's server: three pairs of concurrent assigns against a block holding one
@@ -106,7 +106,7 @@ answers the enrollment that already holds a student's seat in a term. Notificati
 
 **What this batch added.** The block and the room are now locked and one shared resource is refused by the server.
 The block and the room are read with `lockForUpdate()` and re-counted *inside* one transaction
-(`app/Http/Controllers/Blocking/BlockingController.php:486` and `:500`), retried only on the two conditions that mean
+(`app/Http/Controllers/Blocking/BlockingController.php:518` and `:533`), retried only on the two conditions that mean
 "somebody held it first" (`app/Support/RetryOnDeadlock.php:76-79`), and a second fee sheet for one enrollment is
 refused by `uq_studentassessments_enrollment`. The active-seat rule was given a database key the same morning,
 **took it back the same day and returned it the same day**: CI's MySQL 8 job showed six test files creating two active
@@ -149,7 +149,7 @@ on the profile save, with the address and guardian rows still unversioned as the
 
 **Actual implementation.** `app/Services/PrintService.php:140` — `lockForUpdate()->max('documentNumber')` inside the
 issuance transaction, with the reserved number skipped so a re-issued sheet never duplicates a Document No. To it this
-batch added the two enrollment locks: the block row at `app/Http/Controllers/Blocking/BlockingController.php:486`, as
+batch added the two enrollment locks: the block row at `app/Http/Controllers/Blocking/BlockingController.php:518`, as
 the transaction's first act, and the room row at `:500` — always block then room, never the reverse, because a fixed
 order is what makes two contending writers serialise instead of waiting on each other. The requested student ids are
 de-duplicated and sorted before the transaction opens (`:471-473`), which is the other half of the same discipline:

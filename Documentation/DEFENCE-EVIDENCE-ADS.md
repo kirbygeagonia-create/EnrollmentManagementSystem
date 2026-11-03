@@ -21,9 +21,9 @@ against the pre-fix code and against the fixed code, and the pre-fix code overbo
 
 `EnrollmentIssuer::issue()` writes the enrollment, its workflow form and its requirement rows inside one
 `DB::transaction`, so a record is never on file without the form the nine desks sign.
-`BlockingController::assignStudents()` at `app/Http/Controllers/Blocking/BlockingController.php:485` opens its
-transaction *before* it reads the block's held seats (`:488-491`) and closes it after the last box is signed, and
-`RetryOnDeadlock::run()` at `:483` wraps the whole thing.
+`BlockingController::assignStudents()` at `app/Http/Controllers/Blocking/BlockingController.php:517` opens its
+transaction *before* it reads the block's held seats (`:520-523`) and closes it after the last box is signed, and
+`RetryOnDeadlock::run()` at `:516` wraps the whole thing.
 
 The point of the ordering is the failure mode: a capacity check that runs outside the transaction it guards is a
 guess, because nothing makes the second reader wait. That is not an argument here — it is the measured difference

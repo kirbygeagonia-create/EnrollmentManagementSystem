@@ -297,7 +297,7 @@ class BlockingController extends Controller
 
         // Prompt §7.5's teaching load, read from the settings table and silent until the school enters a figure.
         // The scope is the BLOCK's term, because `schedules` carries no term of its own — the same discovery that
-        // made collision detection reach the block (§28.3 G-55), and the reason a cross-term row would otherwise
+        // made collision detection reach the block (the timetable ruling of 2026-10-19), and the reason a cross-term row would otherwise
         // make a free faculty member look full.
         if (($ceiling = LoadLimits::instructorCeiling()) !== null) {
             $instructorId = (int) $validated['instructorId'];

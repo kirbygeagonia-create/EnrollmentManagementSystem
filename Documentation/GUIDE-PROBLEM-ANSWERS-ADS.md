@@ -708,31 +708,32 @@ A rule that summed across two draft records would need the same lock on the stud
 design that follows once the school says what the ceiling counts.
 
 **Q13.4** How will the system prevent the student from exceeding the allowed load?
-**Answer:** **it does not yet, and this is the honest answer.** The mechanism is ready — one comparison
-inside the proposal transaction, a refusal naming the units and the ceiling, an audit rule alongside
-`ems:audit:record-states`, and T14 asserting it — and the missing input is a school figure, which
-§II.B forbids inventing. The design is stated here so the concept is demonstrable the day the number
-arrives.
+**Answer:** the rule is built and the figure is not the school's yet. `App\Support\LoadLimits` reads the
+`maxStudyLoadUnits` settings row, and the proposal save refuses above it naming the units, the ceiling and
+what the record already carries. A blank row binds nothing, which is the ruling of 2026-11-03.
 
 ### Problem 14 — Faculty Teaching Load
 
 **Concept involved:** an aggregate over assignment rows, referential accuracy, conflict detection.
 **Applicability:** ☐ Applies to our system ☑ Partially applies ☐ N/A
-**Design:** assignments are stored and their times are weighed; a load *limit* is not, because the
-school has not stated one. The guide explicitly invites this limitation to be explained.
+**Design:** assignments are stored, their times are weighed and their units are totalled; a load *limit* has
+a rule and no number, because the school has not stated one. The guide explicitly invites this limitation
+to be explained.
 **Implementation:** `schedules` carries `blockId`, `subjectId`, `roomId` and `instructorId`, the last a
 foreign key to `staffusers.userId`, with an index on `(blockId, subjectId)` and one on
 `instructorId`; the hours live in `schedulemeetings` as plain day/time strings. So load is countable
-today — rows per instructor per term, or units per instructor per term — and is not currently
-computed or capped anywhere in `app/`. What **is** built is the collision half:
+today — rows per instructor per term, or units per instructor per term — and the units are counted by
+`App\Support\LoadLimits::instructorUnits()`, which `BlockingController` asks before it saves a schedule.
+What **is** built besides that is the collision half:
 `App\Support\TimetableConflicts` asks three questions of one builder (the same officer, the same room,
 the same block's own hour) inside one term, half-open so back-to-back is not a collision, and
 `ems:audit:record-states` carries the same two boundaries as rules.
 **Test or demonstration:** `php storage/app/scratch/mutate-lane55-conflicts.php` drives the conflict
 pair (its third leg is deliberately expected green before and after, because a correct expectation is
 not a defect), and the audit test pins that a meeting starting exactly as another ends is not flagged
-and a collision across two terms is not flagged. T15 is **not executed** for load: no limit exists to
-assert against.
+and a collision across two terms is not flagged. T15 is **not executed** for a refusal: the guard is
+built and the ceiling row is blank, so nothing can be shown to breach it.
+`tests/Feature/Load/LoadLimitsReadFromSettingsTest.php` pins the counting and the blank direction.
 **Evidence:** those two files, §23's `schedules` row, and the register's P14 row.
 **Workflow difference:** faculty are `staffusers` accounts with the teaching right, not a separate
 person table; a load question is therefore an officer-and-section question, which the conflict code

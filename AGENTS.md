@@ -877,7 +877,7 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   the figure came from (`totalAssessment == null`, `assessed.length > 0`), never the amount. The checker judges
   only what text alone settles — the operand rendered by the very branch its guard selects, signed by `₱` or
   `%` — and
-  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose tested operand this file cannot bind, plus the dashes written on a line of their own, and 384 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
+  `lane49-zero-shown-as-absence.php` **prints its own blind spots** (21 guards whose tested operand this file cannot bind, plus the dashes written on a line of their own, and 386 lines where the tested operand is a name, code, date or error message), and those two numbers are kept on one physical line beside the tool they came from. Both figures are read out of
   that tool's own print, and the instrument's name now sits in the same sentence as the numbers on purpose: a figure
   three lines below the last citation of its tool is invisible to `lane59-instrument-counts.php`, which binds a claim
   only where its own sentence names the instrument, so these two went stale twice while the run printed clean. That repair
@@ -3216,7 +3216,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   band — and the number that row carried is **still not the band rule**: re-read on 2026-11-01, `665-671` in HEAD's
   copy is `proposeSubjects()`'s closing brace, a blank line, and that method's own docblock, so the byte-for-byte
   re-take on 2026-10-31 proved the lines were *live*, not that they carried the claim. The same window now sits at
-  `EvaluationController.php:689-694` (docblock, signature, opening brace, the `authorize` line), which is what the
+  `EvaluationController.php:690-695` (docblock, signature, opening brace, the `authorize` line), which is what the
   number honestly points at today; **that reading was overtaken on 2026-11-02 and the rule was never absent**:
   the band refusal lives in the same method at lines 725 to 741 (the comment `// Elective group validation`, the
   `groupBy('elective_group')`, the `elective_min_choices` / `elective_max_choices` read and the
@@ -3647,7 +3647,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   the row is "created later — when the evaluator signs, not at enrollment creation — and `createWorkflow()` has exactly
   one caller", citing lines 532 to 535 of `EvaluationController.php` as the only createWorkflow call. A call-site census of `app/`
   answers **two**: `EnrollmentIssuer.php:137`, inside `create()` directly after `Enrollments::create` at :131, and
-  `EvaluationController.php:1005`, behind `if (! $enrollment->enrollmentworkflow)` at :1004. (Re-taken 2026-11-02 by
+  `EvaluationController.php:1021`, behind `if (! $enrollment->enrollmentworkflow)` at :1020. (Re-taken 2026-11-02 by
   reading both lines in the working file: the pair had aged some 76 lines through earlier batches and every instrument
   agreed with it, because a pointer that lands on live code in the right file is invisible to a bounds sweep — this
   batch's 22 added lines only moved it onto a blank, which is the one shape the gate refuses.
@@ -5126,6 +5126,33 @@ hook and keep the post-write read-back. Two readings came out of it: check a cla
 seen at all — `384` occurred zero times in the archive while the pass had printed it), and when one sentence lives in
 two registers, count its occurrences in the archive before assuming an edit reached both (the flat dump joins runs, so
 a second copy can be a rendering of ONE stored sentence, not a second claim to repair).
+
+- **A rule that lands leaves its own absence-sentences behind, and a pointer chain written from an unnumbered
+  reader is one row short six times in one file** (the two load ceilings, 2026-11-04). The mechanism moved, no
+  figure moved, no status word moved and no pointer left its page — and four present-tense claims across three
+  deliverables still said the rule was absent ("no figure for a term ceiling exists anywhere in `app/`", "is not
+  currently computed or capped anywhere in `app/`", "no limit is defined", "nothing in `app/` holds a faculty-load
+  predicate"), beside the two §28.5 rows that ask the school the question the build now answers. So when a batch
+  delivers a *rule* rather than a repair, grep every document for the sentence that says the rule is missing, and
+  re-take it in the same batch as the code: `lane70-mechanism-claims-stale` is this class, and the register rows
+  that ask a school question are part of it, not a later pass. Three instrument readings came out of the same
+  cascade. **(a)** The binder for tool figures caught a fifth sentence the batch moved without being asked: the
+  timetable cell added lines of the shape it counts, so `lane49-zero-shown-as-absence.php` answers `21 guards whose tested operand this file cannot bind, plus the dashes written on a line of their own, and 386 lines where the tested operand is a name, code, date or error message` and that figure moved in AGENTS.md and in the docx together
+  — and the first re-check still reported the docx stale, because that collector reads the flat dump, so re-dump
+  before believing a verdict about a sentence you just rewrote. **(b)** `--skip=` holds back EVERY copy of a shared digit token, not
+  only the foreign one: `1194-1235` occurs twice document-wide and both are bare continuations of two different
+  files' citations, so the hand re-take was written to move both with `expect` two, which is the only shape that
+  leaves the Registrar's own tail alone. **(c)** an AMBIGUOUS refusal can be the pointer's fault rather than the
+  tool's: the cited line was a docblock closer, which matches sixteen places in the file, so the honest number is
+  the signature the sentence names, not a byte window. Six of the twenty-three markdown pairs were one row short
+  *before* this batch touched the file, because a bare reader printed lines without numbers (the pass-243 lesson,
+  met at scale): the retry wrapper, the transaction open, the block lock, the room lock, the dropped-line filter and
+  one matrix row's "the private method at", whose number sat inside a different method's payload while the prose
+  named the method correctly. Re-take a markdown pointer with `lane127-resolve-lines.php` or an equivalent byte
+  reader, and assert the NEW line carries the claim. Finally, a bucket that empties is a claim: the ADS census moved
+  the ceiling row from not-built to partly-built, `lane200-check-report-buckets.php` re-took the report's two id
+  lists from that census, and the not-built bucket now answers nothing — which the report must say rather than carry
+  the older membership forward.
 
 ## Agent dispatch
 

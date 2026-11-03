@@ -224,7 +224,7 @@ class LoadLimitsReadFromSettingsTest extends TestCase
         $keep = $this->schedule($blockA, $s1, $teacher, $room);
         $this->schedule($blockA2, $s2, $teacher, $room);
         // Another term's load must not make a free faculty member look full: rooms and officers are reused every
-        // year on purpose, which is the discovery that scoped collision detection to one term (§28.3 G-55).
+        // year on purpose, which is the discovery that scoped collision detection to one term (the timetable ruling of 2026-10-19).
         $this->schedule($blockB, $s3, $teacher, $room);
         // A colleague's rows are nobody else's ceiling.
         $this->schedule($blockA, $s3, $colleague, $room);
