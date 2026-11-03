@@ -1,11 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Modal, ConfirmDialog, Select, EmptyState, FormSection, nextSortDirection, sortParams } from '@/Components/ui';
 import { calendarYear } from '@/Components/ui/calendarDay';
 
-export default function Curriculums({ curriculums, courses, majors, filters = {} }) {
+export default function Curriculums({ curriculums, courses, majors, filters = {}, sort = null }) {
     const [search, setSearch] = useState(filters.search || '');
+    // Seeded from what the server reported, so a filter submit keeps the order the desk is looking at rather than
+    // resetting it under them. The catalogue's own default is the title ascending, sent as nothing at all.
+    const [sortBy, setSortBy] = useState(filters.sort || '');
+    const [sortDir, setSortDir] = useState(filters.direction || '');
     const [showModal, setShowModal] = useState(false);
     const [editingCurriculum, setEditingCurriculum] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -18,17 +22,33 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
     });
 
     const columns = useMemo(() => [
-        { key: 'curriculumId', label: 'ID', className: 'font-mono text-sm hidden md:table-cell' },
-        { key: 'curriculumName', label: 'Title' },
-        { key: 'course', label: 'Course', render: (row) => row.course?.courseName || '—' },
-        { key: 'major', label: 'Major', render: (row) => row.major?.majorName || '—' },
-        { key: 'effectiveYear', label: 'Effective Year', render: (row) => calendarYear(row.effectiveYear) ?? '—' },
+        { key: 'curriculumId', label: 'ID', sortKey: 'curriculumId', className: 'font-mono text-sm hidden md:table-cell' },
+        { key: 'curriculumName', label: 'Title', sortKey: 'curriculumName' },
+        { key: 'course', label: 'Course', sortKey: 'course', render: (row) => row.course?.courseName || '—' },
+        { key: 'major', label: 'Major', sortKey: 'major', render: (row) => row.major?.majorName || '—' },
+        { key: 'effectiveYear', label: 'Effective Year', sortKey: 'effectiveYear', render: (row) => calendarYear(row.effectiveYear) ?? '—' },
     ], []);
 
     const handleFilter = (e) => {
         e.preventDefault();
         router.get(route('admin.reference-data.curriculums'), {
             search: search || undefined,
+            ...sortParams('curriculumName', sortBy, sortDir),
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    // The order is asked of the query rather than of the twenty rows on screen: the list paginates on the server, so
+    // a client sort would order one page and present that as the whole catalogue.
+    const handleSort = (key) => {
+        const direction = nextSortDirection(key === sortBy, sortDir);
+        setSortBy(key);
+        setSortDir(direction);
+        router.get(route('admin.reference-data.curriculums'), {
+            search: search || undefined,
+            ...sortParams('curriculumName', key, direction),
         }, {
             preserveState: true,
             preserveScroll: true,
@@ -158,6 +178,8 @@ export default function Curriculums({ curriculums, courses, majors, filters = {}
                         <DataTable
                             columns={columns}
                             rows={curriculums.data}
+                            sort={sort}
+                            onSort={handleSort}
                             children={renderActions}
                             emptyMessage="No curriculums found"
                         />

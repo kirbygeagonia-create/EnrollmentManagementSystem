@@ -287,18 +287,52 @@ class ReferenceDataController extends Controller
             ->when($request->search, fn ($q, $search) => $q->where(function ($sq) use ($search) {
                 $sq->where('curriculumName', 'like', "%{$search}%")
                     ->orWhereHas('course', fn ($cq) => $cq->where('courseName', 'like', "%{$search}%"));
-            }))
-            ->orderByDesc('curriculumId')
-            ->paginate(20)
-            ->withQueryString();
+            }));
+
+        // Two hops, chosen by asking the schema AND the rows rather than by copying the last screen. `courseId` is
+        // NOT NULL with a foreign key and live `ems` answers 16 curriculums, 0 nulls and 0 orphans, so an INNER hop
+        // cannot drop a record. `majorId` is the mirror case: nullable in the migration and NULL on every one of the
+        // 16 rows today, so an INNER hop here would not mis-order the list — it would empty it.
+        $sortable = [
+            'curriculumId' => ['column' => 'curriculumId'],
+            'curriculumName' => ['column' => 'curriculumName'],
+            'course' => [
+                'column' => 'courseName',
+                'join' => 'courses',
+                'foreign' => 'courseId',
+                'local' => 'curriculums.courseId',
+            ],
+            'major' => [
+                'column' => 'majorName',
+                'join' => 'majors',
+                'foreign' => 'majorId',
+                'local' => 'curriculums.majorId',
+                'type' => 'left',
+            ],
+            // The cell prints the YEAR of a DATE column, so this orders by the stored date — the unit is stated in
+            // the case rather than assumed from the label a person reads.
+            'effectiveYear' => ['column' => 'effectiveYear'],
+        ];
+        $sort = ListSort::apply(
+            $curriculums,
+            (string) $request->input('sort', ''),
+            (string) $request->input('direction', 'asc'),
+            $sortable,
+            'curriculumName',
+            'curriculums.curriculumId',
+        );
+
+        $page = $curriculums->paginate(20)->withQueryString();
         $courses = Courses::all(['courseId', 'courseName']);
         $majors = Majors::all(['majorId', 'majorName']);
 
         return Inertia::render('Admin/ReferenceData/Curriculums', [
-            'curriculums' => $curriculums,
+            'curriculums' => $page,
             'courses' => $courses,
             'majors' => $majors,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search'])
+                + ['sort' => $sort['column'], 'direction' => $sort['direction']],
+            'sort' => ListSort::present($sort, $sortable),
         ]);
     }
 
