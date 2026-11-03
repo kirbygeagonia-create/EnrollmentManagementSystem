@@ -23,9 +23,13 @@ use Illuminate\Support\Facades\DB;
  *
  * Three rules this command exists to honour.
  *
- * **One row is enough to refuse the whole sheet.** A timetable is read as a set: half a published week
- * is worse than none, because the desks that already booked a room cannot see what did not arrive. So
- * `--commit` on a sheet carrying any refusal writes nothing at all and says which rows.
+ * **One unreadable row is enough to refuse the whole sheet.** A timetable is read as a set: half a published
+ * week is worse than none, because the desks that already booked a room cannot see what did not arrive. So
+ * `--commit` on a sheet carrying a row this tool cannot read writes nothing at all and says which rows.
+ * `--fill-gaps` narrows that rule to its exact scope, as the owner ruled on 2026-11-03: collisions with hours
+ * already booked are skipped and named, and the rest of the sheet — the gaps — is published. A row whose own
+ * input is unreadable still refuses everything, because skipping it would publish a week missing a meeting the
+ * department asked for.
  *
  * **A collision is named before publication, by the rule the desk already uses.** The three questions
  * live in `App\Support\TimetableConflicts` and are asked twice here: against the meetings already on
@@ -45,6 +49,8 @@ class ImportTimetable extends Command
                     {--template : Print the column map and exit without reading anything}
                     {--term= : The academicterms.termId the sheet belongs to; required with --csv}
                     {--commit : Publish the sheet, but only when every row was accepted}
+                    {--fill-gaps : With --commit, publish the rows that do not collide and name the collisions skipped. A row whose own input is unreadable still refuses the whole sheet.}
+                    {--json= : Write the preview as JSON to this path for the desk screen; the console output stays for a person}
                     {--limit= : Read at most this many data rows}';
 
     protected $description = 'Preview a timetable sheet against the Blocking rules; publish only a sheet with no refusal';
@@ -70,8 +76,22 @@ class ImportTimetable extends Command
     /** @var array<int, array<int, string>> */
     private array $verdicts = [];
 
+    /**
+     * Row number => how many of its reasons are collision reasons. A row whose reasons are ALL collisions is
+     * the row `--fill-gaps` may skip; a row carrying any other reason is an input the desk has to fix, and the
+     * sheet still refuses as a whole.
+     *
+     * @var array<int, int>
+     */
+    private array $conflictRows = [];
+
     public function handle(): int
     {
+        // The desk screen calls this command from inside one request, so state from a previous call must not
+        // reach the next sheet: an inherited verdict row would print a row the file never held.
+        $this->verdicts = [];
+        $this->conflictRows = [];
+
         if ($this->option('template')) {
             return $this->printTemplate();
         }
@@ -148,8 +168,26 @@ class ImportTimetable extends Command
             }
         }
 
-        $schedules = $this->group($lines);
-        $refused = count(array_filter($reasons, fn (array $why): bool => $why !== []));
+        $refusedRows = array_keys(array_filter($reasons, fn (array $why): bool => $why !== []));
+
+        // The owner ruled the import policy on 2026-11-03: fill the gaps, refuse the conflicts. A row whose
+        // reasons are every one a collision is therefore the row `--fill-gaps` may skip, while a row carrying
+        // any other reason names an input the department has to fix — and a sheet holding one of those still
+        // refuses as a whole, because half a parsed week is the state this guard exists to prevent.
+        $skippable = array_values(array_filter(
+            $refusedRows,
+            fn (int $line): bool => isset($this->conflictRows[$line])
+                && $this->conflictRows[$line] === count($reasons[$line])
+        ));
+        $blocking = array_values(array_diff($refusedRows, $skippable));
+        $fillGaps = (bool) $this->option('fill-gaps');
+
+        $acceptedLines = array_values(array_filter(
+            $lines,
+            fn (array $l): bool => ! in_array((int) $l['row'], $skippable, true)
+        ));
+        $schedules = $this->group($acceptedLines);
+        $refused = count($refusedRows);
 
         $this->line('');
         $this->line(sprintf(
@@ -164,32 +202,111 @@ class ImportTimetable extends Command
             count($cells) - $refused,
             $refused,
             count($schedules),
-            count($lines)
+            count($acceptedLines)
         ));
 
-        foreach ($this->capacityAdvisories($schedules, $lookups) as $advisory) {
+        $advisories = $this->capacityAdvisories($schedules, $lookups);
+        foreach ($advisories as $advisory) {
             $this->warn($advisory);
         }
 
-        if ($refused > 0) {
-            $this->line('');
-            $this->error("The sheet is refused as a whole: {$refused} of ".count($cells).' row(s) carry a reason.');
+        if ($refused === 0) {
+            $this->emitJson('clean', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
 
-            if ($this->option('commit')) {
-                $this->error('--commit was given, and nothing was written. A half-published week is the state this guard exists to prevent.');
+            if (! $this->option('commit')) {
+                $this->line('');
+                $this->line('<fg=yellow>Nothing was written.</> This was a preview. Re-run with --commit to publish these '.count($schedules).' schedule(s).');
+
+                return self::SUCCESS;
             }
 
-            return self::FAILURE;
+            $result = $this->publish($schedules);
+            $this->emitJson($result === self::SUCCESS ? 'published' : 'failed', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
+
+            return $result;
         }
 
-        if (! $this->option('commit')) {
+        if ($fillGaps && $blocking === []) {
+            if ($schedules === []) {
+                $this->emitJson('nothing-left', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
+                $this->line('');
+                $this->error('Fill-gaps found nothing to write: every accepted row collides with what is already on file, so this sheet has already been published for this term.');
+
+                return self::FAILURE;
+            }
+
             $this->line('');
-            $this->line('<fg=yellow>Nothing was written.</> This was a preview. Re-run with --commit to publish these '.count($schedules).' schedule(s).');
+            $this->warn('Fill-gaps: '.count($skippable).' row(s) collide with hours already booked and are skipped; the other '.count($schedules).' schedule(s) are the gaps this sheet fills.');
+            foreach ($skippable as $line) {
+                foreach ($reasons[$line] as $reason) {
+                    $this->line("skipped row {$line} — {$reason}");
+                }
+            }
 
-            return self::SUCCESS;
+            $this->emitJson($this->option('commit') ? 'committed' : 'previewed-with-skips', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
+
+            if (! $this->option('commit')) {
+                $this->line('<fg=yellow>Nothing was written.</> This was a preview. Re-run with --commit --fill-gaps to publish the gaps and skip the collisions.');
+
+                return self::SUCCESS;
+            }
+
+            $result = $this->publish($schedules);
+            $this->emitJson($result === self::SUCCESS ? 'published' : 'failed', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
+
+            return $result;
         }
 
-        return $this->publish($schedules);
+        $this->emitJson('refused', $cells, $reasons, $schedules, $skippable, (int) $term->termId, $advisories);
+        $this->line('');
+        $this->error("The sheet is refused as a whole: {$refused} of ".count($cells).' row(s) carry a reason.');
+
+        if ($fillGaps) {
+            $this->error('--fill-gaps skips collisions only. '.count($blocking).' row(s) carry a reason that is not a collision, so nothing was written.');
+        }
+
+        if ($this->option('commit')) {
+            $this->error('--commit was given, and nothing was written. A half-published week is the state this guard exists to prevent.');
+        }
+
+        return self::FAILURE;
+    }
+
+    /**
+     * Write the preview where the desk screen can read it.
+     *
+     * The console table is for a person; the screen needs the same verdicts without parsing a rendered table, and
+     * two definitions of "what this row costs" is this repository's oldest defect. So the screen reads what the
+     * command decided, in the same run, and a test asserts the two surfaces agree on the accepted set.
+     *
+     * @param  array<int, array<string, mixed>|null>  $cells
+     * @param  array<int, list<string>>  $reasons
+     * @param  list<int>  $skippable
+     * @param  list<string>  $advisories
+     */
+    private function emitJson(string $outcome, array $cells, array $reasons, array $schedules, array $skippable, int $termId, array $advisories): void
+    {
+        $path = (string) $this->option('json');
+        if ($path === '') {
+            return;
+        }
+
+        $payload = [
+            'outcome' => $outcome,
+            'termId' => $termId,
+            'read' => count($cells),
+            'refused' => count(array_filter($reasons, fn (array $why): bool => $why !== [])),
+            'skippedForCollision' => $skippable,
+            'schedules' => count($schedules),
+            'meetings' => array_sum(array_map(fn (array $g): int => count($g['lines']), $schedules)),
+            'advisories' => $advisories,
+            'rows' => $this->verdicts,
+            'reasons' => $reasons,
+        ];
+
+        if (file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT)) === false) {
+            $this->error("The preview could not be written to '{$path}' — the screen cannot show what it cannot read.");
+        }
     }
 
     private function printTemplate(): int
@@ -526,6 +643,7 @@ class ImportTimetable extends Command
 
             foreach ($rows as $row) {
                 $reasons[$row][] = $conflict;
+                $this->conflictRows[(int) $row] = ($this->conflictRows[(int) $row] ?? 0) + 1;
             }
         }
 
@@ -549,6 +667,7 @@ class ImportTimetable extends Command
             foreach (TimetableConflicts::againstDatabase($schedule) as $conflict) {
                 foreach ($rows as $row) {
                     $reasons[$row][] = $conflict.' — that hour is already on file for the same officer, room or block';
+                    $this->conflictRows[(int) $row] = ($this->conflictRows[(int) $row] ?? 0) + 1;
                 }
             }
         }

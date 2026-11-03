@@ -599,6 +599,121 @@ class TimetableImportTest extends TestCase
         );
     }
 
+    /**
+     * The owner ruled the import policy on 2026-11-03: fill the gaps, refuse the conflicts. These three cases
+     * hold that ruling in both directions — the collision is skipped and the gap is published, an unreadable
+     * row still refuses everything, and a sheet with nothing left to fill refuses rather than reporting a
+     * publish it did not make.
+     */
+    #[Test]
+    public function fill_gaps_publishes_the_gap_and_skips_the_collision(): void
+    {
+        $this->onFile($this->blockA, 'CS101', 'instr.salazar', 'Room 101', 'Monday', '08:00:00', '09:30:00');
+
+        $output = $this->sheetRun($this->rows([
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 101', 'Monday', '08:00', '09:30'),
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 9', 'Tuesday', '10:00', '11:30'),
+        ]), ['--fill-gaps' => true, '--commit' => true]);
+
+        $this->assertSame(0, $this->lastStatus, $output);
+        $this->assertStringContainsString('Fill-gaps: 1 row(s) collide', $output);
+        $this->assertStringContainsString('Published: 1 meeting line(s) over 1 schedule(s).', $output);
+
+        // The gap published is the Tuesday row, not the colliding one: a count alone would pass if the
+        // command had written the wrong half. The fixture's own schedule is counted out, because `onFile()`
+        // put one row there before the case ran — an assertion of `1` would have accused a correct publish.
+        $this->assertSame($this->expect[0] + 1, Schedules::count());
+        $published = Schedules::where('roomId', $this->room9)->sole();
+        // The column is enum-cast, so the value is read off the case rather than compared to a bare string.
+        $this->assertSame('Tuesday', Schedulemeetings::where('scheduleId', $published->scheduleId)->sole()->dayOfWeek->value);
+        $this->expect = [$this->expect[0] + 1, $this->expect[1] + 1];
+        $this->assertNothingWritten();
+    }
+
+    #[Test]
+    public function fill_gaps_still_refuses_the_whole_sheet_when_one_row_cannot_be_read(): void
+    {
+        $this->onFile($this->blockA, 'CS101', 'instr.salazar', 'Room 101', 'Monday', '08:00:00', '09:30:00');
+
+        $output = $this->sheetRun($this->rows([
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 101', 'Monday', '08:00', '09:30'),
+            $this->line('BSBA 2-A', 'NOSUCH', 'instr.mendoza', 'Room 9', 'Tuesday', '10:00', '11:30'),
+        ]), ['--fill-gaps' => true, '--commit' => true]);
+
+        $this->assertSame(1, $this->lastStatus);
+        $this->assertStringContainsString('carry a reason that is not a collision, so nothing was written', $output);
+        $this->assertStringNotContainsString('Published:', $output);
+        $this->assertNothingWritten();
+    }
+
+    #[Test]
+    public function fill_gaps_refuses_a_sheet_whose_every_row_collides_rather_than_claiming_a_publish(): void
+    {
+        $this->onFile($this->blockA, 'CS101', 'instr.salazar', 'Room 101', 'Monday', '08:00:00', '09:30:00');
+
+        $output = $this->sheetRun($this->rows([
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 101', 'Monday', '08:00', '09:30'),
+        ]), ['--fill-gaps' => true, '--commit' => true]);
+
+        $this->assertSame(1, $this->lastStatus);
+        $this->assertStringContainsString('Fill-gaps found nothing to write', $output);
+        $this->assertStringNotContainsString('Published:', $output);
+        $this->assertNothingWritten();
+    }
+
+    /**
+     * The desk screen reads the JSON the command writes; the person reads the table. Two surfaces, one
+     * decision — so the pair is asserted equal rather than each being trusted alone.
+     */
+    #[Test]
+    public function the_json_preview_and_the_console_tally_answer_the_same_question(): void
+    {
+        $this->onFile($this->blockA, 'CS101', 'instr.salazar', 'Room 101', 'Monday', '08:00:00', '09:30:00');
+
+        $json = $this->write('');
+
+        $output = $this->sheetRun($this->rows([
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 101', 'Monday', '08:00', '09:30'),
+            $this->line('BSIT 1-A', 'CS101', 'instr.salazar', 'Room 9', 'Wednesday', '13:00', '14:30'),
+        ]), ['--json' => $json]);
+
+        $payload = json_decode((string) file_get_contents($json), true);
+        $this->assertIsArray($payload, 'The command wrote no readable preview, so the screen would show nothing.');
+        $this->assertSame(2, $payload['read']);
+        $this->assertSame(1, $payload['refused']);
+        $this->assertCount(1, $payload['skippedForCollision']);
+        $this->assertSame(1, $payload['schedules']);
+        $this->assertSame(1, $payload['meetings']);
+        $this->assertCount(2, $payload['rows'], 'Every row read must carry a verdict row.');
+
+        // The relation, not a remembered number: whatever the console tallied is what the payload must say.
+        $this->assertMatchesRegularExpression('/Rows read: 2 accepted: 1 refused: 1/', $output);
+        $this->assertStringContainsString('The sheet is refused as a whole', $output);
+        $this->assertNothingWritten();
+    }
+
+    /**
+     * The two passes are different questions. A row that collides with what is already on file is visible to the
+     * database pass; a row that collides with its own neighbour in the same sheet is visible only to the
+     * within-sheet pass, because neither row is in the database yet. Under `--fill-gaps` both of such a pair are
+     * skipped, so the sheet has nothing left to fill and must say so rather than publish half a collision.
+     */
+    #[Test]
+    public function a_sheet_that_double_books_itself_under_fill_gaps_publishes_nothing(): void
+    {
+        $output = $this->sheetRun($this->rows([
+            $this->line('BSIT 1-A', 'CS101', 'instr.salazar', 'Room 9', 'Monday', '08:00', '09:30'),
+            $this->line('BSBA 2-A', 'CS102', 'instr.mendoza', 'Room 9', 'Monday', '08:00', '09:30'),
+        ]), ['--fill-gaps' => true, '--commit' => true]);
+
+        $this->assertSame(1, $this->lastStatus, $output);
+        $this->assertStringContainsString('between rows 2 and 3 of this file', $output);
+        $this->assertStringContainsString('Fill-gaps found nothing to write', $output);
+        $this->assertStringNotContainsString('carry a reason that is not a collision', $output);
+        $this->assertStringNotContainsString('Published:', $output);
+        $this->assertNothingWritten();
+    }
+
     private function shift(string $clock, int $minutes, string $shape): string
     {
         $parts = array_map('intval', array_pad(explode(':', $clock), 3, 0));
