@@ -23,6 +23,7 @@ use App\Services\PrintService;
 use App\Services\WorkflowService;
 use App\Support\DeskQueues;
 use App\Support\ListSort;
+use App\Support\LoadLimits;
 use App\Support\RetryOnDeadlock;
 use App\Support\TimetableConflicts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -294,6 +295,22 @@ class BlockingController extends Controller
             throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
         }
 
+        // Prompt §7.5's teaching load, read from the settings table and silent until the school enters a figure.
+        // The scope is the BLOCK's term, because `schedules` carries no term of its own — the same discovery that
+        // made collision detection reach the block (§28.3 G-55), and the reason a cross-term row would otherwise
+        // make a free faculty member look full.
+        if (($ceiling = LoadLimits::instructorCeiling()) !== null) {
+            $instructorId = (int) $validated['instructorId'];
+            $already = LoadLimits::instructorUnits($instructorId, (int) $block->termId);
+            $adding = LoadLimits::unitsFor([(int) $validated['subjectId']]);
+            $total = round($already + $adding, 2);
+            if ($total > $ceiling) {
+                throw ValidationException::withMessages([
+                    'instructorId' => "That faculty member would carry {$total} units in this term, above the school's maximum teaching load of {$ceiling} units (already assigned: {$already}; this subject: {$adding}).",
+                ]);
+            }
+        }
+
         // Room capacity warning: advisory only — the hard gate is at assignment
         // time (room_capacity), so a too-small room must not silently veto a
         // legal schedule. Warn, and still add it.
@@ -353,6 +370,21 @@ class BlockingController extends Controller
         $conflicts = $this->detectConflicts($tempSchedule, $schedule->scheduleId);
         if ($conflicts->isNotEmpty()) {
             throw ValidationException::withMessages(['conflicts' => $conflicts->toArray()]);
+        }
+
+        // The same teaching-load ceiling as `storeSchedule`, with the row being edited excluded: a rule that counted
+        // the schedule twice would creep upward every time the desk re-saved it, and one that refused a save which
+        // only moves an over-full faculty member down would make the limit impossible to repair.
+        if (($ceiling = LoadLimits::instructorCeiling()) !== null) {
+            $instructorId = (int) ($validated['instructorId'] ?? $schedule->instructorId);
+            $already = LoadLimits::instructorUnits($instructorId, (int) $schedule->block->termId, $schedule->scheduleId);
+            $adding = LoadLimits::unitsFor([(int) $schedule->subjectId]);
+            $total = round($already + $adding, 2);
+            if ($total > $ceiling) {
+                throw ValidationException::withMessages([
+                    'instructorId' => "That faculty member would carry {$total} units in this term, above the school's maximum teaching load of {$ceiling} units (already assigned, besides this row: {$already}; this subject: {$adding}).",
+                ]);
+            }
         }
 
         // Room capacity warning: advisory only (see storeSchedule).

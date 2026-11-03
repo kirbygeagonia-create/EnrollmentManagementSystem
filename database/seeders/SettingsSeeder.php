@@ -49,6 +49,20 @@ class SettingsSeeder extends Seeder
                 'value' => '(083) 226-1602',
                 'description' => 'Registrar landline, from SEAIT_Official_Information.md §1. The sheet also lists 226-1203.',
             ],
+            // The two load ceilings are seeded BLANK on purpose. Prompt §7.3 and §7.5 ask for a maximum study load
+            // and a bounded teaching load, and the school has never stated the numbers (decision sheet items 10 and
+            // 11, still open). The rule lives in `App\Support\LoadLimits` and binds the moment a figure is entered
+            // here; a row that exists and is empty is the honest state, while a row that does not exist would make
+            // the feature undeliverable from the desk and a figure invented by this repository would be the school's
+            // decision made for it. A ceiling of 0 is read as "not filled in", not as "no units allowed".
+            'maxStudyLoadUnits' => [
+                'value' => '',
+                'description' => 'Maximum units one student may carry in a term (prompt 7.3). Blank means no ceiling is enforced. School figure, decision sheet item 10.',
+            ],
+            'maxTeachingLoadUnits' => [
+                'value' => '',
+                'description' => 'Maximum units one faculty member may teach in a term (prompt 7.5). Blank means no ceiling is enforced. School figure, decision sheet item 11.',
+            ],
             // The clearance replacement fee is deliberately not a setting: the amount a
             // student is charged and the amount the slip prints both come from the
             // 'Clearance Slip Replacement' fee type in Reference Data, and a second place

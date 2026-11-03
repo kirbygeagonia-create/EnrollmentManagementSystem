@@ -47,6 +47,7 @@ use App\Services\WorkflowService;
 use App\Support\CollegeScope;
 use App\Support\DeskQueues;
 use App\Support\ListSort;
+use App\Support\LoadLimits;
 use App\Support\RetryOnDeadlock;
 use App\Support\SchoolTime;
 use App\Support\StudentRecordDefaults;
@@ -737,6 +738,21 @@ class EvaluationController extends Controller
             if ($count < $minChoices || $count > $maxChoices) {
                 throw ValidationException::withMessages([
                     'subjects' => "Elective group '{$groupName}' requires between {$minChoices} and {$maxChoices} subjects. {$count} selected.",
+                ]);
+            }
+        }
+
+        // Prompt §7.3's maximum study load. `App\Support\LoadLimits` reads the figure from the settings table and
+        // answers null while the school has not entered one, so nothing is refused on an invented ceiling — and the
+        // number quoted back to the desk is the one it can check: what this enrollment already holds confirmed plus
+        // what this proposal would add.
+        if (($ceiling = LoadLimits::studentCeiling()) !== null) {
+            $carried = LoadLimits::confirmedUnits((int) $enrollment->enrollmentId);
+            $proposed = LoadLimits::unitsFor($subjectIds);
+            $total = round($carried + $proposed, 2);
+            if ($total > $ceiling) {
+                throw ValidationException::withMessages([
+                    'subjects' => "The proposed load is {$total} units, above the school's maximum study load of {$ceiling} units (already confirmed on this record: {$carried}).",
                 ]);
             }
         }
