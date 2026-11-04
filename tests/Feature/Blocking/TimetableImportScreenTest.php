@@ -14,9 +14,10 @@ use App\Models\Schedulemeetings;
 use App\Models\Schedules;
 use App\Models\Staffusers;
 use App\Models\Subjects;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -36,7 +37,7 @@ use Tests\TestCase;
  */
 class TimetableImportScreenTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private const HEADERS = 'block_name,subject_code,instructor,room,day_of_week,start_time,end_time';
 
@@ -50,6 +51,17 @@ class TimetableImportScreenTest extends TestCase
     {
         parent::setUp();
 
+        // Pin the connection this class seeds, the way every sibling that runs `db:seed --database=sqlite` does.
+        // Without the pin the sqlite connection's database comes from the environment, so on a runner that sets
+        // DB_DATABASE=ems_test the seed opens a file called "ems_test" and dies before any assertion runs — green on
+        // this box, red on the runner, because this box's own pins happen to agree. The connection and the database
+        // name have to come from the same place, and here that place is the test.
+        config([
+            'database.default' => 'sqlite',
+            'database.connections.sqlite.database' => ':memory:',
+        ]);
+        DB::purge('sqlite');
+        $this->artisan('migrate', ['--database' => 'sqlite']);
         $this->artisan('db:seed', ['--class' => 'Database\\Seeders\\RbacSeeder', '--database' => 'sqlite']);
 
         $unit = Academicunits::create([
@@ -67,8 +79,6 @@ class TimetableImportScreenTest extends TestCase
         ])->courseId;
 
         $year = Academicyears::create([
-            'yearStart' => 2024,
-            'yearEnd' => 2025,
             'yearLabel' => '2024-2025',
             'startDate' => '2024-06-01',
             'endDate' => '2025-05-31',

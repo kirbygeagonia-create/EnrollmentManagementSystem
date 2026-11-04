@@ -68,7 +68,9 @@ class NoticeReadabilityTest extends TestCase
             'the label comes from the map the stepper and the bell already share, not a second list');
         $this->assertStringContainsString($student->schoolIdNumber, $facts['recordReference']);
         $this->assertStringContainsString($course->courseCode, $facts['recordReference']);
-        $this->assertSame(['name' => 'accounting.index'], $facts['link']);
+        // The cashier's own page is keyed on a fee sheet, which a notice about an enrollment does not hold, so this
+        // office gets the queue and no invented record id (sheet item 1, ruled 2026-11-04).
+        $this->assertSame(['name' => 'accounting.index', 'record' => null], $facts['link']);
     }
 
     #[Test]
@@ -100,13 +102,79 @@ class NoticeReadabilityTest extends TestCase
     {
         [$student, $course, $enrollment] = $this->cast(1);
 
-        // Guidance owns the shift docket and Admission owns applications, so both have a page; the case that matters
-        // is the shape of the answer when the office is unknown to the map: no link at all, never a guess.
-        $this->assertSame(['name' => 'shift.index'], $this->factsFor($enrollment, OfficeId::Guidance->value)['link']);
-        $this->assertSame(['name' => 'admission.index'], $this->factsFor($enrollment, OfficeId::Admission->value)['link']);
-        $this->assertSame(['name' => 'registrar.index'], $this->factsFor($enrollment, OfficeId::Registrar->value)['link']);
-        $this->assertSame(['name' => 'id.index'], $this->factsFor($enrollment, OfficeId::IdOffice->value)['link']);
-        $this->assertSame(['name' => 'clinic.index'], $this->factsFor($enrollment, OfficeId::Clinic->value)['link']);
+        // Guidance owns the shift docket and Admission owns applications: both have a queue page, and neither page is
+        // keyed on an enrollment, so their notices carry a queue and no record. The case that matters is the shape of
+        // the answer when the office is unknown to the map: no link at all, never a guess.
+        foreach ([
+            OfficeId::Guidance->value => 'shift.index',
+            OfficeId::Admission->value => 'admission.index',
+            OfficeId::Registrar->value => 'registrar.index',
+            OfficeId::IdOffice->value => 'id.index',
+            OfficeId::Clinic->value => 'clinic.index',
+        ] as $officeId => $queueName) {
+            $link = $this->factsFor($enrollment, $officeId)['link'];
+            $this->assertSame($queueName, $link['name'], "office {$officeId} no longer answers its own queue page");
+        }
+    }
+
+    #[Test]
+    public function the_notice_lands_on_the_record_where_the_desk_page_asks_for_that_enrollment(): void
+    {
+        // Ruled 2026-11-04 (sheet item 1): the notice takes the desk to the record, and the queue is the fallback —
+        // not a consolation, but the honest answer for the offices whose page is keyed on something else. The list of
+        // who is who is read from the enum itself, so this case cannot keep asserting a pairing the map has changed.
+        $withRecord = [];
+        $queueOnly = [];
+        foreach (OfficeId::cases() as $office) {
+            if ($office->recordRouteName() === null) {
+                $queueOnly[] = $office;
+            } else {
+                $withRecord[] = $office;
+            }
+        }
+
+        $this->assertNotSame([], $withRecord, 'no office reaches a record page, so the ruling would be unimplementable');
+
+        [, , $enrollment] = $this->cast(2);
+
+        foreach ($withRecord as $office) {
+            $name = $office->name;
+            $link = $this->factsFor($enrollment, $office->value)['link'];
+            $route = $link['record']['name'] ?? null;
+
+            $this->assertNotNull($route, "{$name} claims a record page and answers none");
+            $this->assertTrue(Route::has((string) $route), "{$route} is not a route the application registers");
+            $this->assertSame($enrollment->enrollmentId, $link['record']['id'],
+                'the record link carries the enrollment the notice is about, not a row guessed from it');
+
+            // The key the page binds on must be the enrollment itself: a route named for a different model would
+            // accept this id and open somebody else's record.
+            $params = collect(Route::getRoutes()->getByName($route)->parameterNames())->all();
+            $this->assertContains('enrollment', $params,
+                "{$route} is keyed on ".implode(',', $params).', so an enrollment id must not be handed to it');
+        }
+
+        foreach ($queueOnly as $office) {
+            $link = $this->factsFor($enrollment, $office->value)['link'];
+            $this->assertNull($link['record'],
+                "{$office->name}'s page is keyed on a fee sheet, a block, an application or a shift request — "
+                .'no record id may be invented for it');
+        }
+    }
+
+    #[Test]
+    public function the_bell_row_prefers_the_record_and_keeps_the_queue_as_its_fallback(): void
+    {
+        $bell = (string) file_get_contents(base_path('resources/js/Layouts/AuthenticatedLayout.jsx'));
+
+        // There is no JavaScript suite, so the screen half of a two-runtime rule is pinned by reading the source —
+        // the method the year-level, the tone maps and the letterhead pairings already use.
+        $this->assertStringContainsString('n.data.link.record', $bell,
+            'the bell stopped looking at the record the server named, so every notice opens a queue again');
+        $this->assertStringContainsString("'Open the record' : 'Open that desk'", $bell,
+            'the row lost the pair of destinations, or renamed one into a promise the payload cannot keep');
+        $this->assertStringNotContainsString('route(n.data?.link.name)', $bell,
+            'an unguarded route() call would throw on a notice whose office answers no queue at all');
     }
 
     #[Test]

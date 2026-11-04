@@ -299,8 +299,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                                             <p className="text-[10px] text-slate-500 mt-0.5">{n.data?.actionRequired}</p>
                                                         ) : null}
                                                         {n.data?.link ? (
-                                                            <Link href={route(n.data?.link.name)} className="text-[10px] font-semibold text-seait-700 hover:underline mt-1 inline-block">
-                                                                Open that desk
+                                                            // The owner ruled 2026-11-04 (sheet item 1) that a notice lands on the record, with the desk
+                                                            // queue as the fallback. `link.record` is null for the offices whose page is keyed on a fee
+                                                            // sheet, a block, an application or a shift request, so the row offers the queue there and
+                                                            // never a path it made up; the destination's own policy refuses a reader who may not open it.
+                                                            <Link
+                                                                href={n.data.link.record
+                                                                    ? route(n.data.link.record.name, n.data.link.record.id)
+                                                                    : route(n.data.link.name)}
+                                                                className="text-[10px] font-semibold text-seait-700 hover:underline mt-1 inline-block"
+                                                            >
+                                                                {n.data.link.record ? 'Open the record' : 'Open that desk'}
                                                             </Link>
                                                         ) : null}
                                                         <p className="text-[10px] text-slate-400 mt-1">{n.created_at ? formatSchoolMoment(n.created_at) : ''}</p>

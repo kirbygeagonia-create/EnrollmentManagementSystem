@@ -25,16 +25,24 @@ chdir($root);
 
 $out = $root.'/Documentation/Transactions-ACID-Evidence-and-Offline-Kit.docx';
 $apply = false;
+$replace = false;
 foreach (array_slice($GLOBALS['argv'], 1) as $arg) {
     if ($arg === '--apply') {
         $apply = true;
+    } elseif ($arg === '--replace') {
+        $replace = true;
     } elseif (preg_match('/^--out=(.*)$/', $arg, $m)) {
         $out = $m[1];
     } else {
-        fwrite(STDERR, "REFUSED: this tool reads only --out=PATH and --apply, got '{$arg}'.\n");
+        fwrite(STDERR, "REFUSED: this tool reads only --out=PATH, --apply and --replace, got '{$arg}'.\n");
 
         exit(1);
     }
+}
+if ($replace && ! is_file($out)) {
+    fwrite(STDERR, "REFUSED: --replace was given but {$out} is not there to replace.\n");
+
+    exit(1);
 }
 
 // A PHP warning is a broken instrument, not a cosmetic notice: a pattern that lost its closing delimiter returns
@@ -320,6 +328,84 @@ $blocks[] = ['table', ['#', 'Concept', 'Status word used for the guide\'s tick b
     $conceptRows
 )];
 
+$blocks[] = ['h2', '3b. Each of the twelve concepts, in the compliance file\'s own words'];
+$blocks[] = ['p', 'The table above is a status list, which is not an explanation. This is the body of every section of '
+    .'Documentation/DATABASE-CONCEPT-COMPLIANCE-ADS.md, lifted whole: transactions, COMMIT and ROLLBACK, ACID, '
+    .'concurrency control, locking, deadlock handling, constraints, indexing, query optimization, data integrity, '
+    .'database security and recovery. Where a section states a limit, the limit travels with it, because the guide '
+    .'rewards saying which half is still owed.'];
+$bodies = [];
+if (preg_match_all('/^## (\d+)\. (.+?)$/mu', $conceptDoc, $hm, PREG_SET_ORDER) === 0) {
+    $fail('no numbered concept section parsed, so section 3b would be an empty heading.');
+}
+foreach ($hm as $i => $h) {
+    $start = strpos($conceptDoc, $h[0]);
+    $next = strpos($conceptDoc, "\n## ", $start + 5);
+    $body = trim((string) substr($conceptDoc, $start + strlen($h[0]), ($next === false ? strlen($conceptDoc) : $next) - $start - strlen($h[0])));
+    $body = preg_replace('/\s+/', ' ', $body);
+    $bodies[(int) $h[1]] = trim($h[2]).'|'.$body;
+}
+if (count($bodies) !== 12) {
+    $fail('section bodies answered '.count($bodies).' of 12 concepts.');
+}
+foreach ($bodies as $n => $row) {
+    [$heading, $text] = explode('|', $row, 2);
+    $blocks[] = ['h3', $n.'. '.trim($heading)];
+    $blocks[] = ['p', $text];
+}
+
+// Applicability, read from the answer file's own ticked line rather than restated from a register.
+$app = [];
+if (preg_match_all('/^### Problem (\d+) — (.+)$/mu', (string) file_get_contents($root.'/Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md'), $am, PREG_SET_ORDER) > 0) {
+    foreach ($am as $a1) {
+        $n = (int) $a1[1];
+        $start = strpos((string) file_get_contents($root.'/Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md'), "### Problem {$n} — ");
+        $next = strpos((string) file_get_contents($root.'/Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md'), "\n### Problem ", $start + 1);
+        $chunk = (string) substr((string) file_get_contents($root.'/Documentation/GUIDE-PROBLEM-ANSWERS-ADS.md'), $start, ($next === false ? null : $next - $start));
+        if (preg_match('/\*\*Applicability:\*\*[^\n]*/u', $chunk, $tm) === 1) {
+            $line = preg_replace('/\s+/', ' ', trim($tm[0]));
+            $ticked = preg_replace('/\s*(☑|☐)/u', '$1 ', $line);
+            $chosen = [];
+            if (preg_match_all('/☑\s*([^☑☐]+)/u', $ticked, $cm)) {
+                foreach ($cm[1] as $c) {
+                    $chosen[] = trim($c);
+                }
+            }
+            $app[] = ['P'.$n, trim($a1[2]), $chosen === [] ? 'no tick found on this row' : implode('; ', $chosen)];
+        }
+    }
+}
+if (count($app) !== 24) {
+    $fail('applicability answered '.count($app).' of the 24 problems — a short census here would read as a clean register.');
+}
+$blocks[] = ['h2', '3c. Applicability of every one of the 24 problems, as ticked in the guide'];
+$blocks[] = ['p', 'The guide asks each pair to say whether a problem applies, partly applies, or does not apply, and the '
+    .'answer file holds that tick. These are the ticks read off it, with the longer reason in each problem\'s own row and in '
+    .'the traceability matrix.'];
+$blocks[] = ['table', ['Problem', 'Title', 'Applicability as ticked'], $app];
+
+// The workflow the record actually moves through, read from the rows live ems holds.
+$steps = [];
+exec(escapeshellarg($mysql).' -u root ems -B -e "select distinct ws.stepOrder, o.officeName, count(*) as forms '
+    .'from workflowsteps ws join offices o on o.officeId = ws.officeId group by ws.stepOrder, o.officeName order by ws.stepOrder" 2>&1', $steps);
+if (count($steps) < 3) {
+    $fail('the workflow-step rows answered '.count($steps).' lines; the workflow section would be written from memory instead.');
+}
+$stepRows = [];
+foreach (array_slice($steps, 1) as $line) {
+    $c = preg_split('/\t/', trim($line));
+    if (count($c) === 3) {
+        $stepRows[] = [$c[0], $c[1], $c[2]];
+    }
+}
+$blocks[] = ['h2', '3d. The workflow, and where its transactions sit'];
+$blocks[] = ['p', 'A record is one form with one box per office, in this order — read from the workflowstep rows live `ems` '
+    .'holds, not from a list kept in this document. Each signature writes its box, the status it implies and its history row '
+    .'inside one transaction, and the notice that rings the next desk is addressed from the same map, so the box, the bell and '
+    .'the queue cannot disagree. A return re-opens the boxes downstream and is the one act where a second notice for the same '
+    .'step is expected rather than deduplicated.'];
+$blocks[] = ['table', ['Step order', 'Office', 'Boxes on file'], $stepRows];
+
 $blocks[] = ['h2', '4. The 24 ADS problems and where each one can be witnessed'];
 $blocks[] = ['p', 'Read from the P register in Documentation/REQUIREMENTS-TRACEABILITY-ADS.md. The last column is every file '
     .'the verdict itself names — that is the place to look, and a row whose verdict names no file says so instead of inventing one.'];
@@ -535,7 +621,8 @@ foreach (['document' => $document, 'styles' => $styles, 'contentTypes' => $conte
 }
 
 echo 'sections 12, problems '.count($problems).', accounts '.count($rows).', transaction sites '.count($sites)."\n";
-echo 'parts: document '.strlen($document)." bytes, tables 4\n";
+$tables = count(array_filter($blocks, static fn (array $b): bool => ($b[0] ?? '') === 'table'));
+echo 'parts: document '.strlen($document)." bytes, tables {$tables}\n";
 
 if (! $apply) {
     echo "DRY RUN — nothing written.\n";
@@ -547,8 +634,12 @@ $zip = new ZipArchive;
 if (! is_dir(dirname($out))) {
     $fail('the output folder '.dirname($out).' does not exist.');
 }
-if (is_file($out)) {
-    $fail($out.' already exists — this tool will not overwrite a document it did not just build. Move or rename it first.');
+if (is_file($out) && ! $replace) {
+    $fail($out.' already exists — this tool will not overwrite a document it did not just build. Pass --replace when '
+        .'rebuilding it deliberately, so a stale file cannot be clobbered by an accidental run.');
+}
+if (is_file($out) && $replace) {
+    unlink($out);
 }
 if ($zip->open($out, ZipArchive::CREATE) !== true) {
     $fail("could not create {$out}.");

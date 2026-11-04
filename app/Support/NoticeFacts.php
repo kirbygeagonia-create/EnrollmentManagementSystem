@@ -24,7 +24,7 @@ use App\Services\WorkflowService;
 class NoticeFacts
 {
     /**
-     * @return array{title: string, actionRequired: ?string, recordReference: ?string, link: array{name: string}|null}
+     * @return array{title: string, actionRequired: ?string, recordReference: ?string, link: array{name: string, record: array{name: string, id: int}|null}|null}
      */
     public static function forEnrollment(Enrollments $enrollment, string $title, ?int $waitingOnOfficeId = null): array
     {
@@ -81,19 +81,32 @@ class NoticeFacts
     }
 
     /**
-     * The destination is a route NAME and nothing else: every desk queue page is parameterless, so passing the
-     * enrollment would be an invented query key. The record is identified by `recordReference` above, and the
-     * screen resolves the path through `route()` — no path is taken from the request, so a notice cannot be
-     * pointed at another office's page. What makes the link safe is the policy the destination route already
-     * asks, which is what "protected" means here; this repository has no signed-URL precedent to reach for.
+     * Where the notice takes the desk: the record itself when this office has a page keyed on that enrollment, and
+     * the office's queue as the destination that always exists.
      *
-     * @return array{name: string}|null
+     * Both halves are route NAMES plus the enrollment's own key — never a path taken from the request, so a notice
+     * cannot be pointed at another office's page. The queue stays parameterless, which is why it needs no id; a
+     * record page is reached by the one key it asks for, and where the desk's page is keyed on something a notice
+     * about an enrollment does not hold (a fee sheet, a timetable block, an application, a shift request) the
+     * record half is null and the bell offers the queue. That is the honest answer rather than a redirect invented
+     * through a join, because what makes a deep link protected is the policy behind the destination, not the link.
+     *
+     * @return array{name: string, record: array{name: string, id: int}|null}|null
      */
     public static function link(?int $waitingOnOfficeId, Enrollments $enrollment): ?array
     {
         $office = $waitingOnOfficeId === null ? null : OfficeId::tryFrom($waitingOnOfficeId);
         $name = $office?->deskRouteName();
 
-        return $name === null ? null : ['name' => $name];
+        if ($name === null) {
+            return null;
+        }
+
+        $record = $office->recordRouteName();
+
+        return [
+            'name' => $name,
+            'record' => $record === null ? null : ['name' => $record, 'id' => (int) $enrollment->enrollmentId],
+        ];
     }
 }

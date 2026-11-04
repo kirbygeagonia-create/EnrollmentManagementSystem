@@ -24,6 +24,30 @@ enum OfficeId: int
     case IdOffice = 22;
 
     /**
+     * The one-enrollment page this office works, when it has one — null where the desk's page is keyed on
+     * something a notice about a person does not carry.
+     *
+     * The owner ruled 2026-11-04 (sheet item 1) that a notice lands on the record, with the queue as the fallback.
+     * Four of the nine offices open an `enrollment` route directly: Registrar, Academic (the department's
+     * evaluation screen), Clinic and the ID office. The other five do not, and that is a fact about their keys,
+     * not an oversight: Accounting's and Scholarship's pages take a fee sheet, Blocking's takes a timetable block,
+     * Admission's takes an application, and Guidance's takes a shift request. Inventing a redirect through a join
+     * so a notice could name those pages would make the link a second, weaker door — the destination's policy is
+     * what makes a deep link protected, so a destination that cannot be reached by the id the notice actually holds
+     * gets no record link and the bell keeps the queue.
+     */
+    public function recordRouteName(): ?string
+    {
+        return match ($this) {
+            self::Registrar => 'registrar.show',
+            self::Academic => 'evaluation.show',
+            self::Clinic => 'clinic.show',
+            self::IdOffice => 'id.show',
+            default => null,
+        };
+    }
+
+    /**
      * The page that holds this office's work, by route NAME rather than by path.
      *
      * A notice has to take a desk somewhere (prompt §8: an intelligible title, action required, record reference,
