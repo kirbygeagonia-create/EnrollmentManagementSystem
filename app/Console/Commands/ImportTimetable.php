@@ -291,6 +291,11 @@ class ImportTimetable extends Command
             return;
         }
 
+        // The screen reads named fields; the console reads the same values in table order. One source, two
+        // renderings — a page that rebuilt a verdict row from the table's cell order would break the day a
+        // column is added, and the two surfaces would disagree silently.
+        $labels = ['row', 'block', 'subject', 'room', 'instructor', 'when', 'verdict'];
+
         $payload = [
             'outcome' => $outcome,
             'termId' => $termId,
@@ -300,13 +305,27 @@ class ImportTimetable extends Command
             'schedules' => count($schedules),
             'meetings' => array_sum(array_map(fn (array $g): int => count($g['lines']), $schedules)),
             'advisories' => $advisories,
-            'rows' => $this->verdicts,
+            'rows' => array_map(
+                static fn (array $row): array => array_combine($labels, array_pad(array_slice(array_values($row), 0, count($labels)), count($labels), '')),
+                $this->verdicts
+            ),
             'reasons' => $reasons,
         ];
 
         if (file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT)) === false) {
             $this->error("The preview could not be written to '{$path}' — the screen cannot show what it cannot read.");
         }
+    }
+
+    /**
+     * The header row a sheet must carry, in the order the tool maps it.
+     *
+     * Public because the desk screen shows the same line: a page that typed its own column list would be a
+     * second definition of the map, and a sheet author follows whichever one they were shown.
+     */
+    public static function headerLine(): string
+    {
+        return implode(',', array_keys(self::COLUMNS));
     }
 
     private function printTemplate(): int
@@ -328,7 +347,7 @@ class ImportTimetable extends Command
 
         $this->line('');
         $this->line('Header row to copy:');
-        $this->line(implode(',', array_keys(self::COLUMNS)));
+        $this->line(self::headerLine());
         $this->line('');
         $this->line('Days accepted: '.implode(', ', array_map(fn (DayOfWeek $d): string => $d->value, DayOfWeek::cases())));
         $this->line('The term is not a column — pass --term=<academicterms.termId>, because block names repeat across terms');

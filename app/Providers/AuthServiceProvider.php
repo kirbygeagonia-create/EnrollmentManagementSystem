@@ -241,6 +241,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('blocking.manageSchedules', function ($user) {
             return app(BlockingPolicy::class)->manageSchedules($user);
         });
+        // The ability is named apart from the permission (`block.import`) so a permission of the same
+        // words could not grant it on its own: Spatie registers Gate::before, which answers any ability
+        // that shares a permission's name before the policy body runs (AbilityNameCollisionTest pins it).
+        Gate::define('blocking.importSheet', function ($user) {
+            return app(BlockingPolicy::class)->importSheet($user);
+        });
         Gate::define('blocking.assignStudents', function ($user) {
             if (! $user->hasPermissionTo('block.assign')) {
                 return false;

@@ -67,6 +67,18 @@ class BlockingPolicy
     }
 
     /**
+     * Determine whether the user may bring a timetable sheet into the desk.
+     *
+     * The same boundary the schedule acts ask, because an import is those acts in bulk: nothing here is
+     * college-scoped, since `block.schedules.manage` is not either, and adding a scope to the bulk path that
+     * the single-path desk does not apply would make one screen read a rule two ways.
+     */
+    public function importSheet(Staffusers $user): bool
+    {
+        return $user->hasPermissionTo('block.import');
+    }
+
+    /**
      * Determine whether the user can check capacity.
      */
     public function checkCapacity(Staffusers $user, Blocks $block): bool

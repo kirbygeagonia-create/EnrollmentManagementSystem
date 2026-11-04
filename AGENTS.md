@@ -1871,6 +1871,27 @@ judged because a widening is not an off switch, a stale figure in a non-gap row 
 proved by re-spelling that row's date and watching the same figure fire as a living claim — the figure read off the
 clean run rather than remembered, because pass 401 taught this harness what a frozen expectation costs. The harness
 prints its own leg total, so none is written here.
+- **A denominator spelled inside a checker's own patterns is a constant wearing a citation** (`lane140-measure-wired-screens.php`, 2026-11-04).
+  Five of its claim patterns read `('.$word.') of the 36 pages …` and `of (?:the )?thirty-six tables`, so the day the
+  timetable import screen joined the population the run harvested FEWER claims while the prose got truer — the
+  silent-absence class this bullet's own subject was written about. Worse, its refusal printed `not the 36 the sentence
+  names`, which was the tool's own literal rather than a measurement of anything: an unreadable figure is absent, never
+  wrong. The patterns now CAPTURE the denominator and judge it as its own claim against the population the tool
+  measured, so a stale total arrives as `DENOMINATOR claims 36, the tree answers 37`. Three consequences travelled with
+  it, each already named in this file. **(a)** `mutate-lane140-wired-counts.php` came back with ten BAD legs because
+  every plant was anchored on the *previous* batch's register bytes (`twenty-eight of thirty-six tables use it`,
+  `the twenty-eight wired pages call`); re-cutting onto the bytes the registers hold now is lane 44's anchor rule met
+  inside my own harness, and one new leg proves the widening is read rather than tolerated. **(b)** The dated-row
+  falsification leg asserted `clean − 1`; teaching the reader denominators made that same plant move two claims, so it
+  now asserts a relation — the dated set shrinks by exactly the STALE rows the run printed, both measured in the same
+  run. **(c)** A new page moves the denominator and the owed figure while the wired count stands, and each living
+  sentence in both registers moved with it; the §1.1 rows that state the older pair are dated records and were left
+  exactly as written, which is what the checker printing them as DATED is for. Two smaller traps from the same batch: a
+  docx `text` replacement may not carry a code arrow (the engine refuses markup and writes nothing, so the pass
+  pre-flights `<` and `>` before it runs the slow instruments), and `lane90-probe-pagination.php` had been blind to
+  Accounting's daily report since the batch that gathered its reads into one array landed — the register's `none
+  unread` clause was false since *that* day, not this one, and the census now names its unread rows instead of claiming
+  a clean read.
 - **Pint's `php_unit_method_casing` renames a test method, and every harness that `--filter`s it ages with it.** The
 intake-catalogue tone guard's method carried `appliesTo` inside its snake_case name, Pint camel-to-snake'd it on this
 batch's `pint --test`, and the falsifier's filter would then select no test. That is the same shape as a numeral in a
@@ -3307,7 +3328,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   identifier patterns were widened to the two shapes that were being discarded — a class member with no call
   (`Str::headline`, `ClinicRecordStatus::Completed`, `ApplicantType::class`) and a property written as an
   assignment (`appliesTo = firstYear | transferee | all`). The reconciled tally is **11 = 10 OK + 0 not-in-file +
-  0 queue + 1 dropped**, and the one honest drop is `routes/web.php:269-271`'s column list, which is a schema
+  0 queue + 1 dropped**, and the one honest drop is `routes/web.php:275-277`'s column list, which is a schema
   description rather than a call. The reconciliation is what found the **twelfth wrong target**: §6 and the
   requirement row both cited `AdmissionController.php` lines 211 to 222 for "only rows whose `appliesTo` equals the chosen
   `applicantType` or `all` receive a submission row", but those lines were the `Admissions::create([...])` array —
@@ -5153,6 +5174,8 @@ a second copy can be a rendering of ONE stored sentence, not a second claim to r
   the ceiling row from not-built to partly-built, `lane200-check-report-buckets.php` re-took the report's two id
   lists from that census, and the not-built bucket now answers nothing — which the report must say rather than carry
   the older membership forward.
+
+- **A screen that re-decides a rule is a second rule; a reseed moves figures no instrument binds** (the timetable import desk screen, 2026-11-04). The command already previewed a sheet and refused collisions; the screen adds no logic — it stores the upload on the private disk, calls `ems:import:timetable` with `--json=`, and shows what the command decided. Two consequences worth keeping. **(a)** The payload carries **named fields**, not the console table's cell order, and `TimetableImportScreenTest` asserts the two surfaces agree on rows read, refused, schedules, meeting lines and the skipped set: a page that rebuilt the verdict from positions would break the day a column is added, and would break silently. **(b)** Publishing deletes the sheet, so the idempotency answer is "that sheet is no longer here" rather than a stored key — a second click cannot write a second week, and one case drives both clicks to prove it. Three mechanics came out of building it: a controller extending this repository's base `Controller` has **no** `authorize()` until it pulls in `Illuminate\Foundation\Auth\Access\AuthorizesRequests` (BlockingController does; the new one inherited nothing and answered 500 where a 403 was claimed, which is what `viewData('page')` then reported as "the response is not a view"); PHPStan refuses a nullsafe on the left of `??` when the relation cannot be null and refuses `is_object()` on an enum-cast column, both of which were written from caution rather than from the schema; and `mimes:csv` asks a guesser what `csv` is, so the input type the owner ruled is checked by extension and named in the refusal. **A reseed moves the catalogue, and nothing weighs it:** `block.import` took the live catalogue to 97 permissions and 311 grants, and four sentences in the authority document still said ninety-six and 308. `lane72-row-count-claims.php` reported 0 stale, because a vendor table's row count is not one of its nouns, and `lane60` binds the schema, not the grants. So the figures a reseed changes are re-taken from the server by the pass that reseeds — dump, reseed, ask `COUNT(*)`, write — which is what `refresh-docx-pass437.php` does, and it refuses while the distinct-granted count is below the catalogue count, because an unseated right is a finding rather than a number to publish. The delivered whole-suite run on this box answers 1396 passed with 8,477 assertions, and `artisan test --list-tests` discovers the same 1396, which is the check that no inserted method stole a `#[Test]` attribute. That run's own `<testsuite>` entry gives `tests/Feature/Blocking/TimetableImportScreenTest.php` 7 cases and 44 assertions, read from the delivered junit rather than from a single-file invocation; the import command's own class was already on record. No total is carried here for the *pair* of classes in one sentence, because a multi-total claim is judged on its first figure.
 
 ## Agent dispatch
 

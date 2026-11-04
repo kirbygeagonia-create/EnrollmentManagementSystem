@@ -62,7 +62,7 @@ Following comprehensive remediation on 2026-09-15, all 4 critical blocking defec
 | SEC-2 | Deactivated staff can log in — no status check | LoginRequest:41-54 | **Critical** | Verified |
 | SEC-3 | Hard delete of staff users → orphaned FK references | UserManagementController:169-180; ProfileController comment:40-43 false claim | Major | Verified |
 | SEC-4 | Audit logging blind spot for Spatie role/permission changes | AuditLogObserver only covers Models; AuthServiceProvider gate changes unlogged | Major | Verified |
-| SEC-5 | Evaluation profile capture route has no UI entry | routes/web.php:69; no route() call in Evaluation pages | Major | Verified |
+| SEC-5 | Evaluation profile capture route has no UI entry | routes/web.php:70; no route() call in Evaluation pages | Major | Verified |
 | SEC-6 | Lost-slip replacement requires `Incomplete` status never set | BlockingController:replaceLostSlip logic dead | Major | Verified |
 
 ---
@@ -82,7 +82,7 @@ Following comprehensive remediation on 2026-09-15, all 4 critical blocking defec
 | # | Finding | Evidence | Severity | Status |
 |---|---------|----------|----------|--------|
 | API-1 | Missing routes for core actions | `assessment.compute` no UI trigger; `evaluation.profile.capture` no UI; `evaluation.credits.process` no UI | **Critical** | Verified |
-| API-2 | `clearance.slip.generate` defined but no UI entry | routes/web.php:94; Clearance/Index.jsx has no generate button | Major | Verified |
+| API-2 | `clearance.slip.generate` defined but no UI entry | routes/web.php:95; Clearance/Index.jsx has no generate button | Major | Verified |
 | API-3 | No transcript/statement routes | grep transcript\|statement\|enrollment-history → only accounting.daily-report | Major | Verified |
 
 ---

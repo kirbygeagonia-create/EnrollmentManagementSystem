@@ -1,6 +1,6 @@
 # School decisions still outstanding — sheet for one meeting
 
-**Issued 2026-10-29 · eleven items · 6 answered, 5 left for the school**
+**Issued 2026-10-29 · eleven items · 10 answered, 1 left for the school**
 
 Six questions the registers cannot settle, all of them produced by the completion audit of the
 development prompt on this date (matrix §7 and §8, gaps G33 to G42). Items 10 and 11 joined on
@@ -20,7 +20,7 @@ question it was; this sheet does not duplicate it.
 
 ---
 
-**1. Where should an in-app notice take the desk that receives it?** `[prompt §8, matrix G35 — Open]`
+**1. Where should an in-app notice take the desk that receives it?** `[prompt §8, matrix G35 — ANSWERED 2026-11-04]`
 
 **As built.** The bell shows one sentence and a timestamp, and nothing is clickable. The payload already
 carries `enrollmentId` and `workflowId`, and the `notifications` table has no title column, so the two
@@ -35,6 +35,16 @@ who may open it — and never on the Student 360, because that page requires `st
 **Cost and undo.** One payload key plus one anchor in `resources/js/Layouts/AuthenticatedLayout.jsx`; a
 title is a column or a computed line, your preference. No migration is needed for the link. Nothing
 stored moves, so the undo is one revert.
+
+- Answer: **the record itself, the desk queue as fallback**, ruled 2026-11-04. The bell row links to the record the
+  notice is about when the notice carries the key that record page asks for — Registrar, Academic, Clinic and ID each
+  hold an enrollment-keyed screen — and to the desk's own queue where it does not, because Accounting's and
+  Scholarship's pages are keyed on a fee sheet and Blocking's on a timetable block, neither of which a notice about a
+  person carries. The recommendation in the paragraph above stands as written and is what was adopted: never the
+  Student 360, whose page requires `students.view` that a bare `OfficeHead` or `Instructor` does not hold.
+  Authorization is not moved by this: the destination route still asks its own policy and the college boundary, so a
+  link is a convenience and not a second, weaker door. **The register is not ahead of the build:** §28.3's G-35 row
+  and matrix G35 stay as they are until the payload key, the anchor and their cases are in the tree.
 
 ---
 
@@ -124,8 +134,7 @@ reconciliation report, not a rewrite.
 
 ---
 
-**5. Is a rejection reason for an application a fixed list, free text, or both?**
-`[prompt §6.5, matrix G33 — Open, but the mechanism is not waiting]`
+**5. Is a rejection reason for an application a fixed list, free text, or both?** `[prompt §6.5, matrix G33 — ANSWERED 2026-11-04 on the vocabulary; the mechanism was built 2026-10-29]`
 
 **As built.** A rejected admission carries **no reason at all**: the desk posts an empty body, the
 controller validates nothing, and `admissions` has no column that could hold one. The case page tells the
@@ -146,6 +155,15 @@ ruling. What the school owns is only whether the reason is chosen from a list.
 
 **Cost and undo.** One additive migration, one validation rule, one display line. The column is nullable,
 so nothing existing is rewritten and the undo is a revert plus a reseed-free drop.
+
+- Answer: **a fixed list plus free text**, ruled 2026-11-04. The school owns the categories; the desk picks one and
+  the typed sentence stays, because a list alone cannot state the particular case and free text alone cannot be
+  counted. The list ships **empty** — no category is seeded, because inventing the school's refusal reasons would put
+  fabricated institutional vocabulary on a real record — so until the school names them the screen offers the text
+  box it already requires, and the first category arrives as reference data on the desk screen rather than as a
+  migration. `Other` keeps the ten characters mandatory. **The register is not ahead of the build:** matrix G33 and
+  §28.3's G-33 row record the mechanism as closed and stay worded for a free-text reason until the catalogue and the
+  picker exist.
 
 ---
 
@@ -171,7 +189,7 @@ push. That cost is the actual decision.
   guides, each naming the day it was read. If the school later wants the job, the cost is one workflow file and the
   run time beside it; nothing in this ruling has to be undone first.
 
-**7. What is the school's privacy notice, whose lawful basis, and who is the DPO contact?** `[prompt §10, matrix G-48…G-50 — Open]`
+**7. What is the school's privacy notice, whose lawful basis, and who is the DPO contact?** `[prompt §10, matrix G-48…G-50 — ANSWERED 2026-11-04 on the shape; the words are still the school's]`
 
 **The question as the prompt states it.** Section 10 requires the Philippine Data Privacy Act (RA 10173) treatment:
 sensitive personal information classified, a notice shown, a lawful basis named by the institution rather than
@@ -189,9 +207,19 @@ account in Admin. None of it is blocked on schema beyond one table the answer wo
 **Cost and undo.** Additive: a settings block plus one table and its desk screen; a rework would touch nothing
 already delivered, because no existing behaviour depends on the absence.
 
+- Answer: **build the containers now, empty and required**, ruled 2026-11-04. The notice text, the lawful-basis
+  statement and the named accountable contact get a place in the data the desk already edits, and a basis gets a row
+  per processing activity rather than a paragraph, so the school's answer arrives as reference data and not as a code
+  change. Two limits are part of the ruling rather than exceptions to it: nothing is seeded with an invented notice,
+  an invented basis or an invented officer (a placeholder institutional fact is the fabricated data this repository
+  refuses everywhere else, from a year level to a letterhead), and a surface that reads an absent value says it is
+  absent instead of printing a plausible default — the preflight names the gap, it does not fill it. **The register
+  is not ahead of the build:** matrix G-48 to G-50 keep their open scope halves until the settings keys, the table and
+  the screen exist, and the DPA answer itself stays the school's to give.
+
 ---
 
-**8. What is the records-retention and archive policy the system should enforce?** `[prompt §10, matrix §27.2 E-8 — Open]`
+**8. What is the records-retention and archive policy the system should enforce?** `[prompt §10, matrix §27.2 E-8 — ANSWERED 2026-11-04 on the shape; the numbers are still the school's]`
 
 **The question, in the prompt's own words.** Section 10 asks for retention, archive, access, correction and deletion
 behaviour "based on SEAIT's approved records and privacy policy" and forbids inventing arbitrary deletion deadlines.
@@ -210,6 +238,15 @@ proceeding; the *policy* answer to item 3 still decides how far the gate goes.
 deletion semantics the audit trail must survive.
 
 **Cost and undo.** This one may cost a migration and a scheduled command; the restrained default stays until then.
+
+- Answer: **build the schedule as data now, and let the command refuse while it is empty**, ruled 2026-11-04. A
+  retention period per record class, an archive act and the deletion semantics the audit trail must survive get
+  written places the school can fill in, and the scheduled command reads them — but with no period recorded it acts
+  on nothing and says so, because the prompt forbids inventing arbitrary deletion deadlines and the build's
+  restraint (nothing deletes a clearance, `ems:uploads:prune` refuses unless told, `audit.view` withheld from base
+  Staff) is the safe default that stays until the school states the numbers. So this ruling costs a table, a screen
+  and a command that declines to run, and no record of any kind is aged or removed by it. **The register is not ahead
+  of the build:** §27.2's E-8 row and the §10 rows stay worded as owed decisions until the schedule exists.
 
 **9. What should the Blocking card on the dashboard actually count?** `[prompt §8, matrix G-46 — ANSWERED 2026-11-02]`
 

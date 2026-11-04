@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\WorkflowMonitorController;
 use App\Http\Controllers\Admission\AdmissionController;
 use App\Http\Controllers\Assessment\AssessmentController;
 use App\Http\Controllers\Blocking\BlockingController;
+use App\Http\Controllers\Blocking\TimetableImportController;
 use App\Http\Controllers\Clearance\ClearanceController;
 use App\Http\Controllers\Clinic\ClinicController;
 use App\Http\Controllers\DashboardController;
@@ -146,6 +147,11 @@ Route::middleware('auth')->group(function () {
 
     /* ==================== Blocking ==================== */
     Route::get('/blocking', [BlockingController::class, 'index'])->name('blocking.index');
+    // Registered before `/blocking/{block}`, whose implicit model binding would otherwise answer the literal
+    // string `timetable-import` with a 404 for a screen the desk can reach by URL.
+    Route::get('/blocking/timetable-import', [TimetableImportController::class, 'index'])->name('blocking.import');
+    Route::post('/blocking/timetable-import/preview', [TimetableImportController::class, 'preview'])->name('blocking.import.preview');
+    Route::post('/blocking/timetable-import/publish', [TimetableImportController::class, 'publish'])->name('blocking.import.publish');
     Route::get('/blocking/{block}', [BlockingController::class, 'show'])->name('blocking.show');
     Route::post('/blocking', [BlockingController::class, 'store'])->name('blocking.store');
     Route::patch('/blocking/{block}', [BlockingController::class, 'update'])->name('blocking.update');

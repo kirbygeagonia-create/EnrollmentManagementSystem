@@ -242,7 +242,7 @@ if ($shapesArg === null) {
         echo '  UNREAD    '.$u."  (lane215 named no record for it — re-take both, do not assume the export is current)\n";
     }
     if ($unknown !== []) {
-        fwrite(STDERR, "REFUSED: ".$unknown[0]." is owed here and unread in the shape export; the split cannot be quoted.\n");
+        fwrite(STDERR, 'REFUSED: '.$unknown[0]." is owed here and unread in the shape export; the split cannot be quoted.\n");
         exit(1);
     }
 }printf("\nhandlers (%d):\n", $handlerCount);
@@ -317,30 +317,38 @@ function wired_owed_claims(string $t): array
     $word = '(?:\d{1,2}|(?:twenty|thirty)[- ](?:'.$ones.')|(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)|(?:twenty|thirty)|ten|'.$ones.')';
     $out = [];
     $forms = [
-        ['the ('.$word.') wired pages call', 'wired'],
-        ['the ('.$word.') wired (?:screens|tables)', 'wired'],
-        ['('.$word.') of the 36 (?:pages|screens)[^.|]{0,70}?use it', 'wired'],
-        ['('.$word.') of (?:the )?thirty-six tables use it', 'wired'],
+        ['the ('.$word.') wired pages call', 'wired', 0],
+        ['the ('.$word.') wired (?:screens|tables)', 'wired', 0],
+        // The DENOMINATOR is a claim, not a constant. These five shapes used to spell it as a literal 36 or
+        // thirty-six, so the day the population moved the tool stopped seeing the sentences entirely — the
+        // extractor reported FEWER claims while the prose got truer, which is the silent-absence defect this
+        // function's own comment exists to refuse. A captured denominator is judged against the population the
+        // tool measured, so a stale total is now a STALE row instead of an invisible one.
+        ['('.$word.') of the ('.$word.') (?:pages|screens)[^.|]{0,70}?use it', 'wired', 2],
+        ['('.$word.') of (?:the )?('.$word.') tables use it', 'wired', 2],
         // The prose shape §28.3 actually uses: denominator spelled with its article, verb varied, a clause between
         // the two. The article is optional because the matrix drops it and the register keeps it — a checker that
         // binds one spelling is a checker that reports the other row as having no claim at all.
-        ['('.$word.') of (?:the )?thirty-six tables[^.|]{0,60}?(?:sort|order)[^.|]{0,40}?on the server', 'wired'],
-        ['('.$word.') screens use it', 'wired'],
-        ['('.$word.') of the 36 pages[^.|]{0,60}still offer no order', 'owed'],
-        ['('.$word.') still do not', 'owed'],
-        ['the other ('.$word.') (?:pages|still show)', 'owed'],
-        ['That (\d{1,2}) counts', 'owed'],
-        ['still owed: (\d{1,2}) of the 36', 'owed'],
+        ['('.$word.') of (?:the )?('.$word.') tables[^.|]{0,60}?(?:sort|order)[^.|]{0,40}?on the server', 'wired', 2],
+        ['('.$word.') screens use it', 'wired', 0],
+        ['('.$word.') of the ('.$word.') pages[^.|]{0,60}still offer no order', 'owed', 2],
+        ['('.$word.') still do not', 'owed', 0],
+        ['the other ('.$word.') (?:pages|still show)', 'owed', 0],
+        ['That (\d{1,2}) counts', 'owed', 0],
+        ['still owed: (\d{1,2}) of the ('.$word.')', 'owed', 2],
         // The owed PLAN, which both registers state as a membership sentence rather than a ratio. The matrix wrote
         // "the plan for the nine screens still owed" on the day eight were, and no pattern read it, so a number the
         // prose can write and the tool cannot harvest is a silent claim — the shape this extractor exists to refuse.
-        ['the plan for the ('.$word.') (?:screens|pages|tables) still owed', 'owed'],
+        ['the plan for the ('.$word.') (?:screens|pages|tables) still owed', 'owed', 0],
     ];
-    foreach ($forms as [$body, $kind]) {
+    foreach ($forms as [$body, $kind, $denomGroup]) {
         $pattern = '/'.str_replace('(', '(', $body).'/iu';
         if (@preg_match_all($pattern, $t, $m) > 0) {
             foreach ($m[0] as $i => $whole) {
                 $out[] = [$whole, (string) $m[1][$i], $kind];
+                if ($denomGroup > 0) {
+                    $out[] = [$whole, (string) $m[$denomGroup][$i], 'denominator'];
+                }
             }
         }
     }
@@ -382,7 +390,7 @@ $WORDNUM = [
     'thirty' => 30,
 ];
 
-function judge_claims(string $label, string $text, int $wired, int $owed, array $map): void
+function judge_claims(string $label, string $text, int $wired, int $owed, array $map, int $population): void
 {
     $claims = wired_owed_claims($text);
     if ($claims === []) {
@@ -399,16 +407,21 @@ function judge_claims(string $label, string $text, int $wired, int $owed, array 
 
             continue;
         }
-        $want = $kind === 'wired' ? $wired : $owed;
+        $want = match ($kind) {
+            'wired' => $wired,
+            'owed' => $owed,
+            default => $population,
+        };
         if ($value !== $want) {
             $bad[] = sprintf('%s claims %d, the tree answers %d [%s]', strtoupper($kind), $value, $want, substr($whole, 0, 58));
         }
     }
     printf("\n%s: %d wired/owed claim(s) extracted — wired %d, owed %d, denominator %d.\n",
         $label, count($claims), $wired, $owed, $wired + $owed);
-    if ($wired + $owed !== 36 && $wired + $owed !== 0) {
-        fwrite(STDERR, "REFUSED: wired {$wired} + owed {$owed} = ".($wired + $owed).', not the 36 the sentence names. '
-            ."The denominator itself moved and the registers still add to a retired total.\n");
+    if ($wired + $owed !== $population && $wired + $owed !== 0) {
+        fwrite(STDERR, "REFUSED: wired {$wired} + owed {$owed} = ".($wired + $owed).', not the '.$population
+            .' pages this run measured that render the shared table. The population itself moved and the registers '
+            ."still add to a retired total.\n");
 
         exit(1);
     }
@@ -448,7 +461,7 @@ if (in_array('--check-matrix', $argv, true)) {
     // ("eighteen screens use it and the other eighteen still show headings with no order"), and a checker scoped to
     // one row certifies the other two while they rot — lane 64's membership defect, met from the tool's own scope.
     // The G40 row is still required to exist, because losing the register is a different refusal from losing a phrase.
-    judge_claims('the matrix', $text, $screenCount, $tableCount - $screenCount, $WORDNUM);
+    judge_claims('the matrix', $text, $screenCount, $tableCount - $screenCount, $WORDNUM, $tableCount);
 }
 
 if (in_array('--check-docx', $argv, true)) {
@@ -490,7 +503,11 @@ if (in_array('--check-docx', $argv, true)) {
             }
             $judged++;
             $value = claim_value($raw, $WORDNUM);
-            $want = $kind === 'wired' ? $screenCount : $tableCount - $screenCount;
+            $want = match ($kind) {
+                'wired' => $screenCount,
+                'owed' => $tableCount - $screenCount,
+                default => $tableCount,
+            };
             if ($value === null) {
                 $bad[] = "unread number [{$whole}]";
             } elseif ($value !== $want) {

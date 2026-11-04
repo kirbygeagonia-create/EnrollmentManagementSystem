@@ -35,13 +35,14 @@ class RbacSeeder extends Seeder
                 'admission.requirements.verify',
             ],
 
-            // Blocking module (6)
+            // Blocking module (7)
             'blocking' => [
                 'block.view',
                 'block.manage',
                 'block.assign',
                 'block.schedules.manage',
                 'block.capacity.check',
+                'block.import',
                 'print.blockSchedule',
             ],
 
@@ -439,7 +440,7 @@ class RbacSeeder extends Seeder
         );
         $blockingCoordinator->syncPermissions([
             'block.view', 'block.manage', 'block.assign', 'block.schedules.manage', 'block.capacity.check',
-            'print.blockSchedule', 'user.view', 'students.view',
+            'block.import', 'print.blockSchedule', 'user.view', 'students.view',
         ]);
 
         // ClinicStaff - Phase 7
@@ -499,7 +500,7 @@ class RbacSeeder extends Seeder
             // §6.1/§6.3 is a read — it grants no act anywhere — so it is seated here rather than
             // made into the first exception to that invariant.
             'workflow.view',
-            'block.manage', 'block.assign', 'block.schedules.manage',
+            'block.manage', 'block.assign', 'block.schedules.manage', 'block.import',
             'clearance.periods.manage', 'clearance.slip.generate',
             'clearance.receipt.record', 'clearance.approve',
             'clinic.record', 'clinic.update', 'clinic.reopen',
