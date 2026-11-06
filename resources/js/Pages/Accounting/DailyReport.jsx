@@ -74,7 +74,7 @@ export default function DailyReport({ payments, refunds = [], summary, date }) {
                 <PageHeader
                     title="Daily Collection & Cashier Report"
                     subtitle={`Collection audit for ${formattedDate}`}
-                    phaseBadge="Phase 4 · Financial Audit"
+                    phaseBox="Accounting Payment" phaseBadge="Financial Audit"
                     officeBadge="Office 2 · Cashier Terminal"
                     actions={
                         <button

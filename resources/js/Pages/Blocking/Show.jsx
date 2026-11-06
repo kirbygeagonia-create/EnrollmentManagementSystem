@@ -455,7 +455,7 @@ export default function Show({ block, capacity, enrolled, available, subjects, r
                 <PageHeader
                     title={`Block Section: ${block.blockName}`}
                     subtitle={`${block.course?.courseName} - ${block.term?.semester?.value || block.term?.semester} ${block.term?.academicYear?.yearLabel || ''} ${formatYearLevel(block.yearLevel)}`}
-                    phaseBadge="Phase 6 · Section Scheduling"
+                    phaseBox="Blocking and Scheduling" phaseBadge="Section Scheduling"
                     officeBadge="Office 5 · Scheduling Desk"
                     actions={
                         <div className="flex items-center gap-2">

@@ -55,11 +55,13 @@ class HandleInertiaRequests extends Middleware
             'currentTerm' => $currentTerm
                 ? "AY {$currentTerm->academicYear?->yearLabel} · {$currentTerm->semester->value} Semester"
                 : null,
-            // The workflow's own vocabulary, keyed by the office that signs each
-            // box. The stepper prints these instead of offices.officeName, because
-            // the phase a student is in is 'Department Evaluation' — the office
-            // that signs it happens to be Guidance's box.
-            'workflowPhases' => WorkflowService::stepLabels(),
+            // The workflow's own vocabulary AND its own order, as a list. The stepper prints
+            // these instead of offices.officeName, because the phase a student is in is
+            // 'Department Evaluation' — the office that signs it happens to be Guidance's box.
+            // A list and not a map keyed by office id: JavaScript enumerates an object's
+            // integer-like keys ascending, and that re-sorted the seven boxes into the
+            // offices table's numbering before it ever reached the screen.
+            'workflowPhases' => WorkflowService::boxOrder(),
             // A Registrar return always sends the record back to the Department
             // Evaluation box, so the tracker can mark that step as returned
             // instead of leaving it reading as an ordinary completed one.

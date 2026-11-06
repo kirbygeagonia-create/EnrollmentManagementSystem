@@ -105,7 +105,7 @@ export default function Results({ exams, stats = {}, filters = {}, sort = null, 
                 <PageHeader
                     title="Exam Results & Verification Matrix"
                     subtitle={subtitle}
-                    phaseBadge="Phase 0.5 · BR9"
+                    phaseBadge="Entrance Examination"
                     officeBadge={isGuidance ? 'Guidance & Testing Center' : 'Academic Departments'}
                 />
             }

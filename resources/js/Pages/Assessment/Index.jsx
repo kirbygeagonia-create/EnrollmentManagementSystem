@@ -127,7 +127,7 @@ export default function Index({ assessments, pendingEvaluations = [], summary = 
                 <PageHeader
                     title="Scholarship & Financial Assessment Desk"
                     subtitle="Compute itemized semester fees, apply School Grants (100% Free Tuition), stack external scholarships, and determine balances"
-                    phaseBadge="Phase 3 · Assessment Desk"
+                    phaseBox="Assessment" phaseBadge="Assessment Desk"
                     officeBadge="Office 3 · Scholarship Office"
                 />
             }

@@ -104,7 +104,7 @@ export default function Index({ admissions, stats = {}, filters = {}, sort = nul
                 <PageHeader
                     title="Admissions & Application Intake"
                     subtitle="Register first-year and transferee applicants, verify submitted physical documents, and gate admission approval"
-                    phaseBadge="Phase 0 · Admissions Desk"
+                    phaseBadge="Admissions Intake"
                     officeBadge="Office 6 · Admission Office"
                     actions={
                         <Link href={route('admission.create')} className="btn btn-primary">

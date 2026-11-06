@@ -19,17 +19,28 @@ use Illuminate\Support\Facades\DB;
 class WorkflowService
 {
     /**
-     * The label of each workflow box, keyed by the office that signs it.
+     * The seven boxes of the enrollment workflow form, in the order a record walks them.
      *
-     * Keyed by office rather than step order because stepOrder is positional:
-     * the Assessment box is removed for returning students, so an order-keyed
-     * label would describe a different box depending on the student type.
+     * This is the one definition of both the words and the sequence: `stepsFor()` takes its
+     * list, `stepLabels()` is read out of it, the tracker prints it, and every desk page's
+     * phase chip is numbered from it.
      *
-     * @return array<int, string>
+     * It is a LIST and not a map because a map cannot survive the trip to the browser. Keyed
+     * by office id, the shared prop reaches JavaScript as an object whose keys are
+     * integer-like, and JavaScript enumerates those in ascending numeric order: the tracker
+     * then drew Registrar (office 1) first and Department Evaluation (office 4) fourth, so a
+     * record waiting at the Registrar's box read as the first thing on the form. The order
+     * the school signs in is a fact about the sequence, so the sequence travels as a list.
+     *
+     * Each entry names its own office case so a screen can bind a chip to a box by the WORD
+     * the desk reads ("Department Evaluation") instead of a hand-typed office number or a
+     * position.
+     *
+     * @return list<array{officeId: int, office: string, label: string}>
      */
-    public static function stepLabels(): array
+    public static function boxOrder(): array
     {
-        return [
+        $labels = [
             OfficeId::Guidance->value => 'Department Evaluation',
             OfficeId::Scholarship->value => 'Assessment',
             OfficeId::Accounting->value => 'Accounting Payment',
@@ -38,6 +49,34 @@ class WorkflowService
             OfficeId::Clinic->value => 'Clinic',
             OfficeId::IdOffice->value => 'ID Validation',
         ];
+
+        return array_map(
+            static fn (int $officeId): array => [
+                'officeId' => $officeId,
+                'office' => OfficeId::from($officeId)->name,
+                'label' => $labels[$officeId],
+            ],
+            array_keys($labels)
+        );
+    }
+
+    /**
+     * The label of each workflow box, keyed by the office that signs it.
+     *
+     * Read from `boxOrder()` rather than restated, so a PHP reader that needs the word for an
+     * office and a screen that needs the order of the boxes cannot disagree. Keyed by office
+     * rather than step order because stepOrder is positional: the Assessment box is removed
+     * for returning students, so an order-keyed label would describe a different box
+     * depending on the student type.
+     *
+     * A surface that needs the SEQUENCE must call `boxOrder()`: an object like this one loses
+     * its order the moment it reaches JavaScript.
+     *
+     * @return array<int, string>
+     */
+    public static function stepLabels(): array
+    {
+        return array_column(self::boxOrder(), 'label', 'officeId');
     }
 
     /**
@@ -47,32 +86,17 @@ class WorkflowService
      * and shifter students skip it: their clearance carries a signed Scholarship-office line, but no
      * clearance code reads studentscholarships — an office attests, no data is checked, §28 C-7 asks.
      *
-     * @return array<int, array{0: int, 1: string}> [officeId, label]
+     * @return list<array{officeId: int, office: string, label: string}>
      */
     private function stepsFor(Enrollments $enrollment): array
     {
         $includesAssessment = in_array($enrollment->studentType->value, ['firstYear', 'transferee'], true);
 
-        $boxes = [
-            OfficeId::Guidance->value,
-            OfficeId::Scholarship->value,
-            OfficeId::Accounting->value,
-            OfficeId::Registrar->value,
-            OfficeId::Blocking->value,
-            OfficeId::Clinic->value,
-            OfficeId::IdOffice->value,
-        ];
-
-        if (! $includesAssessment) {
-            $boxes = array_values(array_filter(
-                $boxes,
-                fn (int $officeId) => $officeId !== OfficeId::Scholarship->value
-            ));
-        }
-
-        $labels = self::stepLabels();
-
-        return array_map(fn (int $officeId) => [$officeId, $labels[$officeId]], $boxes);
+        return array_values(array_filter(
+            self::boxOrder(),
+            static fn (array $box): bool => $includesAssessment
+                || $box['officeId'] !== OfficeId::Scholarship->value
+        ));
     }
 
     /**
@@ -90,10 +114,10 @@ class WorkflowService
                 'workflowStatus' => WorkflowStatus::InProgress,
             ]);
 
-            foreach ($this->stepsFor($enrollment) as $order => [$officeId, $label]) {
+            foreach ($this->stepsFor($enrollment) as $order => $box) {
                 Workflowsteps::create([
                     'workflowId' => $workflow->workflowId,
-                    'officeId' => $officeId,
+                    'officeId' => $box['officeId'],
                     'stepOrder' => $order + 1,
                     'stepStatus' => WorkflowStepStatus::Pending,
                 ]);

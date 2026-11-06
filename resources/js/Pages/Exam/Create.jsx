@@ -99,7 +99,7 @@ export default function Create({ courses, terms, selectedCourse, selectedTerm, s
                 <PageHeader
                     title={getStageLabel()}
                     subtitle={getStageDescription()}
-                    phaseBadge="Phase 0.5 · BR9"
+                    phaseBadge="Entrance Examination"
                     officeBadge={isCourseSpecific ? 'Academic Departments' : 'Guidance & Testing Center'}
                 />
             }

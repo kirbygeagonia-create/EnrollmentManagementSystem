@@ -1285,6 +1285,64 @@ All five must pass, then watch CI to green and read `gh`'s own exit code:
   office table, `:72` → `:80` for the date row, `:103-105` → `:111-113` for the receipt). Same day, the live sheet
   was carrying two present-tense claims the build had overtaken — that no surface marks whose copy the slip is —
   which is the lane 69 defect class one document later. **Re-take a pointer; never re-age a reading.**
+- **A shared map keyed by integer ids loses its order in the browser, and every hand-typed number
+  that disagreed with it was then read as the bug** (the workflow phase vocabulary, 2026-11-04,
+  owner-reported). `HandleInertiaRequests` shared `workflowPhases` as `WorkflowService::stepLabels()`
+  — a PHP array keyed by office id — and JavaScript enumerates an object's integer-like keys in
+  **ascending numeric order**, so the tracker drew Registrar (office 1) first and Department
+  Evaluation (office 4) fourth: the order the school signs in was destroyed on the wire, not in the
+  component. The fix is one ordered list (`WorkflowService::boxOrder()`, which `stepLabels()` and
+  `stepsFor()` are both read out of) shared as `workflowPhases`, because a sequence is a fact and a
+  map cannot carry one. The second half was bigger than the defect: **thirteen desk pages, the
+  launcher, the sub-nav and the header pill each spelled their own `Phase 0` … `Phase 8`** from the
+  old FDD module list, so the Registrar's header said Phase 5 above a tracker that said fourth —
+  and §16 of the authority document had recorded that agreement as the finding being closed. A
+  surface may name a box (`phaseBox="Registrar Approval"`); only `deskPhase.js` numbers it, and the
+  record-scoped tracker numbers the boxes the **record** holds (a continuing student's Registrar box
+  is third of six, which is a different question from the desk's fourth of seven, not a
+  disagreement). Pin: `tests/Feature/Workflow/WorkflowPhaseIndicatorTest.php` — the payload is a
+  list in signing order, the stepper derives positions from the record's own rows, no React file
+  spells `Phase <digit>` (comments excluded, because a comment quoting the retired spelling is a
+  record and a screen typing it is a second arithmetic), and every box word a surface names is a
+  box the workflow declares **and** every declared box is named by some surface. Proved by
+  `php storage/app/scratch/mutate-workflow-phase-order-tests.php`, whose first run reported one
+  leg SURVIVED: a label claimed by four surfaces cannot be retired by editing one of them, so the
+  leg now plants all four — *a leg whose promise is bigger than its plant measures the plant*. Two
+  instrument lessons travelled with the document work. **(a)** `docxApply` resolves every needle
+  against the archive **as it stands when the engine is called**, so a pass whose long paragraph
+  span contained the same badge string a later phrase edit was to retire reported the pair as
+  unresolved and wrote nothing; the span edits that overlap another needle go onto the raw archive
+  bytes first (asserted once each, with the run boundaries `>Phase 0.5<` and `&quot;…&quot;` as the
+  discriminators — a plain-text needle can never reach an entity-quoted run), then the engine sees
+  the counts it expects. **(b)** A pre-flight that counts needles on the untouched archive while
+  the engine applies sequentially (or the reverse) accuses a correct plan; simulate the plan and
+  assert the count **at each step's own state**. The cascade: pass 440's §1.1 row landed and its
+  sentences did not, and the half-state was found by reading the archive, not by the exit code.
+- **A load population is written by a tool that asks the audit twice, and its own guard found two bugs in it**
+  (`tools/seed_bulk_demo_dataset.php`, 2026-11-04, owner's size ruling: below 1,000 per desk is enough).
+  `tools/seed_full_demo_pipeline.php` writes a CAST the walkthrough narrates; a scale test needs a POPULATION,
+  and a population whose statuses were edited by hand is what `ems:audit:record-states` exists to refuse. So each
+  record is given one POSITION on the workflow form — pending, evaluated, assessed, paid, enrolled-with-Clinic-open,
+  enrolled-with-ID-open — and every fact that position implies is written beside it: the signature, the
+  `enrollmentstatushistory` step the money moved through, the fee lines behind the sheet total, the receipt that
+  clears the balance, the health assessment behind a signed Clinic box. Delivered reading on a scratch schema built
+  in CI's own order (`ems_l268_a`: migrate → `db:seed` → `DevReferenceDataSeeder`, then the tool): 6,400 students,
+  6,400 applications carrying 25,600 requirement lines, 43,199 workflow boxes, and
+  every one of the twenty rules at **0 impossible and 0 decision**, and each
+  desk's OWN predicate answering at least 800 — admission 1,280, evaluation 1,600, assessment 1,600, accounting 800,
+  registrar 1,600, clinic 800, id 800, blocking 800, clearance 800, in 12.3 s. Three rules it taught. **(a)** The
+  audit is asked BEFORE the first row as well as after, and the verdict is a *delta*: a note the reference data left
+  is not the population's defect, a note the population added is, and an impossible state refuses either way.
+  A baseline taken after the writes (the first cut) would have made its own guard vacuous — the same failure as a
+  checker that reads the artefact it just produced. **(b)** Two real bugs came out of that guard, not from reading
+  the code: 1,600 receipts sat on accounts that never entered `paid` (a plain `else` gave the fee-sheet-only
+  positions settled money too), and `students.username`/`passwordHash` plus `enrollments.evaluatedBy` are NOT NULL
+  with no server default, so a person row cannot be written "lightly" — the tool carries the demo pipeline's own
+  placeholder hash and says so at the line. **(c)** Enum words come from `information_schema`, never from memory:
+  `idrequests.requestReason` answered 1265 for a phrase this schema does not declare, and the refusal named the
+  column. Live `ems` was never touched — the tool refuses any schema not matching `ems_lNN_x`, and a scratch run is
+  rehearsed there first (the standing rule). The queue figures above are a reading of one schema, not a claim the
+  documents state, so they appear here and nowhere else.
 - Local green is not enough, twice proven: tests that pass on this machine because Chrome, a
   `storage/app/prints` folder, or a live-`ems` row exists will fail on the runner. A test that
   binds a fake service must have **every** method its route reaches — an un-overridden method
@@ -3274,7 +3332,7 @@ proved by comparing the whole window in both versions, which is the only claim a
   **A fourth wrong target, and the first whose row never named the file.** The workflow table's Assessment row said
   "box 2 signed for a first-year, skipped for a continuing student" and cited three lines of the fee controller,
   which are `applyScholarship()`'s balance recompute and `withdrawScholarship()`'s docblock; the skip is
-  `WorkflowService.php:52-71` — `$includesAssessment`, then the box list filtered before the labels are mapped.
+  `WorkflowService.php` lines 52 to 71 as that file then stood — `$includesAssessment`, then the box list filtered before the labels are mapped.
   Reading the cited span's own text against the sentence is the only check that catches this shape: a bounds sweep
   sees four live lines and says nothing.
   **Uniqueness is necessary and NOT sufficient — a needle can be another citation's tail.** Pass 215 wanted the §6
@@ -3703,7 +3761,7 @@ no pointer to a retired line. Neither half of that property lives in `:311-343`:
   the engine reported that day, and the colon form is a live pointer the citation gate reads — the ID controller has
   since moved a line), a different file whose span is a legitimate method. Both
   ExamController copies were then taken by anchor instead, after measuring each anchor phrase unique in
-  `document.xml`. Same batch, same shape at `WorkflowService.php:52-83` and `:49-80` → `:52-76`.
+  `document.xml`. Same batch, same shape at lines 52 to 83 and 49 to 80 of `WorkflowService.php`, retaken as 52 to 76 (the colon form is a live pointer, and this sentence records a retired layout).
   Readings after 234: **729 citations / 155 files / 0 line problems, 134 bare judged + 1 blind**, anchor 135 judged =
   17 OK + 7 MOVED + 2 NO-ANCHOR + **108 UNBOUND** + 1 BLIND, `lane37` 908 references / 0 problems, `lane32` 5 distinct
   pairs / 8 flags, `repo-file-line-citations` 78 / 0, `lane59` 6 judged all match, `lane61` silent, whole Pest suite

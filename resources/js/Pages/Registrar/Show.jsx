@@ -256,7 +256,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                 <PageHeader
                     title="Registrar Official Enrollment & Certificate Studio"
                     subtitle={`${studentName} • ${enrollment.course?.courseName || '—'}`}
-                    phaseBadge="Phase 5 · Official Enrollment"
+                    phaseBox="Registrar Approval" phaseBadge="Official Enrollment"
                     officeBadge="Office 1 · Office of the Registrar"
                     actions={
                         <Link href={route('registrar.index')} className="btn btn-secondary btn-sm">
@@ -684,7 +684,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                 onClose={() => setConfirmOpen(false)}
                 onConfirm={confirmApprove}
                 title="Execute Official Institutional Enrollment Approval"
-                subtitle="Office of the College Registrar — Final Enrollment Gate (Phase 5)"
+                subtitle="Office of the College Registrar — Final Enrollment Gate"
                 tone="success"
                 entityContext={{
                     label: 'Enrolling Student',
@@ -697,7 +697,7 @@ export default function Show({ enrollment, checklist, allValid, blockingReasons 
                     `Records ${form.data.academicStanding || 'the selected'} academic standing as the institution's final call, overriding what the evaluating department recorded.`,
                     'Unlocks student class cards and assigns permanent seats in the official section masterlist.',
                     'Commits student units to CHED Institutional Annual Reports and active student directory files.',
-                    'Sends automated clearance to the Student ID Processing Center (Phase 8) and School Health Clinic (Phase 7).',
+                    'Sends automated clearance to the School Health Clinic box and the Student ID Processing Center box.',
                 ]}
                 requiresAcknowledgement={false}
                 confirmText="Yes, Issue Official Enrollment"

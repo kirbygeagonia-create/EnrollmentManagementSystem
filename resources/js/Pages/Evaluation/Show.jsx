@@ -239,7 +239,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                     subtitle={`${student?.lastName}, ${student?.firstName} • ${enrollment.course?.courseName || '—'} (${enrollment.term?.semester?.value || enrollment.term?.semester || 'Current Term'})`}
                     logo={collegeLogo}
                     logoAlt={collegeName}
-                    phaseBadge="Phase 2 · Department Evaluation"
+                    phaseBox="Department Evaluation"
                     officeBadge="Office 4 · Academic Evaluation"
                 />
             }
@@ -1271,7 +1271,7 @@ export default function Show({ enrollment, curriculumSubjects, curriculum, unmet
                 cause={`Signing this evaluation certifies that the ${selectedCurriculumSubjects.length} prescribed subjects comply with curriculum prerequisite standards.`}
                 effects={[
                     `Locks the approved ${totalAcademicUnits}.0 academic units (${totalLectureUnits} Lec / ${totalLabUnits} Lab) into the student's active enrollment record.`,
-                    'Immediately advances the student to Phase 3 (Scholarship & Assessment Desk) for automated tuition billing calculation.',
+                    'Immediately advances the student to the Assessment box (Scholarship & Assessment Desk) for automated tuition billing calculation.',
                     'Any subsequent subject additions, drops, or timetable swaps will require an official Institutional Add/Drop petition.',
                     'Logs your digital signature stamp with timestamp in the student academic history.',
                 ]}

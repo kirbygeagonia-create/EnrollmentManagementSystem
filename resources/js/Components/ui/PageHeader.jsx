@@ -1,13 +1,21 @@
+import { useDeskPhaseChip } from './deskPhase';
+
 export default function PageHeader({
     title,
     subtitle,
     actions,
     logo,
     logoAlt = 'Office logo',
+    phaseBox,
     phaseBadge,
     officeBadge,
     className = '',
 }) {
+    // The number is the workflow's, the words are the desk's. A page names the box it works
+    // (`phaseBox="Registrar Approval"`) and this composes the chip from the shared list, so a
+    // header can no longer claim a phase the tracker under it does not show.
+    const chip = useDeskPhaseChip(phaseBox, phaseBadge);
+
     return (
         <header className={`page-header ${className}`}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -20,9 +28,9 @@ export default function PageHeader({
                     <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <h1 className="page-header-title text-xl font-bold tracking-tight text-brand-900">{title}</h1>
-                            {phaseBadge && (
+                            {chip && (
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-seait-100 text-seait-800 border border-seait-200">
-                                    {phaseBadge}
+                                    {chip}
                                 </span>
                             )}
                             {officeBadge && (

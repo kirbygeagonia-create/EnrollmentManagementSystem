@@ -91,7 +91,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, tab = 'qu
                 <PageHeader
                     title="Student ID Validation"
                     subtitle="Capture the face photo, validate the ID request, and sign the ID Validation workflow step"
-                    phaseBadge="Phase 8 · ID Office"
+                    phaseBox="ID Validation" phaseBadge="ID Office"
                     officeBadge="ID Validation Desk"
                 />
             }

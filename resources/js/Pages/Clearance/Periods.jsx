@@ -169,7 +169,7 @@ export default function Periods({ periods }) {
                 <PageHeader
                     title="Clearance Windows & Term Periods"
                     subtitle="Open and close clearance processing windows for each academic semester"
-                    phaseBadge="Phase 1 · Clearance Setup"
+                    phaseBadge="Clearance Setup"
                     officeBadge="Office 1 · Registrar"
                     actions={
                         <button

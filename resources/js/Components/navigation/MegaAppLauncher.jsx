@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { useWorkflowBoxes, workflowPhaseLabel } from '@/Components/ui';
 import { useState, useEffect, useRef } from 'react';
 
 const subSystems = [
@@ -7,7 +8,7 @@ const subSystems = [
         items: [
             {
                 name: 'Admissions Desk',
-                phase: 'Phase 0',
+                stage: 'Admissions Intake',
                 route: 'admission.index',
                 officeId: 6,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -22,7 +23,7 @@ const subSystems = [
             },
             {
                 name: 'Guidance & Exam Lab',
-                phase: 'Phase 0.5 · Entrance',
+                stage: 'Entrance Examination',
                 route: 'exam.index',
                 officeId: [4, 7],
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -42,7 +43,7 @@ const subSystems = [
         items: [
             {
                 name: 'Campus Clearance',
-                phase: 'Phase 1',
+                stage: 'Campus Clearance',
                 route: 'clearance.index',
                 officeId: null, // was 8, the legacy Clearance office ruling 12 folded into Registrar
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -57,7 +58,7 @@ const subSystems = [
             },
             {
                 name: 'Academic Evaluation',
-                phase: 'Phase 2',
+                phaseBox: 'Department Evaluation',
                 route: 'evaluation.index',
                 // Was `officeId: 4`. The desk the docx names for this act is office 7, and the office
                 // list hid the card from exactly that office — measured 2026-10-13: office7_head and
@@ -83,7 +84,7 @@ const subSystems = [
         items: [
             {
                 name: 'Scholarship & Assessment',
-                phase: 'Phase 3',
+                phaseBox: 'Assessment',
                 route: 'assessment.index',
                 officeId: 3,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -98,7 +99,7 @@ const subSystems = [
             },
             {
                 name: 'Cashier Payment Desk',
-                phase: 'Phase 4',
+                phaseBox: 'Accounting Payment',
                 route: 'accounting.index',
                 officeId: 2,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -114,14 +115,14 @@ const subSystems = [
         ],
     },
     {
-        // Journey order across categories: 0 → 0.5 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8.
-        // Blocking (Phase 6) sits here after Registrar (Phase 5) so the launcher
-        // reads in enrollment-journey order, not FDD module order (m4).
+        // The cards read in enrollment-journey order, not FDD module order (m4):
+        // the Registrar box closes before Blocking schedules, and the clinic and ID
+        // desks sign last. Their phase chips are numbered from the workflow's own list.
         category: 'Official Certification, Scheduling & Student Services',
         items: [
             {
                 name: 'Registrar Official Suite',
-                phase: 'Phase 5',
+                phaseBox: 'Registrar Approval',
                 route: 'registrar.index',
                 officeId: 1,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -136,7 +137,7 @@ const subSystems = [
             },
             {
                 name: 'Blocking & Timetables',
-                phase: 'Phase 6',
+                phaseBox: 'Blocking and Scheduling',
                 route: 'blocking.index',
                 officeId: 5,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -151,7 +152,7 @@ const subSystems = [
             },
             {
                 name: 'School Clinic',
-                phase: 'Phase 7',
+                phaseBox: 'Clinic',
                 route: 'clinic.index',
                 officeId: 11,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -166,7 +167,7 @@ const subSystems = [
             },
             {
                 name: 'Student ID Hub',
-                phase: 'Phase 8',
+                phaseBox: 'ID Validation',
                 route: 'id.index',
                 officeId: 22,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -181,7 +182,7 @@ const subSystems = [
             },
             {
                 name: 'Student 360° Portal',
-                phase: 'Full Lifecycle',
+                stage: 'Full Lifecycle',
                 route: 'students.index',
                 officeId: null,
                 roles: ['staff', 'officeHead', 'dean', 'programHead', 'admin', 'instructor'],
@@ -203,7 +204,7 @@ const subSystems = [
         items: [
             {
                 name: 'Workflow Monitor',
-                phase: 'Pipeline Integrity',
+                stage: 'Pipeline Integrity',
                 route: 'admin.workflow-monitor',
                 officeId: null,
                 roles: ['admin'],
@@ -218,7 +219,7 @@ const subSystems = [
             },
             {
                 name: 'Reference Catalogs',
-                phase: 'Admin Hub',
+                stage: 'Admin Hub',
                 route: 'admin.reference-data.index',
                 officeId: null,
                 roles: ['admin'],
@@ -233,7 +234,7 @@ const subSystems = [
             },
             {
                 name: 'User & Role Security',
-                phase: 'RBAC',
+                stage: 'RBAC',
                 route: 'admin.users.index',
                 officeId: null,
                 roles: ['admin'],
@@ -248,7 +249,7 @@ const subSystems = [
             },
             {
                 name: 'System Audit Logs',
-                phase: 'Compliance',
+                stage: 'Compliance',
                 route: 'admin.users.audit-logs',
                 officeId: null,
                 roles: ['admin'],
@@ -277,6 +278,17 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
     const canEvaluationDesk = props.can?.evaluationDesk ?? false;
     const canBlockingDesk = props.can?.blockingDesk ?? false;
     const [filterQuery, setFilterQuery] = useState('');
+    // Every card's chip, resolved once: a card that names a box takes the phase from the
+    // shared list, and a card that names none keeps its own stage word. The filter below and the
+    // badge beside each name read this one answer, so neither can paint a different number.
+    const boxes = useWorkflowBoxes();
+    const sections = subSystems.map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({
+            ...item,
+            phase: workflowPhaseLabel(boxes, item.phaseBox) ?? item.phase ?? item.name,
+        })),
+    }));
     const inputRef = useRef(null);
 
     useEffect(() => {
@@ -389,7 +401,7 @@ export default function MegaAppLauncher({ isOpen, onClose, user }) {
 
                     {/* Body */}
                     <div className="p-6 lg:p-8 max-h-[75vh] overflow-y-auto space-y-8 bg-slate-50/50">
-                        {subSystems.map((section, sIdx) => {
+                        {sections.map((section, sIdx) => {
                             if (section.adminOnly && user?.role !== 'admin' && !canRefdataHub) return null;
 
                             const visibleItems = section.items.filter((item) => {

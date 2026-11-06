@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, registrarGateLabels, nextSortDirection, sortParams } from '@/Components/ui';
+import { PageHeader, Card, DataTable, Pagination, FilterBar, FilterBarField, Badge, EmptyState, StatCard, formatStatusLabel, enrollmentStatusTone, studentTypeTone, academicStandingLabel, academicStandingToneFor, formatYearLevel, registrarGateLabels, nextSortDirection, sortParams, useDeskPhaseChip } from '@/Components/ui';
 import { useState, useMemo } from 'react';
 
 // Inline icon — queue of records awaiting registrar validation
@@ -108,7 +108,7 @@ export default function Index({ enrollments, readiness = {}, filters = {}, sort 
                 <PageHeader
                     title="Office of the Registrar — Approval Terminal"
                     subtitle="Validate upstream clearance, accounting payment, and academic evaluation to officially finalize student enrollment"
-                    phaseBadge="Phase 5 · Registrar Central Desk"
+                    phaseBox="Registrar Approval" phaseBadge="Registrar Central Desk"
                     officeBadge="Office 1 · Office of the Registrar"
                 />
             }
@@ -150,7 +150,7 @@ export default function Index({ enrollments, readiness = {}, filters = {}, sort 
                     <StatCard
                         compact
                         label="Workflow Phase"
-                        value="Phase 5"
+                        value={useDeskPhaseChip('Registrar Approval')}
                         icon={
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />

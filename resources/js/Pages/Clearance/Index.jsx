@@ -246,7 +246,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
                 <PageHeader
                     title="Campus Clearance & Multi-Office Sign-off Matrix"
                     subtitle="Track multi-office obligation sign-offs (SSC, Library, Security, Scholarship, Dean) and issue official clearance slips"
-                    phaseBadge="Phase 1 · Campus Clearance"
+                    phaseBadge="Campus Clearance"
                     officeBadge="Multi-Office Sign-off Matrix"
                     actions={
                         <button
@@ -523,7 +523,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
                         ? [
                             'Applies the official green digital CLEARED stamp to this requirement in the matrix.',
                             'Updates the student clearance progress counter toward 100% full institutional clearance.',
-                            'Permits the student to proceed to Phase 2 (Curriculum Evaluation) once all requirements are signed.',
+                            'Permits the student to proceed to Curriculum Evaluation once all requirements are signed.',
                         ]
                         : confirmState?.action === 'waived'
                         ? [
@@ -569,7 +569,7 @@ export default function Index({ clearances, periods, students = [], filters = {}
                 effects={[
                     'Records the receiving clerk and the official receiving date on the clearance slip.',
                     'Marks the slip as received and locks the multi-office sign-off matrix.',
-                    'Unlocks Phase 5 (Registrar Certification) — the Registrar can now approve official enrollment for this student.',
+                    'Unlocks Registrar Certification — the Registrar can now approve official enrollment for this student.',
                 ]}
                 confirmText="Record Desk Receipt"
                 cancelText="Not Yet"

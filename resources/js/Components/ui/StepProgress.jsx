@@ -2,6 +2,10 @@ export default function StepProgress({ steps, className = '', onStepClick }) {
     return (
         <div className={`step-progress ${className}`} role="list" aria-label="Enrollment workflow progress">
             {steps.map((step, index) => {
+                // A caller that knows the record's own numbering passes it; the position in
+                // the list is only a fallback, and for a workflow that skips a box the two
+                // are different numbers.
+                const number = step.number ?? index + 1;
                 const label = (
                     <span className={`step-progress-label ${step.status}`}>{step.label}</span>
                 );
@@ -23,7 +27,7 @@ export default function StepProgress({ steps, className = '', onStepClick }) {
                                 <span className="text-xs font-bold">—</span>
                             )}
                             {(step.status === 'pending' || step.status === 'skipped') && (
-                                <span className="text-xs font-bold">{index + 1}</span>
+                                <span className="text-xs font-bold">{number}</span>
                             )}
                         </div>
                         {onStepClick ? (

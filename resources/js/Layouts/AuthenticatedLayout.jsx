@@ -3,26 +3,26 @@ import Dropdown from '@/Components/Dropdown';
 import DeskSubNav from '@/Components/navigation/DeskSubNav';
 import GlobalSearchModal from '@/Components/navigation/GlobalSearchModal';
 import MegaAppLauncher from '@/Components/navigation/MegaAppLauncher';
-import { Toast, CauseEffectModal } from '@/Components/ui';
+import { Toast, CauseEffectModal, useWorkflowBoxes, workflowPhaseLabel } from '@/Components/ui';
 import { officeLogoFor } from '@/officeBranding';
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { formatSchoolMoment } from '@/Components/ui/calendarDay';
 
 const deskInfoMap = {
-    admission: { name: 'Admissions Desk', phase: 'Phase 0', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-    exam: { name: 'Guidance & Exam Lab', phase: 'Phase 0.5', badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
-    clearance: { name: 'Campus Clearance', phase: 'Phase 1', badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-    evaluation: { name: 'Academic Evaluation', phase: 'Phase 2', badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
-    assessment: { name: 'Scholarship & Assessment', phase: 'Phase 3', badgeClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30' },
-    accounting: { name: 'Cashier Payment Desk', phase: 'Phase 4', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-    registrar: { name: 'Office of the Registrar', phase: 'Phase 5', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
-    blocking: { name: 'Blocking & Timetables', phase: 'Phase 6', badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' },
-    clinic: { name: 'School Health Clinic', phase: 'Phase 7', badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-    id: { name: 'Student ID Management', phase: 'Phase 8', badgeClass: 'bg-slate-500/15 text-slate-300 border-slate-500/30' },
-    students: { name: 'Student 360° Trail', phase: 'Student Info', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
-    admin: { name: 'System Administration', phase: 'Admin Suite', badgeClass: 'bg-slate-600/15 text-slate-300 border-slate-500/30' },
-    dashboard: { name: 'Executive Dashboard', phase: 'Overview', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
+    admission: { name: 'Admissions Desk', stage: 'Admissions Intake', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+    exam: { name: 'Guidance & Exam Lab', stage: 'Entrance Examination', badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
+    clearance: { name: 'Campus Clearance', stage: 'Campus Clearance', badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+    evaluation: { name: 'Academic Evaluation', phaseBox: 'Department Evaluation', badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
+    assessment: { name: 'Scholarship & Assessment', phaseBox: 'Assessment', badgeClass: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30' },
+    accounting: { name: 'Cashier Payment Desk', phaseBox: 'Accounting Payment', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+    registrar: { name: 'Office of the Registrar', phaseBox: 'Registrar Approval', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
+    blocking: { name: 'Blocking & Timetables', phaseBox: 'Blocking and Scheduling', badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' },
+    clinic: { name: 'School Health Clinic', phaseBox: 'Clinic', badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
+    id: { name: 'Student ID Management', phaseBox: 'ID Validation', badgeClass: 'bg-slate-500/15 text-slate-300 border-slate-500/30' },
+    students: { name: 'Student 360° Trail', stage: 'Student Info', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
+    admin: { name: 'System Administration', stage: 'Admin Suite', badgeClass: 'bg-slate-600/15 text-slate-300 border-slate-500/30' },
+    dashboard: { name: 'Executive Dashboard', stage: 'Overview', badgeClass: 'bg-seait-500/15 text-seait-300 border-seait-500/30' },
 };
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -120,6 +120,10 @@ export default function AuthenticatedLayout({ header, children }) {
     }) || 'dashboard';
 
     const currentDesk = deskInfoMap[activeKey] || deskInfoMap.dashboard;
+    // The pill names this desk's box on the enrollment form, numbered from the shared
+    // `workflowPhases` list. A desk that holds no box shows its own stage word instead,
+    // because a number invented here is how the header and the tracker came to disagree.
+    const deskPhase = workflowPhaseLabel(useWorkflowBoxes(), currentDesk.phaseBox) ?? currentDesk.stage;
 
     // Account-bound office branding: the signed-in office head's crest
     // rides on their avatar (per OfficeId), not on per-page logos.
@@ -190,7 +194,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             {/* Current Active Desk Pill */}
                             <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-xl bg-navy-900/90 border border-slate-700/60">
                                 <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${currentDesk.badgeClass}`}>
-                                    {currentDesk.phase}
+                                    {deskPhase}
                                 </span>
                                 <span className="text-xs font-bold text-slate-200">
                                     {currentDesk.name}

@@ -226,8 +226,8 @@ export default function Show({ enrollment, clinicRecord }) {
             header={
                 <PageHeader
                     title="Student Health Assessment & Clinical Chart"
-                    subtitle={`Phase 7 — ${getStudentName()} (${student?.schoolIdNumber})`}
-                    phaseBadge="Phase 7 · Clinic Examination"
+                    subtitle={`Clinic Examination — ${getStudentName()} (${student?.schoolIdNumber})`}
+                    phaseBox="Clinic" phaseBadge="Clinic Examination"
                     officeBadge="Office 11 · School Clinic"
                     actions={
                         <Link href={route('clinic.index')} className="btn btn-secondary btn-sm">
@@ -370,7 +370,7 @@ export default function Show({ enrollment, clinicRecord }) {
                                 </div>
                                 <h3 className="font-bold text-slate-900 text-sm">No Health Assessment Recorded</h3>
                                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-4">
-                                    Measure the student's height, weight, and blood pressure to complete Phase 7.
+                                    Measure the student's height, weight, and blood pressure to complete the Clinic box.
                                 </p>
                                 <button onClick={handleOpenRecord} className="btn btn-primary">
                                     Perform Physical Exam

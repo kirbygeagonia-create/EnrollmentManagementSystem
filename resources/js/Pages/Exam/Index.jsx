@@ -187,7 +187,7 @@ export default function Index({ exams, stats = {}, filters = {}, sort = null, ca
                 <PageHeader
                     title="Entrance Examinations"
                     subtitle={subtitle}
-                    phaseBadge="Phase 0.5 · BR9"
+                    phaseBadge="Entrance Examination"
                     officeBadge={isGuidance ? 'Guidance & Testing Center' : 'Academic Departments'}
                     actions={
                         <div className="flex items-center gap-2">

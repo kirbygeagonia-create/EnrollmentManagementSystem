@@ -197,7 +197,7 @@ export default function Show({ assessment, scholarshipTypes = [], can = {} }) {
                 <PageHeader
                     title="Statement of Accounts: Fees Assessed and Scholarship Coverage"
                     subtitle={`${studentName} — ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.name || 'Current Term'})`}
-                    phaseBadge="Phase 3 · Fee Assessment"
+                    phaseBox="Assessment" phaseBadge="Fee Assessment"
                     officeBadge="Office 3 · Scholarship Desk"
                 />
             }

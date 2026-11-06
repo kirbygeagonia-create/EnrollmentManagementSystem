@@ -288,7 +288,7 @@ class TimetableImportScreenTest extends TestCase
         // on 2026-10-31; a file that landed under public/ would be readable by URL, and the extension would be
         // the only hint. So the claim is about the path the bytes actually sit on.
         $this->assertStringStartsWith(realpath(storage_path('app/private')) ?: storage_path('app/private'), realpath($stored) ?: $stored);
-        $this->assertStringNotContainsString(realpath(public_path('storage')) ?: 'storage/', strtolower(realpath($stored) ?: $stored));
+        $this->assertStringNotContainsString(strtolower(str_replace('\\', '/', public_path('storage'))), strtolower(str_replace('\\', '/', realpath($stored) ?: $stored))); // the served folder's real path, never a `'storage/'` shorthand: every private path contains that substring, and the runner has no public/storage symlink for realpath() to find
     }
 
     #[Test]

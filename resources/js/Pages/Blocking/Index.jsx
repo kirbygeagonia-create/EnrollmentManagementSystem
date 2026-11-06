@@ -150,7 +150,7 @@ export default function Index({ blocks, stats = {}, courses, terms, filters = {}
                 <PageHeader
                     title="Academic Blocking & Schedule Allocation"
                     subtitle="Manage block sections, monitor class capacity limits, and assign student subject schedules"
-                    phaseBadge="Phase 6 · Section Blocking"
+                    phaseBox="Blocking and Scheduling" phaseBadge="Section Blocking"
                     officeBadge="Office 5 · Scheduling Desk"
                     actions={
                         <button onClick={() => { createForm.reset(); setShowCreateModal(true); }} className="btn btn-primary">

@@ -125,7 +125,7 @@ export default function Index({ assessments, summary = {}, filters = {}, queueCo
                 <PageHeader
                     title="Accounting & Cashier Terminal"
                     subtitle="Collect enrollment fee payments, generate Official Receipts (OR), and settle accounts a grant or waiver already covers"
-                    phaseBadge="Phase 4 · Cashier Desk"
+                    phaseBox="Accounting Payment" phaseBadge="Cashier Desk"
                     officeBadge="Office 2 · Accounting Department"
                 />
             }

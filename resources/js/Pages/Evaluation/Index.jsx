@@ -152,7 +152,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, sort = nu
                 <PageHeader
                     title="Academic Department Evaluation Desk"
                     subtitle="Capture student demographic profiles (BR32), evaluate transfer credits, and propose curriculum subject loads"
-                    phaseBadge="Phase 2 · Department Evaluation"
+                    phaseBox="Department Evaluation"
                     officeBadge="Office 4 · Academic Evaluation Desk"
                     actions={canIssueEnrollment ? (
                         <button type="button" className="btn btn-primary" onClick={() => setIssueOpen(true)}>

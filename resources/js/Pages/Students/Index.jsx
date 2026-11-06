@@ -92,7 +92,7 @@ export default function Index({ students, filters = {}, sort = null }) {
             header={
                 <PageHeader
                     title="Student 360 Institutional Directory"
-                    subtitle="Centralized student records, holistic profile search, and end-to-end lifecycle tracking across all 8 phases"
+                    subtitle="Centralized student records, holistic profile search, and end-to-end lifecycle tracking across every office of the enrollment workflow"
                     phaseBadge="Central Data Hub"
                     officeBadge="All Offices · Central 360"
                 />

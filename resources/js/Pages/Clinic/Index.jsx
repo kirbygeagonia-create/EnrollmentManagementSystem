@@ -83,7 +83,7 @@ export default function Index({ enrollments, stats = {}, filters = {}, sort = nu
                 <PageHeader
                     title="School Clinic & Health Assessment"
                     subtitle="Record physical examinations, biometric vitals, and PhilHealth registrations"
-                    phaseBadge="Phase 7 · Clinic Desk"
+                    phaseBox="Clinic" phaseBadge="Clinic Desk"
                     officeBadge="Office 11 · School Clinic"
                 />
             }

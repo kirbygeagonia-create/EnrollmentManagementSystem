@@ -18,6 +18,8 @@ use App\Services\WorkflowService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 /**
@@ -164,21 +166,146 @@ class WorkflowPhaseIndicatorTest extends TestCase
     #[Test]
     public function every_desk_page_is_given_the_phase_vocabulary_the_stepper_prints(): void
     {
-        $this->actingAs($this->staffForOffice(1))
+        $phases = $this->actingAs($this->staffForOffice(1))
             ->get('/dashboard')
-            ->assertInertia(fn ($page) => $page
-                // Keyed by the office that signs the box, valued by the phase a
-                // student is actually standing in.
-                ->where('workflowPhases.4', 'Department Evaluation')
-                ->where('workflowPhases.3', 'Assessment')
-                ->where('workflowPhases.2', 'Accounting Payment')
-                ->where('workflowPhases.1', 'Registrar Approval')
-                ->where('workflowPhases.5', 'Blocking and Scheduling')
-                ->where('workflowPhases.11', 'Clinic')
-                ->where('workflowPhases.22', 'ID Validation')
-                // A Registrar return sends the record back to this box.
-                ->where('workflowReturnOfficeId', 4)
-            );
+            ->assertOk()
+            ->viewData('page')['props']['workflowPhases'];
+
+        // Keyed by nothing. The list ARRIVES as a list: an object keyed by office id is what
+        // the tracker used to be handed, and JavaScript enumerates an object's integer-like
+        // keys in ascending numeric order, so the seven boxes were re-sorted into the offices
+        // table's numbering before a single pixel was painted — Registrar first, Department
+        // Evaluation fourth. The order is the claim, so the order has to survive the wire.
+        $this->assertTrue(array_is_list($phases), 'workflowPhases must reach the browser as a list, not as a map keyed by office id.');
+
+        // The order a student walks, not the order the offices were seeded in.
+        $this->assertSame([4, 3, 2, 1, 5, 11, 22], array_column($phases, 'officeId'));
+        $this->assertSame(
+            ['Department Evaluation', 'Assessment', 'Accounting Payment', 'Registrar Approval', 'Blocking and Scheduling', 'Clinic', 'ID Validation'],
+            array_column($phases, 'label')
+        );
+        $this->assertSame(['Guidance', 'Scholarship', 'Accounting', 'Registrar', 'Blocking', 'Clinic', 'IdOffice'], array_column($phases, 'office'));
+        $this->assertSame(
+            array_column(WorkflowService::boxOrder(), 'officeId'),
+            array_column($phases, 'officeId'),
+            'The page is given the workflow’s own declaration, not a restatement of it.'
+        );
+
+        // A Registrar return sends the record back to this box.
+        $this->assertSame(4, $this->actingAs($this->staffForOffice(1))
+            ->get('/dashboard')
+            ->assertOk()
+            ->viewData('page')['props']['workflowReturnOfficeId']);
+    }
+
+    #[Test]
+    public function the_stepper_numbers_the_boxes_the_record_holds_not_the_seven_the_form_declares(): void
+    {
+        // No JavaScript suite runs here, so this reads the source: the record's own rows are
+        // what the numbering is taken from. `boxes.length` is the canonical seven, and a
+        // continuing student's form holds six — printing the canonical index would put a "4"
+        // on the third box of that record.
+        $stepper = file_get_contents(base_path('resources/js/Components/ui/WorkflowStepper.jsx'));
+
+        $this->assertStringContainsString('const positions = new Map(stored.map(', $stepper);
+        $this->assertStringContainsString('position: positions.get(officeId) ?? null', $stepper);
+        $this->assertStringNotContainsString('position: index + 1', $stepper);
+        $this->assertStringNotContainsString('boxes.findIndex', $stepper);
+        $this->assertStringNotContainsString('Object.entries(workflowPhases', $stepper, 'Enumerating a map keyed by office id is what re-sorted the boxes.');
+
+        // The progress circles print the same number the sentence under them prints.
+        $progress = file_get_contents(base_path('resources/js/Components/ui/StepProgress.jsx'));
+        $this->assertStringContainsString('step.number ?? index + 1', $progress);
+    }
+
+    #[Test]
+    public function no_surface_spells_a_workflow_phase_number_by_hand(): void
+    {
+        $typed = [];
+
+        foreach ($this->paintedSources() as $path => $source) {
+            // `Phase <digit>` typed into a screen is a second arithmetic for the same box. The
+            // numbers come from `WorkflowService::boxOrder()`, so a surface spells the WORD of
+            // the box it works and lets the shared list number it.
+            if (preg_match_all('/Phase [0-9]+/', $source, $hits)) {
+                foreach ($hits[0] as $hit) {
+                    $typed[] = $path.' → '.$hit;
+                }
+            }
+        }
+
+        $this->assertGreaterThan(60, count($this->paintedSources()), 'The walk read almost nothing, so its clean answer would mean nothing.');
+
+        sort($typed);
+        $this->assertSame([], $typed, 'A hand-typed phase number disagrees with the tracker the moment the boxes move.');
+    }
+
+    #[Test]
+    public function every_phase_box_word_a_surface_names_is_a_box_the_workflow_declares(): void
+    {
+        $labels = array_column(WorkflowService::boxOrder(), 'label');
+        $claimed = [];
+        $unknown = [];
+
+        foreach ($this->paintedSources() as $path => $source) {
+            if (! str_ends_with($path, '.jsx')) {
+                continue;
+            }
+
+            preg_match_all('/phaseBox(?:=|:)\s*(?:"|\x27)([^"\x27]+)(?:"|\x27)/', $source, $hits);
+
+            foreach ($hits[1] as $word) {
+                $claimed[$word][] = $path;
+
+                if (! in_array($word, $labels, true)) {
+                    $unknown[] = $word.' ('.basename($path).')';
+                }
+            }
+        }
+
+        sort($unknown);
+        $this->assertSame([], $unknown, 'A surface named a box the workflow does not declare, so its chip would print no phase.');
+
+        // The other direction is the claim worth pinning: a box no desk page names would mean a
+        // phase that appears nowhere in the chrome — the header and the tracker would silently
+        // stop answering for the same desk.
+        $unclaimed = array_values(array_diff($labels, array_keys($claimed)));
+        sort($unclaimed);
+        $this->assertSame([], $unclaimed, 'A workflow box is declared but no desk page numbers it.');
+        $this->assertCount(count($labels), $claimed);
+    }
+
+    /**
+     * Every React source under `resources/js`, with the comments taken out.
+     *
+     * A comment that quotes the retired spelling ("the header saw Phase 5") is a record of the
+     * defect, not a second arithmetic, so the guard reads what a screen can paint. Whole-line
+     * comments and docblocks go; a trailing comment on a code line stays, because an
+     * over-reported comment is a loud nuisance and an under-reported screen is a silent one.
+     *
+     * @return array<string, string>
+     */
+    private function paintedSources(): array
+    {
+        $sources = [];
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(base_path('resources/js')));
+
+        foreach ($files as $file) {
+            if (! $file->isFile() || ! in_array($file->getExtension(), ['jsx', 'js'], true)) {
+                continue;
+            }
+
+            $text = file_get_contents($file->getPathname());
+            $text = preg_replace('/\/\*.*?\*\//s', '', $text);
+            $text = implode("\n", array_filter(
+                explode("\n", $text),
+                static fn (string $line): bool => ! preg_match('/^\s*(\/\/|\*)/', $line)
+            ));
+
+            $sources[str_replace('\\', '/', $file->getPathname())] = $text;
+        }
+
+        return $sources;
     }
 
     #[Test]

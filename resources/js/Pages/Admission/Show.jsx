@@ -185,7 +185,7 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                 <PageHeader
                     title="Applicant Admission & Requirement Verification"
                     subtitle={`${student?.firstName} ${student?.lastName} — ${admission.course?.courseName || '—'} (${admission.term?.termName || 'Current Term'})`}
-                    phaseBadge="Phase 0 · Document Verification"
+                    phaseBadge="Document Verification"
                     officeBadge="Office 6 · Admission Desk"
                 />
             }
@@ -528,7 +528,7 @@ export default function Show({ admission, requirements, approvalBlockers = [], d
                     onClose={() => setShowConfirmApprove(false)}
                     onConfirm={confirmApprove}
                     title="Approve Institutional Admission"
-                    subtitle="Admissions Office (Phase 0) — Official Intake Endorsement"
+                    subtitle="Admissions Office — Official Intake Endorsement"
                     tone="success"
                     entityContext={{
                         label: 'Applicant Name',

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import Badge from './Badge';
 import StepProgress from './StepProgress';
 import { formatStatusLabel } from './statusLabel';
+import { useWorkflowBoxes } from './deskPhase';
 import { formatSchoolDay } from '@/Components/ui/calendarDay';
 
 // Workflow step status → badge tone
@@ -19,17 +20,19 @@ const statusValue = (status) => (typeof status === 'object' && status !== null ?
 /**
  * The enrollment workflow — the digital twin of the paper workflow form.
  *
- * Each box is named from the workflow's own phase vocabulary (`workflowPhases`,
- * shared from WorkflowService::stepLabels()), not from the offices table: the
- * first box is the Department Evaluation phase even though the Guidance office
- * is the one that signs it.
+ * Each box is named and ordered by the workflow's own declaration (`workflowPhases`, shared
+ * from WorkflowService::boxOrder()), not from the offices table: the first box is the
+ * Department Evaluation phase even though the Guidance office is the one that signs it.
  *
- * Boxes a student type never enters — Assessment for a continuing or shifter
- * student — are printed as Not applicable rather than vanishing, so the tracker
- * answers "where is this student" against every box on the form.
+ * Boxes a student type never enters — Assessment for a continuing or shifter student — are
+ * printed as Not applicable rather than vanishing, so the tracker answers "where is this
+ * student" against every box on the form. Their numbers, though, come from the boxes the
+ * record holds: a continuing student's Registrar box is the third of six, and printing the
+ * form's canonical fourth-of-seven beside it would be a second answer to the same question.
  */
 export default function WorkflowStepper({ workflow, enrollment }) {
-    const { workflowPhases = {}, workflowReturnOfficeId = null } = usePage().props;
+    const boxes = useWorkflowBoxes();
+    const { workflowReturnOfficeId = null } = usePage().props;
 
     if (!workflow) return <p className="text-sm text-brand-500">No workflow created yet.</p>;
 
@@ -44,24 +47,32 @@ export default function WorkflowStepper({ workflow, enrollment }) {
     const isReturnedToAdmission = statusValue(enrollment?.enrollmentStatus) === 'returnedToAdmission';
     const currentStepOrder = stored.find((step) => step.stepStatus === 'pending')?.stepOrder;
 
-    const steps = Object.entries(workflowPhases).map(([officeIdKey, label], index) => {
-        const officeId = Number(officeIdKey);
+    // The record's own numbering: the boxes it holds, counted in the order it holds them.
+    const positions = new Map(stored.map((step, index) => [Number(step.officeId), index + 1]));
+
+    const steps = boxes.map((box) => {
+        const officeId = Number(box.officeId);
         const step = byOffice.get(officeId);
 
-        if (!step) return { officeId, label, status: 'notApplicable', meta: null, position: index + 1 };
+        if (!step) return { officeId, label: box.label, status: 'notApplicable', meta: null, position: null };
 
-        let status = step.stepStatus === 'completed'
+        const isCurrent = step.stepOrder === currentStepOrder;
+        const status = step.stepStatus === 'completed'
             ? 'completed'
-            : step.stepOrder === currentStepOrder ? 'current' : 'pending';
+            : isCurrent ? 'current' : 'pending';
+        const isMarkedReturned = isReturned && officeId === Number(workflowReturnOfficeId);
 
-        if (isReturned && officeId === Number(workflowReturnOfficeId)) status = 'returned';
-
-        return { officeId, label, status, meta: step, position: index + 1 };
+        return {
+            officeId,
+            label: box.label,
+            status: isMarkedReturned ? 'returned' : status,
+            meta: step,
+            position: positions.get(officeId) ?? null,
+        };
     });
 
-    const boxes = steps.filter((s) => s.meta);
     const current = steps.find((s) => s.status === 'current') || steps.find((s) => s.status === 'returned');
-    const doneCount = boxes.filter((s) => s.status === 'completed').length;
+    const doneCount = steps.filter((s) => s.status === 'completed').length;
 
     const summary = isReturnedToAdmission
         // §6.4 (gap G-10): Admission holds no box on this form, so the tracker has nothing to mark as
@@ -70,15 +81,15 @@ export default function WorkflowStepper({ workflow, enrollment }) {
         ? 'Returned to Admission — the application is back with that desk, and every box on this form restarts once it approves again.'
         : isReturned && current
             ? `Returned to ${current.label}${enrollment?.returnReason ? ` — ${enrollment.returnReason}` : ''}.`
-            : boxes.length > 0 && doneCount === boxes.length
+            : doneCount === stored.length
             ? 'Every phase on this enrollment form is signed.'
             : current
-                ? `Phase ${boxes.findIndex((s) => s.officeId === current.officeId) + 1} of ${boxes.length} — ${current.label}.`
+                ? `Phase ${current.position} of ${stored.length} — ${current.label}.`
                 : 'Waiting for the first signature.';
 
     return (
         <div>
-            <StepProgress steps={steps.map(({ label, status }) => ({ label, status }))} />
+            <StepProgress steps={steps.map(({ label, status, position }) => ({ label, status, number: position }))} />
             <p className="mt-3 text-xs font-semibold text-brand-700">{summary}</p>
             <div className="mt-5 space-y-2">
                 {steps.map(({ officeId, label, status, meta }) => (

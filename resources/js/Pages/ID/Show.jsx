@@ -156,7 +156,7 @@ export default function Show({ enrollment, idRequest, requestReasons, backTab = 
                 <PageHeader
                     title="ID Validation Desk"
                     subtitle={`${getStudentName()} (${student?.schoolIdNumber})`}
-                    phaseBadge="Phase 8 · ID Office"
+                    phaseBox="ID Validation" phaseBadge="ID Office"
                     officeBadge="ID Validation Desk"
                     actions={
                         <Link

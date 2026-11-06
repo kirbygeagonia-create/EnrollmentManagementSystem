@@ -80,7 +80,7 @@ export default function ShiftRequests({ requests, filters = {}, students = [], c
                 <PageHeader
                     title="Program Change (Shift) Requests"
                     subtitle="Filed at Academic Department Evaluation, endorsed by the dean or program head, decided by the Guidance Councillor — whose signature is the final call"
-                    phaseBadge="Phase 2 · Department Evaluation"
+                    phaseBox="Department Evaluation"
                     officeBadge="Office 4 · Academic Evaluation Desk"
                     actions={can.file ? (
                         <button type="button" className="btn btn-primary" onClick={() => setFiling(true)}>

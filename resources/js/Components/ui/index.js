@@ -17,6 +17,7 @@ export { formatStatusLabel, formatYearLevel, yearLevelChoices, YEAR_LEVELS, enro
 export { default as PrintLayout } from './PrintLayout';
 export { default as StepProgress } from './StepProgress';
 export { default as WorkflowStepper } from './WorkflowStepper';
+export { useWorkflowBoxes, workflowPhaseLabel, useDeskPhaseChip } from './deskPhase';
 export { default as Toast } from './Toast';
 export { nextSortDirection, sortParams } from './listSort';
 export { useRouterPending, watchRouterPending } from './useRouterPending';

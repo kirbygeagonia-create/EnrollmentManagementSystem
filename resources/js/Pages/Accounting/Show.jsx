@@ -213,7 +213,7 @@ export default function Show({ assessment, paymentModes = [], can = {}, outstand
                 <PageHeader
                     title="Cashier Terminal & Payment Desk"
                     subtitle={`${studentName} • ${enrollment?.course?.courseName || '—'} (${enrollment?.term?.semester?.value || enrollment?.term?.semester || 'Current Term'})`}
-                    phaseBadge="Phase 4 · Cashier Collections"
+                    phaseBox="Accounting Payment" phaseBadge="Cashier Collections"
                     officeBadge="Office 2 · Cashier Terminal"
                 />
             }

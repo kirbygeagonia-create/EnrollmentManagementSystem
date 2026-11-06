@@ -3,7 +3,6 @@ import { Link, usePage } from '@inertiajs/react';
 const deskConfigs = {
     admission: {
         title: 'Admissions Desk',
-        phase: 'Phase 0',
         badgeColor: 'bg-emerald-500/10 text-emerald-700 border-emerald-300',
         tabs: [
             { name: 'Applicant Queue', route: 'admission.index' },
@@ -12,7 +11,6 @@ const deskConfigs = {
     },
     exam: {
         title: 'Guidance & Entrance Exam Lab',
-        phase: 'Phase 0.5 · Entrance',
         badgeColor: 'bg-indigo-500/10 text-indigo-700 border-indigo-300',
         tabs: [
             { name: 'Exam Queue', route: 'exam.index' },
@@ -27,7 +25,6 @@ const deskConfigs = {
         // are the Registrar's since ruling 12 retired the legacy Clearance office — so the chrome
         // names the window, not an office that does not exist.
         title: 'Campus Clearance',
-        phase: 'Phase 1',
         badgeColor: 'bg-amber-500/10 text-amber-700 border-amber-300',
         tabs: [
             { name: 'Clearance Queue', route: 'clearance.index' },
@@ -36,7 +33,6 @@ const deskConfigs = {
     },
     evaluation: {
         title: 'Academic Department Evaluation',
-        phase: 'Phase 2',
         badgeColor: 'bg-blue-500/10 text-blue-700 border-blue-300',
         tabs: [
             { name: 'Evaluation Queue', route: 'evaluation.index' },
@@ -46,7 +42,6 @@ const deskConfigs = {
     },
     assessment: {
         title: 'Scholarship & Financial Assessment',
-        phase: 'Phase 3',
         badgeColor: 'bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-300',
         tabs: [
             { name: 'Assessment Queue', route: 'assessment.index' },
@@ -54,7 +49,6 @@ const deskConfigs = {
     },
     accounting: {
         title: 'Cashier & Payment Desk',
-        phase: 'Phase 4',
         badgeColor: 'bg-emerald-500/10 text-emerald-700 border-emerald-300',
         tabs: [
             { name: 'Payment Desk', route: 'accounting.index' },
@@ -63,7 +57,6 @@ const deskConfigs = {
     },
     registrar: {
         title: 'Office of the Registrar',
-        phase: 'Phase 5',
         badgeColor: 'bg-seait-500/10 text-seait-700 border-seait-300',
         tabs: [
             { name: 'Approval Queue', route: 'registrar.index' },
@@ -71,7 +64,6 @@ const deskConfigs = {
     },
     blocking: {
         title: 'Blocking & Scheduling Office',
-        phase: 'Phase 6',
         badgeColor: 'bg-cyan-500/10 text-cyan-700 border-cyan-300',
         tabs: [
             { name: 'Blocks & Timetables', route: 'blocking.index' },
@@ -79,7 +71,6 @@ const deskConfigs = {
     },
     clinic: {
         title: 'School Health Clinic',
-        phase: 'Phase 7',
         badgeColor: 'bg-rose-500/10 text-rose-700 border-rose-300',
         tabs: [
             { name: 'Clinic Queue', route: 'clinic.index' },
@@ -87,7 +78,6 @@ const deskConfigs = {
     },
     id: {
         title: 'Student ID Management',
-        phase: 'Phase 8',
         badgeColor: 'bg-slate-500/10 text-slate-700 border-slate-300',
         tabs: [
             { name: 'ID Request Queue', route: 'id.index' },
@@ -95,7 +85,6 @@ const deskConfigs = {
     },
     students: {
         title: 'Student 360° Trail',
-        phase: 'Student Services',
         badgeColor: 'bg-seait-500/10 text-seait-700 border-seait-300',
         tabs: [
             { name: 'All Students Directory', route: 'students.index' },
@@ -103,7 +92,6 @@ const deskConfigs = {
     },
     admin: {
         title: 'System Administration & Security',
-        phase: 'Admin Suite',
         badgeColor: 'bg-slate-700/10 text-slate-800 border-slate-300',
         tabs: [
             { name: 'Reference Catalogs', route: 'admin.reference-data.index' },
